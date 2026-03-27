@@ -1,0 +1,247 @@
+import { nanoid } from "nanoid";
+
+import { normalizeText } from "@/lib/text/normalize-text";
+import type {
+  Block,
+  Chunk,
+  DocumentModel,
+  DocumentRecord,
+  DocumentSourceKind,
+  Section,
+  Sentence,
+  Token,
+} from "@/types/document";
+import { extractMarkdownBlocks } from "@/features/ingest/normalize/markdown-blocks";
+
+export interface BuildDocumentModelInput {
+  title?: string;
+  rawText: string;
+  sourceKind: DocumentSourceKind;
+  chunkSize?: number;
+}
+
+interface MutableSection {
+  title: string;
+  blockIndexes: number[];
+  chunkStart: number;
+  chunkEnd: number;
+}
+
+const sentenceBoundary = /(?<=[.!?])\s+/;
+const tokenBoundary = /\s+/;
+
+function buildPlainTextBlocks(
+  rawText: string,
+): Array<Pick<Block, "kind" | "text">> {
+  const normalized = normalizeText(rawText);
+
+  return normalized.paragraphs.map((paragraph) => ({
+    kind: "paragraph" as const,
+    text: paragraph,
+  }));
+}
+
+function resolveBlocks(
+  sourceKind: BuildDocumentModelInput["sourceKind"],
+  rawText: string,
+) {
+  if (sourceKind === "markdown") {
+    const markdownBlocks = extractMarkdownBlocks(rawText);
+    if (markdownBlocks.length > 0) {
+      return markdownBlocks;
+    }
+  }
+
+  return buildPlainTextBlocks(rawText);
+}
+
+function deriveTitle(
+  inputTitle: string | undefined,
+  blocks: Array<Pick<Block, "kind" | "text">>,
+) {
+  const explicitTitle = inputTitle?.trim();
+  if (explicitTitle) {
+    return explicitTitle;
+  }
+
+  const heading = blocks.find((block) => block.kind === "heading")?.text;
+  if (heading) {
+    return heading;
+  }
+
+  return blocks[0]?.text.slice(0, 60) || "Untitled document";
+}
+
+export function buildDocumentModel({
+  title,
+  rawText,
+  sourceKind,
+  chunkSize = 2,
+}: BuildDocumentModelInput): DocumentModel {
+  const timestamp = new Date().toISOString();
+  const id = nanoid();
+  const sourceBlocks = resolveBlocks(sourceKind, rawText).filter(
+    (block) => block.text.trim().length > 0,
+  );
+  const normalizedText = sourceBlocks.map((block) => block.text).join("\n\n");
+  const excerpt = normalizedText.slice(0, 180);
+
+  const blocks: Block[] = [];
+  const sentences: Sentence[] = [];
+  const tokens: Token[] = [];
+  const chunks: Chunk[] = [];
+  const sections: MutableSection[] = [];
+
+  let tokenIndex = 0;
+  let sentenceIndex = 0;
+  let chunkIndex = 0;
+  let absoluteOffset = 0;
+  let currentSection: MutableSection | undefined;
+
+  const startSection = (heading: string, blockIndex: number) => {
+    if (currentSection) {
+      currentSection.chunkEnd = Math.max(
+        currentSection.chunkEnd,
+        chunkIndex - 1,
+      );
+    }
+
+    currentSection = {
+      title: heading,
+      blockIndexes: [blockIndex],
+      chunkStart: chunkIndex,
+      chunkEnd: chunkIndex,
+    };
+
+    sections.push(currentSection);
+  };
+
+  sourceBlocks.forEach((sourceBlock, blockIndex) => {
+    if (!currentSection) {
+      startSection(
+        sourceBlock.kind === "heading" ? sourceBlock.text : "Document",
+        blockIndex,
+      );
+    } else if (sourceBlock.kind === "heading") {
+      startSection(sourceBlock.text, blockIndex);
+    } else {
+      currentSection.blockIndexes.push(blockIndex);
+    }
+
+    const blockSentenceStart = sentenceIndex;
+    const blockTokenStart = tokenIndex;
+    const blockSentences = sourceBlock.text
+      .split(sentenceBoundary)
+      .map((sentence) => sentence.trim())
+      .filter(Boolean);
+
+    blockSentences.forEach((sentenceText) => {
+      const sentenceTokenStart = tokenIndex;
+      const sentenceTokens = sentenceText
+        .split(tokenBoundary)
+        .map((token) => token.trim())
+        .filter(Boolean);
+
+      sentenceTokens.forEach((value) => {
+        tokens.push({
+          index: tokenIndex,
+          value,
+          normalizedValue: value.toLowerCase(),
+          paragraphIndex: blockIndex,
+          sentenceIndex,
+          absoluteOffset,
+        });
+        absoluteOffset += value.length + 1;
+        tokenIndex += 1;
+      });
+
+      const sentenceTokenEnd = tokenIndex - 1;
+
+      sentences.push({
+        index: sentenceIndex,
+        paragraphIndex: blockIndex,
+        text: sentenceText,
+        tokenStart: sentenceTokenStart,
+        tokenEnd: sentenceTokenEnd,
+      });
+
+      for (
+        let cursor = sentenceTokenStart;
+        cursor <= sentenceTokenEnd;
+        cursor += chunkSize
+      ) {
+        const tokenSlice = tokens.slice(
+          cursor,
+          Math.min(cursor + chunkSize, sentenceTokenEnd + 1),
+        );
+        chunks.push({
+          index: chunkIndex,
+          text: tokenSlice.map((token) => token.value).join(" "),
+          tokenIndexes: tokenSlice.map((token) => token.index),
+          paragraphIndex: blockIndex,
+          sentenceIndex,
+          sectionIndex: sections.length - 1,
+          absoluteReadingPosition: chunkIndex,
+        });
+        chunkIndex += 1;
+      }
+
+      sentenceIndex += 1;
+    });
+
+    const blockSentenceEnd = sentenceIndex - 1;
+    const blockTokenEnd = tokenIndex - 1;
+
+    blocks.push({
+      index: blockIndex,
+      kind: sourceBlock.kind,
+      text: sourceBlock.text,
+      sentenceStart: blockSentenceStart,
+      sentenceEnd: blockSentenceEnd,
+      tokenStart: blockTokenStart,
+      tokenEnd: blockTokenEnd,
+    });
+  });
+
+  if (currentSection) {
+    currentSection.chunkEnd = Math.max(currentSection.chunkEnd, chunkIndex - 1);
+  }
+
+  const finalizedSections: Section[] = sections.map((section, index) => ({
+    index,
+    title: section.title,
+    blockIndexes: section.blockIndexes,
+    chunkStart: section.chunkStart,
+    chunkEnd: section.chunkEnd,
+  }));
+
+  return {
+    id,
+    title: deriveTitle(title, sourceBlocks),
+    sourceKind,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    text: normalizedText,
+    excerpt,
+    pages: [],
+    blocks,
+    sentences,
+    tokens,
+    chunks,
+    sections: finalizedSections,
+  };
+}
+
+export function toDocumentRecord(model: DocumentModel): DocumentRecord {
+  return {
+    id: model.id,
+    title: model.title,
+    sourceKind: model.sourceKind,
+    excerpt: model.excerpt,
+    createdAt: model.createdAt,
+    updatedAt: model.updatedAt,
+    totalChunks: model.chunks.length,
+    totalSections: model.sections.length,
+    payload: model,
+  };
+}

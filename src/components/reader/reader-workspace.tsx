@@ -1,0 +1,754 @@
+"use client";
+
+import Link from "next/link";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  deleteBookmark,
+  deleteHighlight,
+  saveBookmark,
+  saveHighlight,
+} from "@/db/repositories";
+import { useLocale } from "@/components/layout/locale-provider";
+import { ClassicReaderView } from "@/components/reader/classic-reader-view";
+import { FocusWordView } from "@/components/reader/focus-word-view";
+import { GuidedLineView } from "@/components/reader/guided-line-view";
+import { PhraseChunkView } from "@/components/reader/phrase-chunk-view";
+import { ReaderCanvas } from "@/components/reader/reader-canvas";
+import { ReaderSidebar } from "@/components/reader/reader-sidebar";
+import { useReaderDocument } from "@/components/reader/use-reader-document";
+import { useReaderPersistence } from "@/components/reader/use-reader-persistence";
+import { useReaderPlayback } from "@/components/reader/use-reader-playback";
+import {
+  deriveReaderProgress,
+  deriveRuntimeChunks,
+  jumpChunkIndex,
+  repeatChunkIndex,
+  resolveSessionChunkIndex,
+  restartParagraphChunkIndex,
+} from "@/features/reader/engine/navigation";
+import { deriveRemainingPlaybackMs } from "@/features/reader/engine/timing";
+import { getMatchingReadingGoal } from "@/features/reader/engine/presets";
+import { useReaderStore } from "@/state/reader-store";
+import type { ReaderPreferences } from "@/types/reader";
+import { readerPresets } from "@/types/reader";
+
+interface ReaderWorkspaceProps {
+  documentId?: string;
+  bookmarkId?: string;
+  highlightId?: string;
+}
+
+function formatRemainingTimeLabel(ms: number, locale: string) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  switch (locale) {
+    case "es":
+      if (hours > 0) {
+        return `Quedan ${hours}h ${minutes}m`;
+      }
+
+      if (minutes > 0) {
+        return `Quedan ${minutes}m ${seconds}s`;
+      }
+
+      return `Quedan ${seconds}s`;
+    case "pt":
+      if (hours > 0) {
+        return `Faltam ${hours}h ${minutes}m`;
+      }
+
+      if (minutes > 0) {
+        return `Faltam ${minutes}m ${seconds}s`;
+      }
+
+      return `Faltam ${seconds}s`;
+    default:
+      if (hours > 0) {
+        return `${hours}h ${minutes}m left`;
+      }
+
+      if (minutes > 0) {
+        return `${minutes}m ${seconds}s left`;
+      }
+
+      return `${seconds}s left`;
+  }
+}
+
+function formatRemainingTimeAnnouncement(args: {
+  chunkSize: number;
+  locale: string;
+  remainingMs: number;
+  remainingWords: number;
+  wordsPerMinute: number;
+}) {
+  const { chunkSize, locale, remainingMs, remainingWords, wordsPerMinute } = args;
+  const timeLabel = formatRemainingTimeLabel(remainingMs, locale);
+
+  switch (locale) {
+    case "es":
+      return `${timeLabel}. Estimado con ${remainingWords} palabras restantes, ${wordsPerMinute} palabras por minuto y bloques de ${chunkSize} ${chunkSize === 1 ? "palabra" : "palabras"}.`;
+    case "pt":
+      return `${timeLabel}. Estimativa com ${remainingWords} palavras restantes, ${wordsPerMinute} palavras por minuto e blocos de ${chunkSize} ${chunkSize === 1 ? "palavra" : "palavras"}.`;
+    default:
+      return `${timeLabel}. Estimated from ${remainingWords} words remaining, ${wordsPerMinute} words per minute, and chunks of ${chunkSize} ${chunkSize === 1 ? "word" : "words"}.`;
+  }
+}
+
+export function ReaderWorkspace({
+  documentId,
+  bookmarkId,
+  highlightId,
+}: ReaderWorkspaceProps) {
+  const { locale } = useLocale();
+  const {
+    currentChunkIndex,
+    isPlaying,
+    preferences,
+    setActiveDocument,
+    setChunkIndex,
+    setMode,
+    setPlaying,
+    updatePreferences,
+  } = useReaderStore();
+  const [highlightNote, setHighlightNote] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const hasHydratedSessionRef = useRef(false);
+  const {
+    document,
+    savedSession,
+    bookmarks,
+    highlights,
+    isLoading,
+    error,
+    prependBookmark,
+    removeBookmark,
+    prependHighlight,
+    removeHighlight,
+  } = useReaderDocument({
+    documentId,
+    bookmarkId,
+    highlightId,
+    setActiveDocument,
+  });
+
+  const payload = document?.payload;
+  const runtimeChunks = useMemo(
+    () => (payload ? deriveRuntimeChunks(payload, preferences.chunkSize) : []),
+    [payload, preferences.chunkSize],
+  );
+  const activeChunk = runtimeChunks[currentChunkIndex];
+  const currentSection =
+    payload && activeChunk
+      ? payload.sections[activeChunk.sectionIndex]
+      : undefined;
+  const currentParagraph =
+    payload && activeChunk
+      ? payload.blocks[activeChunk.paragraphIndex]
+      : undefined;
+  const progress = runtimeChunks.length
+    ? deriveReaderProgress({ chunks: runtimeChunks }, currentChunkIndex)
+    : 0;
+  const remainingWords = useMemo(() => {
+    if (runtimeChunks.length === 0) {
+      return 0;
+    }
+
+    const boundedIndex = Math.max(
+      0,
+      Math.min(currentChunkIndex, runtimeChunks.length - 1),
+    );
+
+    return runtimeChunks.slice(boundedIndex).reduce((totalWords, runtimeChunk) => {
+      return totalWords + runtimeChunk.tokenIndexes.length;
+    }, 0);
+  }, [currentChunkIndex, runtimeChunks]);
+  const remainingTimeMs = useMemo(() => {
+    return deriveRemainingPlaybackMs(
+      runtimeChunks,
+      currentChunkIndex,
+      preferences,
+    );
+  }, [currentChunkIndex, preferences, runtimeChunks]);
+  const remainingTimeLabel = useMemo(() => {
+    return formatRemainingTimeLabel(remainingTimeMs, locale);
+  }, [locale, remainingTimeMs]);
+
+  useReaderPersistence({
+    document,
+    activeChunk,
+    currentChunkIndex,
+    isPlaying,
+    preferences,
+    runtimeChunks,
+    updatePreferences,
+  });
+
+  useReaderPlayback({
+    activeChunk,
+    currentChunkIndex,
+    isPlaying,
+    preferences,
+    runtimeChunkCount: runtimeChunks.length,
+    setChunkIndex,
+    setPlaying,
+  });
+
+  useEffect(() => {
+    if (
+      runtimeChunks.length === 0 ||
+      !savedSession ||
+      hasHydratedSessionRef.current
+    ) {
+      return;
+    }
+
+    const nextIndex = resolveSessionChunkIndex(runtimeChunks, savedSession);
+    hasHydratedSessionRef.current = true;
+    startTransition(() => {
+      setChunkIndex(nextIndex);
+    });
+  }, [runtimeChunks, savedSession, setChunkIndex]);
+
+  useEffect(() => {
+    hasHydratedSessionRef.current = false;
+  }, [document?.id]);
+
+  const moveToChunk = useCallback(
+    (nextIndex: number) => {
+      if (runtimeChunks.length === 0) {
+        return;
+      }
+
+      const bounded = Math.max(
+        0,
+        Math.min(nextIndex, runtimeChunks.length - 1),
+      );
+      startTransition(() => {
+        setChunkIndex(bounded);
+      });
+    },
+    [runtimeChunks.length, setChunkIndex],
+  );
+
+  const applyPreferenceChanges = useCallback(
+    (changes: Partial<typeof preferences>) => {
+      const nextPreferences = {
+        ...preferences,
+        ...changes,
+      };
+
+      updatePreferences({
+        ...changes,
+        readingGoal: getMatchingReadingGoal(nextPreferences),
+      });
+    },
+    [preferences, updatePreferences],
+  );
+
+  const announce = useCallback((message: string) => {
+    setStatusMessage("");
+    window.setTimeout(() => {
+      setStatusMessage(message);
+    }, 0);
+  }, []);
+
+  const announceRemainingTime = useCallback(() => {
+    announce(
+      formatRemainingTimeAnnouncement({
+        chunkSize: preferences.chunkSize,
+        locale,
+        remainingMs: remainingTimeMs,
+        remainingWords,
+        wordsPerMinute: preferences.wordsPerMinute,
+      }),
+    );
+  }, [
+    announce,
+    locale,
+    preferences.chunkSize,
+    preferences.wordsPerMinute,
+    remainingTimeMs,
+    remainingWords,
+  ]);
+
+  const changeWordsPerMinute = useCallback(
+    (delta: number) => {
+      const nextWordsPerMinute = Math.max(
+        120,
+        Math.min(700, preferences.wordsPerMinute + delta),
+      );
+      applyPreferenceChanges({ wordsPerMinute: nextWordsPerMinute });
+      announce(`Reading speed set to ${nextWordsPerMinute} words per minute.`);
+    },
+    [announce, applyPreferenceChanges, preferences.wordsPerMinute],
+  );
+
+  const handleSaveBookmark = useCallback(async () => {
+    if (!document || !activeChunk) {
+      return;
+    }
+
+    const bookmark = await saveBookmark({
+      documentId: document.id,
+      label: `Bookmark ${bookmarks.length + 1}`,
+      chunkIndex: currentChunkIndex,
+      tokenIndex: activeChunk.tokenIndexes[0] ?? 0,
+      paragraphIndex: activeChunk.paragraphIndex,
+      sectionIndex: activeChunk.sectionIndex,
+    });
+
+    prependBookmark(bookmark);
+    announce(`${bookmark.label} saved.`);
+  }, [
+    activeChunk,
+    announce,
+    bookmarks.length,
+    currentChunkIndex,
+    document,
+    prependBookmark,
+  ]);
+
+  const handleSaveHighlight = useCallback(async () => {
+    if (!document || !activeChunk) {
+      return;
+    }
+
+    const highlight = await saveHighlight({
+      documentId: document.id,
+      label: `Highlight ${highlights.length + 1}`,
+      quote: activeChunk.text,
+      note: highlightNote.trim() || undefined,
+      chunkIndex: currentChunkIndex,
+      tokenIndex: activeChunk.tokenIndexes[0] ?? 0,
+      paragraphIndex: activeChunk.paragraphIndex,
+      sectionIndex: activeChunk.sectionIndex,
+    });
+
+    prependHighlight(highlight);
+    setHighlightNote("");
+    announce(`${highlight.label} saved.`);
+  }, [
+    activeChunk,
+    announce,
+    currentChunkIndex,
+    document,
+    highlightNote,
+    highlights.length,
+    prependHighlight,
+  ]);
+
+  const handleDeleteBookmark = useCallback(
+    async (bookmarkIdToDelete: string) => {
+      await deleteBookmark(bookmarkIdToDelete);
+      removeBookmark(bookmarkIdToDelete);
+      announce("Bookmark deleted.");
+    },
+    [announce, removeBookmark],
+  );
+
+  const handleDeleteHighlight = useCallback(
+    async (highlightIdToDelete: string) => {
+      await deleteHighlight(highlightIdToDelete);
+      removeHighlight(highlightIdToDelete);
+      announce("Highlight deleted.");
+    },
+    [announce, removeHighlight],
+  );
+
+  const jumpToAnchor = useCallback(
+    (anchor: { chunkIndex: number; tokenIndex: number }) => {
+      moveToChunk(
+        resolveSessionChunkIndex(runtimeChunks, {
+          currentChunkIndex: anchor.chunkIndex,
+          currentTokenIndex: anchor.tokenIndex,
+        }),
+      );
+    },
+    [moveToChunk, runtimeChunks],
+  );
+
+  const jumpToBookmark = useCallback(
+    (bookmark: { chunkIndex: number; tokenIndex: number; label: string }) => {
+      jumpToAnchor(bookmark);
+      announce(`${bookmark.label} loaded.`);
+    },
+    [announce, jumpToAnchor],
+  );
+
+  const jumpToHighlight = useCallback(
+    (highlight: { chunkIndex: number; tokenIndex: number; label: string }) => {
+      jumpToAnchor(highlight);
+      announce(`${highlight.label} loaded.`);
+    },
+    [announce, jumpToAnchor],
+  );
+
+  const renderModeView = () => {
+    if (!payload || !activeChunk) {
+      return null;
+    }
+
+    switch (preferences.mode) {
+      case "classic-reader":
+        return (
+          <ClassicReaderView
+            document={payload}
+            chunk={activeChunk}
+            reduceMotion={preferences.reduceMotion}
+          />
+        );
+      case "phrase-chunk":
+        return (
+          <PhraseChunkView
+            document={payload}
+            chunk={activeChunk}
+            chunks={runtimeChunks}
+          />
+        );
+      case "guided-line":
+        return <GuidedLineView document={payload} chunk={activeChunk} />;
+      default:
+        return <FocusWordView document={payload} chunk={activeChunk} />;
+    }
+  };
+
+  const activeGoalLabel = preferences.readingGoal
+    ? {
+        "study-carefully": {
+          en: "Study carefully",
+          es: "Estudiar con calma",
+          pt: "Estudar com calma",
+        },
+        "read-faster": {
+          en: "Read faster",
+          es: "Leer mas rapido",
+          pt: "Ler mais rapido",
+        },
+        "skim-overview": {
+          en: "Skim for overview",
+          es: "Explorar panorama",
+          pt: "Ler por panorama",
+        },
+        "practice-focus": {
+          en: "Practice focus",
+          es: "Practicar enfoque",
+          pt: "Praticar foco",
+        },
+      }[preferences.readingGoal][locale]
+    : undefined;
+
+  const modeLabel = {
+    "focus-word": { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
+    "phrase-chunk": {
+      en: "Phrase Chunk",
+      es: "Bloques de frases",
+      pt: "Blocos de frases",
+    },
+    "guided-line": {
+      en: "Guided Line",
+      es: "Linea guiada",
+      pt: "Linha guiada",
+    },
+    "classic-reader": {
+      en: "Classic Reader",
+      es: "Lector clasico",
+      pt: "Leitor classico",
+    },
+  }[preferences.mode][locale];
+
+  const handleModeSelection = useCallback(
+    (mode: ReaderPreferences["mode"]) => {
+      setMode(mode);
+      applyPreferenceChanges({ mode });
+      announce(
+        `Reading mode set to ${mode
+          .split("-")
+          .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+          .join(" ")}.`,
+      );
+    },
+    [announce, applyPreferenceChanges, setMode],
+  );
+
+  const handleDecreaseChunkSize = useCallback(() => {
+    const nextChunkSize = Math.max(1, preferences.chunkSize - 1);
+    applyPreferenceChanges({ chunkSize: nextChunkSize });
+    announce(
+      `Chunk size set to ${nextChunkSize} ${nextChunkSize === 1 ? "word" : "words"}.`,
+    );
+  }, [announce, applyPreferenceChanges, preferences.chunkSize]);
+
+  const handleIncreaseChunkSize = useCallback(() => {
+    const nextChunkSize = Math.min(6, preferences.chunkSize + 1);
+    applyPreferenceChanges({ chunkSize: nextChunkSize });
+    announce(`Chunk size set to ${nextChunkSize} words.`);
+  }, [announce, applyPreferenceChanges, preferences.chunkSize]);
+
+  const handleFontScaleChange = useCallback(
+    (delta: number) => {
+      const nextFontScale =
+        delta > 0
+          ? Math.min(1.8, Number((preferences.fontScale + delta).toFixed(1)))
+          : Math.max(0.8, Number((preferences.fontScale + delta).toFixed(1)));
+      applyPreferenceChanges({ fontScale: nextFontScale });
+      announce(`Font scale set to ${nextFontScale.toFixed(1)} times.`);
+    },
+    [announce, applyPreferenceChanges, preferences.fontScale],
+  );
+
+  const handleLineHeightChange = useCallback(
+    (delta: number) => {
+      const nextLineHeight =
+        delta > 0
+          ? Math.min(2.2, Number((preferences.lineHeight + delta).toFixed(1)))
+          : Math.max(1.2, Number((preferences.lineHeight + delta).toFixed(1)));
+      applyPreferenceChanges({ lineHeight: nextLineHeight });
+      announce(`Line height set to ${nextLineHeight.toFixed(1)}.`);
+    },
+    [announce, applyPreferenceChanges, preferences.lineHeight],
+  );
+
+  const handlePresetSelection = useCallback(
+    (presetId: (typeof readerPresets)[number]["id"]) => {
+      const preset = readerPresets.find((entry) => entry.id === presetId);
+      if (!preset) {
+        return;
+      }
+
+      applyPreferenceChanges({
+        mode: preset.mode,
+        wordsPerMinute: preset.wordsPerMinute,
+        chunkSize: preset.chunkSize,
+        focusWindow: preset.focusWindow,
+        naturalPauses: preset.naturalPauses,
+        smartPacing: preset.smartPacing,
+        reduceMotion: preset.reduceMotion,
+      });
+      announce(`${preset.label} preset applied.`);
+    },
+    [announce, applyPreferenceChanges],
+  );
+
+  const handleThemeSelection = useCallback(
+    (theme: ReaderPreferences["theme"]) => {
+      applyPreferenceChanges({ theme });
+      announce(`${theme.replace(/-/g, " ")} theme selected.`);
+    },
+    [announce, applyPreferenceChanges],
+  );
+
+  const handleNaturalPausesToggle = useCallback(() => {
+    applyPreferenceChanges({ naturalPauses: !preferences.naturalPauses });
+    announce(
+      preferences.naturalPauses
+        ? "Natural pauses disabled."
+        : "Natural pauses enabled.",
+    );
+  }, [announce, applyPreferenceChanges, preferences.naturalPauses]);
+
+  const handleReduceMotionToggle = useCallback(() => {
+    applyPreferenceChanges({ reduceMotion: !preferences.reduceMotion });
+    announce(
+      preferences.reduceMotion
+        ? "Reduced motion disabled."
+        : "Reduced motion enabled.",
+    );
+  }, [announce, applyPreferenceChanges, preferences.reduceMotion]);
+
+  const handlePlaybackToggle = useCallback(() => {
+    if (!activeChunk) {
+      return;
+    }
+
+    setPlaying(!isPlaying);
+    announce(isPlaying ? "Playback paused." : "Playback resumed.");
+  }, [activeChunk, announce, isPlaying, setPlaying]);
+
+  if (!documentId) {
+    return (
+      <section className="editorial-panel fade-rise rounded-[2rem] border border-dashed border-(--border-soft) bg-(--surface-card) p-10 text-center shadow-[0_20px_80px_rgba(20,26,56,0.12)] backdrop-blur-xl">
+        <p className="editorial-kicker text-(--accent-sky)">
+          {locale === "en"
+            ? "Reader ready"
+            : locale === "es"
+              ? "Lector listo"
+              : "Leitor pronto"}
+        </p>
+        <h2 className="font-heading mt-4 text-4xl leading-tight font-semibold text-(--text-strong)">
+          {locale === "en"
+            ? "Choose a document first, then the reader takes over."
+            : locale === "es"
+              ? "Elige un documento primero y luego el lector toma el relevo."
+              : "Escolha um documento primeiro e depois o leitor assume."}
+        </h2>
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-(--text-muted)">
+          {locale === "en"
+            ? "Import a PDF, DOCX, Markdown, TXT, or pasted text from the home page. Lee will open it here with local progress, bookmarks, and highlights."
+            : locale === "es"
+              ? "Importa un PDF, DOCX, Markdown, TXT o texto pegado desde la pagina principal. Lee lo abrira aqui con progreso, marcadores y destacados locales."
+              : "Importe um PDF, DOCX, Markdown, TXT ou texto colado pela pagina inicial. Lee vai abrir aqui com progresso, marcadores e destaques locais."}
+        </p>
+        <Link
+          href="/#upload-panel"
+          className="mt-8 inline-flex min-h-14 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-6 py-3 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+        >
+          {locale === "en"
+            ? "Import a document"
+            : locale === "es"
+              ? "Importar documento"
+              : "Importar documento"}
+        </Link>
+      </section>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <section className="editorial-panel fade-rise rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-10 text-center shadow-[0_20px_80px_rgba(20,26,56,0.12)] backdrop-blur-xl">
+        <p className="editorial-kicker text-(--accent-sky)">
+          {locale === "en"
+            ? "Loading"
+            : locale === "es"
+              ? "Cargando"
+              : "Carregando"}
+        </p>
+        <h2 className="font-heading mt-4 text-4xl leading-tight font-semibold text-(--text-strong)">
+          {locale === "en"
+            ? "Preparing your saved document."
+            : locale === "es"
+              ? "Preparando tu documento guardado."
+              : "Preparando seu documento salvo."}
+        </h2>
+        <p className="mt-4 text-base leading-8 text-(--text-muted)">
+          {locale === "en"
+            ? "Restoring the latest progress, pacing, and saved anchors from this device."
+            : locale === "es"
+              ? "Restaurando el progreso, ritmo y puntos guardados desde este dispositivo."
+              : "Restaurando progresso, ritmo e pontos salvos deste dispositivo."}
+        </p>
+      </section>
+    );
+  }
+
+  if (error || !payload || !activeChunk) {
+    return (
+      <section className="editorial-panel fade-rise rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-10 text-center shadow-[0_20px_80px_rgba(20,26,56,0.12)] backdrop-blur-xl">
+        <p className="editorial-kicker text-(--accent-amber)">
+          {locale === "en"
+            ? "Reader issue"
+            : locale === "es"
+              ? "Problema en el lector"
+              : "Problema no leitor"}
+        </p>
+        <h2 className="font-heading mt-4 text-4xl leading-tight font-semibold text-(--text-strong)">
+          {locale === "en"
+            ? "This view is waiting for a document it can open."
+            : locale === "es"
+              ? "Esta vista esta esperando un documento que pueda abrir."
+              : "Esta visualizacao esta esperando um documento que possa abrir."}
+        </h2>
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-(--text-muted)">
+          {error ??
+            (locale === "en"
+              ? "Return to the home page, import the document again, and reopen it from the library if needed."
+              : locale === "es"
+                ? "Vuelve a la pagina principal, importa el documento otra vez y abrelo desde la biblioteca si hace falta."
+                : "Volte para a pagina inicial, importe o documento novamente e abra-o pela biblioteca se precisar.")}
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section
+      className="space-y-4"
+      data-reader-theme={preferences.theme}
+      data-reader-font-scale={preferences.fontScale.toFixed(1)}
+      data-reader-line-height={preferences.lineHeight.toFixed(1)}
+    >
+      <div className="fade-rise-delayed relative z-20">
+        <p className="sr-only" role="status" aria-live="polite">
+          {statusMessage}
+        </p>
+
+        <ReaderCanvas
+          activeGoalLabel={activeGoalLabel}
+          chunkSize={preferences.chunkSize}
+          currentSectionTitle={currentSection?.title}
+          currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
+          isPlaying={isPlaying}
+          modeLabel={modeLabel}
+          modeView={renderModeView()}
+          remainingTimeLabel={remainingTimeLabel}
+          preferences={preferences}
+          sentenceCount={payload.sentences.length}
+          onAnnounceRemainingTime={announceRemainingTime}
+          onChangeFontScale={handleFontScaleChange}
+          onChangeLineHeight={handleLineHeightChange}
+          onChangeWordsPerMinute={changeWordsPerMinute}
+          onDecreaseChunkSize={handleDecreaseChunkSize}
+          onIncreaseChunkSize={handleIncreaseChunkSize}
+          onMoveBackward={() => moveToChunk(currentChunkIndex - 1)}
+          onMoveBackwardFive={() =>
+            moveToChunk(
+              jumpChunkIndex(runtimeChunks.length, currentChunkIndex, -5),
+            )
+          }
+          onMoveForward={() => moveToChunk(currentChunkIndex + 1)}
+          onMoveForwardFive={() =>
+            moveToChunk(
+              jumpChunkIndex(runtimeChunks.length, currentChunkIndex, 5),
+            )
+          }
+          onRepeatChunk={() => moveToChunk(repeatChunkIndex(currentChunkIndex))}
+          onRestart={() => moveToChunk(0)}
+          onRestartParagraph={() =>
+            moveToChunk(
+              restartParagraphChunkIndex(runtimeChunks, currentChunkIndex),
+            )
+          }
+          onSaveBookmark={() => {
+            void handleSaveBookmark();
+          }}
+          onSaveHighlight={() => {
+            void handleSaveHighlight();
+          }}
+          onSelectMode={handleModeSelection}
+          onSelectPreset={handlePresetSelection}
+          onSelectTheme={handleThemeSelection}
+          onToggleNaturalPauses={handleNaturalPausesToggle}
+          onTogglePlayback={handlePlaybackToggle}
+          onToggleReduceMotion={handleReduceMotionToggle}
+          progress={progress}
+        />
+      </div>
+
+      <ReaderSidebar
+        bookmarks={bookmarks}
+        highlightNote={highlightNote}
+        highlights={highlights}
+        onChangeHighlightNote={setHighlightNote}
+        onDeleteBookmark={(bookmarkIdToDelete: string) => {
+          void handleDeleteBookmark(bookmarkIdToDelete);
+        }}
+        onDeleteHighlight={(highlightIdToDelete: string) => {
+          void handleDeleteHighlight(highlightIdToDelete);
+        }}
+        onJumpToBookmark={jumpToBookmark}
+        onJumpToHighlight={jumpToHighlight}
+      />
+    </section>
+  );
+}
