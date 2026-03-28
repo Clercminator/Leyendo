@@ -7,6 +7,7 @@ import { FileText, FileUp, Sparkles } from "lucide-react";
 
 import { saveDocument, saveSession } from "@/db/repositories";
 import { useLocale } from "@/components/layout/locale-provider";
+import { isLegacyWordDocument } from "@/features/ingest/detect/file-kind";
 import { toDocumentRecord } from "@/features/ingest/build/document-model";
 import {
   buildDocumentModelAsync,
@@ -14,10 +15,12 @@ import {
 } from "@/features/ingest/build/document-model-client";
 import {
   extractDocumentFromFileAsync,
+  isPdfTooLargeForBrowser,
+  MAX_BROWSER_PDF_BYTES,
   shouldOffloadPdfExtraction,
 } from "@/features/ingest/extract/file-text-client";
 import { getLocalizedCopy } from "@/lib/locale";
-import type { DocumentSourceKind } from "@/types/document";
+import type { DocumentBlockInput, DocumentSourceKind } from "@/types/document";
 
 const supportedTypes = [
   {
@@ -26,9 +29,36 @@ const supportedTypes = [
     pt: "PDF com texto selecionavel",
   },
   { en: "DOCX", es: "DOCX", pt: "DOCX" },
+  { en: "RTF", es: "RTF", pt: "RTF" },
   { en: "Markdown", es: "Markdown", pt: "Markdown" },
   { en: "Pasted text", es: "Texto pegado", pt: "Texto colado" },
 ];
+
+const chooseSupportedFileCopy = {
+  en: "Choose a PDF, DOCX, RTF, Markdown, or text file",
+  es: "Elige un archivo PDF, DOCX, RTF, Markdown o de texto",
+  pt: "Escolha um arquivo PDF, DOCX, RTF, Markdown ou texto",
+};
+
+const supportedFileSummaryCopy = {
+  en: "PDF, DOCX, RTF, Markdown, and text files supported.",
+  es: "Compatible con PDF, DOCX, RTF, Markdown y archivos de texto.",
+  pt: "Compativel com PDF, DOCX, RTF, Markdown e arquivos de texto.",
+};
+
+const legacyDocErrorCopy = {
+  en: "Legacy .doc files are not supported yet. Save the document as .docx, then upload it.",
+  es: "Los archivos .doc antiguos aun no son compatibles. Guarda el documento como .docx y luego subelo.",
+  pt: "Arquivos .doc antigos ainda nao sao compativeis. Salve o documento como .docx e depois envie-o.",
+};
+
+const maxBrowserPdfMb = Math.round(MAX_BROWSER_PDF_BYTES / 1_000_000);
+
+const oversizedPdfErrorCopy = {
+  en: `This PDF is too large to process reliably in the browser. The current limit is ${maxBrowserPdfMb} MB. Try a smaller PDF or split it into sections.`,
+  es: `Este PDF es demasiado grande para procesarlo de forma confiable en el navegador. El limite actual es de ${maxBrowserPdfMb} MB. Prueba con un PDF mas pequeno o dividelo en secciones.`,
+  pt: `Este PDF e grande demais para ser processado com confianca no navegador. O limite atual e de ${maxBrowserPdfMb} MB. Tente um PDF menor ou divida-o em secoes.`,
+};
 
 export function UploadPanel() {
   const router = useRouter();
@@ -40,6 +70,8 @@ export function UploadPanel() {
   const [selectedFileName, setSelectedFileName] = useState<string>();
   const [selectedSourceKind, setSelectedSourceKind] =
     useState<DocumentSourceKind>("plain-text");
+  const [structuredSourceBlocks, setStructuredSourceBlocks] =
+    useState<DocumentBlockInput[]>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>();
   const [processingMessage, setProcessingMessage] = useState<string>();
@@ -53,9 +85,9 @@ export function UploadPanel() {
         pt: "Enviar um documento",
       },
       description: {
-        en: "Bring in a PDF, DOCX, or Markdown file and keep everything on-device.",
-        es: "Trae un PDF, DOCX o Markdown y manten todo en este dispositivo.",
-        pt: "Traga um PDF, DOCX ou Markdown e mantenha tudo neste dispositivo.",
+        en: "Bring in a PDF, DOCX, RTF, or Markdown file and keep everything on-device.",
+        es: "Trae un PDF, DOCX, RTF o Markdown y manten todo en este dispositivo.",
+        pt: "Traga um PDF, DOCX, RTF ou Markdown e mantenha tudo neste dispositivo.",
       },
       icon: FileText,
       accentClass: "text-(--accent-sky)",
@@ -81,11 +113,32 @@ export function UploadPanel() {
     if (!file) {
       setSelectedFileName(undefined);
       setSelectedSourceKind("plain-text");
+      setStructuredSourceBlocks(undefined);
       setContent("");
       return;
     }
 
     setError(undefined);
+    if (isLegacyWordDocument(file.name, file.type)) {
+      setSelectedFileName(undefined);
+      setSelectedSourceKind("plain-text");
+      setStructuredSourceBlocks(undefined);
+      setContent("");
+      setProcessingMessage(undefined);
+      setError(getLocalizedCopy(locale, legacyDocErrorCopy));
+      return;
+    }
+
+    if (isPdfTooLargeForBrowser(file)) {
+      setSelectedFileName(undefined);
+      setSelectedSourceKind("plain-text");
+      setStructuredSourceBlocks(undefined);
+      setContent("");
+      setProcessingMessage(undefined);
+      setError(getLocalizedCopy(locale, oversizedPdfErrorCopy));
+      return;
+    }
+
     setProcessingMessage(
       shouldOffloadPdfExtraction(file)
         ? locale === "en"
@@ -105,6 +158,7 @@ export function UploadPanel() {
         await extractDocumentFromFileAsync(file);
       setSelectedFileName(file.name);
       setSelectedSourceKind(extracted.sourceKind);
+      setStructuredSourceBlocks(extracted.sourceBlocks);
       setContent(extracted.rawText);
       if (!title.trim()) {
         setTitle(extracted.title);
@@ -129,6 +183,7 @@ export function UploadPanel() {
     } catch (selectionError) {
       setSelectedFileName(undefined);
       setSelectedSourceKind("plain-text");
+      setStructuredSourceBlocks(undefined);
       setContent("");
       setError(
         selectionError instanceof Error
@@ -177,6 +232,7 @@ export function UploadPanel() {
       const { document, processingMode } = await buildDocumentModelAsync({
         title,
         rawText: trimmed,
+        sourceBlocks: inputMode === "file" ? structuredSourceBlocks : undefined,
         sourceKind: inputMode === "file" ? selectedSourceKind : "plain-text",
       });
 
@@ -301,6 +357,8 @@ export function UploadPanel() {
                     setInputMode(value);
                     if (value === "paste") {
                       setSelectedFileName(undefined);
+                      setSelectedSourceKind("plain-text");
+                      setStructuredSourceBlocks(undefined);
                     }
                     setError(undefined);
                   }}
@@ -373,11 +431,7 @@ export function UploadPanel() {
                         : "Escolha seu documento"}
                 </span>
                 <span className="mt-2 max-w-md text-sm leading-7 text-(--text-muted)">
-                  {locale === "en"
-                    ? "PDF, DOCX, Markdown, and text files supported."
-                    : locale === "es"
-                      ? "Compatible con PDF, DOCX, Markdown y archivos de texto."
-                      : "Compativel com PDF, DOCX, Markdown e arquivos de texto."}
+                  {getLocalizedCopy(locale, supportedFileSummaryCopy)}
                 </span>
                 <span className="mt-6 inline-flex min-h-12 items-center rounded-full bg-[linear-gradient(135deg,var(--accent-sky),color-mix(in_srgb,var(--accent-sky)_72%,var(--accent-amber)))] px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(95,119,215,0.26)] transition group-hover:-translate-y-0.5 group-hover:shadow-[0_24px_54px_rgba(95,119,215,0.32)]">
                   {locale === "en"
@@ -387,17 +441,13 @@ export function UploadPanel() {
                       : "Enviar arquivo"}
                 </span>
                 <span className="sr-only">
-                  {locale === "en"
-                    ? "Choose a PDF, DOCX, Markdown, or text file"
-                    : locale === "es"
-                      ? "Elige un archivo PDF, DOCX, Markdown o de texto"
-                      : "Escolha um arquivo PDF, DOCX, Markdown ou texto"}
+                  {getLocalizedCopy(locale, chooseSupportedFileCopy)}
                 </span>
               </label>
               <input
                 id={fileInputId}
                 type="file"
-                accept=".pdf,.docx,.md,.markdown,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/markdown,text/plain"
+                accept=".pdf,.doc,.docx,.rtf,.md,.markdown,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf,application/x-rtf,text/rtf,text/richtext,text/markdown,text/plain"
                 className="sr-only"
                 onChange={(event) => {
                   void handleFileSelection(event.target.files?.[0] ?? null);
@@ -425,14 +475,15 @@ export function UploadPanel() {
               id="document-content"
               name="document-content"
               value={content}
-              onChange={(event) => setContent(event.target.value)}
+              onChange={(event) => {
+                setContent(event.target.value);
+                if (inputMode === "file") {
+                  setStructuredSourceBlocks(undefined);
+                }
+              }}
               placeholder={
                 inputMode === "file"
-                  ? locale === "en"
-                    ? "Choose a PDF, DOCX, Markdown, or text file"
-                    : locale === "es"
-                      ? "Elige un archivo PDF, DOCX, Markdown o de texto"
-                      : "Escolha um arquivo PDF, DOCX, Markdown ou texto"
+                  ? getLocalizedCopy(locale, chooseSupportedFileCopy)
                   : locale === "en"
                     ? "Paste text here to create a local reading session"
                     : locale === "es"
@@ -454,7 +505,11 @@ export function UploadPanel() {
           ) : null}
 
           {processingMessage ? (
-            <p className="rounded-2xl border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm text-(--text-strong)">
+            <p
+              role="status"
+              aria-live="polite"
+              className="rounded-2xl border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm text-(--text-strong)"
+            >
               {processingMessage}
             </p>
           ) : null}
@@ -466,6 +521,8 @@ export function UploadPanel() {
                 setTitle("");
                 setContent("");
                 setSelectedFileName(undefined);
+                setSelectedSourceKind("plain-text");
+                setStructuredSourceBlocks(undefined);
                 setError(undefined);
                 setProcessingMessage(undefined);
               }}

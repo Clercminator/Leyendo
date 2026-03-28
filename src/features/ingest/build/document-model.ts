@@ -4,6 +4,7 @@ import { normalizeText } from "@/lib/text/normalize-text";
 import type {
   Block,
   Chunk,
+  DocumentBlockInput,
   DocumentModel,
   DocumentRecord,
   DocumentSourceKind,
@@ -17,6 +18,7 @@ export interface BuildDocumentModelInput {
   title?: string;
   rawText: string;
   sourceKind: DocumentSourceKind;
+  sourceBlocks?: DocumentBlockInput[];
   chunkSize?: number;
 }
 
@@ -32,7 +34,7 @@ const tokenBoundary = /\s+/;
 
 function buildPlainTextBlocks(
   rawText: string,
-): Array<Pick<Block, "kind" | "text">> {
+): DocumentBlockInput[] {
   const normalized = normalizeText(rawText);
 
   return normalized.paragraphs.map((paragraph) => ({
@@ -41,23 +43,24 @@ function buildPlainTextBlocks(
   }));
 }
 
-function resolveBlocks(
-  sourceKind: BuildDocumentModelInput["sourceKind"],
-  rawText: string,
-) {
-  if (sourceKind === "markdown") {
-    const markdownBlocks = extractMarkdownBlocks(rawText);
+function resolveBlocks(input: BuildDocumentModelInput) {
+  if (input.sourceBlocks && input.sourceBlocks.length > 0) {
+    return input.sourceBlocks;
+  }
+
+  if (input.sourceKind === "markdown") {
+    const markdownBlocks = extractMarkdownBlocks(input.rawText);
     if (markdownBlocks.length > 0) {
       return markdownBlocks;
     }
   }
 
-  return buildPlainTextBlocks(rawText);
+  return buildPlainTextBlocks(input.rawText);
 }
 
 function deriveTitle(
   inputTitle: string | undefined,
-  blocks: Array<Pick<Block, "kind" | "text">>,
+  blocks: DocumentBlockInput[],
 ) {
   const explicitTitle = inputTitle?.trim();
   if (explicitTitle) {
@@ -76,14 +79,21 @@ export function buildDocumentModel({
   title,
   rawText,
   sourceKind,
+  sourceBlocks,
   chunkSize = 2,
 }: BuildDocumentModelInput): DocumentModel {
   const timestamp = new Date().toISOString();
   const id = nanoid();
-  const sourceBlocks = resolveBlocks(sourceKind, rawText).filter(
+  const resolvedBlocks = resolveBlocks({
+    title,
+    rawText,
+    sourceKind,
+    sourceBlocks,
+    chunkSize,
+  }).filter(
     (block) => block.text.trim().length > 0,
   );
-  const normalizedText = sourceBlocks.map((block) => block.text).join("\n\n");
+  const normalizedText = resolvedBlocks.map((block) => block.text).join("\n\n");
   const excerpt = normalizedText.slice(0, 180);
 
   const blocks: Block[] = [];
@@ -116,7 +126,7 @@ export function buildDocumentModel({
     sections.push(currentSection);
   };
 
-  sourceBlocks.forEach((sourceBlock, blockIndex) => {
+  resolvedBlocks.forEach((sourceBlock, blockIndex) => {
     if (!currentSection) {
       startSection(
         sourceBlock.kind === "heading" ? sourceBlock.text : "Document",
@@ -193,8 +203,11 @@ export function buildDocumentModel({
     const blockTokenEnd = tokenIndex - 1;
 
     blocks.push({
+      alignment: sourceBlock.alignment,
       index: blockIndex,
       kind: sourceBlock.kind,
+      marker: sourceBlock.marker,
+      sourcePageIndex: sourceBlock.sourcePageIndex,
       text: sourceBlock.text,
       sentenceStart: blockSentenceStart,
       sentenceEnd: blockSentenceEnd,
@@ -217,7 +230,7 @@ export function buildDocumentModel({
 
   return {
     id,
-    title: deriveTitle(title, sourceBlocks),
+    title: deriveTitle(title, resolvedBlocks),
     sourceKind,
     createdAt: timestamp,
     updatedAt: timestamp,

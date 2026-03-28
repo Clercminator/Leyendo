@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { clearPerfMetrics, getPerfMetrics } from "@/lib/perf/instrumentation";
 import {
   extractDocumentFromFileAsync,
+  isPdfTooLargeForBrowser,
+  MAX_BROWSER_PDF_BYTES,
   PDF_EXTRACTION_WORKER_THRESHOLD_BYTES,
   shouldOffloadPdfExtraction,
 } from "@/features/ingest/extract/file-text-client";
@@ -26,6 +28,19 @@ describe("document extraction client", () => {
     );
 
     expect(shouldOffloadPdfExtraction(file)).toBe(true);
+  });
+
+  it("flags oversized PDFs before browser extraction starts", () => {
+    const file = new File([new Uint8Array(1)], "huge.pdf", {
+      type: "application/pdf",
+    });
+
+    Object.defineProperty(file, "size", {
+      configurable: true,
+      value: MAX_BROWSER_PDF_BYTES + 1,
+    });
+
+    expect(isPdfTooLargeForBrowser(file)).toBe(true);
   });
 
   it("records extraction timing metrics", async () => {

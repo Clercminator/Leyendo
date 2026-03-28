@@ -98,13 +98,22 @@ Examples of future modes we could add:
 
 ### How many file formats are supported?
 
-Lee currently supports **5 input types**:
+Lee currently supports **6 input types**:
 
 1. pasted text,
 2. plain text files (`.txt`),
 3. Markdown files (`.md`, `.markdown`),
 4. DOCX files,
-5. PDFs with selectable text.
+5. RTF files,
+6. PDFs with selectable text.
+
+### Are legacy `.doc` Word files supported?
+
+No.
+
+The app accepts modern `.docx` files and now supports `.rtf`, but old binary `.doc`
+files are still out of scope for the browser-local pipeline. If you have a `.doc`
+file, save it as `.docx` in Word or LibreOffice and then upload that version.
 
 ### Are scanned PDFs supported?
 
@@ -114,24 +123,25 @@ If a PDF is just an image scan and does not contain selectable text, Lee cannot 
 
 ### How big can files be?
 
-There is **no single hard file-size limit currently enforced in the app**, but there are important practical limits.
+There are practical limits, and the app now enforces a browser-side cap for very large PDFs.
 
 What the code does today:
 
 - PDFs at or above **1.5 MB** are moved to a background worker for extraction.
+- PDFs above **50 MB** are rejected with a clear error before extraction starts.
 - Raw text at or above **120,000 characters** is moved to a background worker for document-model building.
 
 What that means in practice:
 
 - small and medium documents should work normally,
 - larger documents are still supported,
-- very large files may still feel slower because all processing happens in the browser,
+- very large PDFs above the browser cap are rejected up front,
 - the real limit depends on the user's device memory, browser, and CPU.
 
 So the honest answer is:
 
 - **yes, large files are supported better than before**, but
-- **no, this project does not yet guarantee a fixed maximum size**.
+- **no, this project does not guarantee every very large browser-local PDF will be accepted**.
 
 ### Is this stack using the latest versions available?
 
@@ -191,6 +201,7 @@ Different file types need different extraction logic.
 - Plain text can be read directly.
 - Markdown is parsed so headings and list items can be recognized.
 - DOCX is extracted with Mammoth.
+- RTF is extracted with a lightweight in-browser parser.
 - PDFs with selectable text are extracted with `pdfjs-dist`.
 
 ### Document model
@@ -253,6 +264,7 @@ The stack is not random. Each piece solves a specific problem in this app.
 | Dexie                 | IndexedDB wrapper          | Makes browser database work much easier than using raw IndexedDB directly                                       |
 | pdfjs-dist            | PDF text extraction        | Standard way to work with PDFs in the browser                                                                   |
 | mammoth               | DOCX text extraction       | Good browser-side DOCX text extraction for this kind of app                                                     |
+| Built-in RTF parser   | RTF text extraction        | Keeps rich-text import browser-local without adding a backend conversion step or a heavy parser dependency      |
 | unified + remark      | Markdown parsing           | Lets the app understand headings, paragraphs, and list items instead of treating Markdown as plain text only    |
 | Vitest                | Unit and component testing | Fast testing setup for logic and React-level behavior                                                           |
 | Playwright            | End-to-end testing         | Useful for real browser flow testing such as upload, paste, reading, and resume                                 |
@@ -399,10 +411,12 @@ The point of having multiple modes is not novelty. It is flexibility. Different 
 - `.txt`,
 - `.md` and `.markdown`,
 - `.docx`,
+- `.rtf`,
 - `.pdf` with selectable text.
 
 ### Not currently supported
 
+- legacy `.doc` Word files,
 - scanned PDFs that require OCR,
 - image-only documents,
 - cloud file sources,
@@ -414,6 +428,7 @@ The point of having multiple modes is not novelty. It is flexibility. Different 
 The app currently has **processing thresholds**, not a hard universal cap:
 
 - PDF extraction moves to a worker at **1.5 MB and above**.
+- PDFs above **50 MB** are rejected before extraction to avoid browser hangs.
 - Document-model building moves to a worker at **120,000 characters and above**.
 
 That means:

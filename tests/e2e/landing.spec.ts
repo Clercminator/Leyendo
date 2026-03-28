@@ -45,7 +45,7 @@ test("user can upload a text file and open it in the reader", async ({
 
   await page.getByRole("radio", { name: /upload a document/i }).click();
   await page
-    .getByLabel(/choose a pdf, docx, markdown, or text file/i)
+    .getByLabel(/choose a pdf, docx, rtf, markdown, or text file/i)
     .setInputFiles({
       name: "sample.txt",
       mimeType: "text/plain",

@@ -595,10 +595,10 @@ export function ReaderWorkspace({
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-(--text-muted)">
           {locale === "en"
-            ? "Import a PDF, DOCX, Markdown, TXT, or pasted text from the home page. Lee will open it here with local progress, bookmarks, and highlights."
+            ? "Import a PDF, DOCX, RTF, Markdown, TXT, or pasted text from the home page. Lee will open it here with local progress, bookmarks, and highlights."
             : locale === "es"
-              ? "Importa un PDF, DOCX, Markdown, TXT o texto pegado desde la pagina principal. Lee lo abrira aqui con progreso, marcadores y destacados locales."
-              : "Importe um PDF, DOCX, Markdown, TXT ou texto colado pela pagina inicial. Lee vai abrir aqui com progresso, marcadores e destaques locais."}
+              ? "Importa un PDF, DOCX, RTF, Markdown, TXT o texto pegado desde la pagina principal. Lee lo abrira aqui con progreso, marcadores y destacados locales."
+              : "Importe um PDF, DOCX, RTF, Markdown, TXT ou texto colado pela pagina inicial. Lee vai abrir aqui com progresso, marcadores e destaques locais."}
         </p>
         <Link
           href="/#upload-panel"

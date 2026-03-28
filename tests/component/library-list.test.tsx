@@ -137,7 +137,7 @@ describe("LibraryList cleanup actions", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          /import a pdf, docx, markdown file, or pasted text from the home page/i,
+          /import a pdf, docx, rtf, markdown file, or pasted text from the home page/i,
         ),
       ).toBeInTheDocument();
     });

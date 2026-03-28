@@ -1,4 +1,21 @@
-export type DocumentSourceKind = "pdf" | "docx" | "markdown" | "plain-text";
+export type DocumentSourceKind =
+  | "pdf"
+  | "docx"
+  | "rtf"
+  | "markdown"
+  | "plain-text";
+
+export type BlockKind = "heading" | "paragraph" | "list-item";
+
+export type BlockAlignment = "left" | "center";
+
+export interface DocumentBlockInput {
+  kind: BlockKind;
+  text: string;
+  alignment?: BlockAlignment;
+  marker?: string;
+  sourcePageIndex?: number;
+}
 
 export interface SourcePage {
   index: number;
@@ -27,8 +44,10 @@ export interface Sentence {
 }
 
 export interface Block {
+  alignment?: BlockAlignment;
   index: number;
-  kind: "heading" | "paragraph" | "list-item";
+  kind: BlockKind;
+  marker?: string;
   text: string;
   sentenceStart: number;
   sentenceEnd: number;

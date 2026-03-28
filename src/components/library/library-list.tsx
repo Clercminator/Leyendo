@@ -252,10 +252,10 @@ export function LibraryList() {
         </h2>
         <p className="mt-4 max-w-2xl text-base leading-8 text-(--text-muted)">
           {locale === "en"
-            ? "Import a PDF, DOCX, Markdown file, or pasted text from the home page and it will appear here with progress, bookmarks, and highlights."
+            ? "Import a PDF, DOCX, RTF, Markdown file, or pasted text from the home page and it will appear here with progress, bookmarks, and highlights."
             : locale === "es"
-              ? "Importa un PDF, DOCX, Markdown o texto pegado desde la pagina principal y aparecera aqui con progreso, marcadores y destacados."
-              : "Importe um PDF, DOCX, Markdown ou texto colado pela pagina inicial e ele aparecera aqui com progresso, marcadores e destaques."}
+              ? "Importa un PDF, DOCX, RTF, Markdown o texto pegado desde la pagina principal y aparecera aqui con progreso, marcadores y destacados."
+              : "Importe um PDF, DOCX, RTF, Markdown ou texto colado pela pagina inicial e ele aparecera aqui com progresso, marcadores e destaques."}
         </p>
         <Link
           href="/#upload-panel"

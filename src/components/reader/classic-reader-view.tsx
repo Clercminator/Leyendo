@@ -1,12 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef } from "react";
 
 import { useLocale } from "@/components/layout/locale-provider";
-import { buildTokenRuns } from "@/components/reader/build-token-runs";
 import { getLocalizedCopy } from "@/lib/locale";
-import type { Chunk, DocumentModel } from "@/types/document";
+import type { Chunk, DocumentModel, Token } from "@/types/document";
 
 interface ClassicReaderViewProps {
   document: DocumentModel;
@@ -15,6 +13,23 @@ interface ClassicReaderViewProps {
 }
 
 const inactiveTokenIndexes = new Set<number>();
+
+function renderTokens(tokens: Token[], activeIndexes: Set<number>) {
+  return tokens.map((token, index) => {
+    const isActive = activeIndexes.has(token.index);
+
+    return (
+      <span
+        key={token.index}
+        className={isActive ? "reader-classic-active-run" : undefined}
+        data-active={isActive ? "true" : undefined}
+      >
+        {token.value}
+        {index < tokens.length - 1 ? " " : null}
+      </span>
+    );
+  });
+}
 
 export function ClassicReaderView({
   document,
@@ -35,14 +50,13 @@ export function ClassicReaderView({
           );
 
           return {
-            block,
-            isActive: block.index === chunk.paragraphIndex,
-            runs: buildTokenRuns(
-              blockTokens,
+            activeTokenIndexes:
               block.index === chunk.paragraphIndex
                 ? activeIndexes
                 : inactiveTokenIndexes,
-            ),
+            block,
+            isActive: block.index === chunk.paragraphIndex,
+            tokens: blockTokens,
           };
         }),
     [activeIndexes, chunk.paragraphIndex, document.blocks, document.tokens],
@@ -50,10 +64,11 @@ export function ClassicReaderView({
 
   useEffect(() => {
     activeParagraphRef.current?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
       block: "nearest",
       inline: "nearest",
     });
-  }, [chunk.paragraphIndex]);
+  }, [chunk.paragraphIndex, reduceMotion]);
 
   const classicReaderLabel = getLocalizedCopy(locale, {
     en: "Classic Reader",
@@ -79,41 +94,22 @@ export function ClassicReaderView({
         className="mt-5 flex-1 overflow-y-auto overscroll-contain pr-2 sm:pr-4"
       >
         <div className="space-y-4 pb-4">
-          {renderedBlocks.map(({ block, isActive, runs }) => {
-            const body = runs.map((run, index) => (
-              run.active ? (
-                <motion.span
-                  key={run.key}
-                  layout={reduceMotion ? false : "position"}
-                  layoutId={reduceMotion ? undefined : "classic-active-run"}
-                  transition={
-                    reduceMotion
-                      ? undefined
-                      : {
-                          type: "spring",
-                          stiffness: 280,
-                          damping: 32,
-                          mass: 0.85,
-                        }
-                  }
-                  className="reader-classic-active-run font-medium"
-                  data-reader-classic-active="true"
-                >
-                  {run.text}
-                  {index < runs.length - 1 ? " " : null}
-                </motion.span>
-              ) : (
-                <span key={run.key}>
-                  {run.text}
-                  {index < runs.length - 1 ? " " : null}
-                </span>
-              )
-            ));
+          {renderedBlocks.map(({ activeTokenIndexes, block, isActive, tokens }) => {
+            const body = renderTokens(tokens, activeTokenIndexes);
+            const isCentered = block.alignment === "center";
+            const listMarker = block.marker ? (
+              <span className="reader-accent pt-[0.1em] font-medium tabular-nums">
+                {block.marker}
+              </span>
+            ) : (
+              <span className="reader-accent mt-[0.85em] h-2 w-2 shrink-0 rounded-full bg-current" />
+            );
 
             return (
               <article
                 key={block.index}
                 ref={isActive ? activeParagraphRef : null}
+                data-reader-classic-active={isActive ? "true" : undefined}
                 className={`scroll-mt-6 rounded-[1.35rem] transition ${
                   isActive
                     ? `${reduceMotion ? "reader-active-paragraph" : "reader-active-paragraph reader-active-paragraph-breathe"} px-5 py-4`
@@ -123,16 +119,22 @@ export function ClassicReaderView({
                 }`}
               >
                 {block.kind === "heading" ? (
-                  <h3 className="font-heading text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                  <h3
+                    className={`font-heading text-3xl font-semibold tracking-tight text-white sm:text-4xl ${
+                      isCentered ? "text-center" : "text-left"
+                    }`}
+                  >
                     {body}
                   </h3>
                 ) : block.kind === "list-item" ? (
-                  <p className="reader-body reader-muted flex gap-3">
-                    <span className="reader-accent mt-[0.85em] h-2 w-2 shrink-0 rounded-full bg-current" />
+                  <p className="reader-body reader-muted grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+                    {listMarker}
                     <span>{body}</span>
                   </p>
                 ) : (
-                  <p className="reader-body reader-muted">{body}</p>
+                  <p className={`reader-body reader-muted ${isCentered ? "text-center" : "text-left"}`}>
+                    {body}
+                  </p>
                 )}
               </article>
             );

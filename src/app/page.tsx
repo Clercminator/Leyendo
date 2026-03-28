@@ -23,9 +23,9 @@ const heroTitle = {
 };
 
 const heroDescription = {
-  en: "Paste article text or upload a PDF, DOCX, Markdown, or TXT file, then switch between focused reading modes without losing progress, highlights, or bookmarks.",
-  es: "Pega texto de un articulo o sube un PDF, DOCX, Markdown o TXT y cambia entre modos de lectura sin perder progreso, destacados ni marcadores.",
-  pt: "Cole texto de um artigo ou envie um PDF, DOCX, Markdown ou TXT e alterne entre modos de leitura sem perder progresso, destaques ou marcadores.",
+  en: "Paste article text or upload a PDF, DOCX, RTF, Markdown, or TXT file, then switch between focused reading modes without losing progress, highlights, or bookmarks.",
+  es: "Pega texto de un articulo o sube un PDF, DOCX, RTF, Markdown o TXT y cambia entre modos de lectura sin perder progreso, destacados ni marcadores.",
+  pt: "Cole texto de um artigo ou envie um PDF, DOCX, RTF, Markdown ou TXT e alterne entre modos de leitura sem perder progresso, destaques ou marcadores.",
 };
 
 const quickStartTitle = {
@@ -108,9 +108,9 @@ export default function Home() {
         pt: "Cole texto ou envie o documento que voce quer ler mais rapido.",
       }}
       description={{
-        en: "Lee accepts PDFs, DOCX, Markdown, TXT, and pasted text, then gives you guided, focused, phrase, and classic reading views with local progress and notes.",
-        es: "Lee acepta PDF, DOCX, Markdown, TXT y texto pegado, y luego te da vistas guiadas, enfocadas, por frases y clasicas con progreso y notas locales.",
-        pt: "Lee aceita PDF, DOCX, Markdown, TXT e texto colado, e depois oferece visualizacoes guiadas, focadas, por frases e classicas com progresso e notas locais.",
+        en: "Lee accepts PDFs, DOCX, RTF, Markdown, TXT, and pasted text, then gives you guided, focused, phrase, and classic reading views with local progress and notes.",
+        es: "Lee acepta PDF, DOCX, RTF, Markdown, TXT y texto pegado, y luego te da vistas guiadas, enfocadas, por frases y clasicas con progreso y notas locales.",
+        pt: "Lee aceita PDF, DOCX, RTF, Markdown, TXT e texto colado, e depois oferece visualizacoes guiadas, focadas, por frases e classicas com progresso e notas locais.",
       }}
     >
       <div className="space-y-10">

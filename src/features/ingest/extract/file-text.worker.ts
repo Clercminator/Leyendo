@@ -1,13 +1,19 @@
 /// <reference lib="webworker" />
 
-import { extractPdfTextFromArrayBuffer } from "@/features/ingest/extract/file-text";
+import { extractPdfDocumentFromArrayBuffer } from "@/features/ingest/extract/file-text";
 
 declare const self: DedicatedWorkerGlobalScope;
 
 self.onmessage = async (event: MessageEvent<{ arrayBuffer: ArrayBuffer }>) => {
   try {
-    const rawText = await extractPdfTextFromArrayBuffer(event.data.arrayBuffer);
-    self.postMessage({ ok: true, rawText });
+    const extracted = await extractPdfDocumentFromArrayBuffer(
+      event.data.arrayBuffer,
+    );
+    self.postMessage({
+      ok: true,
+      rawText: extracted.rawText,
+      sourceBlocks: extracted.sourceBlocks,
+    });
   } catch (error) {
     self.postMessage({
       ok: false,

@@ -3,10 +3,7 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { visit } from "unist-util-visit";
 
-interface MarkdownBlock {
-  kind: "heading" | "paragraph" | "list-item";
-  text: string;
-}
+import type { DocumentBlockInput } from "@/types/document";
 
 interface MarkdownNode {
   type?: string;
@@ -35,9 +32,9 @@ function extractNodeText(node: MarkdownNode | undefined): string {
   return node.children.map((child) => extractNodeText(child)).join("");
 }
 
-export function extractMarkdownBlocks(markdown: string): MarkdownBlock[] {
+export function extractMarkdownBlocks(markdown: string): DocumentBlockInput[] {
   const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown);
-  const blocks: MarkdownBlock[] = [];
+  const blocks: DocumentBlockInput[] = [];
 
   visit(tree, (node, _index, parent) => {
     const markdownNode = node as MarkdownNode;

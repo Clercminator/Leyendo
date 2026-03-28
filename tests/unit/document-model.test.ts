@@ -34,4 +34,41 @@ describe("buildDocumentModel", () => {
     );
     expect(document.chunks.length).toBeGreaterThan(0);
   });
+
+  it("preserves structured block metadata when provided", () => {
+    const document = buildDocumentModel({
+      rawText: "Agreement\n\n1.1. First clause.",
+      sourceBlocks: [
+        {
+          alignment: "center",
+          kind: "heading",
+          sourcePageIndex: 0,
+          text: "Agreement",
+        },
+        {
+          kind: "list-item",
+          marker: "1.1.",
+          sourcePageIndex: 0,
+          text: "First clause.",
+        },
+      ],
+      sourceKind: "pdf",
+    });
+
+    expect(document.title).toBe("Agreement");
+    expect(document.blocks[0]).toEqual(
+      expect.objectContaining({
+        alignment: "center",
+        kind: "heading",
+        sourcePageIndex: 0,
+      }),
+    );
+    expect(document.blocks[1]).toEqual(
+      expect.objectContaining({
+        kind: "list-item",
+        marker: "1.1.",
+        sourcePageIndex: 0,
+      }),
+    );
+  });
 });
