@@ -188,6 +188,7 @@ export function buildDocumentModel({
           index: chunkIndex,
           text: tokenSlice.map((token) => token.value).join(" "),
           tokenIndexes: tokenSlice.map((token) => token.index),
+          anchorTokenIndex: tokenSlice[0]?.index ?? sentenceTokenStart,
           paragraphIndex: blockIndex,
           sentenceIndex,
           sectionIndex: sections.length - 1,

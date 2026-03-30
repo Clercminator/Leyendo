@@ -60,6 +60,7 @@ export interface Chunk {
   index: number;
   text: string;
   tokenIndexes: number[];
+  anchorTokenIndex: number;
   paragraphIndex: number;
   sentenceIndex: number;
   sectionIndex: number;

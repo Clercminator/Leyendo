@@ -541,6 +541,23 @@
     background: var(--reader-canvas-bg);
   }
 
+  .reader-canvas:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+    border: none;
+    padding: 1.25rem 1.5rem 1.5rem;
+    background:
+      radial-gradient(circle at top, color-mix(in srgb, var(--reader-canvas-bg) 82%, white 6%), transparent 52%),
+      var(--reader-canvas-bg);
+  }
+
+  .reader-canvas:fullscreen .reader-panel {
+    min-height: 0;
+  }
+
   .reader-panel {
     background: var(--reader-panel-bg);
     min-height: max(50vh, 30rem);
@@ -606,6 +623,8 @@
     background: var(--reader-classic-emphasis-bg);
     color: var(--reader-classic-emphasis-text);
     border-radius: 0.58rem;
+    padding: 0.05em 0.22em;
+    margin-inline: 0.04em;
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
     box-shadow:

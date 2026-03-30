@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { useLocale } from "@/components/layout/locale-provider";
 import { getLocalizedCopy } from "@/lib/locale";
 import type { Chunk, DocumentModel } from "@/types/document";
@@ -10,10 +12,27 @@ interface PhraseChunkViewProps {
   chunks: Chunk[];
 }
 
-export function PhraseChunkView({ chunk, chunks }: PhraseChunkViewProps) {
+export function PhraseChunkView({ document, chunk, chunks }: PhraseChunkViewProps) {
   const { locale } = useLocale();
-  const previousChunk = chunks[chunk.index - 1];
-  const nextChunk = chunks[chunk.index + 1];
+  const sentenceChunks = useMemo(() => {
+    let start = chunk.index;
+    let end = chunk.index;
+
+    while (start > 0 && chunks[start - 1]?.sentenceIndex === chunk.sentenceIndex) {
+      start -= 1;
+    }
+
+    while (
+      end < chunks.length - 1 &&
+      chunks[end + 1]?.sentenceIndex === chunk.sentenceIndex
+    ) {
+      end += 1;
+    }
+
+    return chunks.slice(start, end + 1);
+  }, [chunk.index, chunk.sentenceIndex, chunks]);
+  const previousSentence = document.sentences[chunk.sentenceIndex - 1]?.text;
+  const nextSentence = document.sentences[chunk.sentenceIndex + 1]?.text;
 
   return (
     <div className="reader-panel flex h-full flex-1 flex-col rounded-[1.75rem] border border-white/10 px-6 py-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-10 sm:py-10">
@@ -24,15 +43,28 @@ export function PhraseChunkView({ chunk, chunks }: PhraseChunkViewProps) {
           pt: "Blocos de frases",
         })}
       </p>
-      <div className="mt-6 flex flex-1 flex-col justify-center space-y-4">
-        <p className="reader-dim text-base tracking-[0.24em] uppercase">
-          {previousChunk?.text ?? ""}
+      <div className="mt-6 flex flex-1 flex-col justify-center gap-6">
+        <p className="reader-dim min-h-6 text-sm tracking-[0.14em] uppercase sm:text-base">
+          {previousSentence ?? ""}
         </p>
-        <h2 className="reader-phrase-heading font-semibold tracking-tight text-white">
-          {chunk.text}
-        </h2>
-        <p className="reader-dim text-base tracking-[0.24em] uppercase">
-          {nextChunk?.text ?? ""}
+        <div className="mx-auto max-w-5xl">
+          <h2 className="reader-phrase-heading flex flex-wrap items-center justify-center gap-3 font-semibold tracking-tight text-white sm:gap-4">
+            {sentenceChunks.map((sentenceChunk) => {
+              const isActiveChunk = sentenceChunk.index === chunk.index;
+
+              return (
+                <span
+                  key={sentenceChunk.index}
+                  className={isActiveChunk ? "reader-active-run px-5 py-2 text-white" : "reader-dim text-2xl sm:text-4xl"}
+                >
+                  {sentenceChunk.text}
+                </span>
+              );
+            })}
+          </h2>
+        </div>
+        <p className="reader-dim min-h-6 text-sm tracking-[0.14em] uppercase sm:text-base">
+          {nextSentence ?? ""}
         </p>
       </div>
       <p className="reader-muted mt-6 text-sm leading-7">

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { useLocale } from "@/components/layout/locale-provider";
+import { buildTokenRuns } from "@/components/reader/build-token-runs";
 import { getLocalizedCopy } from "@/lib/locale";
 import type { Chunk, DocumentModel, Token } from "@/types/document";
 
@@ -15,20 +16,18 @@ interface ClassicReaderViewProps {
 const inactiveTokenIndexes = new Set<number>();
 
 function renderTokens(tokens: Token[], activeIndexes: Set<number>) {
-  return tokens.map((token, index) => {
-    const isActive = activeIndexes.has(token.index);
+  const runs = buildTokenRuns(tokens, activeIndexes);
 
-    return (
-      <span
-        key={token.index}
-        className={isActive ? "reader-classic-active-run" : undefined}
-        data-active={isActive ? "true" : undefined}
-      >
-        {token.value}
-        {index < tokens.length - 1 ? " " : null}
-      </span>
-    );
-  });
+  return runs.map((run, index) => (
+    <span
+      key={run.key}
+      className={run.active ? "reader-classic-active-run" : undefined}
+      data-active={run.active ? "true" : undefined}
+    >
+      {run.text}
+      {index < runs.length - 1 ? " " : null}
+    </span>
+  ));
 }
 
 export function ClassicReaderView({

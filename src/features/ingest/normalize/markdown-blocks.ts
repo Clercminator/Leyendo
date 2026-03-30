@@ -1,65 +1,91 @@
-import { unified } from "unified";
-import remarkGfm from "remark-gfm";
-import remarkParse from "remark-parse";
-import { visit } from "unist-util-visit";
-
 import type { DocumentBlockInput } from "@/types/document";
 
-interface MarkdownNode {
-  type?: string;
-  value?: string;
-  alt?: string | null;
-  children?: MarkdownNode[];
+const markdownFencePattern = /^(```|~~~)/;
+const markdownHeadingPattern = /^#{1,6}\s+(.+?)\s*#*\s*$/;
+const markdownListItemPattern = /^\s*(?:[-*+]|\d+\.)\s+(?:\[[ xX]\]\s+)?(.+)$/;
+
+function normalizeMarkdownInlineText(text: string) {
+  return text
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/[*_~>#]+/g, " ")
+    .replace(/\\([\\`*_{}\[\]()#+\-.!~>])/g, "$1")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function extractNodeText(node: MarkdownNode | undefined): string {
-  if (!node) {
-    return "";
+function flushMarkdownParagraph(
+  blocks: DocumentBlockInput[],
+  paragraphLines: string[],
+) {
+  if (paragraphLines.length === 0) {
+    return;
   }
 
-  if (typeof node.value === "string") {
-    return node.value;
+  const text = normalizeMarkdownInlineText(paragraphLines.join(" "));
+  if (text) {
+    blocks.push({ kind: "paragraph", text });
   }
 
-  if (typeof node.alt === "string") {
-    return node.alt;
-  }
-
-  if (!Array.isArray(node.children)) {
-    return "";
-  }
-
-  return node.children.map((child) => extractNodeText(child)).join("");
+  paragraphLines.length = 0;
 }
 
 export function extractMarkdownBlocks(markdown: string): DocumentBlockInput[] {
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown);
   const blocks: DocumentBlockInput[] = [];
+  const paragraphLines: string[] = [];
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  let isInFence = false;
 
-  visit(tree, (node, _index, parent) => {
-    const markdownNode = node as MarkdownNode;
+  lines.forEach((line) => {
+    const trimmed = line.trim();
 
-    if (markdownNode.type === "heading") {
-      const text = extractNodeText(markdownNode).replace(/\s+/g, " ").trim();
+    if (markdownFencePattern.test(trimmed)) {
+      flushMarkdownParagraph(blocks, paragraphLines);
+      isInFence = !isInFence;
+      return;
+    }
+
+    if (isInFence) {
+      if (trimmed) {
+        paragraphLines.push(trimmed);
+      }
+      return;
+    }
+
+    if (!trimmed) {
+      flushMarkdownParagraph(blocks, paragraphLines);
+      return;
+    }
+
+    const headingMatch = trimmed.match(markdownHeadingPattern);
+    if (headingMatch) {
+      flushMarkdownParagraph(blocks, paragraphLines);
+      const text = normalizeMarkdownInlineText(headingMatch[1] ?? "");
       if (text) {
         blocks.push({ kind: "heading", text });
       }
+      return;
     }
 
-    if (markdownNode.type === "paragraph" && parent?.type !== "listItem") {
-      const text = extractNodeText(markdownNode).replace(/\s+/g, " ").trim();
-      if (text) {
-        blocks.push({ kind: "paragraph", text });
-      }
-    }
-
-    if (markdownNode.type === "listItem") {
-      const text = extractNodeText(markdownNode).replace(/\s+/g, " ").trim();
+    const listItemMatch = trimmed.match(markdownListItemPattern);
+    if (listItemMatch) {
+      flushMarkdownParagraph(blocks, paragraphLines);
+      const text = normalizeMarkdownInlineText(listItemMatch[1] ?? "");
       if (text) {
         blocks.push({ kind: "list-item", text });
       }
+      return;
     }
+
+    paragraphLines.push(trimmed);
   });
+
+  flushMarkdownParagraph(blocks, paragraphLines);
 
   return blocks;
 }

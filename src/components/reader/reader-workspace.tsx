@@ -27,6 +27,7 @@ import { useReaderDocument } from "@/components/reader/use-reader-document";
 import { useReaderPersistence } from "@/components/reader/use-reader-persistence";
 import { useReaderPlayback } from "@/components/reader/use-reader-playback";
 import {
+  clampChunkIndex,
   deriveReaderProgress,
   deriveRuntimeChunks,
   jumpChunkIndex,
@@ -87,22 +88,23 @@ function formatRemainingTimeLabel(ms: number, locale: string) {
 }
 
 function formatRemainingTimeAnnouncement(args: {
-  chunkSize: number;
   locale: string;
+  modeLabel: string;
   remainingMs: number;
   remainingWords: number;
   wordsPerMinute: number;
 }) {
-  const { chunkSize, locale, remainingMs, remainingWords, wordsPerMinute } = args;
+  const { locale, modeLabel, remainingMs, remainingWords, wordsPerMinute } =
+    args;
   const timeLabel = formatRemainingTimeLabel(remainingMs, locale);
 
   switch (locale) {
     case "es":
-      return `${timeLabel}. Estimado con ${remainingWords} palabras restantes, ${wordsPerMinute} palabras por minuto y bloques de ${chunkSize} ${chunkSize === 1 ? "palabra" : "palabras"}.`;
+      return `${timeLabel}. Estimado con ${remainingWords} palabras restantes, ${wordsPerMinute} palabras por minuto y el modo ${modeLabel}.`;
     case "pt":
-      return `${timeLabel}. Estimativa com ${remainingWords} palavras restantes, ${wordsPerMinute} palavras por minuto e blocos de ${chunkSize} ${chunkSize === 1 ? "palavra" : "palavras"}.`;
+      return `${timeLabel}. Estimativa com ${remainingWords} palavras restantes, ${wordsPerMinute} palavras por minuto e o modo ${modeLabel}.`;
     default:
-      return `${timeLabel}. Estimated from ${remainingWords} words remaining, ${wordsPerMinute} words per minute, and chunks of ${chunkSize} ${chunkSize === 1 ? "word" : "words"}.`;
+      return `${timeLabel}. Estimated from ${remainingWords} words remaining, ${wordsPerMinute} words per minute, in ${modeLabel} mode.`;
   }
 }
 
@@ -125,6 +127,7 @@ export function ReaderWorkspace({
   const [highlightNote, setHighlightNote] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const hasHydratedSessionRef = useRef(false);
+  const lastAnchorTokenRef = useRef<number>();
   const {
     document,
     savedSession,
@@ -145,50 +148,75 @@ export function ReaderWorkspace({
 
   const payload = document?.payload;
   const runtimeChunks = useMemo(
-    () => (payload ? deriveRuntimeChunks(payload, preferences.chunkSize) : []),
-    [payload, preferences.chunkSize],
+    () =>
+      payload
+        ? deriveRuntimeChunks(payload, {
+            mode: preferences.mode,
+            chunkSize: preferences.chunkSize,
+            focusWindow: preferences.focusWindow,
+          })
+        : [],
+    [payload, preferences.chunkSize, preferences.focusWindow, preferences.mode],
   );
-  const activeChunk = runtimeChunks[currentChunkIndex];
-  const currentSection =
-    payload && activeChunk
-      ? payload.sections[activeChunk.sectionIndex]
-      : undefined;
+  const resolvedChunkIndex = runtimeChunks.length
+    ? clampChunkIndex(runtimeChunks.length, currentChunkIndex)
+    : 0;
+  const activeChunk = runtimeChunks[resolvedChunkIndex];
   const currentParagraph =
     payload && activeChunk
       ? payload.blocks[activeChunk.paragraphIndex]
       : undefined;
   const progress = runtimeChunks.length
-    ? deriveReaderProgress({ chunks: runtimeChunks }, currentChunkIndex)
+    ? deriveReaderProgress({ chunks: runtimeChunks }, resolvedChunkIndex)
     : 0;
   const remainingWords = useMemo(() => {
     if (runtimeChunks.length === 0) {
       return 0;
     }
 
-    const boundedIndex = Math.max(
-      0,
-      Math.min(currentChunkIndex, runtimeChunks.length - 1),
-    );
+    const remainingTokenIndexes = new Set<number>();
 
-    return runtimeChunks.slice(boundedIndex).reduce((totalWords, runtimeChunk) => {
-      return totalWords + runtimeChunk.tokenIndexes.length;
-    }, 0);
-  }, [currentChunkIndex, runtimeChunks]);
+    runtimeChunks.slice(resolvedChunkIndex).forEach((runtimeChunk) => {
+      runtimeChunk.tokenIndexes.forEach((tokenIndex) => {
+        remainingTokenIndexes.add(tokenIndex);
+      });
+    });
+
+    return remainingTokenIndexes.size;
+  }, [resolvedChunkIndex, runtimeChunks]);
   const remainingTimeMs = useMemo(() => {
     return deriveRemainingPlaybackMs(
       runtimeChunks,
-      currentChunkIndex,
+      resolvedChunkIndex,
       preferences,
     );
-  }, [currentChunkIndex, preferences, runtimeChunks]);
+  }, [preferences, resolvedChunkIndex, runtimeChunks]);
   const remainingTimeLabel = useMemo(() => {
     return formatRemainingTimeLabel(remainingTimeMs, locale);
   }, [locale, remainingTimeMs]);
+  const modeLabel = {
+    "focus-word": { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
+    "phrase-chunk": {
+      en: "Phrase Chunk",
+      es: "Bloques de frases",
+      pt: "Blocos de frases",
+    },
+    "guided-line": {
+      en: "Guided Line",
+      es: "Linea guiada",
+      pt: "Linha guiada",
+    },
+    "classic-reader": {
+      en: "Classic Reader",
+      es: "Lector clasico",
+      pt: "Leitor classico",
+    },
+  }[preferences.mode][locale];
 
   useReaderPersistence({
     document,
     activeChunk,
-    currentChunkIndex,
+    currentChunkIndex: resolvedChunkIndex,
     isPlaying,
     preferences,
     runtimeChunks,
@@ -197,7 +225,7 @@ export function ReaderWorkspace({
 
   useReaderPlayback({
     activeChunk,
-    currentChunkIndex,
+    currentChunkIndex: resolvedChunkIndex,
     isPlaying,
     preferences,
     runtimeChunkCount: runtimeChunks.length,
@@ -224,6 +252,44 @@ export function ReaderWorkspace({
   useEffect(() => {
     hasHydratedSessionRef.current = false;
   }, [document?.id]);
+
+  useEffect(() => {
+    if (activeChunk) {
+      lastAnchorTokenRef.current = activeChunk.anchorTokenIndex;
+    }
+  }, [activeChunk]);
+
+  useEffect(() => {
+    if (runtimeChunks.length === 0) {
+      return;
+    }
+
+    const anchorTokenIndex = lastAnchorTokenRef.current;
+    if (anchorTokenIndex === undefined) {
+      return;
+    }
+
+    const nextIndex = resolveSessionChunkIndex(runtimeChunks, {
+      currentChunkIndex: resolvedChunkIndex,
+      currentTokenIndex: anchorTokenIndex,
+    });
+
+    if (nextIndex === currentChunkIndex) {
+      return;
+    }
+
+    startTransition(() => {
+      setChunkIndex(nextIndex);
+    });
+  }, [
+    currentChunkIndex,
+    preferences.chunkSize,
+    preferences.focusWindow,
+    preferences.mode,
+    resolvedChunkIndex,
+    runtimeChunks,
+    setChunkIndex,
+  ]);
 
   const moveToChunk = useCallback(
     (nextIndex: number) => {
@@ -267,8 +333,8 @@ export function ReaderWorkspace({
   const announceRemainingTime = useCallback(() => {
     announce(
       formatRemainingTimeAnnouncement({
-        chunkSize: preferences.chunkSize,
         locale,
+        modeLabel,
         remainingMs: remainingTimeMs,
         remainingWords,
         wordsPerMinute: preferences.wordsPerMinute,
@@ -277,10 +343,10 @@ export function ReaderWorkspace({
   }, [
     announce,
     locale,
-    preferences.chunkSize,
     preferences.wordsPerMinute,
     remainingTimeMs,
     remainingWords,
+    modeLabel,
   ]);
 
   const changeWordsPerMinute = useCallback(
@@ -303,8 +369,8 @@ export function ReaderWorkspace({
     const bookmark = await saveBookmark({
       documentId: document.id,
       label: `Bookmark ${bookmarks.length + 1}`,
-      chunkIndex: currentChunkIndex,
-      tokenIndex: activeChunk.tokenIndexes[0] ?? 0,
+      chunkIndex: resolvedChunkIndex,
+      tokenIndex: activeChunk.anchorTokenIndex,
       paragraphIndex: activeChunk.paragraphIndex,
       sectionIndex: activeChunk.sectionIndex,
     });
@@ -315,9 +381,9 @@ export function ReaderWorkspace({
     activeChunk,
     announce,
     bookmarks.length,
-    currentChunkIndex,
     document,
     prependBookmark,
+    resolvedChunkIndex,
   ]);
 
   const handleSaveHighlight = useCallback(async () => {
@@ -330,8 +396,8 @@ export function ReaderWorkspace({
       label: `Highlight ${highlights.length + 1}`,
       quote: activeChunk.text,
       note: highlightNote.trim() || undefined,
-      chunkIndex: currentChunkIndex,
-      tokenIndex: activeChunk.tokenIndexes[0] ?? 0,
+      chunkIndex: resolvedChunkIndex,
+      tokenIndex: activeChunk.anchorTokenIndex,
       paragraphIndex: activeChunk.paragraphIndex,
       sectionIndex: activeChunk.sectionIndex,
     });
@@ -342,11 +408,11 @@ export function ReaderWorkspace({
   }, [
     activeChunk,
     announce,
-    currentChunkIndex,
     document,
     highlightNote,
     highlights.length,
     prependHighlight,
+    resolvedChunkIndex,
   ]);
 
   const handleDeleteBookmark = useCallback(
@@ -418,7 +484,14 @@ export function ReaderWorkspace({
           />
         );
       case "guided-line":
-        return <GuidedLineView document={payload} chunk={activeChunk} />;
+        return (
+          <GuidedLineView
+            document={payload}
+            chunk={activeChunk}
+            chunks={runtimeChunks}
+            focusWindow={preferences.focusWindow}
+          />
+        );
       default:
         return <FocusWordView document={payload} chunk={activeChunk} />;
     }
@@ -448,25 +521,6 @@ export function ReaderWorkspace({
         },
       }[preferences.readingGoal][locale]
     : undefined;
-
-  const modeLabel = {
-    "focus-word": { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
-    "phrase-chunk": {
-      en: "Phrase Chunk",
-      es: "Bloques de frases",
-      pt: "Blocos de frases",
-    },
-    "guided-line": {
-      en: "Guided Line",
-      es: "Linea guiada",
-      pt: "Linha guiada",
-    },
-    "classic-reader": {
-      en: "Classic Reader",
-      es: "Lector clasico",
-      pt: "Leitor classico",
-    },
-  }[preferences.mode][locale];
 
   const handleModeSelection = useCallback(
     (mode: ReaderPreferences["mode"]) => {
@@ -595,10 +649,10 @@ export function ReaderWorkspace({
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-(--text-muted)">
           {locale === "en"
-            ? "Import a PDF, DOCX, RTF, Markdown, TXT, or pasted text from the home page. Lee will open it here with local progress, bookmarks, and highlights."
+            ? "Import a PDF, DOCX, RTF, Markdown, TXT, or pasted text from the home page. Leyendo will open it here with local progress, bookmarks, and highlights."
             : locale === "es"
-              ? "Importa un PDF, DOCX, RTF, Markdown, TXT o texto pegado desde la pagina principal. Lee lo abrira aqui con progreso, marcadores y destacados locales."
-              : "Importe um PDF, DOCX, RTF, Markdown, TXT ou texto colado pela pagina inicial. Lee vai abrir aqui com progresso, marcadores e destaques locais."}
+              ? "Importa un PDF, DOCX, RTF, Markdown, TXT o texto pegado desde la pagina principal. Leyendo lo abrira aqui con progreso, marcadores y destacados locales."
+              : "Importe um PDF, DOCX, RTF, Markdown, TXT ou texto colado pela pagina inicial. Leyendo vai abrir aqui com progresso, marcadores e destaques locais."}
         </p>
         <Link
           href="/#upload-panel"
@@ -686,7 +740,6 @@ export function ReaderWorkspace({
         <ReaderCanvas
           activeGoalLabel={activeGoalLabel}
           chunkSize={preferences.chunkSize}
-          currentSectionTitle={currentSection?.title}
           currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
           isPlaying={isPlaying}
           modeLabel={modeLabel}
@@ -700,23 +753,25 @@ export function ReaderWorkspace({
           onChangeWordsPerMinute={changeWordsPerMinute}
           onDecreaseChunkSize={handleDecreaseChunkSize}
           onIncreaseChunkSize={handleIncreaseChunkSize}
-          onMoveBackward={() => moveToChunk(currentChunkIndex - 1)}
+          onMoveBackward={() => moveToChunk(resolvedChunkIndex - 1)}
           onMoveBackwardFive={() =>
             moveToChunk(
-              jumpChunkIndex(runtimeChunks.length, currentChunkIndex, -5),
+              jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, -5),
             )
           }
-          onMoveForward={() => moveToChunk(currentChunkIndex + 1)}
+          onMoveForward={() => moveToChunk(resolvedChunkIndex + 1)}
           onMoveForwardFive={() =>
             moveToChunk(
-              jumpChunkIndex(runtimeChunks.length, currentChunkIndex, 5),
+              jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, 5),
             )
           }
-          onRepeatChunk={() => moveToChunk(repeatChunkIndex(currentChunkIndex))}
+          onRepeatChunk={() =>
+            moveToChunk(repeatChunkIndex(resolvedChunkIndex))
+          }
           onRestart={() => moveToChunk(0)}
           onRestartParagraph={() =>
             moveToChunk(
-              restartParagraphChunkIndex(runtimeChunks, currentChunkIndex),
+              restartParagraphChunkIndex(runtimeChunks, resolvedChunkIndex),
             )
           }
           onSaveBookmark={() => {

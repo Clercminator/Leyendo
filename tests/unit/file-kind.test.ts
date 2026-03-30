@@ -16,6 +16,9 @@ describe("detectDocumentSourceKind", () => {
     expect(detectDocumentSourceKind("essay.txt", "text/plain")).toBe(
       "plain-text",
     );
+    expect(detectDocumentSourceKind("scratch", "text/plain")).toBe(
+      "plain-text",
+    );
   });
 
   it("identifies legacy word documents separately from supported formats", () => {
@@ -27,5 +30,6 @@ describe("detectDocumentSourceKind", () => {
   it("returns null for unsupported files", () => {
     expect(detectDocumentSourceKind("archive.zip")).toBeNull();
     expect(detectDocumentSourceKind("legacy.doc", "application/msword")).toBeNull();
+    expect(detectDocumentSourceKind("table.csv", "text/plain")).toBeNull();
   });
 });

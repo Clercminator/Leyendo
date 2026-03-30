@@ -11,6 +11,8 @@ const extensionMap = new Map<string, DocumentSourceKind>([
 
 const legacyWordMimeTypes = new Set(["application/msword"]);
 
+const plainTextMimeTypes = new Set(["text/plain"]);
+
 const rtfMimeTypes = new Set([
   "application/rtf",
   "application/x-rtf",
@@ -32,6 +34,10 @@ export function detectDocumentSourceKind(
   mimeType?: string,
 ): DocumentSourceKind | null {
   const normalizedMime = mimeType?.toLowerCase();
+  const extension = fileName.includes(".")
+    ? fileName.split(".").pop()?.toLowerCase()
+    : undefined;
+
   if (normalizedMime === "application/pdf") {
     return "pdf";
   }
@@ -47,10 +53,13 @@ export function detectDocumentSourceKind(
   if (normalizedMime === "text/markdown") {
     return "markdown";
   }
-  if (normalizedMime?.startsWith("text/")) {
+  if (extension) {
+    return extensionMap.get(extension) ?? null;
+  }
+
+  if (normalizedMime && plainTextMimeTypes.has(normalizedMime)) {
     return "plain-text";
   }
 
-  const extension = fileName.split(".").pop()?.toLowerCase();
-  return extension ? (extensionMap.get(extension) ?? null) : null;
+  return null;
 }

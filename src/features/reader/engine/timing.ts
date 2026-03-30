@@ -35,6 +35,14 @@ export function deriveChunkDurationMs(
     duration *= 1.08;
   }
 
+  if (preferences.mode === "phrase-chunk") {
+    duration *= 1.08;
+  }
+
+  if (preferences.mode === "guided-line") {
+    duration *= 1.18;
+  }
+
   return Math.max(180, Math.round(duration));
 }
 

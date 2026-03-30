@@ -73,13 +73,8 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { locale, setLocale } = useLocale();
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [isLocaleMenuOpen, setIsLocaleMenuOpen] = useState(false);
   const localeMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!isLocaleMenuOpen) {
@@ -107,7 +102,7 @@ export function SiteHeader() {
     };
   }, [isLocaleMenuOpen]);
 
-  const activeTheme = mounted && resolvedTheme === "light" ? "light" : "dark";
+  const activeTheme = resolvedTheme === "light" ? "light" : "dark";
 
   const localizedLinks = useMemo(
     () =>
@@ -119,15 +114,15 @@ export function SiteHeader() {
   );
 
   return (
-    <header className="sticky top-0 z-20 border-b border-(--border-soft) bg-(--surface-overlay) shadow-[0_14px_40px_rgba(8,12,22,0.08)] backdrop-blur-xl">
+    <header className="sticky top-0 z-90 border-b border-(--border-soft) bg-(--surface-overlay) shadow-[0_14px_40px_rgba(8,12,22,0.08)] backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4">
         <Link href="/" className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-(--border-soft) bg-(--surface-chip) text-sm font-semibold tracking-[0.2em] text-(--text-strong) shadow-[0_14px_34px_rgba(20,26,56,0.18)]">
             L
           </span>
           <div>
-            <p className="text-sm tracking-[0.3em] text-(--text-muted) uppercase">
-              Lee
+            <p className="text-sm tracking-[0.18em] text-(--text-muted) uppercase">
+              Leyendo
             </p>
             <p className="text-sm text-(--text-strong)">
               {getLocalizedCopy(locale, brandLabel)}
@@ -154,7 +149,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <div className="relative" ref={localeMenuRef}>
+          <div className="relative z-95" ref={localeMenuRef}>
             <button
               type="button"
               aria-haspopup="menu"
@@ -180,7 +175,7 @@ export function SiteHeader() {
               <div
                 role="menu"
                 aria-label={getLocalizedCopy(locale, localeMenuLabel)}
-                className="absolute top-[calc(100%+0.75rem)] right-0 z-30 min-w-56 overflow-hidden rounded-[1.25rem] border border-(--border-soft) bg-(--surface-strong) p-2 shadow-[0_20px_60px_rgba(8,12,22,0.22)] backdrop-blur-xl"
+                className="absolute top-[calc(100%+0.75rem)] right-0 z-95 min-w-56 overflow-hidden rounded-[1.25rem] border border-(--border-soft) bg-(--surface-strong) p-2 shadow-[0_20px_60px_rgba(8,12,22,0.22)] backdrop-blur-xl"
               >
                 {(["en", "es", "pt"] as const).map((option) => (
                   <button

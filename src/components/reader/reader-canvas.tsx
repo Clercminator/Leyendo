@@ -8,6 +8,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Maximize2,
+  Minimize2,
   Pause,
   Play,
   RotateCcw,
@@ -27,7 +29,6 @@ import {
 interface ReaderCanvasProps {
   activeGoalLabel?: string;
   chunkSize: number;
-  currentSectionTitle?: string;
   currentParagraphNumber: number;
   isPlaying: boolean;
   modeLabel: string;
@@ -135,7 +136,6 @@ const presetCopy: Record<
 export function ReaderCanvas({
   activeGoalLabel,
   chunkSize,
-  currentSectionTitle,
   currentParagraphNumber,
   isPlaying,
   modeLabel,
@@ -167,6 +167,7 @@ export function ReaderCanvas({
   progress,
 }: ReaderCanvasProps) {
   const { locale } = useLocale();
+  const canvasRef = useRef<HTMLElement>(null);
   const [openMenu, setOpenMenu] = useState<
     | "mode"
     | "preset"
@@ -177,6 +178,7 @@ export function ReaderCanvas({
     | "playback"
     | null
   >(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const presetMenuRef = useRef<HTMLDivElement>(null);
   const saveMenuRef = useRef<HTMLDivElement>(null);
@@ -224,6 +226,18 @@ export function ReaderCanvas({
       document.removeEventListener("mousedown", handlePointerDown);
     };
   }, [openMenu]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === canvasRef.current);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   const activePreset = readerPresets.find((preset) => {
     return (
@@ -396,6 +410,21 @@ export function ReaderCanvas({
       es: "Ajustes de altura de linea",
       pt: "Ajustes de altura da linha",
     }),
+    enterFullscreen: getLocalizedCopy(locale, {
+      en: "Enter fullscreen",
+      es: "Entrar a pantalla completa",
+      pt: "Entrar em tela cheia",
+    }),
+    exitFullscreen: getLocalizedCopy(locale, {
+      en: "Exit fullscreen",
+      es: "Salir de pantalla completa",
+      pt: "Sair da tela cheia",
+    }),
+    fullscreen: getLocalizedCopy(locale, {
+      en: "Fullscreen",
+      es: "Pantalla completa",
+      pt: "Tela cheia",
+    }),
     currentValue: getLocalizedCopy(locale, {
       en: "Current",
       es: "Actual",
@@ -504,8 +533,22 @@ export function ReaderCanvas({
         }),
   };
 
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenEnabled) {
+      return;
+    }
+
+    if (document.fullscreenElement === canvasRef.current) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    await canvasRef.current?.requestFullscreen();
+  };
+
   return (
     <section
+      ref={canvasRef}
       id="reader-canvas"
       aria-labelledby="reader-canvas-title"
       tabIndex={-1}
@@ -515,8 +558,7 @@ export function ReaderCanvas({
         {copy.readerCanvas}
       </h2>
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-3">
+        <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <div ref={modeMenuRef} className="relative z-40">
                 <button
@@ -658,6 +700,64 @@ export function ReaderCanvas({
                 <Clock3 className="h-4 w-4 text-(--accent-amber)" />
                 {remainingTimeLabel}
               </button>
+              <button
+                type="button"
+                aria-label={isFullscreen ? copy.exitFullscreen : copy.enterFullscreen}
+                onClick={() => {
+                  void toggleFullscreen();
+                }}
+                className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="h-4 w-4" />
+                ) : (
+                  <Maximize2 className="h-4 w-4" />
+                )}
+                {copy.fullscreen}
+              </button>
+              <div ref={themeMenuRef} className="relative z-40">
+                <button
+                  type="button"
+                  aria-label={copy.changeTheme}
+                  onClick={() => {
+                    setOpenMenu((current) =>
+                      current === "theme" ? null : "theme",
+                    );
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                >
+                  {getLocalizedCopy(locale, themeLabels[preferences.theme])}
+                  <ChevronDown
+                    className={`h-4 w-4 transition ${openMenu === "theme" ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {openMenu === "theme" ? (
+                  <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                    <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                      {copy.themeMenu}
+                    </p>
+                    <div className="mt-3 grid gap-2">
+                      {Object.entries(themeLabels).map(([value, labels]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            onSelectTheme(value as ReaderPreferences["theme"]);
+                            setOpenMenu(null);
+                          }}
+                          className={`rounded-full border px-3 py-2 text-left text-sm transition ${
+                            preferences.theme === value
+                              ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                              : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                          }`}
+                        >
+                          {getLocalizedCopy(locale, labels)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
             <p className="text-sm leading-7 text-(--text-muted)">
               {copy.readingModeHelp}
@@ -675,50 +775,6 @@ export function ReaderCanvas({
                 {activePresetSummary}
               </p>
             ) : null}
-          </div>
-          <div ref={themeMenuRef} className="relative z-40">
-            <button
-              type="button"
-              aria-label={copy.changeTheme}
-              onClick={() => {
-                setOpenMenu((current) =>
-                  current === "theme" ? null : "theme",
-                );
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-            >
-              {getLocalizedCopy(locale, themeLabels[preferences.theme])}
-              <ChevronDown
-                className={`h-4 w-4 transition ${openMenu === "theme" ? "rotate-180" : ""}`}
-              />
-            </button>
-            {openMenu === "theme" ? (
-              <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
-                <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                  {copy.themeMenu}
-                </p>
-                <div className="mt-3 grid gap-2">
-                  {Object.entries(themeLabels).map(([value, labels]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => {
-                        onSelectTheme(value as ReaderPreferences["theme"]);
-                        setOpenMenu(null);
-                      }}
-                      className={`rounded-full border px-3 py-2 text-left text-sm transition ${
-                        preferences.theme === value
-                          ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                          : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                      }`}
-                    >
-                      {getLocalizedCopy(locale, labels)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
         </div>
         <div className="mt-6 flex min-h-0 flex-1">
           <div className="flex min-h-0 flex-1 items-stretch *:h-full">

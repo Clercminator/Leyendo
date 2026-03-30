@@ -4,6 +4,26 @@ import { extractPdfDocumentFromArrayBuffer } from "@/features/ingest/extract/fil
 
 declare const self: DedicatedWorkerGlobalScope;
 
+function getWorkerErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+
+    if (message) {
+      return message;
+    }
+
+    if (error.name && error.name !== "Error") {
+      return error.name;
+    }
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim();
+  }
+
+  return "Something went wrong while extracting that PDF.";
+}
+
 self.onmessage = async (event: MessageEvent<{ arrayBuffer: ArrayBuffer }>) => {
   try {
     const extracted = await extractPdfDocumentFromArrayBuffer(
@@ -17,10 +37,7 @@ self.onmessage = async (event: MessageEvent<{ arrayBuffer: ArrayBuffer }>) => {
   } catch (error) {
     self.postMessage({
       ok: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Something went wrong while extracting that PDF.",
+      message: getWorkerErrorMessage(error),
     });
   }
 };

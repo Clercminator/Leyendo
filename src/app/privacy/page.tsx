@@ -61,9 +61,9 @@ export default function PrivacyPage() {
         pt: "Seus documentos nao deveriam precisar de uma conta na nuvem para ficarem legiveis.",
       }}
       description={{
-        en: "Lee extracts and processes readable content in the browser whenever possible, then keeps preferences, progress, and saved markers on this device.",
-        es: "Lee extrae y procesa contenido legible en el navegador cuando es posible, y guarda preferencias, progreso y marcadores en este dispositivo.",
-        pt: "Lee extrai e processa conteudo legivel no navegador sempre que possivel e guarda preferencias, progresso e marcadores neste dispositivo.",
+        en: "Leyendo extracts and processes readable content in the browser whenever possible, then keeps preferences, progress, and saved markers on this device.",
+        es: "Leyendo extrae y procesa contenido legible en el navegador cuando es posible, y guarda preferencias, progreso y marcadores en este dispositivo.",
+        pt: "Leyendo extrai e processa conteudo legivel no navegador sempre que possivel e guarda preferencias, progresso e marcadores neste dispositivo.",
       }}
     >
       <section className="grid gap-6 lg:grid-cols-2">
@@ -84,10 +84,10 @@ export default function PrivacyPage() {
         <article className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl">
           <h2 className="text-xl font-semibold text-(--text-strong)">
             {locale === "en"
-              ? "What Lee does not do with your documents"
+              ? "What Leyendo does not do with your documents"
               : locale === "es"
-                ? "Lo que Lee no hace con tus documentos"
-                : "O que o Lee nao faz com seus documentos"}
+                ? "Lo que Leyendo no hace con tus documentos"
+                : "O que o Leyendo nao faz com seus documentos"}
           </h2>
           <ul className="mt-4 space-y-3 text-sm leading-7 text-(--text-muted)">
             {noCloudItems[locale].map((item) => (

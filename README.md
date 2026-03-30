@@ -1,411 +1,59 @@
-# Lee
+# Leyendo
 
-Lee is a local-first reading web app that helps people read documents faster without giving up control, comfort, or privacy.
+Leyendo is a local-first reading web app for people who want help reading dense text faster without giving up control, comfort, or privacy.
 
-In simple terms:
+In plain language, the app does five things:
 
-- you can paste text into the site or upload supported files,
-- Lee turns that text into a structured reading model,
-- you choose a reading style,
-- the app helps you move through the text faster,
-- and your progress stays on your device.
+- it accepts pasted text or supported files,
+- it turns that input into a structured reading model,
+- it opens the content in one of several guided reading modes,
+- it remembers progress, bookmarks, highlights, and preferences on the same device,
+- and it keeps document processing inside the browser instead of uploading private reading material to a backend.
 
-This README is the main documentation file for the project. It is written for beginner programmers, so it explains both what the project does and why the codebase is organized the way it is.
+This README is meant for two audiences at the same time:
 
-## What Problem Lee Is Trying To Solve
+- beginners who want to understand what the system does and why it is built this way,
+- advanced developers who want an accurate map of the codebase, tradeoffs, and performance behavior.
 
-A lot of speed-reading tools feel too aggressive. They often focus only on raw speed and ignore real reading problems such as:
+## The Short Version
 
-- losing your place,
-- getting tired,
-- needing to slow down for difficult sections,
-- wanting to come back later,
-- or not wanting to upload private documents to someone else's server.
+If you only want the quick mental model, this is it:
 
-Lee is designed to be a calmer alternative. The goal is not just to flash words quickly. The goal is to help users experiment with faster reading while still being able to pause, repeat, bookmark, highlight, and resume.
+1. A user pastes text or uploads a file.
+2. Leyendo detects the input type.
+3. The browser extracts readable text from that input.
+4. The app builds a `DocumentModel` with blocks, sentences, tokens, chunks, and sections.
+5. That model is saved to IndexedDB on the device.
+6. The Reader route loads the saved model, derives mode-specific runtime chunks, and starts reading.
+7. Progress, bookmarks, highlights, and preferences are saved locally so the same browser can resume later.
 
-## What Users Can Do Right Now
+That is the whole architecture in one flow.
 
-At the current stage of the project, a user can:
+## What Problem Leyendo Is Trying To Solve
 
-- choose a reading goal on the landing page,
-- paste plain text directly into the site,
-- upload supported files,
-- open the document in the reader,
+A lot of speed-reading products optimize for one thing only: showing words faster. Real reading is messier than that.
+
+People lose their place. They need to slow down for difficult sections. They want to highlight something, pause, come back later, or switch to a calmer layout when a document gets tiring. They also may not want to upload private PDFs, essays, or notes to a remote service.
+
+Leyendo is built around a different idea: faster reading support should still feel readable, interruptible, and private.
+
+## What Users Can Do Today
+
+Right now a user can:
+
+- paste text directly into the app,
+- upload PDF, DOCX, RTF, Markdown, or TXT files,
+- choose a reading goal,
+- open the content in the Reader,
 - switch between four reading modes,
-- adjust pace and presentation,
+- change pace and display settings,
 - save bookmarks and highlights,
-- come back later and resume from the library,
-- clear saved progress for a document,
+- resume from the local library,
 - remove a document and its related local reading data.
 
-## Quick Answers To Common Questions
+## Supported Inputs And Honest Limits
 
-### Can users simply copy and paste text into the site and read it faster?
-
-Yes.
-
-That is one of the main supported flows. The landing page has a paste mode where a user can:
-
-1. paste text,
-2. optionally name the document,
-3. click `Open in reader`,
-4. start reading in one of the available reading modes.
-
-This is useful for articles, notes, essays, summaries, emails, or any other text a user already has.
-
-### How many reading modes are available?
-
-There are currently **4 reading modes**:
-
-1. **Focus Word**
-   Shows one word or a very small word group with a strong visual focus.
-
-2. **Phrase Chunk**
-   Shows small groups of words so reading feels more natural than single-word flashing.
-
-3. **Guided Line**
-   Highlights a line or compact line group to reduce page scatter while keeping context.
-
-4. **Classic Reader**
-   Keeps a more traditional paragraph view but still supports guided progress and reader controls.
-
-### Why these four modes?
-
-Because different readers want different tradeoffs.
-
-- Some want maximum focus.
-- Some want speed with natural phrasing.
-- Some want help tracking lines.
-- Some want a safer fallback that still feels familiar.
-
-These four modes cover the most useful early reading styles without making the product too complicated.
-
-### Could we add more reading modes later?
-
-Yes.
-
-The code is intentionally built so the reader engine is **mode-agnostic**. That means the document model and navigation system do not depend on only one presentation style. In practice, this makes it possible to add more reader modes later without rewriting the whole app.
-
-Examples of future modes we could add:
-
-- sentence focus,
-- paragraph stepping,
-- study mode with notes side-by-side,
-- dyslexia-friendly layouts,
-- exam-prep mode,
-- skim mode for headings and summaries only.
-
-### How many file formats are supported?
-
-Lee currently supports **6 input types**:
-
-1. pasted text,
-2. plain text files (`.txt`),
-3. Markdown files (`.md`, `.markdown`),
-4. DOCX files,
-5. RTF files,
-6. PDFs with selectable text.
-
-### Are legacy `.doc` Word files supported?
-
-No.
-
-The app accepts modern `.docx` files and now supports `.rtf`, but old binary `.doc`
-files are still out of scope for the browser-local pipeline. If you have a `.doc`
-file, save it as `.docx` in Word or LibreOffice and then upload that version.
-
-### Are scanned PDFs supported?
-
-No.
-
-If a PDF is just an image scan and does not contain selectable text, Lee cannot extract readable content from it yet. OCR is intentionally out of scope for the current version.
-
-### How big can files be?
-
-There are practical limits, and the app now enforces a browser-side cap for very large PDFs.
-
-What the code does today:
-
-- PDFs at or above **1.5 MB** are moved to a background worker for extraction.
-- PDFs above **50 MB** are rejected with a clear error before extraction starts.
-- Raw text at or above **120,000 characters** is moved to a background worker for document-model building.
-
-What that means in practice:
-
-- small and medium documents should work normally,
-- larger documents are still supported,
-- very large PDFs above the browser cap are rejected up front,
-- the real limit depends on the user's device memory, browser, and CPU.
-
-So the honest answer is:
-
-- **yes, large files are supported better than before**, but
-- **no, this project does not guarantee every very large browser-local PDF will be accepted**.
-
-### Is this stack using the latest versions available?
-
-Not always.
-
-We use a **working compatible set of versions**, not a policy of "always upgrade everything immediately." That is a deliberate choice, because the newest version is not always the safest choice for a project in active development.
-
-For example, a dependency check on `2026-03-26` showed that some packages in this repo are already behind the latest published versions, including:
-
-- Dexie,
-- Vitest,
-- ESLint,
-- TypeScript,
-- `@types/node`.
-
-So the correct beginner-friendly explanation is:
-
-- some packages are current or recent,
-- some are intentionally not on the absolute newest release,
-- the goal is compatibility and stability first,
-- upgrades should be done thoughtfully, not automatically.
-
-## How Lee Works
-
-Here is the high-level flow from user action to reader experience:
-
-1. The user arrives on the landing page.
-2. The user chooses a reading goal such as focus or speed.
-3. The user either pastes text or uploads a supported file.
-4. Lee detects the input type.
-5. Lee extracts or normalizes text from that input.
-6. Lee builds a structured document model.
-7. The reader uses that model to create runtime reading chunks.
-8. The user reads in one of the available modes.
-9. Lee stores local progress, bookmarks, highlights, and preferences in IndexedDB.
-10. The library page lets the user resume or reopen saved local content.
-
-## How The Internals Work
-
-This section explains the main concepts in plain language.
-
-### Local-first
-
-Local-first means the app tries to do its work **inside the user's browser** instead of sending documents to a remote server.
-
-That matters because:
-
-- it improves privacy,
-- it reduces backend complexity,
-- it makes the app usable without account setup,
-- and it fits the product goal of personal reading support rather than cloud document hosting.
-
-### Document extraction
-
-Different file types need different extraction logic.
-
-- Plain text can be read directly.
-- Markdown is parsed so headings and list items can be recognized.
-- DOCX is extracted with Mammoth.
-- RTF is extracted with a lightweight in-browser parser.
-- PDFs with selectable text are extracted with `pdfjs-dist`.
-
-### Document model
-
-Once text is extracted, Lee converts it into a structured model containing:
-
-- blocks,
-- sentences,
-- tokens,
-- chunks,
-- and sections.
-
-This matters because the reader should not treat a document as one giant string. A structured model makes it possible to:
-
-- jump around safely,
-- track progress,
-- save anchors,
-- rebuild chunks at different sizes,
-- and support different reader modes.
-
-### Runtime chunks
-
-A **chunk** is a small reading unit, usually one word or a small phrase group.
-
-Lee can derive different chunk layouts from the same saved document. That is why changing chunk size does not require re-importing the file.
-
-### IndexedDB
-
-IndexedDB is a browser database. In this project it stores:
-
-- saved documents,
-- reading sessions,
-- bookmarks,
-- highlights,
-- reader preferences.
-
-This is why a user can refresh the page and still come back to the same document on the same device and browser profile.
-
-### Web workers
-
-Web workers let the browser do heavy work in the background so the main page stays more responsive.
-
-Lee uses workers for heavier tasks such as:
-
-- large PDF extraction,
-- large document-model building.
-
-## Why This Tech Stack Was Chosen
-
-The stack is not random. Each piece solves a specific problem in this app.
-
-| Technology            | What It Does               | Why It Was Chosen                                                                                               |
-| --------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Next.js 16 App Router | Main web framework         | Gives a strong project structure, routing, production builds, and modern React support                          |
-| React 19              | UI library                 | Good fit for interactive interfaces with changing state like the reader and library                             |
-| TypeScript            | Typed JavaScript           | Helps catch mistakes early and makes domain concepts like documents, sessions, and modes easier to reason about |
-| Tailwind CSS v4       | Styling system             | Fast to build UI with, consistent across the app, and works well for design-heavy component work                |
-| shadcn/ui             | UI building blocks         | Useful for reusable UI patterns without locking the project into a heavy component framework                    |
-| Zustand               | Client state management    | Small and easy to understand, which is a good fit for reader state like playback, chunk index, and preferences  |
-| Dexie                 | IndexedDB wrapper          | Makes browser database work much easier than using raw IndexedDB directly                                       |
-| pdfjs-dist            | PDF text extraction        | Standard way to work with PDFs in the browser                                                                   |
-| mammoth               | DOCX text extraction       | Good browser-side DOCX text extraction for this kind of app                                                     |
-| Built-in RTF parser   | RTF text extraction        | Keeps rich-text import browser-local without adding a backend conversion step or a heavy parser dependency      |
-| unified + remark      | Markdown parsing           | Lets the app understand headings, paragraphs, and list items instead of treating Markdown as plain text only    |
-| Vitest                | Unit and component testing | Fast testing setup for logic and React-level behavior                                                           |
-| Playwright            | End-to-end testing         | Useful for real browser flow testing such as upload, paste, reading, and resume                                 |
-
-## Why Not Use Simpler Alternatives?
-
-That depends on which part you mean.
-
-### Why not plain JavaScript instead of TypeScript?
-
-Because this project has a lot of structured data.
-
-We are not just showing a few pages. We are managing:
-
-- documents,
-- sessions,
-- bookmarks,
-- highlights,
-- modes,
-- preferences,
-- extracted file content,
-- and reading positions.
-
-TypeScript helps keep these data shapes consistent.
-
-### Why not localStorage instead of IndexedDB?
-
-Because localStorage is too limited for this use case.
-
-It is fine for tiny values such as a theme toggle, but not ideal for storing full document payloads and reading history. IndexedDB is a better fit for larger local structured data.
-
-### Why not a backend database already?
-
-Because the current product goal is local-first reading, not cloud sync.
-
-Adding a backend too early would create more complexity around:
-
-- authentication,
-- privacy,
-- API design,
-- hosting,
-- syncing,
-- and data ownership.
-
-For the current stage, local storage is the simpler and more honest choice.
-
-## Project Structure And Why It Looks Like This
-
-The folder structure is organized by responsibility.
-
-```text
-src/
-	app/                Route entry points, layout, and global styles
-	components/         Reusable UI components
-	db/                 Browser database schema and repository helpers
-	features/           Domain logic grouped by feature area
-	lib/                Shared utilities and instrumentation
-	state/              Client-side state store
-	types/              Shared TypeScript models
-tests/
-	component/          React component and hook tests
-	e2e/                Full browser tests
-	fixtures/           Large or shared test data
-	unit/               Pure logic and repository tests
-```
-
-### Why this structure?
-
-Because it separates the project into easier mental layers.
-
-#### `src/app/`
-
-This is the Next.js routing layer.
-
-Use this folder when you want to know:
-
-- what pages exist,
-- what the root layout is,
-- what global styles are applied.
-
-#### `src/components/`
-
-This is the UI layer.
-
-Use this folder when you want to find:
-
-- the upload panel,
-- reader views,
-- library cards,
-- layout pieces,
-- reusable widgets.
-
-#### `src/features/`
-
-This is where app-specific logic lives.
-
-It is separated by major feature areas such as:
-
-- ingestion,
-- reader navigation,
-- presets,
-- timing.
-
-This keeps business logic out of pages and away from random utility files.
-
-#### `src/db/`
-
-This is the local persistence layer.
-
-It exists so database code stays in one place instead of being scattered across components.
-
-#### `src/state/`
-
-This holds app state that changes while the user is interacting with the reader.
-
-Examples:
-
-- whether playback is active,
-- current chunk index,
-- current reader preferences.
-
-#### `src/types/`
-
-This holds shared data shapes.
-
-That makes it easier for the whole app to agree on what a document, highlight, or reading session is supposed to look like.
-
-## Reading Modes In More Detail
-
-| Mode           | What The User Sees                                  | Why It Exists                                                                  |
-| -------------- | --------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Focus Word     | One word or a tiny cluster with strong visual focus | Best when the user wants very high concentration and less eye movement         |
-| Phrase Chunk   | Small natural word groups                           | Best when the user wants more speed without making reading feel too mechanical |
-| Guided Line    | A highlighted line or compact line group            | Best when the user wants help tracking where to look                           |
-| Classic Reader | A familiar paragraph view with assistive controls   | Best when the user wants comfort, context, and an easier fallback              |
-
-The point of having multiple modes is not novelty. It is flexibility. Different documents and different readers benefit from different presentation styles.
-
-## Supported Inputs And Limits
-
-### Currently supported
+### Supported now
 
 - pasted text,
 - `.txt`,
@@ -414,94 +62,840 @@ The point of having multiple modes is not novelty. It is flexibility. Different 
 - `.rtf`,
 - `.pdf` with selectable text.
 
-### Not currently supported
+### Not supported now
 
 - legacy `.doc` Word files,
-- scanned PDFs that require OCR,
-- image-only documents,
-- cloud file sources,
-- remote syncing,
-- backup import/export.
+- scanned or image-only PDFs that require OCR,
+- cloud import sources,
+- cross-device sync,
+- backup import and export.
 
-### Practical size guidance
+### Current practical limits in code
 
-The app currently has **processing thresholds**, not a hard universal cap:
+These are the important implementation thresholds today:
 
-- PDF extraction moves to a worker at **1.5 MB and above**.
-- PDFs above **50 MB** are rejected before extraction to avoid browser hangs.
-- Document-model building moves to a worker at **120,000 characters and above**.
+- PDFs larger than `150_000_000` bytes are rejected before extraction starts.
+- Document-model building offloads to a worker at `120_000` characters and above.
+- Document-model worker builds time out after `90_000` ms.
+- PDF extraction timeout is `420_000` ms.
 
-That means:
+One detail matters a lot for understanding current performance behavior:
 
-- copy-paste text is absolutely supported,
-- medium and fairly large documents are supported,
-- but extremely large files still depend on browser and device performance.
+- PDF extraction worker offload is also currently set to `150_000_000` bytes.
 
-## Current Routes
+That means the worker threshold is effectively the same as the browser PDF size cap. In practice, most accepted PDFs extract on the main thread. That is intentional in the current codebase because the dedicated PDF worker path caused reliability problems for some real-world large files.
+
+## Why Large PDFs Can Take A While On First Open
+
+This is one of the most important things to understand about the app.
+
+When a user uploads a large PDF and clicks `Open in reader` for the first time, the wait is usually not caused by the network. It is mostly caused by browser-side CPU work and local persistence.
+
+The first-open path does all of this before the reader is actually ready:
+
+1. Read the file in the browser.
+2. Extract readable text from the PDF with `pdfjs-dist`.
+3. Reconstruct a cleaner source structure from the extracted text.
+4. Build the full `DocumentModel`.
+5. Save the full document payload and the first reading session in IndexedDB.
+6. Navigate to the Reader route.
+7. Load the saved payload back from IndexedDB.
+8. Derive runtime chunks for the selected reading mode.
+9. Compute additional reader data such as remaining words and remaining time.
+
+That is why first open is slower than reopening the same document later.
+
+Later opens skip the expensive file extraction and document-model build because the saved payload already exists in IndexedDB. They still need to hydrate the document and derive runtime chunks, but the import step is already done.
+
+### Why the app now shows a wait estimate
+
+Large first opens are not always easy to optimize away in a browser-only architecture. Because of that, the upload flow now shows a stage-aware progress estimate during first open.
+
+The estimate is based on:
+
+- source kind,
+- file size,
+- extracted text length,
+- whether document-model building will offload to a worker.
+
+The goal is not to pretend progress is exact. The goal is to give the user an honest sense of whether the document should be ready in a few seconds or whether they are in a longer browser-side preparation phase.
+
+### What the wait estimate is actually doing
+
+For advanced readers, the estimate is heuristic, not instrumented percent-complete progress.
+
+The current implementation in `src/components/upload/upload-panel.tsx` does this:
+
+- it derives a `normalizedLength` from extracted text length,
+- for PDFs, it also uses file size as a fallback signal because PDFs can be expensive before the final cleaned text length is known,
+- it calculates a min and max expected wait,
+- it clamps that range to between 4 seconds and 90 seconds,
+- it changes the visible stage from `structuring` to `saving` once the document model is built,
+- it maps elapsed time into a bounded progress bar instead of pretending the browser knows exact real progress.
+
+That last point is important. The progress bar is intentionally a confidence aid, not a claim that the app has exact byte-level or token-level progress information from every internal step.
+
+### Why the estimate can still be wrong sometimes
+
+The estimate can be shorter or longer than reality because browser-local work depends on more than just file size.
+
+Real runtime is affected by:
+
+- device CPU speed,
+- browser memory pressure,
+- PDF layout complexity,
+- IndexedDB serialization cost,
+- current tab load,
+- whether runtime chunk derivation creates a very large chunk array.
+
+So the correct mental model is: the app gives a plausible wait band, not a guaranteed completion timer.
+
+## Beginner Mental Model Of The System
+
+If you are new to programming, this is the simplest way to think about the internals.
+
+### Step 1: intake
+
+The app accepts either pasted text or a file.
+
+### Step 2: extraction
+
+The app converts that input into readable text and, when possible, preserves useful structure such as headings, list items, alignment, and source page hints.
+
+### Step 3: modeling
+
+The app turns the extracted result into a structured object so the reader does not have to keep re-parsing one giant text blob.
+
+### Step 4: persistence
+
+The structured document and reading session are saved locally in IndexedDB.
+
+### Step 5: reader runtime
+
+The Reader screen takes the saved document and derives a mode-specific stream of runtime chunks.
+
+### Step 6: playback and resume
+
+As the user reads, the app updates progress, session anchors, bookmarks, highlights, and preferences locally.
+
+That is the whole product loop.
+
+## Subsystem Boundaries
+
+This section is the architecture map in one place. It explains which subsystem owns which part of the work so contributors do not mix concerns accidentally.
+
+### Boundary summary
+
+| Subsystem                 | Owns                                                                                       | Does not own                                    | Main files                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Intake and route UI       | user inputs, status messages, route transitions, mode-specific rendering                   | file parsing internals, database schema design  | `src/components/upload/upload-panel.tsx`, `src/app/`, `src/components/reader/`              |
+| Ingest pipeline           | file-kind detection, text extraction, source block reconstruction, document-model building | long-term storage, reader playback state        | `src/features/ingest/detect/`, `src/features/ingest/extract/`, `src/features/ingest/build/` |
+| Persistence subsystem     | IndexedDB schema, save/load/delete operations, document/session/bookmark/highlight records | UI timing, chunk derivation, rendering          | `src/db/app-db.ts`, `src/db/repositories.ts`                                                |
+| Reader runtime            | runtime chunk derivation, active reading state, playback timing, progress, resume mapping  | raw file extraction, storage schema definitions | `src/components/reader/`, `src/features/reader/engine/`, `src/state/reader-store.ts`        |
+| Cross-cutting diagnostics | performance measurements and drift metrics                                                 | business logic ownership                        | `src/lib/perf/instrumentation.ts`                                                           |
+
+### Why these boundaries matter
+
+These boundaries keep the system understandable.
+
+- upload UI can change messaging without rewriting the extractor,
+- extraction logic can improve without rewriting reader playback,
+- persistence can evolve without forcing mode components to understand Dexie internals,
+- reader modes can change chunk behavior without changing how files are imported.
+
+That separation is one of the reasons the codebase can support multiple input formats and multiple reader modes at the same time.
+
+### Subsystem boundary diagram
+
+```mermaid
+flowchart LR
+  User[User]
+
+  subgraph UI[UI and Route Layer]
+    Upload[Upload Panel]
+    Routes[App Routes]
+    Views[Reader Views and Sidebar]
+  end
+
+  subgraph Ingest[Ingest Pipeline]
+    Detect[File Kind Detection]
+    Extract[Extraction and Source Blocks]
+    Build[Document Model Builder]
+  end
+
+  subgraph Persistence[Persistence Layer]
+    Repos[Repository Helpers]
+    Dexie[Dexie and IndexedDB]
+  end
+
+  subgraph Reader[Reader Runtime]
+    Workspace[Reader Workspace]
+    Navigation[Runtime Chunk Derivation]
+    Timing[Playback and Timing]
+    Store[Zustand Reader Store]
+  end
+
+  subgraph Diagnostics[Diagnostics]
+    Perf[Perf Instrumentation]
+  end
+
+  User --> Upload
+  Upload --> Detect
+  Detect --> Extract
+  Extract --> Build
+  Build --> Repos
+  Repos --> Dexie
+  Routes --> Workspace
+  Workspace --> Repos
+  Workspace --> Navigation
+  Workspace --> Timing
+  Workspace --> Store
+  Views --> Workspace
+  Extract --> Perf
+  Build --> Perf
+  Navigation --> Perf
+  Timing --> Perf
+```
+
+### Architecture rules of thumb
+
+- `src/components/upload/` may orchestrate import, but it should not absorb file-format-specific extraction logic.
+- `src/features/ingest/` may prepare a `DocumentModel`, but it should not decide how the Reader renders a mode.
+- `src/db/` may persist and query records, but it should not know how runtime chunks are derived.
+- `src/features/reader/engine/` may derive reading behavior, but it should not know how PDFs or DOCX files are parsed.
+
+If a change crosses more than one of those boundaries, that is usually a sign that the design impact needs extra scrutiny.
+
+## End-To-End Flow In Code
+
+This section maps the architecture to the actual code areas.
+
+### 1. Input detection
+
+`src/features/ingest/detect/file-kind.ts` decides whether an upload is PDF, DOCX, RTF, Markdown, plain text, or unsupported.
+
+Important behavior:
+
+- legacy `.doc` is rejected,
+- strict detection is intentional,
+- arbitrary `text/*` uploads are not accepted just because they are text-like.
+
+### 2. File extraction
+
+`src/features/ingest/extract/file-text.ts` contains the extraction logic.
+
+Current extraction approach:
+
+- TXT: direct text extraction,
+- Markdown: plain text plus later structure recovery,
+- DOCX: Mammoth browser extraction,
+- RTF: internal lightweight browser parser,
+- PDF: `pdfjs-dist` text extraction plus structure reconstruction.
+
+The PDF path does more than just concatenate text. It tries to infer useful reading structure by grouping lines into paragraphs, recognizing headings, preserving list markers, and inserting image placeholders where appropriate. It does not try to preserve the exact visual page layout.
+
+### 3. Structured block normalization
+
+`src/features/ingest/normalize/markdown-blocks.ts` is the worker-safe Markdown block extractor.
+
+This matters because the active import path no longer depends on the old `unified` and `remark` pipeline to build Markdown blocks during worker-friendly model construction. The repo still contains those dependencies, but the core import path now uses the internal parser so worker builds do not pull DOM-dependent browser code.
+
+### 4. Document-model build
+
+`src/features/ingest/build/document-model.ts` turns raw text or source blocks into a `DocumentModel`.
+
+That model contains:
+
+- `blocks`: headings, paragraphs, and list items,
+- `sentences`: sentence boundaries used for reading flow,
+- `tokens`: word-level units with paragraph and sentence anchors,
+- `chunks`: a base chunk stream created during model build,
+- `sections`: document sections derived mostly from headings.
+
+This structure is important because the Reader should be able to switch behavior without re-importing the file.
+
+### 5. Worker orchestration
+
+`src/features/ingest/build/document-model-client.ts` decides whether model building stays on the main thread or runs in a worker.
+
+The current rule is simple:
+
+- under `120_000` characters, build on the main thread,
+- `120_000` characters and above, try a worker build,
+- if the worker exceeds the timeout, surface a clear user-facing error.
+
+### 6. Local persistence
+
+`src/db/app-db.ts` defines the Dexie schema and `src/db/repositories.ts` holds the data-access helpers.
+
+Leyendo stores these records locally:
+
+- documents,
+- sessions,
+- bookmarks,
+- highlights,
+- reader preferences.
+
+The full document payload lives inside the saved document record so the Reader can reopen the same content later without repeating extraction.
+
+### 7. Reader hydration
+
+`src/components/reader/use-reader-document.ts` loads the saved document, session, bookmarks, and highlights for the Reader route.
+
+This is why opening the same document later is much faster than importing it from the original file again.
+
+### 8. Runtime chunk derivation
+
+`src/features/reader/engine/navigation.ts` derives the chunk stream used by the active reading mode.
+
+This step is one of the most important performance costs on reader load, especially for large documents and especially for modes that create many runtime chunks.
+
+### 9. Reader runtime state
+
+`src/state/reader-store.ts` holds live UI state such as:
+
+- active document id,
+- current chunk index,
+- playing state,
+- reader preferences.
+
+This is runtime state, not durable storage. The durable data still lives in IndexedDB.
+
+### 10. What happens after `router.push("/reader?...")`
+
+The Reader route still has meaningful work to do after navigation.
+
+At a high level, `src/components/reader/reader-workspace.tsx` does this:
+
+1. load the document payload and saved session from IndexedDB,
+2. derive runtime chunks for the active mode and settings,
+3. calculate current progress,
+4. calculate remaining words,
+5. calculate estimated remaining reading time,
+6. resolve the saved anchor back into the correct runtime chunk,
+7. initialize playback and persistence hooks.
+
+This is why the redirect into the Reader is not the same thing as the Reader already being fully interactive.
+
+### Reader hydration details that matter
+
+Some details are easy to miss unless you read the code:
+
+- `deriveRuntimeChunks(...)` is wrapped in `useMemo`, so it only recomputes when the document payload or the relevant preferences change.
+- Remaining words are not estimated from plain chunk count. The code walks the remaining runtime chunks and deduplicates token indexes with a `Set`.
+- Remaining time is not a fixed words-per-minute division. It uses mode-aware chunk timing rules from `src/features/reader/engine/timing.ts`.
+- When mode or chunk settings change, the Reader tries to preserve position by resolving the last anchor token into the new runtime chunk stream.
+
+That last behavior is one of the reasons the Reader feels resilient even when the user changes settings mid-session.
+
+## Sequence Diagrams
+
+The prose above explains the architecture. The diagrams below show the same architecture as ordered interactions.
+
+### Sequence 1: first upload and open in Reader
+
+This is the slowest path because it includes extraction, document-model building, persistence, navigation, and first reader hydration.
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Upload as Upload Panel
+  participant Detect as File Detection
+  participant Extract as Extraction Pipeline
+  participant Build as Document Model Builder
+  participant Repo as Repository Layer
+  participant DB as IndexedDB
+  participant Reader as Reader Workspace
+  participant Nav as Runtime Chunk Engine
+
+  User->>Upload: Select file and click Open in reader
+  Upload->>Detect: detectDocumentSourceKind(...)
+  Detect-->>Upload: sourceKind
+  Upload->>Extract: extractDocumentFromFileAsync(file)
+  Extract-->>Upload: rawText + sourceBlocks + title
+  Upload->>Upload: estimateDocumentReadyWait(...)
+  Upload->>Build: buildDocumentModelAsync(...)
+  Build-->>Upload: document
+  par Persist document and session
+    Upload->>Repo: saveDocument(record)
+    Repo->>DB: put document
+  and
+    Upload->>Repo: saveSession(session)
+    Repo->>DB: put session
+  end
+  Upload->>Reader: router.push(/reader?document=...)
+  Reader->>Repo: getDocumentById(documentId)
+  Reader->>Repo: getSessionForDocument(documentId)
+  Repo->>DB: read saved records
+  DB-->>Reader: document payload + session
+  Reader->>Nav: deriveRuntimeChunks(payload, preferences)
+  Nav-->>Reader: runtime chunks
+  Reader-->>User: Reader becomes interactive
+```
+
+### Sequence 2: reopen from local library
+
+This path skips file extraction and model building because the `DocumentModel` already exists in IndexedDB.
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Library as Library or Deep Link
+  participant Reader as Reader Workspace
+  participant Repo as Repository Layer
+  participant DB as IndexedDB
+  participant Nav as Runtime Chunk Engine
+
+  User->>Library: Open saved document
+  Library->>Reader: Navigate with document id
+  Reader->>Repo: getDocumentById(documentId)
+  Reader->>Repo: getSessionForDocument(documentId)
+  Reader->>Repo: getBookmarksForDocument(documentId)
+  Reader->>Repo: getHighlightsForDocument(documentId)
+  Repo->>DB: fetch saved records
+  DB-->>Reader: payload + session + annotations
+  Reader->>Nav: deriveRuntimeChunks(payload, preferences)
+  Nav-->>Reader: runtime chunks
+  Reader->>Nav: resolveSessionChunkIndex(...)
+  Nav-->>Reader: active chunk index
+  Reader-->>User: Resume near previous position
+```
+
+### Sequence 3: mode switch during an active session
+
+This path explains why a mode switch can preserve logical position without preserving the same chunk index.
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Reader as Reader Workspace
+  participant Store as Reader Store
+  participant Nav as Runtime Chunk Engine
+  participant Persist as Reader Persistence
+  participant Repo as Repository Layer
+  participant DB as IndexedDB
+
+  User->>Reader: Change mode or chunk settings
+  Reader->>Store: updatePreferences(...)
+  Reader->>Nav: deriveRuntimeChunks(payload, new preferences)
+  Nav-->>Reader: new runtime chunk stream
+  Reader->>Nav: resolveSessionChunkIndex(anchor token)
+  Nav-->>Reader: mapped chunk index in new mode
+  Reader->>Persist: schedule session save
+  Persist->>Repo: saveSession(updated anchor and progress)
+  Repo->>DB: persist session
+  Reader-->>User: Same logical reading position in a new view
+```
+
+## The `DocumentModel` Explained
+
+The `DocumentModel` is the center of the system.
+
+If you understand this type, the rest of the app gets much easier to follow.
+
+### `blocks`
+
+Blocks are the high-level reading structure. A block is usually a heading, paragraph, or list item.
+
+Use blocks when the UI needs layout-aware context.
+
+### `sentences`
+
+Sentences are used to keep reading flow natural. Some modes should not break in the middle of sentence logic unless they have to.
+
+### `tokens`
+
+Tokens are the word-level units. They are the most important anchors for playback, navigation, resume, bookmarks, and highlights.
+
+### `chunks`
+
+The model stores a base chunk stream, but the Reader can derive new runtime chunk streams later depending on the active mode and settings.
+
+### `sections`
+
+Sections help the library and reader reason about major document boundaries, usually inferred from headings.
+
+## Reading Modes: Product View And Code View
+
+Leyendo currently has four reading modes.
+
+The important architectural idea is that the UI mode is not just a CSS skin. Each mode can derive a different runtime chunk stream from the same saved `DocumentModel`.
+
+### Mode summary
+
+| Mode           | What the user sees                                                         | Core runtime builder       | How it groups text                                                                                           | Main tradeoff                                                   |
+| -------------- | -------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Focus Word     | One active focal word with nearby context dimmed around it                 | `buildFocusWordChunks`     | Creates one runtime chunk per token, with a context window around the anchor token                           | Strong focus, but many runtime chunks on large documents        |
+| Phrase Chunk   | Small phrase groups within the active sentence                             | `buildPhraseChunks`        | Accumulates tokens until punctuation, connectors, or size heuristics suggest a phrase boundary               | More natural cadence, but still heuristic                       |
+| Guided Line    | One active line-like chunk plus nearby lines from the same paragraph       | `buildGuidedLineChunks`    | Builds chunk groups by target character length and soft boundary rules inside a paragraph                    | Keeps paragraph context, but line grouping is still approximate |
+| Classic Reader | Full document view with the active paragraph and active tokens highlighted | `buildClassicReaderChunks` | Splits sentence tokens into fixed-size token groups for navigation while the view still renders whole blocks | Most familiar layout, but less visually aggressive guidance     |
+
+### Focus Word in code
+
+Focus Word is implemented by `buildFocusWordChunks` in `src/features/reader/engine/navigation.ts` and rendered by `src/components/reader/focus-word-view.tsx`.
+
+How it works:
+
+- the engine walks every sentence token by token,
+- each token becomes the anchor of its own runtime chunk,
+- the runtime chunk also includes nearby context tokens based on `chunkSize` and `focusWindow`,
+- the view highlights the anchor token and dims the surrounding tokens.
+
+Why it feels different:
+
+- navigation advances at token granularity,
+- the number of runtime chunks can become very large on long documents,
+- this is one reason the default first render can be expensive on big texts.
+
+### Phrase Chunk in code
+
+Phrase Chunk is implemented by `buildPhraseChunks` and rendered by `src/components/reader/phrase-chunk-view.tsx`.
+
+How it works:
+
+- tokens are accumulated inside a sentence,
+- the engine breaks when it sees terminal punctuation, soft punctuation, connector words, or a target length boundary,
+- the view shows the current sentence's phrase chunks with the active phrase emphasized.
+
+Why it feels different:
+
+- it tries to keep phrasing more natural than single-token focus,
+- it is still heuristic, not full linguistic parsing,
+- the grouping can improve or degrade depending on source text quality.
+
+### Guided Line in code
+
+Guided Line is implemented by `buildGuidedLineChunks` and rendered by `src/components/reader/guided-line-view.tsx`.
+
+How it works:
+
+- the engine groups paragraph tokens into line-like chunks,
+- the target chunk length is based on character count, roughly `24 + chunkSize * 10`,
+- punctuation and connector heuristics help decide when to break,
+- the view shows the active line plus nearby lines inside the same paragraph using `focusWindow`.
+
+Why it feels different:
+
+- it preserves more paragraph context than Focus Word,
+- it reduces page scatter better than a full classic page view,
+- it is still an approximation of a reading line, not a real typography engine.
+
+### Classic Reader in code
+
+Classic Reader is implemented by `buildClassicReaderChunks` and rendered by `src/components/reader/classic-reader-view.tsx`.
+
+How it works:
+
+- the engine splits sentence tokens into fixed groups by `chunkSize`,
+- the view still renders the whole document block structure,
+- the active paragraph scrolls into view,
+- the active chunk's tokens are highlighted inside that paragraph.
+
+Why it feels different:
+
+- the user keeps more normal document context,
+- it is the safest fallback when guided presentation feels too aggressive,
+- the navigation logic still uses chunks even though the UI looks more like a normal page.
+
+## Why Mode Switching Works Without Reimporting
+
+Mode switching does not require rebuilding the document from the original file because the imported document is already stored as a structured `DocumentModel`.
+
+The Reader simply derives another runtime chunk stream from the same payload.
+
+This is one of the main architectural wins of the project.
+
+## Why Resume Still Works Across Modes And Chunk Sizes
+
+This is another subtle but important design choice.
+
+Sessions, bookmarks, and highlights do not rely only on raw chunk indexes. They also keep token-level anchors.
+
+That matters because chunk indexes can change when:
+
+- the user switches modes,
+- `chunkSize` changes,
+- `focusWindow` changes.
+
+The navigation helpers can resolve the current token anchor back into the correct runtime chunk for the current mode. That is why resume behavior survives mode changes much better than a naive chunk-index-only design.
+
+## Local-First Persistence
+
+Leyendo uses IndexedDB through Dexie.
+
+This is the local-first storage model:
+
+- `documents`: saved metadata plus the full document payload,
+- `sessions`: last known reading location and progress,
+- `bookmarks`: named saved anchors,
+- `highlights`: saved quotes and notes,
+- `preferences`: reader settings.
+
+Why IndexedDB instead of `localStorage`:
+
+- documents are too large for `localStorage`,
+- the data is structured,
+- queries such as recent documents or document-linked sessions are easier,
+- Dexie makes IndexedDB much more manageable.
+
+### Important compatibility note
+
+The visible product name is now Leyendo, but some internal storage identifiers still use older `lee` naming, such as the Dexie database name `lee-reader-db` and class names like `LeeDatabase`.
+
+That is intentional. Renaming internal storage keys carelessly would break existing saved browser data for returning users.
+
+## Performance Architecture And Tradeoffs
+
+### What the app already does to help performance
+
+- heavy steps are measured with perf instrumentation,
+- document-model building can offload to a worker,
+- runtime chunks are cached per document and options inside a `WeakMap`,
+- first-open save operations now persist document and session in parallel,
+- the upload UI shows stage-aware ETA guidance during first open.
+
+### Important current metrics
+
+The perf instrumentation tracks these metric names today:
+
+- `import.extract`,
+- `import.build-document`,
+- `reader.derive-runtime-chunks`,
+- `reader.playback-drift`.
+
+### Why the Reader can still feel expensive on large documents
+
+Even after a document is imported, Reader startup still has real work to do:
+
+- load the document payload from IndexedDB,
+- derive the active mode's runtime chunks,
+- compute progress,
+- compute remaining words and estimated reading time,
+- hydrate session anchors, bookmarks, and highlights.
+
+Large documents amplify all of that.
+
+### Why Focus Word is often the most expensive default
+
+The default mode is `focus-word`.
+
+That matters because Focus Word generates one runtime chunk per token anchor, which can create a very large runtime chunk array for long texts. A shorter phrase-based or line-based mode may derive fewer chunks from the same document.
+
+### PDF-specific reality
+
+PDFs are the hardest input type in this project because PDF is primarily a page-description format, not a clean reading-structure format.
+
+The extractor tries to reconstruct headings, paragraphs, lists, and some image placeholders from positioned text fragments, but PDFs with these traits are still difficult:
+
+- multiple columns,
+- tables,
+- forms,
+- dense footnotes,
+- page headers and footers,
+- broken extraction order,
+- poor source encoding.
+
+Leyendo tries to preserve readable content, not exact visual layout.
+
+### How playback timing is calculated
+
+The playback engine is more than a plain `setTimeout(wordsPerMinute)` loop.
+
+`src/features/reader/engine/timing.ts` calculates chunk duration from:
+
+- token count,
+- current `wordsPerMinute`,
+- `smartPacing`,
+- `naturalPauses`,
+- `reduceMotion`,
+- active mode.
+
+Important behavior in the current code:
+
+- punctuation can slow a chunk down,
+- phrase mode adds a small duration multiplier,
+- guided-line mode adds a larger multiplier,
+- reduce-motion slightly increases duration,
+- chunk duration has a minimum floor.
+
+That means remaining-time estimates and autoplay pacing are intentionally shaped by readability rules, not just raw speed settings.
+
+### Why playback drift is measured
+
+The app records `reader.playback-drift` so developers can compare the expected chunk duration with the actual timeout delay seen in the browser.
+
+This is useful because browsers do not always fire timers exactly on schedule. Drift can increase when:
+
+- the tab is busy,
+- the machine is under load,
+- timers are throttled,
+- rendering work is expensive.
+
+That metric helps explain cases where the configured pace feels slower than expected.
+
+## Why This Tech Stack Was Chosen
+
+The stack is practical, not fashionable.
+
+| Technology                        | Role in this project                                    | Why it fits                                                                               |
+| --------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Next.js 16 App Router             | Routing, app shell, production build, React integration | Good structure for a multi-route product even though most heavy processing is client-side |
+| React 19                          | UI state and composition                                | Good fit for an interactive reader, upload flow, and local library                        |
+| TypeScript                        | Domain modeling and safer refactors                     | Helps keep document, session, bookmark, and reader-mode types coherent                    |
+| Tailwind CSS v4                   | Styling system                                          | Fast iteration and consistent UI composition                                              |
+| Dexie                             | IndexedDB wrapper                                       | Much easier than raw IndexedDB for local-first structured data                            |
+| Zustand                           | Runtime reader state                                    | Small and easy to reason about for active reader state                                    |
+| `pdfjs-dist`                      | PDF extraction                                          | The standard browser-side choice for selectable-text PDFs                                 |
+| Mammoth                           | DOCX extraction                                         | Reliable browser-side DOCX text extraction                                                |
+| Internal RTF parser               | RTF extraction                                          | Avoids backend conversion and avoids fragile client bundling paths                        |
+| Internal Markdown block extractor | Markdown structure recovery                             | Keeps the active import path worker-safe                                                  |
+| Vitest                            | Unit and component tests                                | Fast feedback for reader logic and UI behavior                                            |
+| Playwright                        | End-to-end tests                                        | Covers browser-level reading and import flows                                             |
+
+### Why not a backend first?
+
+Because the current product promise is local-first reading.
+
+A backend-first design would add complexity around:
+
+- authentication,
+- privacy,
+- API design,
+- hosting,
+- sync conflicts,
+- document ownership.
+
+That might be worth doing later, but it is not required to validate the core reading experience.
+
+### Why not always upgrade to the newest package immediately?
+
+Because compatibility is more important than novelty in a tool that depends on browser APIs, file extraction, build tooling, and test tooling.
+
+The project uses a working version set, not an "always latest" policy.
+
+## Contributor Playbook
+
+This section is for developers who want to change the product, not just understand it.
+
+### How to add a new reader mode
+
+Adding a new mode usually touches four layers:
+
+1. add the mode to `src/types/reader.ts`,
+2. teach `deriveRuntimeChunks(...)` in `src/features/reader/engine/navigation.ts` how to build that mode's runtime chunks,
+3. add a rendering component in `src/components/reader/`,
+4. wire the mode into `src/components/reader/reader-workspace.tsx` and any mode-selection UI.
+
+If the mode should affect pacing, also update `src/features/reader/engine/timing.ts`.
+
+The most important design rule is this: do not make resume rely only on chunk indexes. Keep token anchors meaningful so the mode can interoperate with existing session, bookmark, and highlight behavior.
+
+### How to add a new input type
+
+Adding a new import type usually touches these areas:
+
+1. add detection in `src/features/ingest/detect/file-kind.ts`,
+2. add extraction logic in `src/features/ingest/extract/file-text.ts` or a helper used by it,
+3. decide whether the new source can provide structured `sourceBlocks` or only raw text,
+4. verify that `buildDocumentModel(...)` still receives a sensible `sourceKind`,
+5. add tests for detection, extraction, and first-open behavior.
+
+The main question is not only “can we get text out of the file?” It is also “can we get text out in a form that still produces a good reading model?”
+
+### How to profile a slow import or slow reader load
+
+If you want to diagnose a slowdown, follow this order:
+
+1. determine whether the time is spent in extraction, model build, IndexedDB save, or Reader hydration,
+2. inspect the perf metrics for `import.extract`, `import.build-document`, and `reader.derive-runtime-chunks`,
+3. check whether the source was a PDF and whether its layout complexity is the likely multiplier,
+4. check which mode is active, especially whether Focus Word is creating a very large runtime chunk array,
+5. check whether the problem is first-open only or also affects reopening.
+
+That sequence usually tells you whether you are dealing with an import bottleneck, a storage bottleneck, or a Reader runtime bottleneck.
+
+### How to think about fixes safely
+
+The safest fixes usually preserve one of these invariants:
+
+- imported documents remain reopenable from IndexedDB,
+- token anchors remain stable enough for resume and annotations,
+- different modes can still derive their own runtime chunk streams from the same stored payload,
+- user-visible status messages remain honest when work is slow.
+
+If a change makes the system faster by throwing away those guarantees, it is probably too expensive architecturally.
+
+## Project Structure
+
+```text
+src/
+  app/                Next.js routes, layouts, and route-level pages
+  components/         Reusable UI and route-facing components
+  db/                 Dexie schema and repository helpers
+  features/           Import, extraction, document-model, and reader logic
+  lib/                Shared utilities, locale helpers, perf instrumentation
+  state/              Zustand runtime state
+  types/              Shared TypeScript models
+tests/
+  component/          Component and hook tests
+  e2e/                Playwright browser flows
+  fixtures/           Shared test data
+  unit/               Pure logic and repository tests
+scripts/
+  sync-pdfjs-assets.mjs
+```
+
+### Where to start depending on what you care about
+
+If you want to understand upload and first-open behavior, start here:
+
+- `src/components/upload/upload-panel.tsx`
+- `src/features/ingest/extract/file-text-client.ts`
+- `src/features/ingest/extract/file-text.ts`
+- `src/features/ingest/build/document-model-client.ts`
+- `src/features/ingest/build/document-model.ts`
+
+If you want to understand reader modes and navigation, start here:
+
+- `src/features/reader/engine/navigation.ts`
+- `src/components/reader/focus-word-view.tsx`
+- `src/components/reader/phrase-chunk-view.tsx`
+- `src/components/reader/guided-line-view.tsx`
+- `src/components/reader/classic-reader-view.tsx`
+
+If you want to understand persistence, start here:
+
+- `src/db/app-db.ts`
+- `src/db/repositories.ts`
+- `src/components/reader/use-reader-document.ts`
+- `src/components/reader/use-reader-persistence.ts`
+
+## Routes
 
 ### `/`
 
-Landing page with:
-
-- product framing,
-- onboarding goal selection,
-- intake panel,
-- reading mode gallery.
+Landing page with onboarding, upload and paste intake, and reading mode previews.
 
 ### `/reader`
 
-Main reading workspace with:
-
-- deep links to a document,
-- bookmark and highlight jump support,
-- playback controls,
-- mode switching,
-- local persistence.
+Main reading workspace.
 
 ### `/library`
 
-Local library with:
-
-- recent sessions,
-- recent bookmarks,
-- recent highlights,
-- recent documents,
-- cleanup actions.
+Local library for reopening documents, sessions, bookmarks, and highlights.
 
 ### `/about`
 
-Explains product intent and positioning.
+Product intent and positioning.
 
 ### `/privacy`
 
-Explains the local-first approach and the things intentionally not included in v1.
+Privacy stance and local-first framing.
 
-## Current Versions In This Repo
-
-Important package versions currently pinned in `package.json` include:
-
-- Next.js `16.2.1`
-- React `19.2.4`
-- React DOM `19.2.4`
-- TypeScript `5.x`
-- Tailwind CSS `4.x`
-- Vitest `4.1.1`
-- Playwright `1.58.2`
-
-These are the versions the project is currently built and tested against.
-
-## Getting Started
+## Development Scripts
 
 ```bash
 pnpm install
-pnpm dev
-```
-
-Then open `http://localhost:3000`.
-
-## Scripts
-
-```bash
 pnpm dev
 pnpm build
 pnpm start
@@ -512,59 +906,120 @@ pnpm test:e2e
 pnpm format
 ```
 
-## Validation And Testing
+### PDF asset sync
 
-The repo includes:
+`pdfjs-dist` needs supporting worker and asset files copied into `public/pdfjs`.
 
-- linting,
-- unit tests,
-- component tests,
-- production builds,
-- end-to-end browser tests.
+That is why the repo includes `scripts/sync-pdfjs-assets.mjs` and runs it automatically before:
 
-This is important because a reader app has a lot of subtle behavior to protect, such as:
+- `dev`,
+- `build`,
+- `start`,
+- end-to-end tests.
 
-- progress persistence,
-- bookmark accuracy,
-- highlight reopening,
-- chunk navigation,
-- upload flows,
-- and resume behavior.
+## Testing Strategy
 
-## Current Known Limits
+The current test mix is intentionally layered:
 
-- There is no browser-data export or import yet.
-- There is no cloud sync yet.
-- There is no OCR for scanned PDFs yet.
-- The practical upper size limit for documents depends on browser and device resources.
-- Storage-failure handling still needs to be improved.
+- unit tests for pure logic such as navigation, normalization, repositories, and extraction helpers,
+- component tests for UI behavior such as upload flow and reader views,
+- Playwright tests for real browser flows.
 
-## What Could Be Added Later
+That matters because this product has several failure-prone areas:
 
-Good future directions include:
+- file detection,
+- extraction,
+- large-document handling,
+- resume behavior,
+- mode switching,
+- bookmark and highlight anchoring,
+- storage-driven reopen flows.
 
-- export and import for local backup,
-- OCR for scanned PDFs,
-- more reading modes,
-- more document formats,
-- richer library metadata,
-- stronger storage error recovery,
-- optional sync.
+### What should be tested when documentation mentions a feature
 
-## Final Summary
+For contributors, this is a good rule of thumb:
 
-Lee should be understood as a **working local-first reading alpha**, not just a starter scaffold.
+- if you change detection rules, add or update a unit test,
+- if you change extraction or model-building behavior, add or update unit tests and at least one realistic fixture-driven test,
+- if you change upload or reader UX, add or update a component test,
+- if you change an end-to-end user journey, consider a Playwright test.
 
-It already supports:
+The recent first-open wait estimate is a good example: it lives in UI code, but it also reflects real architecture constraints, so it needed a component test that verifies the ETA state appears while model building is still pending.
 
-- paste and file-based input,
-- multiple reading modes,
-- local session persistence,
-- bookmarks and highlights,
-- resume and cleanup flows.
+## Troubleshooting Guide
 
-The biggest remaining gaps are not basic reader capability anymore. They are mostly about product maturity:
+### Symptom: a PDF fails before import starts
 
-- better backup and export,
-- stronger failure handling,
-- and broader regression coverage.
+Likely causes:
+
+- file is above the browser PDF size limit,
+- file is password protected,
+- file is not actually a supported PDF for this pipeline.
+
+### Symptom: a PDF imports but formatting looks rough
+
+Likely causes:
+
+- multi-column layout,
+- table-heavy pages,
+- footnotes or headers interfering with text order,
+- PDF extraction preserving readable text but not page geometry.
+
+### Symptom: first open is slow but reopen is much faster
+
+Likely cause:
+
+- the first open paid extraction, model-building, and local persistence costs; reopen is mostly hydration plus runtime derivation.
+
+### Symptom: changing mode moves the current position slightly
+
+Likely cause:
+
+- the Reader is re-resolving a token anchor into a different runtime chunk stream, so the target is logically the same reading position but not the same chunk index.
+
+### Symptom: autoplay does not feel exactly on pace
+
+Likely causes:
+
+- punctuation pauses,
+- mode-specific timing multipliers,
+- timer drift under browser load,
+- rendering cost in the current environment.
+
+## Current Known Limitations
+
+Be honest about these. They are real.
+
+- There is no OCR yet for scanned PDFs.
+- PDF import preserves reading content better than exact layout.
+- Very large documents are still constrained by browser CPU, memory, and IndexedDB serialization costs.
+- Cross-device sync does not exist yet.
+- Import and export for local backup do not exist yet.
+- Storage failure handling can still be improved.
+- Heuristic phrase and guided-line grouping can still produce awkward breaks on some source text.
+
+## Good Future Directions
+
+If you want to extend the project, these are strong candidates:
+
+- OCR support for scanned PDFs,
+- explicit backup export and import,
+- optional sync,
+- more reader modes,
+- richer document cleanup tools before opening the Reader,
+- better storage pressure handling,
+- more performance instrumentation and profiling around very large documents.
+
+## Final Take
+
+Leyendo is not just a UI shell for flashy reading effects. It is a local-first document processing and reading system.
+
+The real architecture is:
+
+- browser-side extraction,
+- structured document modeling,
+- local persistence,
+- mode-specific runtime chunk derivation,
+- token-anchored resume and annotations.
+
+If you remember that model, the codebase becomes much easier to navigate and the current tradeoffs make sense.

@@ -6,11 +6,31 @@ const pdfjsMock = vi.hoisted(() => ({
   GlobalWorkerOptions: {
     workerSrc: "",
   },
+  OPS: {
+    paintFormXObjectBegin: 74,
+    paintFormXObjectEnd: 75,
+    paintImageXObject: 85,
+    paintInlineImageXObject: 86,
+    paintInlineImageXObjectGroup: 87,
+    paintImageXObjectRepeat: 88,
+    restore: 11,
+    save: 10,
+    transform: 12,
+  },
   getDocument: vi.fn(() => ({
     promise: Promise.resolve({
       numPages: 1,
       getPage: async () => ({
         getViewport: () => ({ width: 612 }),
+        getOperatorList: async () => ({
+          argsArray: [
+            [],
+            [160, 0, 0, 100, 170, 735],
+            [{ data: new Uint8ClampedArray([0]), height: 100, width: 160 }],
+            [],
+          ],
+          fnArray: [10, 12, 86, 11],
+        }),
         getTextContent: async () => ({
           items: [
             {
@@ -177,11 +197,20 @@ describe("extractDocumentFromFile", () => {
     expect(extracted.rawText).toContain(
       "CONTRATO MARCO DE PRESTACION DE SERVICIOS",
     );
+    expect(extracted.rawText).toContain("[Image omitted from PDF]");
     expect(extracted.sourceBlocks?.[0]).toEqual(
       expect.objectContaining({
         alignment: "center",
         kind: "heading",
       }),
+    );
+    expect(extracted.sourceBlocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "paragraph",
+          text: "[Image omitted from PDF]",
+        }),
+      ]),
     );
     expect(extracted.sourceBlocks?.at(-1)).toEqual(
       expect.objectContaining({
@@ -191,7 +220,16 @@ describe("extractDocumentFromFile", () => {
       }),
     );
     expect(pdfjsMock.GlobalWorkerOptions.workerSrc).toContain(
-      "pdf.worker.min.mjs",
+      "/pdfjs/pdf.worker.min.mjs",
+    );
+    expect(pdfjsMock.getDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cMapPacked: true,
+        cMapUrl: expect.stringContaining("/pdfjs/cmaps/"),
+        iccUrl: expect.stringContaining("/pdfjs/iccs/"),
+        standardFontDataUrl: expect.stringContaining("/pdfjs/standard_fonts/"),
+        wasmUrl: expect.stringContaining("/pdfjs/wasm/"),
+      }),
     );
   });
 

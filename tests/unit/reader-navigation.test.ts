@@ -12,6 +12,7 @@ import {
   restartParagraphChunkIndex,
 } from "@/features/reader/engine/navigation";
 import { buildDocumentModel } from "@/features/ingest/build/document-model";
+import { defaultReaderPreferences } from "@/types/reader";
 
 describe("reader navigation helpers", () => {
   const document = buildDocumentModel({
@@ -69,6 +70,64 @@ describe("reader navigation helpers", () => {
 
     expect(second).toBe(first);
     expect(third).not.toBe(first);
+  });
+
+  it("derives focus mode as anchor-based sliding windows", () => {
+    const runtimeChunks = deriveRuntimeChunks(document, {
+      ...defaultReaderPreferences,
+      mode: "focus-word",
+      chunkSize: 2,
+    });
+
+    expect(runtimeChunks[0]).toMatchObject({
+      text: "Alpha beta",
+      anchorTokenIndex: 0,
+    });
+    expect(runtimeChunks[1]).toMatchObject({
+      text: "Alpha beta gamma.",
+      anchorTokenIndex: 1,
+    });
+    expect(findChunkIndexByToken(runtimeChunks, 1)).toBe(1);
+  });
+
+  it("derives phrase chunks with natural boundaries instead of fixed slices", () => {
+    const phraseDocument = buildDocumentModel({
+      title: "Phrase sample",
+      rawText: "Alpha beta gamma, delta epsilon zeta.",
+      sourceKind: "plain-text",
+      chunkSize: 1,
+    });
+
+    const runtimeChunks = deriveRuntimeChunks(phraseDocument, {
+      ...defaultReaderPreferences,
+      mode: "phrase-chunk",
+      chunkSize: 2,
+    });
+
+    expect(runtimeChunks.map((chunk) => chunk.text)).toEqual([
+      "Alpha beta gamma,",
+      "delta epsilon zeta.",
+    ]);
+  });
+
+  it("derives guided line chunks as paragraph lines instead of fixed token groups", () => {
+    const guidedDocument = buildDocumentModel({
+      title: "Guided sample",
+      rawText: "Alpha beta gamma delta epsilon zeta eta theta, iota kappa lambda mu.",
+      sourceKind: "plain-text",
+      chunkSize: 1,
+    });
+
+    const runtimeChunks = deriveRuntimeChunks(guidedDocument, {
+      ...defaultReaderPreferences,
+      mode: "guided-line",
+      chunkSize: 2,
+    });
+
+    expect(runtimeChunks.map((chunk) => chunk.text)).toEqual([
+      "Alpha beta gamma delta epsilon zeta eta theta,",
+      "iota kappa lambda mu.",
+    ]);
   });
 
   it("derives paragraph token ranges from precomputed block bounds", () => {

@@ -6,13 +6,33 @@ import {
   type ExtractedDocumentPayload,
 } from "@/features/ingest/extract/file-text";
 
-export const PDF_EXTRACTION_WORKER_THRESHOLD_BYTES = 1_500_000;
-export const MAX_BROWSER_PDF_BYTES = 75_000_000;
-export const PDF_EXTRACTION_TIMEOUT_MS = 250_000;
+export const PDF_EXTRACTION_WORKER_THRESHOLD_BYTES = 150_000_000;
+export const MAX_BROWSER_PDF_BYTES = 150_000_000;
+export const PDF_EXTRACTION_TIMEOUT_MS = 420_000;
 
 export interface DocumentExtractionResult {
   payload: ExtractedDocumentPayload;
   processingMode: "main-thread" | "worker";
+}
+
+function createPdfExtractionError(error: unknown) {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+
+    if (message) {
+      return error;
+    }
+
+    if (error.name && error.name !== "Error") {
+      return new Error(error.name);
+    }
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return new Error(error.trim());
+  }
+
+  return new Error("Something went wrong while extracting that PDF.");
 }
 
 export function shouldOffloadPdfExtraction(file: File) {
@@ -106,9 +126,14 @@ export async function extractDocumentFromFileAsync(
           });
         };
 
-        worker.onerror = async () => {
+        worker.onerror = async (event) => {
           clearTimeoutIfPending();
           worker.terminate();
+
+          const workerBootstrapError =
+            event.message.trim().length > 0
+              ? new Error(event.message)
+              : new Error("The PDF extraction worker failed to start.");
 
           try {
             const { rawText, sourceBlocks } =
@@ -120,10 +145,12 @@ export async function extractDocumentFromFileAsync(
               title: file.name.replace(/\.[^.]+$/u, ""),
             });
           } catch (error) {
+            const extractionError = createPdfExtractionError(error);
             reject(
-              error instanceof Error
-                ? error
-                : new Error("Something went wrong while extracting that PDF."),
+              extractionError.message ===
+                "Something went wrong while extracting that PDF."
+                ? workerBootstrapError
+                : extractionError,
             );
           }
         };

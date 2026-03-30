@@ -3,8 +3,12 @@ import {
   type BuildDocumentModelInput,
 } from "@/features/ingest/build/document-model";
 import { measureAsync } from "@/lib/perf/instrumentation";
+import type { DocumentSourceKind } from "@/types/document";
 
 export const DOCUMENT_MODEL_WORKER_THRESHOLD = 120_000;
+export const DOCUMENT_MODEL_WORKER_TIMEOUT_MS = 90_000;
+
+const DOCUMENT_MODEL_MAIN_THREAD_FALLBACK_THRESHOLD = 180_000;
 
 export interface DocumentBuildResult {
   document: ReturnType<typeof buildDocumentModel>;
@@ -13,6 +17,12 @@ export interface DocumentBuildResult {
 
 export function shouldOffloadDocumentBuild(rawText: string) {
   return rawText.length >= DOCUMENT_MODEL_WORKER_THRESHOLD;
+}
+
+function createPreparationTimeoutMessage(sourceKind: DocumentSourceKind) {
+  return sourceKind === "pdf"
+    ? "The PDF text was extracted, but preparing it for the reader is taking too long in this browser. This usually means the file is very long or the extracted layout is complex. Try a shorter PDF, remove appendix pages, or paste only the section you need."
+    : "Preparing this document for the reader is taking too long in this browser. Try a shorter file or paste only the section you need.";
 }
 
 export async function buildDocumentModelAsync(
@@ -49,6 +59,14 @@ export async function buildDocumentModelAsync(
           new URL("./document-model.worker.ts", import.meta.url),
           { type: "module" },
         );
+        const timeoutId = globalThis.setTimeout(() => {
+          worker.terminate();
+          reject(new Error(createPreparationTimeoutMessage(input.sourceKind)));
+        }, DOCUMENT_MODEL_WORKER_TIMEOUT_MS);
+
+        const clearTimeoutIfPending = () => {
+          globalThis.clearTimeout(timeoutId);
+        };
 
         worker.onmessage = (
           event: MessageEvent<
@@ -56,6 +74,7 @@ export async function buildDocumentModelAsync(
             | { ok: false; message: string }
           >,
         ) => {
+          clearTimeoutIfPending();
           worker.terminate();
 
           if (!event.data.ok) {
@@ -67,8 +86,29 @@ export async function buildDocumentModelAsync(
         };
 
         worker.onerror = () => {
+          clearTimeoutIfPending();
           worker.terminate();
-          resolve(buildDocumentModel(input));
+
+          if (
+            input.rawText.length > DOCUMENT_MODEL_MAIN_THREAD_FALLBACK_THRESHOLD
+          ) {
+            reject(
+              new Error(createPreparationTimeoutMessage(input.sourceKind)),
+            );
+            return;
+          }
+
+          try {
+            resolve(buildDocumentModel(input));
+          } catch (error) {
+            reject(
+              error instanceof Error
+                ? error
+                : new Error(
+                    "Something went wrong while preparing the document model.",
+                  ),
+            );
+          }
         };
 
         worker.postMessage(input);

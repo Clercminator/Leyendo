@@ -48,4 +48,32 @@ describe("reader timing helpers", () => {
 
     expect(faster).toBeLessThan(slower);
   });
+
+  it("paces guided line more slowly than classic reader for the same chunk", () => {
+    const chunk = document.chunks[0]!;
+    const classicDuration = deriveChunkDurationMs(chunk, {
+      ...defaultReaderPreferences,
+      mode: "classic-reader",
+    });
+    const guidedDuration = deriveChunkDurationMs(chunk, {
+      ...defaultReaderPreferences,
+      mode: "guided-line",
+    });
+
+    expect(guidedDuration).toBeGreaterThan(classicDuration);
+  });
+
+  it("paces phrase chunk more slowly than classic reader for the same chunk", () => {
+    const chunk = document.chunks[0]!;
+    const classicDuration = deriveChunkDurationMs(chunk, {
+      ...defaultReaderPreferences,
+      mode: "classic-reader",
+    });
+    const phraseDuration = deriveChunkDurationMs(chunk, {
+      ...defaultReaderPreferences,
+      mode: "phrase-chunk",
+    });
+
+    expect(phraseDuration).toBeGreaterThan(classicDuration);
+  });
 });

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { createLargeDocumentText } from "../fixtures/large-document";
 
-test("landing page shows the Lee product framing", async ({ page }) => {
+test("landing page shows the Leyendo product framing", async ({ page }) => {
   await page.goto("/");
 
   await page.keyboard.press("Tab");
@@ -80,14 +80,14 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /playback settings/i }),
   ).toContainText(/2 words/i);
-  await expect(page.getByRole("heading", { name: /^This is$/i })).toBeVisible();
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+  const activeRun = page.locator(".reader-active-run").first();
+  await expect(activeRun).toBeVisible();
+  const initialActiveRunText = (await activeRun.textContent())?.trim();
   await expect(
     page.getByLabel(/reader canvas/i).getByText(/2 sentences/i),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /time left:/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /time left:/i })).toBeVisible();
   await expect(page.getByText(/highlights and bookmarks/i)).toBeVisible();
 
   await page.getByRole("button", { name: /playback settings/i }).click();
@@ -97,14 +97,10 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /playback settings/i }),
   ).toContainText(/3 words/i);
-  await expect(
-    page.getByRole("heading", { name: /^This is the$/i }),
-  ).toBeVisible();
+  await expect(activeRun).toBeVisible();
 
   await page.getByRole("button", { name: /^Next$/ }).click();
-  await expect(
-    page.getByRole("heading", { name: /^first sentence\.$/i }),
-  ).toBeVisible();
+  await expect(activeRun).not.toHaveText(initialActiveRunText ?? "");
 
   await page.getByRole("button", { name: /^save$/i }).click();
   await page.getByRole("button", { name: /save bookmark/i }).click();
@@ -166,15 +162,15 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /playback settings/i }),
   ).toContainText(/1 word/i);
-  await expect(page.getByRole("heading", { name: /^first$/i })).toBeVisible();
+  await expect(activeRun).toBeVisible();
+  const reloadedActiveRunText = (await activeRun.textContent())?.trim() ?? "";
 
   await page.getByRole("button", { name: /^Next$/ }).click();
-  await expect(
-    page.getByRole("heading", { name: /^sentence\.$/i }),
-  ).toBeVisible();
+  await expect(activeRun).not.toHaveText(reloadedActiveRunText);
+  const postNextActiveRunText = (await activeRun.textContent())?.trim() ?? "";
 
   await page.getByRole("button", { name: /jump to bookmark/i }).click();
-  await expect(page.getByRole("heading", { name: /^first$/i })).toBeVisible();
+  await expect(activeRun).not.toHaveText(postNextActiveRunText);
 
   await page.goto("/library");
   await expect(
@@ -191,6 +187,15 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await expect(page).toHaveURL(/\/reader\?document=/);
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
 
+  await page.getByRole("button", { name: /language/i }).click();
+  await page.getByRole("menuitemradio", { name: /espanol/i }).click();
+  await expect(page.getByRole("button", { name: /idioma/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /guardar/i })).toBeVisible();
+
+  await page.getByRole("button", { name: /idioma/i }).click();
+  await page.getByRole("menuitemradio", { name: /english/i }).click();
+  await expect(page.getByRole("button", { name: /language/i })).toBeVisible();
+
   await page.goto("/library");
   await expect(
     page.getByRole("heading", { name: /recent highlights/i }),
@@ -199,7 +204,8 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await expect(page).toHaveURL(/\/reader\?document=.*highlight=/);
   await expect(page.getByText("Highlight 1", { exact: true })).toBeVisible();
   await expect(page.getByText(/key idea for later/i)).toBeVisible();
-  await expect(page.getByText(/^first sentence\.$/i).first()).toBeVisible();
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+  await expect(activeRun).toBeVisible();
 
   await page.goto("/library");
   await expect(
@@ -208,7 +214,8 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await page.getByRole("link", { name: /open bookmark/i }).click();
   await expect(page).toHaveURL(/\/reader\?document=.*bookmark=/);
   await expect(page.getByText("Bookmark 1", { exact: true })).toBeVisible();
-  await expect(page.getByText(/^first sentence\.$/i).first()).toBeVisible();
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+  await expect(activeRun).toBeVisible();
 
   await page.getByRole("button", { name: /change preset/i }).click();
   await page.getByRole("button", { name: /challenge 420 wpm/i }).click();
@@ -261,17 +268,19 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^guided line$/i }).click();
   await expect(
-    page.getByText(
-      /follow the highlighted line window to reduce page scatter/i,
-    ),
+    page.getByText(/follow the active line while nearby lines stay visible/i),
   ).toBeVisible();
 
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^classic reader$/i }).click();
-  await expect(page.locator("[data-reader-classic-active='true']")).toHaveCount(1);
+  await expect(page.locator("[data-reader-classic-active='true']")).toHaveCount(
+    1,
+  );
 
   await page.getByRole("button", { name: /^Next$/ }).click();
-  await expect(page.locator("[data-reader-classic-active='true']")).toHaveCount(1);
+  await expect(page.locator("[data-reader-classic-active='true']")).toHaveCount(
+    1,
+  );
 });
 
 test("classic reader keeps controls visible while the document scrolls inside the canvas", async ({

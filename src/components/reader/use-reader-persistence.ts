@@ -110,7 +110,7 @@ export function useReaderPersistence({
     const session = {
       ...buildInitialSession(document.payload),
       currentChunkIndex,
-      currentTokenIndex: activeChunk?.tokenIndexes[0] ?? 0,
+      currentTokenIndex: activeChunk?.anchorTokenIndex ?? 0,
       currentParagraphIndex: activeChunk?.paragraphIndex ?? 0,
       currentSectionIndex: activeChunk?.sectionIndex ?? 0,
       percentComplete: deriveReaderProgress(

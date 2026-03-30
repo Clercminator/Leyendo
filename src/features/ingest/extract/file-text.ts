@@ -29,6 +29,7 @@ interface PdfFragment {
 
 interface PdfLine {
   center: number;
+  entryKind: "text" | "image-placeholder";
   fontSize: number;
   left: number;
   pageIndex: number;
@@ -37,6 +38,10 @@ interface PdfLine {
   text: string;
   y: number;
 }
+
+type PdfTransformMatrix = [number, number, number, number, number, number];
+
+const pdfIdentityTransform: PdfTransformMatrix = [1, 0, 0, 1, 0, 0];
 
 const rtfIgnoredDestinations = new Set([
   "annotation",
@@ -77,6 +82,48 @@ const rtfIgnoredDestinations = new Set([
 
 let isPdfWorkerConfigured = false;
 let rtfTextDecoder: TextDecoder | null = null;
+
+function getPdfAssetOrigin() {
+  if (
+    typeof globalThis.origin === "string" &&
+    globalThis.origin.length > 0 &&
+    globalThis.origin !== "null"
+  ) {
+    return globalThis.origin;
+  }
+
+  const locationHref =
+    typeof globalThis.location?.href === "string"
+      ? globalThis.location.href
+      : null;
+
+  if (locationHref?.startsWith("http://") || locationHref?.startsWith("https://")) {
+    return new URL(locationHref).origin;
+  }
+
+  if (
+    typeof document !== "undefined" &&
+    typeof document.baseURI === "string" &&
+    (document.baseURI.startsWith("http://") ||
+      document.baseURI.startsWith("https://"))
+  ) {
+    return new URL(document.baseURI).origin;
+  }
+
+  return "http://localhost";
+}
+
+function getPdfAssetUrl(path: string) {
+  return new URL(`/pdfjs/${path}`, `${getPdfAssetOrigin()}/`).toString();
+}
+
+function isPdfExtractionWorkerContext() {
+  return (
+    typeof WorkerGlobalScope !== "undefined" &&
+    globalThis instanceof WorkerGlobalScope &&
+    typeof document === "undefined"
+  );
+}
 
 function deriveTitle(fileName: string) {
   return fileName.replace(/\.[^.]+$/u, "");
@@ -276,6 +323,7 @@ function buildPdfLines(items: unknown[], pageIndex: number, pageWidth: number) {
 
       return {
         center: left + (right - left) / 2,
+        entryKind: "text",
         fontSize,
         left,
         pageIndex,
@@ -286,6 +334,222 @@ function buildPdfLines(items: unknown[], pageIndex: number, pageWidth: number) {
       } satisfies PdfLine;
     })
     .filter((line): line is PdfLine => line !== null);
+}
+
+function isPdfTransformMatrix(value: unknown): value is PdfTransformMatrix {
+  return (
+    Array.isArray(value) &&
+    value.length === 6 &&
+    value.every((entry) => typeof entry === "number" && Number.isFinite(entry))
+  );
+}
+
+function multiplyPdfTransforms(
+  left: PdfTransformMatrix,
+  right: PdfTransformMatrix,
+): PdfTransformMatrix {
+  return [
+    left[0] * right[0] + left[2] * right[1],
+    left[1] * right[0] + left[3] * right[1],
+    left[0] * right[2] + left[2] * right[3],
+    left[1] * right[2] + left[3] * right[3],
+    left[0] * right[4] + left[2] * right[5] + left[4],
+    left[1] * right[4] + left[3] * right[5] + left[5],
+  ];
+}
+
+function applyPdfTransform(
+  transform: PdfTransformMatrix,
+  x: number,
+  y: number,
+) {
+  return {
+    x: transform[0] * x + transform[2] * y + transform[4],
+    y: transform[1] * x + transform[3] * y + transform[5],
+  };
+}
+
+function buildPdfImageLine(
+  transform: PdfTransformMatrix,
+  pageIndex: number,
+  pageWidth: number,
+) {
+  const corners = [
+    applyPdfTransform(transform, 0, 0),
+    applyPdfTransform(transform, 1, 0),
+    applyPdfTransform(transform, 0, -1),
+    applyPdfTransform(transform, 1, -1),
+  ];
+  const left = Math.min(...corners.map((corner) => corner.x));
+  const right = Math.max(...corners.map((corner) => corner.x));
+  const bottom = Math.min(...corners.map((corner) => corner.y));
+  const top = Math.max(...corners.map((corner) => corner.y));
+  const width = right - left;
+  const height = top - bottom;
+
+  if (width < 24 || height < 24 || width * height < 900) {
+    return null;
+  }
+
+  return {
+    center: left + width / 2,
+    entryKind: "image-placeholder",
+    fontSize: 12,
+    left,
+    pageIndex,
+    pageWidth,
+    right,
+    text: "[Image omitted from PDF]",
+    y: bottom + height / 2,
+  } satisfies PdfLine;
+}
+
+function extractPdfImageLines(
+  operatorList: unknown,
+  pageIndex: number,
+  pageWidth: number,
+  ops: Record<string, number> | undefined,
+) {
+  if (
+    !ops ||
+    !operatorList ||
+    typeof operatorList !== "object" ||
+    !("fnArray" in operatorList) ||
+    !("argsArray" in operatorList) ||
+    !Array.isArray(operatorList.fnArray) ||
+    !Array.isArray(operatorList.argsArray)
+  ) {
+    return [];
+  }
+
+  const { argsArray, fnArray } = operatorList;
+  const imageLines: PdfLine[] = [];
+  const transformStack: PdfTransformMatrix[] = [[...pdfIdentityTransform]];
+
+  const appendImageLine = (transform: PdfTransformMatrix) => {
+    const imageLine = buildPdfImageLine(transform, pageIndex, pageWidth);
+    const previousImageLine = imageLines.at(-1);
+
+    if (!imageLine) {
+      return;
+    }
+
+    if (
+      previousImageLine &&
+      Math.abs(previousImageLine.left - imageLine.left) <= 1 &&
+      Math.abs(previousImageLine.right - imageLine.right) <= 1 &&
+      Math.abs(previousImageLine.y - imageLine.y) <= 1
+    ) {
+      return;
+    }
+
+    imageLines.push(imageLine);
+  };
+
+  const currentTransform = () =>
+    transformStack[transformStack.length - 1] ?? pdfIdentityTransform;
+
+  fnArray.forEach((fn, index) => {
+    const args = argsArray[index];
+
+    if (fn === ops.save) {
+      transformStack.push([...currentTransform()]);
+      return;
+    }
+
+    if (fn === ops.restore) {
+      if (transformStack.length > 1) {
+        transformStack.pop();
+      }
+      return;
+    }
+
+    if (fn === ops.transform && isPdfTransformMatrix(args)) {
+      transformStack[transformStack.length - 1] = multiplyPdfTransforms(
+        currentTransform(),
+        args,
+      );
+      return;
+    }
+
+    if (fn === ops.paintFormXObjectBegin) {
+      transformStack.push([...currentTransform()]);
+
+      if (
+        Array.isArray(args) &&
+        isPdfTransformMatrix(args[0]) &&
+        transformStack.length > 0
+      ) {
+        transformStack[transformStack.length - 1] = multiplyPdfTransforms(
+          currentTransform(),
+          args[0],
+        );
+      }
+
+      return;
+    }
+
+    if (fn === ops.paintFormXObjectEnd) {
+      if (transformStack.length > 1) {
+        transformStack.pop();
+      }
+      return;
+    }
+
+    if (fn === ops.paintImageXObject || fn === ops.paintInlineImageXObject) {
+      appendImageLine(currentTransform());
+      return;
+    }
+
+    if (fn === ops.paintImageXObjectRepeat && Array.isArray(args)) {
+      const scaleX = args[1];
+      const scaleY = args[2];
+      const positions = args[3];
+
+      if (
+        typeof scaleX === "number" &&
+        typeof scaleY === "number" &&
+        Array.isArray(positions)
+      ) {
+        for (let positionIndex = 0; positionIndex < positions.length; positionIndex += 2) {
+          const x = positions[positionIndex];
+          const y = positions[positionIndex + 1];
+
+          if (typeof x !== "number" || typeof y !== "number") {
+            continue;
+          }
+
+          appendImageLine(
+            multiplyPdfTransforms(currentTransform(), [scaleX, 0, 0, scaleY, x, y]),
+          );
+        }
+      }
+      return;
+    }
+
+    if (fn === ops.paintInlineImageXObjectGroup && Array.isArray(args)) {
+      const map = args[1];
+
+      if (!Array.isArray(map)) {
+        return;
+      }
+
+      map.forEach((entry) => {
+        if (
+          entry &&
+          typeof entry === "object" &&
+          "transform" in entry &&
+          isPdfTransformMatrix(entry.transform)
+        ) {
+          appendImageLine(
+            multiplyPdfTransforms(currentTransform(), entry.transform),
+          );
+        }
+      });
+    }
+  });
+
+  return imageLines;
 }
 
 function isHeadingLine(line: PdfLine, bodyFontSize: number) {
@@ -301,6 +565,51 @@ function isHeadingLine(line: PdfLine, bodyFontSize: number) {
   }
 
   return oversized && line.text.length <= 90;
+}
+
+function isPdfContentsLine(text: string) {
+  return /\.{2,}\s*(?:\d+|[ivxlcdm]+)$/iu.test(text.trim());
+}
+
+function isStandalonePdfLine(line: PdfLine, bodyFontSize: number) {
+  if (line.entryKind === "image-placeholder") {
+    return true;
+  }
+
+  if (isPdfContentsLine(line.text)) {
+    return true;
+  }
+
+  return isCenteredLine(line) && line.text.length <= 100 && line.fontSize >= bodyFontSize * 0.92;
+}
+
+function shouldMergePdfParagraphLine(
+  previousLine: PdfLine,
+  currentLine: PdfLine,
+  bodyFontSize: number,
+) {
+  if (
+    previousLine.pageIndex !== currentLine.pageIndex ||
+    isCenteredLine(previousLine) ||
+    isCenteredLine(currentLine)
+  ) {
+    return false;
+  }
+
+  const verticalGap = Math.abs(previousLine.y - currentLine.y);
+  const gapThreshold = Math.max(bodyFontSize * 2.2, previousLine.fontSize * 2.2);
+
+  if (verticalGap > gapThreshold) {
+    return false;
+  }
+
+  const indentDelta = Math.abs(previousLine.left - currentLine.left);
+  if (indentDelta <= Math.max(bodyFontSize * 3.2, 18)) {
+    return true;
+  }
+
+  const previousEndsOpen = !/[.!?]["')\]]?$/u.test(previousLine.text.trim());
+  return previousEndsOpen && indentDelta <= Math.max(bodyFontSize * 6, 36);
 }
 
 function buildPdfBlocks(lines: PdfLine[]) {
@@ -334,19 +643,42 @@ function buildPdfBlocks(lines: PdfLine[]) {
     const pageChanged = previousLine
       ? previousLine.pageIndex !== line.pageIndex
       : false;
-    const verticalGap = previousLine ? Math.abs(previousLine.y - line.y) : 0;
     const largeGap =
       !previousLine ||
       pageChanged ||
-      verticalGap > Math.max(bodyFontSize * 1.45, previousLine.fontSize * 1.45);
+      !shouldMergePdfParagraphLine(previousLine, line, bodyFontSize);
     const alignment = isCenteredLine(line) ? "center" : "left";
     const marker = extractBlockMarker(line.text);
+
+    if (line.entryKind === "image-placeholder") {
+      flushCurrentBlock();
+      blocks.push({
+        alignment,
+        kind: "paragraph",
+        sourcePageIndex: line.pageIndex,
+        text: line.text,
+      });
+      previousLine = line;
+      return;
+    }
 
     if (isHeadingLine(line, bodyFontSize)) {
       flushCurrentBlock();
       blocks.push({
         alignment,
         kind: "heading",
+        sourcePageIndex: line.pageIndex,
+        text: line.text,
+      });
+      previousLine = line;
+      return;
+    }
+
+    if (isStandalonePdfLine(line, bodyFontSize)) {
+      flushCurrentBlock();
+      blocks.push({
+        alignment,
+        kind: "paragraph",
         sourcePageIndex: line.pageIndex,
         text: line.text,
       });
@@ -429,10 +761,14 @@ async function loadPdfJs() {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   if (!isPdfWorkerConfigured) {
-    pdfjs.GlobalWorkerOptions.workerSrc ||= new URL(
-      "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
-      import.meta.url,
-    ).toString();
+    if (isPdfExtractionWorkerContext()) {
+      await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    } else {
+      pdfjs.GlobalWorkerOptions.workerSrc ||= getPdfAssetUrl(
+        "pdf.worker.min.mjs",
+      );
+    }
+
     isPdfWorkerConfigured = true;
   }
 
@@ -449,7 +785,16 @@ export async function extractPdfDocumentFromArrayBuffer(
   arrayBuffer: ArrayBuffer,
 ): Promise<ExtractedPdfDocument> {
   const pdfjs = await loadPdfJs();
-  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
+  const loadingTask = pdfjs.getDocument({
+    cMapPacked: true,
+    cMapUrl: getPdfAssetUrl("cmaps/"),
+    data: new Uint8Array(arrayBuffer),
+    iccUrl: getPdfAssetUrl("iccs/"),
+    standardFontDataUrl: getPdfAssetUrl("standard_fonts/"),
+    useWasm: false,
+    useWorkerFetch: false,
+    wasmUrl: getPdfAssetUrl("wasm/"),
+  });
   const pdf = await loadingTask.promise;
   const lines: PdfLine[] = [];
 
@@ -457,8 +802,38 @@ export async function extractPdfDocumentFromArrayBuffer(
     const page = await pdf.getPage(pageNumber);
     const viewport = page.getViewport({ scale: 1 });
     const textContent = await page.getTextContent();
+    let imageLines: PdfLine[] = [];
 
-    lines.push(...buildPdfLines(textContent.items, pageNumber - 1, viewport.width));
+    if (typeof page.getOperatorList === "function") {
+      try {
+        const operatorList = await page.getOperatorList();
+        imageLines = extractPdfImageLines(
+          operatorList,
+          pageNumber - 1,
+          viewport.width,
+          pdfjs.OPS as Record<string, number> | undefined,
+        );
+      } catch {
+        imageLines = [];
+      }
+    }
+
+    lines.push(
+      ...[...buildPdfLines(textContent.items, pageNumber - 1, viewport.width), ...imageLines].sort(
+        (left, right) => {
+          if (left.pageIndex !== right.pageIndex) {
+            return left.pageIndex - right.pageIndex;
+          }
+
+          const verticalDistance = Math.abs(left.y - right.y);
+          if (verticalDistance <= Math.max(left.fontSize, right.fontSize) * 0.35) {
+            return left.left - right.left;
+          }
+
+          return right.y - left.y;
+        },
+      ),
+    );
   }
 
   const sourceBlocks = buildPdfBlocks(lines);

@@ -133,7 +133,7 @@ export function GoalSelector() {
   return (
     <section
       aria-labelledby="goal-selector-title"
-      className="rounded-[2rem] border border-[color:var(--border-soft)] bg-(--surface-card) p-6 backdrop-blur-xl sm:p-8"
+      className="rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl sm:p-8"
     >
       <div className="max-w-2xl">
         <p className="text-sm tracking-[0.28em] text-(--accent-amber) uppercase">
@@ -158,10 +158,10 @@ export function GoalSelector() {
           className="mt-3 text-base leading-8 text-(--text-muted)"
         >
           {locale === "en"
-            ? "This keeps setup approachable and lets Lee recommend a mode instead of forcing you through a dense settings screen."
+            ? "This keeps setup approachable and lets Leyendo recommend a mode instead of forcing you through a dense settings screen."
             : locale === "es"
-              ? "Asi el inicio se mantiene simple y Lee puede recomendar un modo sin enviarte a una pantalla densa de ajustes."
-              : "Assim o inicio continua simples e o Lee pode recomendar um modo sem jogar voce em uma tela densa de ajustes."}
+              ? "Asi el inicio se mantiene simple y Leyendo puede recomendar un modo sin enviarte a una pantalla densa de ajustes."
+              : "Assim o inicio continua simples e o Leyendo pode recomendar um modo sem jogar voce em uma tela densa de ajustes."}
         </p>
       </div>
       <div
@@ -175,8 +175,8 @@ export function GoalSelector() {
             key={value}
             className={`relative cursor-pointer rounded-[1.5rem] border p-5 text-left transition hover:-translate-y-0.5 ${
               selectedGoal === value
-                ? "border-[color:var(--border-strong)] bg-(--surface-soft) shadow-[0_0_0_1px_rgba(20,26,56,0.04)]"
-                : "border-[color:var(--border-soft)] bg-(--surface-strong) hover:border-[color:var(--border-strong)]"
+                ? "border-(--border-strong) bg-(--surface-soft) shadow-[0_0_0_1px_rgba(20,26,56,0.04)]"
+                : "border-(--border-soft) bg-(--surface-strong) hover:border-(--border-strong)"
             }`}
           >
             <input
@@ -229,7 +229,7 @@ export function GoalSelector() {
                 {getLocalizedCopy(locale, title)}
               </h3>
               {selectedGoal === value ? (
-                <span className="rounded-full border border-[color:var(--border-soft)] bg-(--text-strong) px-2.5 py-1 text-xs font-medium text-(--text-on-accent)">
+                <span className="rounded-full border border-(--border-soft) bg-(--text-strong) px-2.5 py-1 text-xs font-medium text-(--text-on-accent)">
                   {locale === "en"
                     ? "Selected"
                     : locale === "es"

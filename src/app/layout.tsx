@@ -22,7 +22,7 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lee",
+  title: "Leyendo",
   description:
     "Import a document, read it faster, and keep your progress in control.",
 };

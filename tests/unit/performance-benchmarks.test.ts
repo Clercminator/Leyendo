@@ -53,6 +53,7 @@ describe("performance benchmark fixtures", () => {
           index: 0,
           text: `${chunkText}.`,
           tokenIndexes: [0, 1, 2, 3],
+          anchorTokenIndex: 0,
           paragraphIndex: 0,
           sentenceIndex: 0,
           sectionIndex: 0,
