@@ -36,6 +36,7 @@ interface SupabaseAuthContextValue {
   lastSyncedAt?: string;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -58,6 +59,9 @@ const defaultSupabaseAuthContext: SupabaseAuthContextValue = {
   isLoading: false,
   session: null,
   signIn: async () => {
+    throw new Error("SupabaseProvider is not mounted.");
+  },
+  signInWithGoogle: async () => {
     throw new Error("SupabaseProvider is not mounted.");
   },
   signInWithMagicLink: async () => {
@@ -266,6 +270,23 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     [supabase],
   );
 
+  const signInWithGoogle = useCallback(async () => {
+    if (!supabase) {
+      throw new Error("Supabase is not configured.");
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/account`,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+  }, [supabase]);
+
   const signInWithMagicLink = useCallback(
     async (email: string) => {
       if (!supabase) {
@@ -314,6 +335,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       lastSyncedAt,
       session,
       signIn,
+      signInWithGoogle,
       signInWithMagicLink,
       signOut,
       signUp,
@@ -329,6 +351,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       lastSyncedAt,
       session,
       signIn,
+      signInWithGoogle,
       signInWithMagicLink,
       signOut,
       signUp,

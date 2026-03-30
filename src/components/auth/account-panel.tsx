@@ -2,7 +2,14 @@
 
 import { useMemo, useState } from "react";
 
-import { Cloud, CloudUpload, KeyRound, LoaderCircle, Mail, UserRound } from "lucide-react";
+import {
+  Cloud,
+  CloudUpload,
+  KeyRound,
+  LoaderCircle,
+  Mail,
+  UserRound,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/layout/locale-provider";
@@ -32,6 +39,7 @@ export function AccountPanel() {
     isLoading,
     lastSyncedAt,
     signIn,
+    signInWithGoogle,
     signInWithMagicLink,
     signOut,
     signUp,
@@ -60,6 +68,7 @@ export function AccountPanel() {
         createAccount: "Crear cuenta",
         createAccountHint: "La sincronizacion es opcional. Sin cuenta, Leyendo sigue funcionando de forma local.",
         emailSent: "Revisa tu bandeja de entrada. El enlace magico ya fue enviado.",
+        googleSignIn: "Continuar con Google",
         magicLink: "Enviar enlace magico",
         password: "Contrasena",
         refreshSync: "Sincronizar ahora",
@@ -84,6 +93,7 @@ export function AccountPanel() {
         createAccount: "Criar conta",
         createAccountHint: "A sincronizacao e opcional. Sem conta, o Leyendo continua local.",
         emailSent: "Confira sua caixa de entrada. O link magico ja foi enviado.",
+        googleSignIn: "Continuar com Google",
         magicLink: "Enviar link magico",
         password: "Senha",
         refreshSync: "Sincronizar agora",
@@ -107,6 +117,7 @@ export function AccountPanel() {
       createAccount: "Create account",
       createAccountHint: "Sync is optional. Without an account, Leyendo still works locally.",
       emailSent: "Check your inbox. The magic link has been sent.",
+      googleSignIn: "Continue with Google",
       magicLink: "Send magic link",
       password: "Password",
       refreshSync: "Sync now",
@@ -155,6 +166,20 @@ export function AccountPanel() {
         error instanceof Error ? error.message : "Authentication failed.",
       );
     } finally {
+      setPendingAction(undefined);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setPendingAction("google");
+    setStatusMessage(undefined);
+
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Authentication failed.",
+      );
       setPendingAction(undefined);
     }
   }
@@ -376,6 +401,34 @@ export function AccountPanel() {
         </div>
 
         <div className="mt-8 grid gap-4">
+          <Button
+            variant="outline"
+            className="h-12 rounded-[1.25rem]"
+            disabled={pendingAction === "google"}
+            onClick={() => {
+              void handleGoogleSignIn();
+            }}
+          >
+            {pendingAction === "google" ? (
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            ) : (
+              <span className="text-base font-semibold">G</span>
+            )}
+            {helperCopy.googleSignIn}
+          </Button>
+
+          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.24em] text-(--text-muted)">
+            <span className="h-px flex-1 bg-(--border-soft)" />
+            <span>
+              {locale === "en"
+                ? "Or use email"
+                : locale === "es"
+                  ? "O usa email"
+                  : "Ou use email"}
+            </span>
+            <span className="h-px flex-1 bg-(--border-soft)" />
+          </div>
+
           <label className="text-sm font-medium text-(--text-strong)" htmlFor="account-email">
             Email
           </label>
