@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Manrope, Newsreader } from "next/font/google";
 
+import { SupabaseProvider } from "@/components/auth/supabase-provider";
+import { FeedbackButton } from "@/components/feedback/feedback-button";
 import { LocaleProvider } from "@/components/layout/locale-provider";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 
@@ -41,7 +43,12 @@ export default function RootLayout({
     >
       <body className="bg-background text-foreground min-h-full font-sans">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          <LocaleProvider>{children}</LocaleProvider>
+          <LocaleProvider>
+            <SupabaseProvider>
+              {children}
+              <FeedbackButton />
+            </SupabaseProvider>
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

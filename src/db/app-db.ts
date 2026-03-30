@@ -37,6 +37,14 @@ export class LeeDatabase extends Dexie {
       highlights: "id, documentId, createdAt",
       preferences: "key",
     });
+
+    this.version(3).stores({
+      documents: "id, updatedAt, sourceKind, ownerId, syncState",
+      sessions: "id, documentId, updatedAt, ownerId, syncState",
+      bookmarks: "id, documentId, createdAt, ownerId, syncState",
+      highlights: "id, documentId, createdAt, ownerId, syncState",
+      preferences: "key",
+    });
   }
 }
 

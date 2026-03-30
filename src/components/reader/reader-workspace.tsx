@@ -16,6 +16,7 @@ import {
   saveBookmark,
   saveHighlight,
 } from "@/db/repositories";
+import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { useLocale } from "@/components/layout/locale-provider";
 import { ClassicReaderView } from "@/components/reader/classic-reader-view";
 import { FocusWordView } from "@/components/reader/focus-word-view";
@@ -37,6 +38,13 @@ import {
 } from "@/features/reader/engine/navigation";
 import { deriveRemainingPlaybackMs } from "@/features/reader/engine/timing";
 import { getMatchingReadingGoal } from "@/features/reader/engine/presets";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  deleteCloudBookmark,
+  deleteCloudHighlight,
+  upsertCloudBookmarks,
+  upsertCloudHighlights,
+} from "@/lib/supabase/library-sync";
 import { useReaderStore } from "@/state/reader-store";
 import type { ReaderPreferences } from "@/types/reader";
 import { readerPresets } from "@/types/reader";
@@ -114,6 +122,8 @@ export function ReaderWorkspace({
   highlightId,
 }: ReaderWorkspaceProps) {
   const { locale } = useLocale();
+  const { user } = useSupabaseAuth();
+  const userId = user?.id;
   const {
     currentChunkIndex,
     isPlaying,
@@ -127,7 +137,7 @@ export function ReaderWorkspace({
   const [highlightNote, setHighlightNote] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const hasHydratedSessionRef = useRef(false);
-  const lastAnchorTokenRef = useRef<number>();
+  const lastAnchorTokenRef = useRef<number | undefined>(undefined);
   const {
     document,
     savedSession,
@@ -144,6 +154,7 @@ export function ReaderWorkspace({
     bookmarkId,
     highlightId,
     setActiveDocument,
+    userId,
   });
 
   const payload = document?.payload;
@@ -220,6 +231,7 @@ export function ReaderWorkspace({
     isPlaying,
     preferences,
     runtimeChunks,
+    userId,
     updatePreferences,
   });
 
@@ -369,13 +381,25 @@ export function ReaderWorkspace({
     const bookmark = await saveBookmark({
       documentId: document.id,
       label: `Bookmark ${bookmarks.length + 1}`,
+      ownerId: userId,
       chunkIndex: resolvedChunkIndex,
       tokenIndex: activeChunk.anchorTokenIndex,
       paragraphIndex: activeChunk.paragraphIndex,
       sectionIndex: activeChunk.sectionIndex,
+      syncState: userId ? "synced" : undefined,
     });
 
     prependBookmark(bookmark);
+    if (userId) {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        void upsertCloudBookmarks(supabase, userId, [bookmark]).catch(
+          (error) => {
+            console.warn("bookmark sync failed", error);
+          },
+        );
+      }
+    }
     announce(`${bookmark.label} saved.`);
   }, [
     activeChunk,
@@ -384,6 +408,7 @@ export function ReaderWorkspace({
     document,
     prependBookmark,
     resolvedChunkIndex,
+    userId,
   ]);
 
   const handleSaveHighlight = useCallback(async () => {
@@ -394,15 +419,27 @@ export function ReaderWorkspace({
     const highlight = await saveHighlight({
       documentId: document.id,
       label: `Highlight ${highlights.length + 1}`,
+      ownerId: userId,
       quote: activeChunk.text,
       note: highlightNote.trim() || undefined,
       chunkIndex: resolvedChunkIndex,
       tokenIndex: activeChunk.anchorTokenIndex,
       paragraphIndex: activeChunk.paragraphIndex,
       sectionIndex: activeChunk.sectionIndex,
+      syncState: userId ? "synced" : undefined,
     });
 
     prependHighlight(highlight);
+    if (userId) {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        void upsertCloudHighlights(supabase, userId, [highlight]).catch(
+          (error) => {
+            console.warn("highlight sync failed", error);
+          },
+        );
+      }
+    }
     setHighlightNote("");
     announce(`${highlight.label} saved.`);
   }, [
@@ -413,24 +450,47 @@ export function ReaderWorkspace({
     highlights.length,
     prependHighlight,
     resolvedChunkIndex,
+    userId,
   ]);
 
   const handleDeleteBookmark = useCallback(
     async (bookmarkIdToDelete: string) => {
+      if (userId) {
+        const supabase = getSupabaseBrowserClient();
+        if (supabase) {
+          try {
+            await deleteCloudBookmark(supabase, userId, bookmarkIdToDelete);
+          } catch (error) {
+            console.warn("cloud bookmark delete failed", error);
+          }
+        }
+      }
+
       await deleteBookmark(bookmarkIdToDelete);
       removeBookmark(bookmarkIdToDelete);
       announce("Bookmark deleted.");
     },
-    [announce, removeBookmark],
+    [announce, removeBookmark, userId],
   );
 
   const handleDeleteHighlight = useCallback(
     async (highlightIdToDelete: string) => {
+      if (userId) {
+        const supabase = getSupabaseBrowserClient();
+        if (supabase) {
+          try {
+            await deleteCloudHighlight(supabase, userId, highlightIdToDelete);
+          } catch (error) {
+            console.warn("cloud highlight delete failed", error);
+          }
+        }
+      }
+
       await deleteHighlight(highlightIdToDelete);
       removeHighlight(highlightIdToDelete);
       announce("Highlight deleted.");
     },
-    [announce, removeHighlight],
+    [announce, removeHighlight, userId],
   );
 
   const jumpToAnchor = useCallback(

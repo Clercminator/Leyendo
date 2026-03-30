@@ -11,8 +11,8 @@ export default function AboutPage() {
         <article className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur-xl">
           <h2 className="text-xl font-semibold text-white">Local-first</h2>
           <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-            Uploaded files stay on the user&apos;s device for the MVP. No
-            mandatory account, no remote library, no paid extraction services.
+            Uploaded files still open locally first. Accounts stay optional and
+            only exist for people who want cloud backup and cross-device sync.
           </p>
         </article>
         <article className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur-xl">

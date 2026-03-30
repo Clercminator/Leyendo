@@ -108,9 +108,9 @@ export default function Home() {
         pt: "Cole texto ou envie o documento que voce quer ler mais rapido.",
       }}
       description={{
-        en: "Leyendo accepts PDFs, DOCX, RTF, Markdown, TXT, and pasted text, then gives you guided, focused, phrase, and classic reading views with local progress and notes.",
-        es: "Leyendo acepta PDF, DOCX, RTF, Markdown, TXT y texto pegado, y luego te da vistas guiadas, enfocadas, por frases y clasicas con progreso y notas locales.",
-        pt: "Leyendo aceita PDF, DOCX, RTF, Markdown, TXT e texto colado, e depois oferece visualizacoes guiadas, focadas, por frases e classicas com progresso e notas locais.",
+        en: "Leyendo accepts PDFs, DOCX, RTF, Markdown, TXT, and pasted text, then gives you guided, focused, phrase, and classic reading views with local progress by default and optional cloud sync when you sign in.",
+        es: "Leyendo acepta PDF, DOCX, RTF, Markdown, TXT y texto pegado, y luego te da vistas guiadas, enfocadas, por frases y clasicas con progreso local por defecto y sincronizacion opcional en la nube al iniciar sesion.",
+        pt: "Leyendo aceita PDF, DOCX, RTF, Markdown, TXT e texto colado, e depois oferece visualizacoes guiadas, focadas, por frases e classicas com progresso local por padrao e sincronizacao opcional na nuvem ao entrar.",
       }}
     >
       <div className="space-y-10">

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { BookMarked, BookOpenText } from "lucide-react";
 
+import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { useLocale } from "@/components/layout/locale-provider";
 import {
   clearSessionForDocument,
@@ -18,7 +19,11 @@ import {
   type RecentSessionRecord,
 } from "@/db/repositories";
 import { ResumeCard } from "@/components/reader/resume-card";
-import { getLocalizedCopy } from "@/lib/locale";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  deleteCloudDocumentBundle,
+  deleteCloudSession,
+} from "@/lib/supabase/library-sync";
 import type { DocumentRecord } from "@/types/document";
 
 interface LibraryData {
@@ -85,6 +90,7 @@ function formatBookmarkLocation(
 
 export function LibraryList() {
   const { locale } = useLocale();
+  const { user } = useSupabaseAuth();
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [bookmarks, setBookmarks] = useState<RecentBookmarkRecord[]>([]);
   const [highlights, setHighlights] = useState<RecentHighlightRecord[]>([]);
@@ -172,6 +178,14 @@ export function LibraryList() {
       setError(undefined);
 
       try {
+        if (user?.id && document.ownerId === user.id) {
+          const supabase = getSupabaseBrowserClient();
+
+          if (supabase) {
+            await deleteCloudSession(supabase, user.id, document.id);
+          }
+        }
+
         await clearSessionForDocument(document.id);
         applyLibraryData(await loadLibraryData());
         setStatusMessage(`Cleared reading progress for ${document.title}.`);
@@ -181,7 +195,7 @@ export function LibraryList() {
         setPendingActionKey(undefined);
       }
     },
-    [applyLibraryData],
+    [applyLibraryData, user?.id],
   );
 
   const handleRemoveDocument = useCallback(
@@ -193,6 +207,14 @@ export function LibraryList() {
       setError(undefined);
 
       try {
+        if (user?.id && document.ownerId === user.id) {
+          const supabase = getSupabaseBrowserClient();
+
+          if (supabase) {
+            await deleteCloudDocumentBundle(supabase, user.id, document.id);
+          }
+        }
+
         await deleteDocumentAndRelatedData(document.id);
         applyLibraryData(await loadLibraryData());
         setStatusMessage(
@@ -204,7 +226,7 @@ export function LibraryList() {
         setPendingActionKey(undefined);
       }
     },
-    [applyLibraryData],
+    [applyLibraryData, user?.id],
   );
 
   if (isLoading) {

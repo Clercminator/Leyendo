@@ -31,20 +31,20 @@ export default function PrivacyPage() {
     en: [
       "No mandatory sign-in",
       "No analytics dependency",
-      "No remote document syncing",
-      "No hidden upload to a cloud account",
+      "No automatic cloud backup unless you sign in",
+      "No hidden upload of guest documents to a cloud account",
     ],
     es: [
       "Sin inicio de sesion obligatorio",
       "Sin dependencia de analitica",
-      "Sin sincronizacion remota de documentos",
-      "Sin subidas ocultas a una cuenta en la nube",
+      "Sin respaldo en la nube automatico salvo que inicies sesion",
+      "Sin subidas ocultas de documentos invitados a una cuenta en la nube",
     ],
     pt: [
       "Sem login obrigatorio",
       "Sem dependencia de analitica",
-      "Sem sincronizacao remota de documentos",
-      "Sem envio oculto para uma conta na nuvem",
+      "Sem backup automatico na nuvem a menos que voce entre",
+      "Sem envio oculto de documentos de convidado para uma conta na nuvem",
     ],
   };
 
@@ -56,14 +56,14 @@ export default function PrivacyPage() {
         pt: "Privacidade",
       }}
       title={{
-        en: "Your documents should not need a cloud account to become readable.",
-        es: "Tus documentos no deberian necesitar una cuenta en la nube para volverse legibles.",
-        pt: "Seus documentos nao deveriam precisar de uma conta na nuvem para ficarem legiveis.",
+        en: "Your documents can stay local, or sync only when you choose a cloud account.",
+        es: "Tus documentos pueden quedarse locales, o sincronizarse solo cuando eliges una cuenta en la nube.",
+        pt: "Seus documentos podem ficar locais, ou sincronizar apenas quando voce escolhe uma conta na nuvem.",
       }}
       description={{
-        en: "Leyendo extracts and processes readable content in the browser whenever possible, then keeps preferences, progress, and saved markers on this device.",
-        es: "Leyendo extrae y procesa contenido legible en el navegador cuando es posible, y guarda preferencias, progreso y marcadores en este dispositivo.",
-        pt: "Leyendo extrai e processa conteudo legivel no navegador sempre que possivel e guarda preferencias, progresso e marcadores neste dispositivo.",
+        en: "Leyendo still extracts and processes readable content in the browser whenever possible. Guest reading stays local, while signed-in users can choose to sync their library, progress, bookmarks, and highlights across devices.",
+        es: "Leyendo sigue extrayendo y procesando contenido legible en el navegador cuando es posible. La lectura como invitado sigue siendo local, mientras que los usuarios con sesion pueden elegir sincronizar biblioteca, progreso, marcadores y destacados entre dispositivos.",
+        pt: "Leyendo continua extraindo e processando conteudo legivel no navegador sempre que possivel. A leitura como convidado continua local, enquanto usuarios com sessao podem escolher sincronizar biblioteca, progresso, marcadores e destaques entre dispositivos.",
       }}
     >
       <section className="grid gap-6 lg:grid-cols-2">

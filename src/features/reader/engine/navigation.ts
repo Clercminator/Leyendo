@@ -63,18 +63,23 @@ const phraseBoundaryConnectors = new Set([
 function normalizeRuntimeChunkOptions(
   options: number | RuntimeChunkOptions,
 ): RuntimeChunkOptions {
+  const focusWindow = Math.max(
+    1,
+    Math.min(4, typeof options === "number" ? defaultReaderPreferences.focusWindow : options.focusWindow),
+  ) as RuntimeChunkOptions["focusWindow"];
+
   if (typeof options === "number") {
     return {
       mode: "classic-reader",
       chunkSize: Math.max(1, options),
-      focusWindow: defaultReaderPreferences.focusWindow,
+      focusWindow,
     };
   }
 
   return {
     mode: options.mode,
     chunkSize: Math.max(1, options.chunkSize),
-    focusWindow: Math.max(1, options.focusWindow),
+    focusWindow,
   };
 }
 

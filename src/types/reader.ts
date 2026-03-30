@@ -1,3 +1,5 @@
+import type { SyncOwnedRecord } from "@/types/sync";
+
 export const readerModes = [
   "focus-word",
   "phrase-chunk",
@@ -29,7 +31,7 @@ export interface ReaderPreferences {
   reduceMotion: boolean;
 }
 
-export interface ReadingSession {
+export interface ReadingSession extends SyncOwnedRecord {
   id: string;
   documentId: string;
   currentChunkIndex: number;
@@ -40,7 +42,7 @@ export interface ReadingSession {
   updatedAt: string;
 }
 
-export interface Bookmark {
+export interface Bookmark extends SyncOwnedRecord {
   id: string;
   documentId: string;
   label: string;
@@ -52,7 +54,7 @@ export interface Bookmark {
   createdAt: string;
 }
 
-export interface Highlight {
+export interface Highlight extends SyncOwnedRecord {
   id: string;
   documentId: string;
   label: string;

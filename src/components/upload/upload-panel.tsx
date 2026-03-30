@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { saveDocument, saveSession } from "@/db/repositories";
 import { useLocale } from "@/components/layout/locale-provider";
 import {
@@ -32,6 +33,12 @@ import {
   shouldOffloadPdfExtraction,
 } from "@/features/ingest/extract/file-text-client";
 import { getLocalizedCopy } from "@/lib/locale";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  ensureProfile,
+  upsertCloudDocuments,
+  upsertCloudSessions,
+} from "@/lib/supabase/library-sync";
 import type { DocumentBlockInput, DocumentSourceKind } from "@/types/document";
 
 const supportedTypes = [
@@ -998,6 +1005,7 @@ function createUploadFlowSteps(
 export function UploadPanel() {
   const router = useRouter();
   const { locale } = useLocale();
+  const { user } = useSupabaseAuth();
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1219,7 +1227,13 @@ export function UploadPanel() {
       );
       setStatusMessage(createSavingStatus(locale));
 
-      const record = toDocumentRecord(document);
+      const supabase = getSupabaseBrowserClient();
+      const ownerId = user?.id;
+      const record = {
+        ...toDocumentRecord(document),
+        ownerId,
+        syncState: ownerId ? ("synced" as const) : undefined,
+      };
       const session = {
         id: `${document.id}:session`,
         documentId: document.id,
@@ -1227,11 +1241,25 @@ export function UploadPanel() {
         currentTokenIndex: 0,
         currentParagraphIndex: 0,
         currentSectionIndex: 0,
+        ownerId,
         percentComplete: 0,
+        syncState: ownerId ? ("synced" as const) : undefined,
         updatedAt: new Date().toISOString(),
       };
 
       await Promise.all([saveDocument(record), saveSession(session)]);
+
+      if (ownerId && supabase) {
+        try {
+          await ensureProfile(supabase, ownerId);
+          await Promise.all([
+            upsertCloudDocuments(supabase, ownerId, [record]),
+            upsertCloudSessions(supabase, ownerId, [session]),
+          ]);
+        } catch (syncError) {
+          console.warn("document sync after upload failed", syncError);
+        }
+      }
 
       startTransition(() => {
         router.push(`/reader?document=${document.id}`);

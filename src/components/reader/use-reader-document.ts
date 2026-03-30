@@ -11,6 +11,8 @@ import {
   getHighlightsForDocument,
   getSessionForDocument,
 } from "@/db/repositories";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { hydrateRemoteDocumentToLocal } from "@/lib/supabase/library-sync";
 import type { DocumentRecord } from "@/types/document";
 import type { Bookmark, Highlight, ReadingSession } from "@/types/reader";
 
@@ -19,6 +21,7 @@ interface UseReaderDocumentOptions {
   bookmarkId?: string;
   highlightId?: string;
   setActiveDocument: (documentId?: string) => void;
+  userId?: string;
 }
 
 export function useReaderDocument({
@@ -26,6 +29,7 @@ export function useReaderDocument({
   bookmarkId,
   highlightId,
   setActiveDocument,
+  userId,
 }: UseReaderDocumentOptions) {
   const [document, setDocument] = useState<DocumentRecord>();
   const [savedSession, setSavedSession] = useState<ReadingSession>();
@@ -58,7 +62,7 @@ export function useReaderDocument({
       setIsLoading(true);
       setError(undefined);
 
-      const [record, session, targetBookmark, targetHighlight] =
+      let [record, session, targetBookmark, targetHighlight] =
         await Promise.all([
           getDocumentById(documentId),
           getSessionForDocument(documentId),
@@ -67,6 +71,36 @@ export function useReaderDocument({
             ? getHighlightById(highlightId)
             : Promise.resolve(undefined),
         ]);
+
+      if (!record?.payload && userId) {
+        const supabase = getSupabaseBrowserClient();
+
+        if (supabase) {
+          try {
+            const hydrated = await hydrateRemoteDocumentToLocal(
+              supabase,
+              userId,
+              documentId,
+            );
+
+            if (hydrated) {
+              [record, session, targetBookmark, targetHighlight] =
+                await Promise.all([
+                  getDocumentById(documentId),
+                  getSessionForDocument(documentId),
+                  bookmarkId
+                    ? getBookmarkById(bookmarkId)
+                    : Promise.resolve(undefined),
+                  highlightId
+                    ? getHighlightById(highlightId)
+                    : Promise.resolve(undefined),
+                ]);
+            }
+          } catch (error) {
+            console.warn("remote document hydration failed", error);
+          }
+        }
+      }
 
       if (cancelled) {
         return;
@@ -120,7 +154,7 @@ export function useReaderDocument({
     return () => {
       cancelled = true;
     };
-  }, [bookmarkId, documentId, highlightId, setActiveDocument]);
+  }, [bookmarkId, documentId, highlightId, setActiveDocument, userId]);
 
   return {
     document,

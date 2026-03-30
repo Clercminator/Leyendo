@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 
 import { appLocales, defaultLocale, type AppLocale } from "@/lib/locale";
 
@@ -18,15 +18,19 @@ function isAppLocale(value: string): value is AppLocale {
 }
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<AppLocale>(defaultLocale);
+  const [locale, setLocaleState] = useState<AppLocale>(() => {
+    if (typeof window === "undefined") {
+      return defaultLocale;
+    }
 
-  useEffect(() => {
     const storedLocale = window.localStorage.getItem(STORAGE_KEY);
 
     if (storedLocale && isAppLocale(storedLocale)) {
-      setLocaleState(storedLocale);
+      return storedLocale;
     }
-  }, []);
+
+    return defaultLocale;
+  });
 
   const value = useMemo<LocaleContextValue>(
     () => ({

@@ -309,7 +309,7 @@ function buildPdfLines(items: unknown[], pageIndex: number, pageWidth: number) {
   });
 
   return groups
-    .map((group) => {
+    .map<PdfLine | null>((group) => {
       const sortedGroup = [...group].sort((left, right) => left.x - right.x);
       const text = buildPdfLineText(sortedGroup);
 

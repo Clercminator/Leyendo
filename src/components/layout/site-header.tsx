@@ -8,6 +8,7 @@ import {
   BookOpenText,
   Check,
   ChevronDown,
+  Cloud,
   LibraryBig,
   Languages,
   MoonStar,
@@ -16,6 +17,8 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
+import { useSupabaseAuth } from "@/components/auth/supabase-provider";
+import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/layout/locale-provider";
 import { getLocalizedCopy, type LocalizedCopy } from "@/lib/locale";
 
@@ -34,6 +37,11 @@ const links = [
     href: "/privacy",
     label: { en: "Privacy", es: "Privacidad", pt: "Privacidade" },
     icon: ShieldCheck,
+  },
+  {
+    href: "/account",
+    label: { en: "Account", es: "Cuenta", pt: "Conta" },
+    icon: Cloud,
   },
 ] as const;
 
@@ -73,6 +81,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { locale, setLocale } = useLocale();
   const { resolvedTheme, setTheme } = useTheme();
+  const { signOut, syncStatus, user } = useSupabaseAuth();
   const [isLocaleMenuOpen, setIsLocaleMenuOpen] = useState(false);
   const localeMenuRef = useRef<HTMLDivElement>(null);
 
@@ -149,11 +158,48 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="hidden items-center gap-2 md:flex">
+            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs font-medium text-(--text-muted)">
+              {user?.email
+                ? syncStatus === "synced"
+                  ? locale === "en"
+                    ? "Cloud synced"
+                    : locale === "es"
+                      ? "Nube sincronizada"
+                      : "Nuvem sincronizada"
+                  : syncStatus === "syncing"
+                    ? locale === "en"
+                      ? "Syncing"
+                      : locale === "es"
+                        ? "Sincronizando"
+                        : "Sincronizando"
+                    : user.email
+                : locale === "en"
+                  ? "Guest mode"
+                  : locale === "es"
+                    ? "Modo invitado"
+                    : "Modo convidado"}
+            </span>
+            {user ? (
+              <Button
+                variant="ghost"
+                className="rounded-full"
+                onClick={() => {
+                  void signOut();
+                }}
+              >
+                {locale === "en"
+                  ? "Sign out"
+                  : locale === "es"
+                    ? "Cerrar sesion"
+                    : "Sair"}
+              </Button>
+            ) : null}
+          </div>
           <div className="relative z-95" ref={localeMenuRef}>
             <button
               type="button"
               aria-haspopup="menu"
-              aria-expanded={isLocaleMenuOpen ? "true" : "false"}
               onClick={() => {
                 setIsLocaleMenuOpen((currentValue) => !currentValue);
               }}
@@ -173,7 +219,6 @@ export function SiteHeader() {
 
             {isLocaleMenuOpen ? (
               <div
-                role="menu"
                 aria-label={getLocalizedCopy(locale, localeMenuLabel)}
                 className="absolute top-[calc(100%+0.75rem)] right-0 z-95 min-w-56 overflow-hidden rounded-[1.25rem] border border-(--border-soft) bg-(--surface-strong) p-2 shadow-[0_20px_60px_rgba(8,12,22,0.22)] backdrop-blur-xl"
               >
@@ -181,8 +226,6 @@ export function SiteHeader() {
                   <button
                     key={option}
                     type="button"
-                    role="menuitemradio"
-                    aria-checked={locale === option ? "true" : "false"}
                     onClick={() => {
                       setLocale(option);
                       setIsLocaleMenuOpen(false);

@@ -7,8 +7,8 @@ In plain language, the app does five things:
 - it accepts pasted text or supported files,
 - it turns that input into a structured reading model,
 - it opens the content in one of several guided reading modes,
-- it remembers progress, bookmarks, highlights, and preferences on the same device,
-- and it keeps document processing inside the browser instead of uploading private reading material to a backend.
+- it remembers progress, bookmarks, highlights, and preferences locally by default,
+- and it can optionally sync a signed-in user library across devices through Supabase while still keeping document processing in the browser.
 
 This README is meant for two audiences at the same time:
 
@@ -26,6 +26,7 @@ If you only want the quick mental model, this is it:
 5. That model is saved to IndexedDB on the device.
 6. The Reader route loads the saved model, derives mode-specific runtime chunks, and starts reading.
 7. Progress, bookmarks, highlights, and preferences are saved locally so the same browser can resume later.
+8. If the user signs in, Leyendo can sync that library and reading state across devices.
 
 That is the whole architecture in one flow.
 
@@ -49,7 +50,28 @@ Right now a user can:
 - change pace and display settings,
 - save bookmarks and highlights,
 - resume from the local library,
+- sign in to sync a library across devices when Supabase is configured,
 - remove a document and its related local reading data.
+
+## Optional Account Sync
+
+Leyendo still works without an account.
+
+Guest users keep the original local-first behavior:
+
+- document extraction and model building happen in the browser,
+- the library is stored in IndexedDB on that device,
+- progress, bookmarks, highlights, and preferences stay local.
+
+When Supabase is configured and the user signs in, Leyendo can also mirror these records to the cloud:
+
+- document records,
+- reading sessions,
+- bookmarks,
+- highlights,
+- a lightweight profile row used to keep the account self-healing.
+
+The cloud copy is there for cross-device resume. The import pipeline itself still runs locally in the browser.
 
 ## Supported Inputs And Honest Limits
 
@@ -67,7 +89,7 @@ Right now a user can:
 - legacy `.doc` Word files,
 - scanned or image-only PDFs that require OCR,
 - cloud import sources,
-- cross-device sync,
+- anonymous cloud import sources,
 - backup import and export.
 
 ### Current practical limits in code
@@ -168,7 +190,7 @@ The app turns the extracted result into a structured object so the reader does n
 
 ### Step 4: persistence
 
-The structured document and reading session are saved locally in IndexedDB.
+The structured document and reading session are saved locally in IndexedDB first. When the user signs in, Leyendo can also mirror the library, sessions, bookmarks, and highlights to Supabase.
 
 ### Step 5: reader runtime
 
@@ -176,7 +198,7 @@ The Reader screen takes the saved document and derives a mode-specific stream of
 
 ### Step 6: playback and resume
 
-As the user reads, the app updates progress, session anchors, bookmarks, highlights, and preferences locally.
+As the user reads, the app updates progress, session anchors, bookmarks, highlights, and preferences locally. Signed-in users can also push that reading state to the cloud for cross-device resume.
 
 That is the whole product loop.
 
@@ -906,6 +928,21 @@ pnpm test:e2e
 pnpm format
 ```
 
+## Supabase Setup
+
+Account sync and the feedback widget are optional at runtime, but they need Supabase configuration to work.
+
+1. Create a Supabase project.
+2. Apply the SQL in `supabase/migrations/20260330000000_add_library_sync_and_feedback.sql`.
+3. Add these public environment variables to your local and deployed app:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+If those variables are missing, Leyendo stays usable as a guest-only local app and the account sync UI will warn that Supabase is not configured.
+
 ### PDF asset sync
 
 `pdfjs-dist` needs supporting worker and asset files copied into `public/pdfjs`.
@@ -993,7 +1030,7 @@ Be honest about these. They are real.
 - There is no OCR yet for scanned PDFs.
 - PDF import preserves reading content better than exact layout.
 - Very large documents are still constrained by browser CPU, memory, and IndexedDB serialization costs.
-- Cross-device sync does not exist yet.
+- Cross-device sync depends on Supabase being configured and is not available through any non-Supabase backend.
 - Import and export for local backup do not exist yet.
 - Storage failure handling can still be improved.
 - Heuristic phrase and guided-line grouping can still produce awkward breaks on some source text.
@@ -1004,7 +1041,7 @@ If you want to extend the project, these are strong candidates:
 
 - OCR support for scanned PDFs,
 - explicit backup export and import,
-- optional sync,
+- selective sync and conflict handling improvements,
 - more reader modes,
 - richer document cleanup tools before opening the Reader,
 - better storage pressure handling,

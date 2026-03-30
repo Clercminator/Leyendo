@@ -9,6 +9,8 @@ import {
   saveSession,
 } from "@/db/repositories";
 import { deriveReaderProgress } from "@/features/reader/engine/navigation";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { upsertCloudSessions } from "@/lib/supabase/library-sync";
 import type { Chunk, DocumentRecord } from "@/types/document";
 import type { ReaderPreferences } from "@/types/reader";
 
@@ -19,6 +21,7 @@ interface UseReaderPersistenceOptions {
   isPlaying: boolean;
   preferences: ReaderPreferences;
   runtimeChunks: Chunk[];
+  userId?: string;
   updatePreferences: (changes: Partial<ReaderPreferences>) => void;
 }
 
@@ -35,6 +38,7 @@ export function useReaderPersistence({
   isPlaying,
   preferences,
   runtimeChunks,
+  userId,
   updatePreferences,
 }: UseReaderPersistenceOptions) {
   const hasHydratedPreferencesRef = useRef(false);
@@ -65,8 +69,20 @@ export function useReaderPersistence({
     }
 
     lastSavedSignatureRef.current = signature;
-    void saveSession(pendingSession);
-  }, []);
+    void saveSession(pendingSession).then(() => {
+      const supabase = getSupabaseBrowserClient();
+
+      if (!supabase || !userId) {
+        return;
+      }
+
+      void upsertCloudSessions(supabase, userId, [pendingSession]).catch(
+        (error) => {
+          console.warn("session sync failed", error);
+        },
+      );
+    });
+  }, [userId]);
 
   useEffect(() => {
     let cancelled = false;

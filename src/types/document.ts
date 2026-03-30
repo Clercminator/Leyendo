@@ -1,3 +1,5 @@
+import type { SyncOwnedRecord } from "@/types/sync";
+
 export type DocumentSourceKind =
   | "pdf"
   | "docx"
@@ -93,7 +95,7 @@ export interface DocumentModel {
   sections: Section[];
 }
 
-export interface DocumentRecord {
+export interface DocumentRecord extends SyncOwnedRecord {
   id: string;
   title: string;
   sourceKind: DocumentSourceKind;
