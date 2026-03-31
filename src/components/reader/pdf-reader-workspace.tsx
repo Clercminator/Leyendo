@@ -345,7 +345,11 @@ export function PdfReaderWorkspace({
     (pageIndex: number) => {
       const totalPages = pdfDocument?.numPages ?? 0;
 
-      if (!Number.isInteger(pageIndex) || pageIndex < 0 || pageIndex >= totalPages) {
+      if (
+        !Number.isInteger(pageIndex) ||
+        pageIndex < 0 ||
+        pageIndex >= totalPages
+      ) {
         return;
       }
 
@@ -793,7 +797,8 @@ export function PdfReaderWorkspace({
       )
       .sort(
         (left, right) =>
-          Math.abs(left - currentPageIndex) - Math.abs(right - currentPageIndex),
+          Math.abs(left - currentPageIndex) -
+          Math.abs(right - currentPageIndex),
       );
 
     if (pagesToRender.length === 0) {
@@ -876,7 +881,13 @@ export function PdfReaderWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [currentPageIndex, pageLabels, pdfDocument, requestedThumbnailPages, viewerState.rotation]);
+  }, [
+    currentPageIndex,
+    pageLabels,
+    pdfDocument,
+    requestedThumbnailPages,
+    viewerState.rotation,
+  ]);
 
   const currentPageLabel = useMemo(() => {
     return getPdfPageLabel(currentPageIndex, pageLabels);

@@ -28,20 +28,28 @@ describe("LandingReaderDemo", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/reader canvas/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/why reading deeply and reading faster can work together/i),
+      screen.getByText(
+        /why reading deeply and reading faster can work together/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/acrobat pdf mode is not part of this sample/i),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /change reading mode/i }));
+    await user.click(
+      screen.getByRole("button", { name: /change reading mode/i }),
+    );
     await user.click(screen.getByRole("button", { name: /^classic reader$/i }));
 
     const readerCanvas = screen.getByLabelText(/reader canvas/i);
 
-    expect(screen.getByLabelText(/classic reader document/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/classic reader document/i),
+    ).toBeInTheDocument();
     expect(readerCanvas.className).toContain("min-h-232");
     expect(readerCanvas.className).not.toContain("h-[58rem]");
-    expect(screen.getAllByText(/the practical payoff/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/the practical payoff/i).length).toBeGreaterThan(
+      0,
+    );
   });
 });

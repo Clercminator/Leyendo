@@ -52,11 +52,7 @@ import {
   upsertCloudHighlights,
 } from "@/lib/supabase/library-sync";
 import { useReaderStore } from "@/state/reader-store";
-import type {
-  Bookmark,
-  ReaderMode,
-  ReaderPreferences,
-} from "@/types/reader";
+import type { Bookmark, ReaderMode, ReaderPreferences } from "@/types/reader";
 import { readerModes, readerPresets } from "@/types/reader";
 
 interface ReaderWorkspaceProps {
@@ -344,7 +340,9 @@ export function ReaderWorkspace({
       return;
     }
 
-    const pageBookmark = bookmarks.find((bookmark) => bookmark.id === bookmarkId);
+    const pageBookmark = bookmarks.find(
+      (bookmark) => bookmark.id === bookmarkId,
+    );
 
     if (typeof pageBookmark?.sourcePageIndex !== "number") {
       return;
@@ -733,7 +731,12 @@ export function ReaderWorkspace({
   );
 
   const jumpToBookmark = useCallback(
-    (bookmark: Pick<Bookmark, "chunkIndex" | "label" | "sourcePageIndex" | "tokenIndex">) => {
+    (
+      bookmark: Pick<
+        Bookmark,
+        "chunkIndex" | "label" | "sourcePageIndex" | "tokenIndex"
+      >,
+    ) => {
       if (
         typeof bookmark.sourcePageIndex === "number" &&
         (runtimeChunks.length === 0 || bookmark.chunkIndex < 0)

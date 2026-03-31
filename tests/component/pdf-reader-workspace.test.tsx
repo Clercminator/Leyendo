@@ -209,9 +209,7 @@ describe("PdfReaderWorkspace", () => {
       ).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText(/still save page bookmarks/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/still save page bookmarks/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /save bookmark/i }));
 
@@ -242,9 +240,11 @@ describe("PdfReaderWorkspace", () => {
           getOutline: vi.fn().mockResolvedValue([]),
           getPage,
           getPageIndex: vi.fn().mockResolvedValue(0),
-          getPageLabels: vi.fn().mockResolvedValue(
-            Array.from({ length: 6 }, (_, index) => String(index + 1)),
-          ),
+          getPageLabels: vi
+            .fn()
+            .mockResolvedValue(
+              Array.from({ length: 6 }, (_, index) => String(index + 1)),
+            ),
           numPages: 6,
         }),
       }),

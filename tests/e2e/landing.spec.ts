@@ -2,7 +2,9 @@ import { test, expect } from "@playwright/test";
 
 import { createLargeDocumentText } from "../fixtures/large-document";
 
-async function expectDemoCardsToMatchHeight(page: Parameters<typeof test>[0]["page"]) {
+async function expectDemoCardsToMatchHeight(
+  page: Parameters<typeof test>[0]["page"],
+) {
   const copyCard = page.getByTestId("landing-reader-demo-copy");
   const readerCanvas = page.locator("#reader-canvas");
 
@@ -17,7 +19,9 @@ async function expectDemoCardsToMatchHeight(page: Parameters<typeof test>[0]["pa
   expect(copyBox).not.toBeNull();
   expect(readerBox).not.toBeNull();
 
-  const heightDelta = Math.abs((copyBox?.height ?? 0) - (readerBox?.height ?? 0));
+  const heightDelta = Math.abs(
+    (copyBox?.height ?? 0) - (readerBox?.height ?? 0),
+  );
   expect(heightDelta).toBeLessThanOrEqual(4);
 }
 

@@ -77,11 +77,11 @@ export const ReaderSidebar = memo(function ReaderSidebar({
     }
 
     if (typeof IntersectionObserver === "undefined") {
-      pdfThumbnails.slice(0, Math.min(pdfThumbnails.length, 8)).forEach(
-        (thumbnail) => {
+      pdfThumbnails
+        .slice(0, Math.min(pdfThumbnails.length, 8))
+        .forEach((thumbnail) => {
           onRequestThumbnail(thumbnail.pageIndex);
-        },
-      );
+        });
       return;
     }
 

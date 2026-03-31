@@ -74,8 +74,10 @@ function createQueryResult<T>(result: T) {
   const chain = {
     eq: vi.fn(() => chain),
     maybeSingle: vi.fn(async () => result),
-    then: (resolve: (value: T) => unknown, reject?: (reason: unknown) => unknown) =>
-      Promise.resolve(result).then(resolve, reject),
+    then: (
+      resolve: (value: T) => unknown,
+      reject?: (reason: unknown) => unknown,
+    ) => Promise.resolve(result).then(resolve, reject),
   };
 
   return chain;

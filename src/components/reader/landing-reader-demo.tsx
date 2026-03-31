@@ -257,7 +257,12 @@ export function LandingReaderDemo() {
         focusWindow: preferences.focusWindow,
         mode: preferences.mode,
       }),
-    [document, preferences.chunkSize, preferences.focusWindow, preferences.mode],
+    [
+      document,
+      preferences.chunkSize,
+      preferences.focusWindow,
+      preferences.mode,
+    ],
   );
   const resolvedChunkIndex = runtimeChunks.length
     ? clampChunkIndex(runtimeChunks.length, currentChunkIndex)
@@ -388,7 +393,14 @@ export function LandingReaderDemo() {
           />
         );
     }
-  }, [activeChunk, document, preferences.focusWindow, preferences.mode, preferences.reduceMotion, runtimeChunks]);
+  }, [
+    activeChunk,
+    document,
+    preferences.focusWindow,
+    preferences.mode,
+    preferences.reduceMotion,
+    runtimeChunks,
+  ]);
 
   if (!activeChunk || !modeView) {
     return null;
@@ -452,7 +464,8 @@ export function LandingReaderDemo() {
                 })}
               </p>
               <p className="mt-2 text-lg font-semibold text-(--text-strong)">
-                {document.sections.length} sections, {document.sentences.length} sentences
+                {document.sections.length} sections, {document.sentences.length}{" "}
+                sentences
               </p>
             </div>
           </div>
@@ -498,7 +511,12 @@ export function LandingReaderDemo() {
             es: "Leer mas rapido",
             pt: "Ler mais rapido",
           })}
-          availableModes={["focus-word", "phrase-chunk", "guided-line", "classic-reader"]}
+          availableModes={[
+            "focus-word",
+            "phrase-chunk",
+            "guided-line",
+            "classic-reader",
+          ]}
           className={canvasClassName}
           chunkSize={preferences.chunkSize}
           currentParagraphNumber={activeChunk.paragraphIndex + 1}
@@ -514,19 +532,34 @@ export function LandingReaderDemo() {
           onChangeFontScale={(delta) => {
             setPreferences((currentPreferences) => ({
               ...currentPreferences,
-              fontScale: Math.max(0.9, Math.min(1.6, Number((currentPreferences.fontScale + delta).toFixed(1)))),
+              fontScale: Math.max(
+                0.9,
+                Math.min(
+                  1.6,
+                  Number((currentPreferences.fontScale + delta).toFixed(1)),
+                ),
+              ),
             }));
           }}
           onChangeLineHeight={(delta) => {
             setPreferences((currentPreferences) => ({
               ...currentPreferences,
-              lineHeight: Math.max(1.3, Math.min(2.2, Number((currentPreferences.lineHeight + delta).toFixed(1)))),
+              lineHeight: Math.max(
+                1.3,
+                Math.min(
+                  2.2,
+                  Number((currentPreferences.lineHeight + delta).toFixed(1)),
+                ),
+              ),
             }));
           }}
           onChangeWordsPerMinute={(delta) => {
             setPreferences((currentPreferences) => ({
               ...currentPreferences,
-              wordsPerMinute: Math.max(180, Math.min(520, currentPreferences.wordsPerMinute + delta)),
+              wordsPerMinute: Math.max(
+                180,
+                Math.min(520, currentPreferences.wordsPerMinute + delta),
+              ),
             }));
           }}
           onDecreaseChunkSize={() => {
@@ -562,7 +595,9 @@ export function LandingReaderDemo() {
             );
           }}
           onRepeatChunk={() => {
-            setCurrentChunkIndex((currentIndex) => repeatChunkIndex(currentIndex));
+            setCurrentChunkIndex((currentIndex) =>
+              repeatChunkIndex(currentIndex),
+            );
           }}
           onRestart={() => {
             setIsPlaying(false);
@@ -586,7 +621,9 @@ export function LandingReaderDemo() {
             }));
           }}
           onSelectPreset={(presetId) => {
-            const preset = readerPresets.find((candidate) => candidate.id === presetId);
+            const preset = readerPresets.find(
+              (candidate) => candidate.id === presetId,
+            );
             if (!preset) {
               return;
             }
@@ -623,7 +660,10 @@ export function LandingReaderDemo() {
               reduceMotion: !currentPreferences.reduceMotion,
             }));
           }}
-          progress={deriveReaderProgress({ chunks: runtimeChunks }, resolvedChunkIndex)}
+          progress={deriveReaderProgress(
+            { chunks: runtimeChunks },
+            resolvedChunkIndex,
+          )}
         />
       </div>
     </section>
