@@ -1,0 +1,5 @@
+[     540ms] [WARNING] Supabase is not configured. Missing variables: @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[     540ms] [WARNING] - NEXT_PUBLIC_SUPABASE_URL @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[     540ms] [WARNING] - NEXT_PUBLIC_SUPABASE_ANON_KEY @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[     582ms] [WARNING] Image with src "/leyendo-logo.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431

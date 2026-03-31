@@ -66,19 +66,19 @@ export function AppShell({
           id={mainId}
           tabIndex={-1}
           className={cn(
-            "mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 py-10",
+            "mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8 xl:py-10",
             mainClassName,
           )}
         >
           {(eyebrowText || titleText || descriptionText) && (
             <section
-              className={`fade-rise mb-12 ${
+              className={`fade-rise mb-8 sm:mb-12 ${
                 centerIntro ? "mx-auto max-w-5xl text-center" : "max-w-4xl"
               }`}
             >
               {eyebrowText ? (
                 <p
-                  className={`editorial-kicker mb-4 text-(--accent-amber) ${
+                  className={`editorial-kicker mb-3 text-(--accent-amber) sm:mb-4 ${
                     centerIntro ? "justify-center" : ""
                   }`}
                 >
@@ -87,7 +87,7 @@ export function AppShell({
               ) : null}
               {titleText ? (
                 <h1
-                  className={`font-heading text-5xl leading-[0.96] font-semibold tracking-[-0.04em] text-balance text-(--text-strong) sm:text-6xl xl:text-7xl ${
+                  className={`font-heading text-4xl leading-[0.98] font-semibold tracking-[-0.04em] text-balance text-(--text-strong) sm:text-5xl xl:text-7xl ${
                     centerIntro ? "mx-auto max-w-5xl" : "max-w-4xl"
                   }`}
                 >
@@ -96,7 +96,7 @@ export function AppShell({
               ) : null}
               {descriptionText ? (
                 <p
-                  className={`mt-6 text-lg leading-8 text-(--text-muted) sm:text-xl ${
+                  className={`mt-4 text-base leading-7 text-(--text-muted) sm:mt-6 sm:text-xl sm:leading-8 ${
                     centerIntro ? "mx-auto max-w-3xl" : "max-w-3xl"
                   }`}
                 >

@@ -1,5 +1,92 @@
 let isPdfWorkerConfigured = false;
 
+function installArrayAtFallback() {
+  if (typeof Array.prototype.at === "function") {
+    return;
+  }
+
+  Object.defineProperty(Array.prototype, "at", {
+    configurable: true,
+    value: function at(index: number) {
+      const length = this.length >>> 0;
+
+      if (length === 0) {
+        return undefined;
+      }
+
+      const normalizedIndex = Math.trunc(index) || 0;
+      const resolvedIndex = normalizedIndex < 0 ? length + normalizedIndex : normalizedIndex;
+
+      if (resolvedIndex < 0 || resolvedIndex >= length) {
+        return undefined;
+      }
+
+      return this[resolvedIndex];
+    },
+    writable: true,
+  });
+}
+
+function installStringAtFallback() {
+  if (typeof String.prototype.at === "function") {
+    return;
+  }
+
+  Object.defineProperty(String.prototype, "at", {
+    configurable: true,
+    value: function at(index: number) {
+      const value = String(this);
+      const length = value.length;
+
+      if (length === 0) {
+        return undefined;
+      }
+
+      const normalizedIndex = Math.trunc(index) || 0;
+      const resolvedIndex = normalizedIndex < 0 ? length + normalizedIndex : normalizedIndex;
+
+      if (resolvedIndex < 0 || resolvedIndex >= length) {
+        return undefined;
+      }
+
+      return value.charAt(resolvedIndex);
+    },
+    writable: true,
+  });
+}
+
+function installPromiseWithResolversFallback() {
+  if (typeof Promise.withResolvers === "function") {
+    return;
+  }
+
+  Object.defineProperty(Promise, "withResolvers", {
+    configurable: true,
+    value: function withResolvers<Value>() {
+      let resolve!: (value: Value | PromiseLike<Value>) => void;
+      let reject!: (reason?: unknown) => void;
+
+      const promise = new Promise<Value>((nextResolve, nextReject) => {
+        resolve = nextResolve;
+        reject = nextReject;
+      });
+
+      return {
+        promise,
+        reject,
+        resolve,
+      };
+    },
+    writable: true,
+  });
+}
+
+function installPdfJsCompatibilityFallbacks() {
+  installArrayAtFallback();
+  installStringAtFallback();
+  installPromiseWithResolversFallback();
+}
+
 function getPdfAssetOrigin() {
   if (
     typeof globalThis.origin === "string" &&
@@ -46,6 +133,7 @@ function isPdfWorkerContext() {
 }
 
 export async function loadPdfJs() {
+  installPdfJsCompatibilityFallbacks();
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   if (!isPdfWorkerConfigured) {
@@ -63,5 +151,6 @@ export async function loadPdfJs() {
 }
 
 export async function loadPdfJsViewer() {
-  return import("pdfjs-dist/web/pdf_viewer.mjs");
+  installPdfJsCompatibilityFallbacks();
+  return import("pdfjs-dist/legacy/web/pdf_viewer.mjs");
 }

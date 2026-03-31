@@ -43,15 +43,15 @@ export function GuidedLineView({ chunk, chunks, focusWindow }: GuidedLineViewPro
   }, [chunk.index, chunk.paragraphIndex, chunks, focusWindow]);
 
   return (
-    <div className="reader-panel flex h-full flex-1 flex-col rounded-[1.75rem] border border-white/10 px-6 py-8 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-10 sm:py-10">
-      <p className="reader-accent text-sm tracking-[0.28em] uppercase">
+    <div className="reader-panel flex h-full flex-1 flex-col rounded-[1.5rem] border border-white/10 px-4 py-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:rounded-[1.75rem] sm:px-10 sm:py-10">
+      <p className="reader-accent text-xs tracking-[0.24em] uppercase sm:text-sm sm:tracking-[0.28em]">
         {getLocalizedCopy(locale, {
           en: "Guided Line",
           es: "Linea guiada",
           pt: "Linha guiada",
         })}
       </p>
-      <div className="mt-6 flex flex-1 flex-col justify-center space-y-4">
+      <div className="mt-4 flex flex-1 flex-col justify-center space-y-3 sm:mt-6 sm:space-y-4">
         {paragraphChunks.slice(visibleStart, visibleEnd + 1).map((lineChunk, lineOffset) => {
           const lineIndex = visibleStart + lineOffset;
           const isActiveLine = lineIndex === activeLineIndex;
@@ -59,7 +59,7 @@ export function GuidedLineView({ chunk, chunks, focusWindow }: GuidedLineViewPro
           return (
             <div
               key={lineChunk.index}
-              className={`rounded-2xl px-4 py-3 transition ${
+              className={`rounded-[1.1rem] px-3 py-2.5 transition sm:rounded-2xl sm:px-4 sm:py-3 ${
                 isActiveLine
                   ? "border border-white/10 bg-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]"
                   : "bg-white/3 opacity-55"
@@ -68,8 +68,8 @@ export function GuidedLineView({ chunk, chunks, focusWindow }: GuidedLineViewPro
               <p
                 className={`reader-guided-body ${
                   isActiveLine
-                    ? "text-xl font-medium text-white sm:text-2xl"
-                    : "reader-muted text-lg sm:text-xl"
+                    ? "text-lg font-medium text-white sm:text-2xl"
+                    : "reader-muted text-base sm:text-xl"
                 }`}
               >
                 {lineChunk.text}
@@ -78,7 +78,7 @@ export function GuidedLineView({ chunk, chunks, focusWindow }: GuidedLineViewPro
           );
         })}
       </div>
-      <p className="reader-muted mt-6 text-sm leading-7">
+      <p className="reader-muted mt-5 text-sm leading-6 sm:mt-6 sm:leading-7">
         {getLocalizedCopy(locale, {
           en: "Follow the active line while nearby lines stay visible, so you keep paragraph context without scanning the whole page.",
           es: "Sigue la linea activa mientras las lineas cercanas siguen visibles para mantener el contexto del parrafo sin recorrer toda la pagina.",

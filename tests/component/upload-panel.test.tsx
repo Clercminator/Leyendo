@@ -356,6 +356,37 @@ describe("UploadPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a clear browser compatibility message instead of a raw Safari PDF error", async () => {
+    detectDocumentSourceKind.mockReturnValue(
+      "pdf" satisfies DocumentSourceKind,
+    );
+    extractDocumentFromFileAsync.mockRejectedValue(
+      new Error("undefined is not a function (near '...e.at...')"),
+    );
+
+    render(<UploadPanel />);
+
+    await userEvent.click(
+      screen.getByRole("radio", { name: /upload a document/i }),
+    );
+
+    await userEvent.upload(
+      uploadFileInput(),
+      new File(["Imported PDF text."], "sample.pdf", {
+        type: "application/pdf",
+      }),
+    );
+
+    const alert = await screen.findByRole("alert");
+
+    expect(alert).toHaveTextContent(/browser could not open that pdf/i);
+    expect(alert).toHaveTextContent(
+      /pdf may be fine, but this browser version does not support/i,
+    );
+    expect(alert).toHaveTextContent(/update the browser or your phone/i);
+    expect(alert).not.toHaveTextContent(/undefined is not a function/i);
+  });
+
   it("shows an estimated wait while the first reader open is still being prepared", async () => {
     detectDocumentSourceKind.mockReturnValue(
       "pdf" satisfies DocumentSourceKind,

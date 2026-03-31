@@ -176,8 +176,8 @@ export const ReaderSidebar = memo(function ReaderSidebar({
 
   return (
     <aside aria-label="Reader details" className="relative z-0">
-      <section className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl">
-        <p className="text-sm tracking-[0.28em] text-(--accent-amber) uppercase">
+      <section className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-card) p-4 backdrop-blur-xl sm:rounded-[1.75rem] sm:p-6">
+        <p className="text-xs tracking-[0.24em] text-(--accent-amber) uppercase sm:text-sm sm:tracking-[0.28em]">
           {getLocalizedCopy(locale, {
             en: "Highlights and bookmarks",
             es: "Destacados y marcadores",
@@ -207,9 +207,9 @@ export const ReaderSidebar = memo(function ReaderSidebar({
                 es: "Agrega contexto, una idea clave o un recordatorio antes de guardar este destacado.",
                 pt: "Adicione contexto, um ponto-chave ou um lembrete antes de salvar este destaque.",
               })}
-              className="mt-3 min-h-28 w-full rounded-2xl border border-(--border-soft) bg-(--surface-input) px-4 py-3 text-sm text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+              className="mt-3 min-h-24 w-full rounded-2xl border border-(--border-soft) bg-(--surface-input) px-4 py-3 text-sm text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none sm:min-h-28"
             />
-            <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+            <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
               {getLocalizedCopy(locale, {
                 en: "Highlights keep the active chunk anchored, so reopening still lands on the right passage even if chunk size changes later.",
                 es: "Los destacados mantienen el bloque activo anclado, asi que al reabrir sigues llegando al pasaje correcto aunque cambie el tamano del bloque.",
@@ -254,7 +254,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
 
         {notice ? (
           <div
-            className={`mt-5 rounded-2xl border px-4 py-4 ${
+            className={`mt-4 rounded-2xl border px-4 py-4 sm:mt-5 ${
               notice.tone === "warning"
                 ? "border-amber-300/70 bg-amber-50 text-amber-950"
                 : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong)"
@@ -267,7 +267,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
           </div>
         ) : null}
 
-        <div className="mt-5 space-y-5">
+        <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
           {pdfThumbnails && pdfThumbnails.length > 0 ? (
             <div>
               <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
@@ -373,7 +373,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
               })}
             </p>
             {highlights.length === 0 ? (
-              <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+              <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
                 {getLocalizedCopy(locale, {
                   en: "Save a highlight to keep the current quoted passage and note on this device.",
                   es: "Guarda un destacado para conservar el pasaje actual y su nota en este dispositivo.",
@@ -438,7 +438,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
               })}
             </p>
             {bookmarks.length === 0 ? (
-              <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+              <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
                 {getLocalizedCopy(locale, {
                   en: "Save a bookmark to return to this exact reading position later.",
                   es: "Guarda un marcador para volver a esta posicion exacta mas tarde.",

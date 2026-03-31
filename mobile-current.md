@@ -1,0 +1,264 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - link "Skip to content" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - generic [ref=e4]:
+      - banner [ref=e5]:
+        - generic [ref=e6]:
+          - link "Leyendo logo Leyendo" [ref=e7] [cursor=pointer]:
+            - /url: /
+            - img "Leyendo logo" [ref=e9]
+            - paragraph [ref=e11]: Leyendo
+          - generic [ref=e13]:
+            - button "Menu" [expanded] [active] [ref=e14] [cursor=pointer]:
+              - img [ref=e354]
+              - generic [ref=e16]: Menu
+            - generic [ref=e357]:
+              - paragraph [ref=e358]: Navegacion
+              - generic [ref=e359]:
+                - link "Lector" [ref=e360] [cursor=pointer]:
+                  - /url: /reader
+                  - img [ref=e361]
+                  - text: Lector
+                - link "Biblioteca" [ref=e363] [cursor=pointer]:
+                  - /url: /library
+                  - img [ref=e364]
+                  - text: Biblioteca
+                - link "Privacidad" [ref=e367] [cursor=pointer]:
+                  - /url: /privacy
+                  - img [ref=e368]
+                  - text: Privacidad
+                - link "Cuenta" [ref=e371] [cursor=pointer]:
+                  - /url: /account
+                  - img [ref=e372]
+                  - text: Cuenta
+              - generic [ref=e374]:
+                - paragraph [ref=e375]: Cuenta
+                - paragraph [ref=e376]: Modo invitado
+              - generic [ref=e377]:
+                - button "Idioma ES" [ref=e379] [cursor=pointer]:
+                  - generic [ref=e380]:
+                    - img [ref=e381]
+                    - generic [ref=e385]: Idioma
+                  - generic [ref=e386]:
+                    - generic [ref=e387]: ES
+                    - img [ref=e388]
+                - generic [ref=e390]:
+                  - button "Claro" [ref=e391] [cursor=pointer]:
+                    - img [ref=e392]
+                    - generic [ref=e398]: Claro
+                  - button "Oscuro" [ref=e399] [cursor=pointer]:
+                    - img [ref=e400]
+                    - generic [ref=e402]: Oscuro
+      - main [ref=e17]:
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: Lector para documentos reales
+          - heading "Pega texto o sube el documento que quieres leer mas rapido." [level=1] [ref=e285]
+          - paragraph [ref=e21]: Leyendo acepta PDF, DOCX, RTF, Markdown, TXT y texto pegado, y luego te da vistas guiadas, enfocadas, por frases y clasicas con progreso local por defecto y sincronizacion opcional en la nube al iniciar sesion.
+        - generic [ref=e22]:
+          - generic [ref=e24]:
+            - radiogroup "Document input method" [ref=e25]:
+              - generic [ref=e26] [cursor=pointer]:
+                - radio "Subir un documento Trae un PDF, DOCX, RTF o Markdown y manten todo en este dispositivo." [ref=e286]
+                - img [ref=e29]
+                - heading "Subir un documento" [level=3] [ref=e287]
+                - paragraph [ref=e33]: Trae un PDF, DOCX, RTF o Markdown y manten todo en este dispositivo.
+              - generic [ref=e34] [cursor=pointer]:
+                - radio "Pegar texto al instante Pega texto de un articulo, notas o un borrador y empieza a leer sin configuracion extra." [checked] [ref=e288]
+                - img [ref=e37]
+                - heading "Pegar texto al instante" [level=3] [ref=e289]
+                - paragraph [ref=e41]: Pega texto de un articulo, notas o un borrador y empieza a leer sin configuracion extra.
+            - generic [ref=e42]:
+              - generic [ref=e43] [cursor=pointer]:
+                - text: Titulo del documento
+                - textbox "Titulo del documento" [ref=e290]:
+                  - /placeholder: Dale un nombre corto al documento
+              - generic [ref=e45] [cursor=pointer]:
+                - text: Pegar texto
+                - textbox "Pegar texto" [ref=e291]:
+                  - /placeholder: Pega texto aqui para crear una sesion de lectura local
+              - generic [ref=e47]:
+                - button "Limpiar" [ref=e292] [cursor=pointer]
+                - button "Abrir en el lector" [ref=e293] [cursor=pointer]
+            - generic [ref=e50]:
+              - generic [ref=e51]: PDF con texto seleccionable
+              - generic [ref=e52]: DOCX
+              - generic [ref=e53]: RTF
+              - generic [ref=e54]: Markdown
+              - generic [ref=e55]: Texto pegado
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - paragraph [ref=e58]: Prueba el lector primero
+              - heading "Usa una muestra real antes de importar tu propio documento." [level=2] [ref=e294]
+              - paragraph [ref=e60]: Esta demo integrada se abre al instante para que compares Palabra foco, Bloques de frases, Linea guiada y Lector clasico antes de usar tu propio material.
+              - generic [ref=e61]:
+                - generic [ref=e62]:
+                  - img [ref=e64]
+                  - generic [ref=e67]:
+                    - paragraph [ref=e68]: Articulo de prueba
+                    - paragraph [ref=e69]: Por que leer con profundidad y leer mas rapido pueden funcionar juntos
+                - generic [ref=e70]:
+                  - generic [ref=e71]:
+                    - paragraph [ref=e72]: Inicio recomendado
+                    - paragraph [ref=e73]: Phrase Chunk at 320 WPM
+                  - generic [ref=e74]:
+                    - paragraph [ref=e75]: Estructura
+                    - paragraph [ref=e76]: 5 sections, 22 sentences
+              - generic [ref=e77]:
+                - generic [ref=e78]:
+                  - img [ref=e79]
+                  - heading "Que probar en sesenta segundos" [level=3] [ref=e295]
+                - list [ref=e83]:
+                  - listitem [ref=e296]:
+                    - img [ref=e297]
+                    - generic [ref=e299]: Cambia de modo para notar como cambia el ritmo al pasar del foco a los grupos de frases.
+                  - listitem [ref=e300]:
+                    - img [ref=e301]
+                    - generic [ref=e303]: Usa los controles de reproduccion para ver si una velocidad un poco mayor mejora la atencion en vez de romperla.
+                  - listitem [ref=e304]:
+                    - img [ref=e305]
+                    - generic [ref=e307]: Abre Lector clasico para comprobar que el mismo pasaje sigue siendo claro cuando necesitas recuperar todo el contexto.
+              - paragraph [ref=e96]: El texto de muestra sirve solo para practicar. Importa tu propio PDF o texto cuando quieras guardar progreso, marcadores, destacados, sincronizacion o la vista Acrobat PDF.
+              - generic [ref=e97]: El modo Acrobat PDF no forma parte de esta muestra porque necesita el archivo PDF original y sus paginas. Lo veras despues de importar un PDF real y abrirlo en el lector.
+            - generic [ref=e98]:
+              - status [ref=e99]: Demo del lector lista.
+              - region "Lienzo de lectura" [ref=e308]:
+                - heading "Lienzo de lectura" [level=2] [ref=e309]
+                - generic [ref=e102]:
+                  - generic [ref=e103]:
+                    - generic [ref=e104]:
+                      - button "Cambiar modo de lectura" [ref=e310] [cursor=pointer]:
+                        - text: Bloques de frases
+                        - img [ref=e107]
+                      - button "Cambiar ajuste" [ref=e311] [cursor=pointer]:
+                        - text: Personalizado
+                        - img [ref=e111]
+                      - button "Cambiar tema" [ref=e312] [cursor=pointer]:
+                        - text: Ascuas
+                        - img [ref=e115]
+                      - button "Entrar a pantalla completa" [ref=e313] [cursor=pointer]:
+                        - img [ref=e118]
+                        - text: Pantalla completa
+                    - generic [ref=e123]:
+                      - generic [ref=e124]: Parrafo 1
+                      - generic [ref=e125]: 0% completado
+                      - generic [ref=e126]: 22 oraciones
+                      - generic [ref=e127]: Reproduccion pausada
+                      - 'button "Tiempo restante: Quedan 1m 17s" [ref=e314] [cursor=pointer]':
+                        - img [ref=e129]
+                        - text: Quedan 1m 17s
+                    - paragraph [ref=e132]: "Objetivo actual: Leer mas rapido. Puedes ajustar los controles sin perder el progreso guardado."
+                  - generic [ref=e135]:
+                    - paragraph [ref=e136]: Bloques de frases
+                    - generic [ref=e137]:
+                      - paragraph [ref=e138]
+                      - heading "Por que leer con profundidad y leer mas rapido pueden funcionar juntos" [level=2] [ref=e315]:
+                        - generic [ref=e141]: Por que leer
+                        - generic [ref=e142]: con profundidad y leer mas
+                        - generic [ref=e143]: rapido pueden funcionar juntos
+                      - paragraph [ref=e144]: Leer es uno de los pocos habitos que mejora al mismo tiempo el vocabulario, el conocimiento general, el reconocimiento de patrones y la memoria a largo plazo.
+                    - paragraph [ref=e145]: Lee en grupos de frases naturales con una cadencia mas calmada que el enfoque palabra por palabra.
+                - generic "Reader transport and annotation controls" [ref=e146]:
+                  - generic [ref=e147]:
+                    - button "Guardar" [ref=e316] [cursor=pointer]:
+                      - img [ref=e150]
+                      - text: Guardar
+                      - img [ref=e152]
+                    - button "Reproducir" [ref=e317] [cursor=pointer]:
+                      - img [ref=e155]
+                      - text: Reproducir
+                    - button "Anterior" [ref=e318] [cursor=pointer]:
+                      - img [ref=e158]
+                      - text: Anterior
+                    - button "Siguiente" [ref=e319] [cursor=pointer]:
+                      - text: Siguiente
+                      - img [ref=e161]
+                    - button "Ajustes de escala tipografica" [ref=e320] [cursor=pointer]:
+                      - text: Escala tipografica
+                      - generic [ref=e165]: 1.0x
+                      - img [ref=e166]
+                    - button "Ajustes de altura de linea" [ref=e321] [cursor=pointer]:
+                      - text: Altura de linea
+                      - generic [ref=e170]: "1.6"
+                      - img [ref=e171]
+                    - button "Ajustes de reproduccion" [ref=e322] [cursor=pointer]:
+                      - text: Reproduccion
+                      - generic [ref=e175]: 320 WPM
+                      - generic [ref=e176]: •
+                      - generic [ref=e177]: 3 palabras
+                    - button "Mas acciones" [ref=e323] [cursor=pointer]:
+                      - text: Mas
+                      - img [ref=e181]
+          - generic [ref=e183]:
+            - generic [ref=e184]:
+              - generic [ref=e185]:
+                - img [ref=e186]
+                - text: Pega o sube. Lee con control.
+              - heading "Convierte un documento denso en una sesion de lectura mas calmada." [level=2] [ref=e324]
+              - paragraph [ref=e190]: Pega texto de un articulo o sube un PDF, DOCX, RTF, Markdown o TXT y cambia entre modos de lectura sin perder progreso, destacados ni marcadores.
+              - generic [ref=e192]:
+                - link "Importar documento" [ref=e325] [cursor=pointer]:
+                  - /url: "#upload-panel"
+                  - img [ref=e195]
+                  - text: Importar documento
+                - link "Abrir biblioteca" [ref=e326] [cursor=pointer]:
+                  - /url: /library
+                  - img [ref=e198]
+                  - text: Abrir biblioteca
+            - generic [ref=e202]:
+              - paragraph [ref=e203]: Flujo en tres pasos
+              - heading "Lo que pasa despues de importar" [level=2] [ref=e327]
+              - list [ref=e205]:
+                - listitem [ref=e206]:
+                  - generic [ref=e207]: "1"
+                  - generic [ref=e208]: Pega texto o sube un archivo
+                - listitem [ref=e209]:
+                  - generic [ref=e210]: "2"
+                  - generic [ref=e211]: Elige objetivo y modo de lectura
+                - listitem [ref=e212]:
+                  - generic [ref=e213]: "3"
+                  - generic [ref=e214]: Abre el lector y conserva tu lugar
+              - list [ref=e216]:
+                - listitem [ref=e328]:
+                  - img [ref=e329]
+                  - generic [ref=e332]: Abre el documento en un lector pensado para ritmo, bloques y vuelta rapida
+                - listitem [ref=e333]:
+                  - img [ref=e334]
+                  - generic [ref=e337]: Cambia de vista cuando necesites mas enfoque o mas contexto
+                - listitem [ref=e338]:
+                  - img [ref=e339]
+                  - generic [ref=e342]: Vuelve despues desde la biblioteca con tu progreso intacto
+                - listitem [ref=e343]:
+                  - img [ref=e344]
+                  - generic [ref=e347]: Mantiene procesamiento, progreso y notas en este dispositivo
+          - generic [ref=e237]:
+            - generic [ref=e238]:
+              - paragraph [ref=e239]: Modos de lectura
+              - heading "Elige la vista que encaje con el documento y tu nivel de atencion." [level=2] [ref=e348]
+            - generic [ref=e241]:
+              - article [ref=e242]:
+                - img [ref=e244]
+                - heading "Palabra foco" [level=3] [ref=e349]
+                - paragraph [ref=e249]: Una palabra a la vez para maxima concentracion y menos movimiento ocular.
+                - paragraph [ref=e250]: Ideal para concentracion profunda
+              - article [ref=e251]:
+                - img [ref=e253]
+                - heading "Bloques de frases" [level=3] [ref=e350]
+                - paragraph [ref=e256]: Pequenos grupos de palabras para un flujo mas natural.
+                - paragraph [ref=e257]: Ideal para velocidad equilibrada
+              - article [ref=e258]:
+                - img [ref=e260]
+                - heading "Linea guiada" [level=3] [ref=e351]
+                - paragraph [ref=e267]: Un enfasis en movimiento sobre una linea o grupo corto de lineas.
+                - paragraph [ref=e268]: Ideal para comprension con guia visual
+              - article [ref=e269]:
+                - img [ref=e271]
+                - heading "Lector clasico" [level=3] [ref=e352]
+                - paragraph [ref=e273]: Una vista mas calmada con controles utiles siempre cerca.
+                - paragraph [ref=e274]: Ideal para comodidad y recuperacion
+  - button "Feedback" [ref=e275] [cursor=pointer]:
+    - img
+    - text: Feedback
+  - button "Open Next.js Dev Tools" [ref=e281] [cursor=pointer]:
+    - img [ref=e282]
+  - alert [ref=e353]

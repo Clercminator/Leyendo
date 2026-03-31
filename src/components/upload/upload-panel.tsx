@@ -105,6 +105,11 @@ const uploadFailureReasons = [
     pt: "PDFs protegidos por senha precisam ser desbloqueados antes da importacao.",
   },
   {
+    en: "Older browsers may need an update before PDF import works reliably.",
+    es: "Los navegadores mas antiguos pueden necesitar una actualizacion para que la importacion de PDF funcione bien.",
+    pt: "Navegadores mais antigos podem precisar de atualizacao para que a importacao de PDF funcione bem.",
+  },
+  {
     en: "Multi-column pages, tables, forms, footnotes, headers, and page numbers may import with rough formatting.",
     es: "Las paginas con varias columnas, tablas, formularios, notas al pie, encabezados y numeros de pagina pueden importarse con formato irregular.",
     pt: "Paginas com varias colunas, tabelas, formularios, notas de rodape, cabecalhos e numeros de pagina podem ser importadas com formatacao irregular.",
@@ -725,12 +730,60 @@ function createSubmissionErrorStatus(
   };
 }
 
+function isPdfBrowserCompatibilityError(message: string) {
+  return (
+    message.includes("this browser cannot process pdf") ||
+    message.includes("this browser can't process pdf") ||
+    message.includes("update the browser") ||
+    message.includes("another device") ||
+    message.includes("object doesn't support property or method 'at'") ||
+    message.includes("can't find variable: structuredclone") ||
+    message.includes("promise.withresolvers") ||
+    message.includes("array.prototype.at") ||
+    message.includes("string.prototype.at") ||
+    (message.includes("undefined is not a function") &&
+      (message.includes(".at") ||
+        message.includes("withresolvers") ||
+        message.includes("structuredclone")))
+  );
+}
+
 function createSelectionErrorStatus(
   locale: "en" | "es" | "pt",
   error: unknown,
 ): UploadStatusMessage {
   if (error instanceof Error) {
     const normalizedMessage = error.message.toLowerCase();
+
+    if (isPdfBrowserCompatibilityError(normalizedMessage)) {
+      return {
+        tone: "error",
+        eyebrow:
+          locale === "en"
+            ? "Needs attention"
+            : locale === "es"
+              ? "Necesita atencion"
+              : "Precisa de atencao",
+        title:
+          locale === "en"
+            ? "This browser could not open that PDF"
+            : locale === "es"
+              ? "Este navegador no pudo abrir ese PDF"
+              : "Este navegador nao conseguiu abrir esse PDF",
+        detail:
+          locale === "en"
+            ? "The PDF may be fine, but this browser version does not support one of the tools Leyendo needs to read it."
+            : locale === "es"
+              ? "Puede que el PDF este bien, pero esta version del navegador no admite una de las herramientas que Leyendo necesita para leerlo."
+              : "O PDF pode estar normal, mas esta versao do navegador nao suporta uma das ferramentas que o Leyendo precisa para le-lo.",
+        nextStep:
+          locale === "en"
+            ? "Update the browser or your phone, or try the upload again from another browser or a desktop device."
+            : locale === "es"
+              ? "Actualiza el navegador o el telefono, o vuelve a intentarlo desde otro navegador o desde un equipo de escritorio."
+              : "Atualize o navegador ou o telefone, ou tente novamente em outro navegador ou em um computador.",
+      };
+    }
 
     if (
       normalizedMessage.includes("password") ||

@@ -82,17 +82,17 @@ export function ClassicReaderView({
   });
 
   return (
-    <div className="reader-panel flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-white/10 px-6 py-8 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-10 sm:py-10">
+    <div className="reader-panel flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/10 px-4 py-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:rounded-[1.75rem] sm:px-10 sm:py-10">
       <div className="shrink-0">
-        <p className="reader-accent text-sm tracking-[0.28em] uppercase">
+        <p className="reader-accent text-xs tracking-[0.24em] uppercase sm:text-sm sm:tracking-[0.28em]">
           {classicReaderLabel}
         </p>
       </div>
       <div
         aria-label={viewportLabel}
-        className="mt-5 flex-1 overflow-y-auto overscroll-contain pr-2 sm:pr-4"
+        className="mt-4 flex-1 overflow-y-auto overscroll-contain pr-1.5 sm:mt-5 sm:pr-4"
       >
-        <div className="space-y-4 pb-4">
+        <div className="space-y-3 pb-3 sm:space-y-4 sm:pb-4">
           {renderedBlocks.map(({ activeTokenIndexes, block, isActive, tokens }) => {
             const body = renderTokens(tokens, activeTokenIndexes);
             const isCentered = block.alignment === "center";
@@ -109,17 +109,17 @@ export function ClassicReaderView({
                 key={block.index}
                 ref={isActive ? activeParagraphRef : null}
                 data-reader-classic-active={isActive ? "true" : undefined}
-                className={`scroll-mt-6 rounded-[1.35rem] transition ${
+                className={`scroll-mt-4 rounded-[1.15rem] transition sm:scroll-mt-6 sm:rounded-[1.35rem] ${
                   isActive
-                    ? `${reduceMotion ? "reader-active-paragraph" : "reader-active-paragraph reader-active-paragraph-breathe"} px-5 py-4`
+                    ? `${reduceMotion ? "reader-active-paragraph" : "reader-active-paragraph reader-active-paragraph-breathe"} px-4 py-3 sm:px-5 sm:py-4`
                     : block.kind === "heading"
-                      ? "px-2 py-2"
-                      : "px-2 py-3"
+                      ? "px-1 py-1.5 sm:px-2 sm:py-2"
+                      : "px-1 py-2 sm:px-2 sm:py-3"
                 }`}
               >
                 {block.kind === "heading" ? (
                   <h3
-                    className={`font-heading text-3xl font-semibold tracking-tight text-white sm:text-4xl ${
+                    className={`font-heading text-2xl font-semibold tracking-tight text-white sm:text-4xl ${
                       isCentered ? "text-center" : "text-left"
                     }`}
                   >

@@ -182,19 +182,19 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-90 border-b border-(--border-soft) bg-(--surface-overlay) shadow-[0_14px_40px_rgba(8,12,22,0.08)] backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-6 py-4">
-        <Link href="/" className="flex min-w-0 shrink items-center gap-4">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.35rem] border border-(--border-soft) bg-[radial-gradient(circle_at_30%_20%,rgba(120,231,255,0.2),transparent_55%),linear-gradient(160deg,rgba(17,34,58,0.95),rgba(8,19,29,0.98))] shadow-[0_20px_48px_rgba(6,12,24,0.3)]">
+      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+        <Link href="/" className="flex min-w-0 shrink items-center gap-3 sm:gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.15rem] border border-(--border-soft) bg-[radial-gradient(circle_at_30%_20%,rgba(120,231,255,0.2),transparent_55%),linear-gradient(160deg,rgba(17,34,58,0.95),rgba(8,19,29,0.98))] shadow-[0_20px_48px_rgba(6,12,24,0.3)] sm:h-14 sm:w-14 sm:rounded-[1.35rem]">
             <Image
               src="/leyendo-logo.svg"
               alt="Leyendo logo"
               width={44}
               height={44}
-              className="h-11 w-11 shrink-0"
+              className="h-9 w-9 shrink-0 sm:h-11 sm:w-11"
             />
           </span>
           <div className="min-w-0">
-            <p className="text-[0.78rem] tracking-[0.22em] text-(--text-muted) uppercase">
+            <p className="text-[0.72rem] tracking-[0.18em] text-(--text-muted) uppercase sm:text-[0.78rem] sm:tracking-[0.22em]">
               Leyendo
             </p>
             <p className="hidden text-sm leading-5 text-(--text-strong) lg:block">
@@ -224,7 +224,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           <div className="hidden items-center gap-2 2xl:flex">
             <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs font-medium text-(--text-muted)">
               {syncStatusLabel}
@@ -360,7 +360,7 @@ export function SiteHeader() {
                 onClick={() => {
                   setIsHeaderMenuOpen(false);
                 }}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3.5 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4"
               >
                 <X className="h-4 w-4 text-(--accent-sky)" />
                 <span>{getLocalizedCopy(locale, menuLabel)}</span>
@@ -373,7 +373,7 @@ export function SiteHeader() {
                 onClick={() => {
                   setIsHeaderMenuOpen(true);
                 }}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3.5 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4"
               >
                 <Menu className="h-4 w-4 text-(--accent-sky)" />
                 <span>{getLocalizedCopy(locale, menuLabel)}</span>
@@ -381,11 +381,11 @@ export function SiteHeader() {
             )}
 
             {isHeaderMenuOpen ? (
-              <div className="absolute top-[calc(100%+0.75rem)] right-0 z-95 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] border border-(--border-soft) bg-(--surface-strong) p-3 shadow-[0_20px_60px_rgba(8,12,22,0.22)] backdrop-blur-xl">
+              <div className="absolute top-[calc(100%+0.6rem)] right-0 z-95 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-[1.35rem] border border-(--border-soft) bg-(--surface-strong) p-2.5 shadow-[0_20px_60px_rgba(8,12,22,0.22)] backdrop-blur-xl sm:top-[calc(100%+0.75rem)] sm:w-[min(24rem,calc(100vw-2rem))] sm:rounded-[1.5rem] sm:p-3">
                 <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                   {getLocalizedCopy(locale, navigationLabel)}
                 </p>
-                <div className="mt-3 grid gap-2">
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {localizedLinks.map(({ href, label, icon: Icon }) => (
                     <Link
                       key={href}
@@ -394,7 +394,7 @@ export function SiteHeader() {
                         setIsHeaderMenuOpen(false);
                       }}
                       className={[
-                        "inline-flex items-center gap-2 rounded-full border px-4 py-3 text-sm transition",
+                        "inline-flex items-center gap-2 rounded-full border px-3.5 py-2.5 text-sm transition sm:px-4 sm:py-3",
                         pathname === href
                           ? "border-(--border-strong) bg-(--surface-strong) text-(--text-strong)"
                           : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted) hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong)",
@@ -406,7 +406,7 @@ export function SiteHeader() {
                   ))}
                 </div>
 
-                <div className="mt-4 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-soft) p-3">
+                <div className="mt-3 rounded-[1.15rem] border border-(--border-soft) bg-(--surface-soft) p-3 sm:mt-4 sm:rounded-[1.25rem]">
                   <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
                     {getLocalizedCopy(locale, accountPanelLabel)}
                   </p>
@@ -427,7 +427,7 @@ export function SiteHeader() {
                   ) : null}
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-3 sm:mt-4">
                   <div className="relative z-95" ref={mobileLocaleMenuRef}>
                     <button
                       type="button"

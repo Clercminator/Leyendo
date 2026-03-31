@@ -1,0 +1,94 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Skip to content" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - generic [ref=e4]:
+      - banner [ref=e5]:
+        - generic [ref=e6]:
+          - link "Leyendo logo Leyendo" [ref=e7] [cursor=pointer]:
+            - /url: /
+            - img "Leyendo logo" [ref=e9]
+            - paragraph [ref=e11]: Leyendo
+          - button "Menu" [ref=e14] [cursor=pointer]:
+            - img [ref=e15]
+            - generic [ref=e16]: Menu
+      - main [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e32]:
+            - status [ref=e33]
+            - region "Lienzo de lectura" [ref=e34]:
+              - heading "Lienzo de lectura" [level=2] [ref=e35]
+              - generic [ref=e36]:
+                - generic [ref=e37]:
+                  - generic [ref=e38]:
+                    - button "Cambiar modo de lectura" [ref=e40] [cursor=pointer]:
+                      - text: Palabra foco
+                      - img [ref=e41]
+                    - button "Cambiar ajuste" [ref=e44] [cursor=pointer]:
+                      - text: Personalizado
+                      - img [ref=e45]
+                    - button "Cambiar tema" [ref=e48] [cursor=pointer]:
+                      - text: Medianoche
+                      - img [ref=e49]
+                    - button "Entrar a pantalla completa" [ref=e51] [cursor=pointer]:
+                      - img [ref=e52]
+                      - text: Pantalla completa
+                  - generic [ref=e57]:
+                    - generic [ref=e58]: Parrafo 1
+                    - generic [ref=e59]: 0% completado
+                    - generic [ref=e60]: 3 oraciones
+                    - generic [ref=e61]: Reproduccion pausada
+                    - 'button "Tiempo restante: Quedan 41s" [ref=e62] [cursor=pointer]':
+                      - img [ref=e63]
+                      - text: Quedan 41s
+                  - paragraph [ref=e66]: Esta sesion ya esta personalizada mas alla de un objetivo guardado.
+                - generic [ref=e69]:
+                  - generic [ref=e70]:
+                    - generic [ref=e71]:
+                      - paragraph [ref=e72]:
+                        - generic [ref=e73]: Reading
+                      - paragraph [ref=e74]: "on"
+                    - paragraph [ref=e75]: Mantén la vista anclada en la palabra focal brillante mientras el contexto cercano permanece visible en la periferia.
+                  - paragraph [ref=e76]: Palabra foco
+              - generic "Reader transport and annotation controls" [ref=e77]:
+                - generic [ref=e78]:
+                  - button "Guardar" [ref=e80] [cursor=pointer]:
+                    - img [ref=e81]
+                    - text: Guardar
+                    - img [ref=e83]
+                  - button "Reproducir" [ref=e85] [cursor=pointer]:
+                    - img [ref=e86]
+                    - text: Reproducir
+                  - button "Anterior" [ref=e88] [cursor=pointer]:
+                    - img [ref=e89]
+                    - text: Anterior
+                  - button "Siguiente" [ref=e91] [cursor=pointer]:
+                    - text: Siguiente
+                    - img [ref=e92]
+                  - button "Ajustes de escala tipografica" [ref=e95] [cursor=pointer]:
+                    - text: Escala tipografica
+                    - generic [ref=e96]: 1.0x
+                    - img [ref=e97]
+                  - button "Ajustes de altura de linea" [ref=e100] [cursor=pointer]:
+                    - text: Altura de linea
+                    - generic [ref=e101]: "1.6"
+                    - img [ref=e102]
+                  - button "Ajustes de reproduccion" [ref=e105] [cursor=pointer]:
+                    - generic [ref=e106]:
+                      - generic [ref=e107]: Reproduccion
+                      - generic [ref=e108]: 280 WPM · 2 palabras
+                    - img [ref=e109]
+                  - button "Mas acciones" [ref=e112] [cursor=pointer]:
+                    - text: Mas
+                    - img [ref=e113]
+          - button "Notas, destacados y marcadores 0 destacados · 0 marcadores Mostrar" [ref=e116] [cursor=pointer]:
+            - generic [ref=e117]:
+              - generic [ref=e118]: Notas, destacados y marcadores
+              - generic [ref=e119]: 0 destacados · 0 marcadores
+            - generic [ref=e120]: Mostrar
+  - button "Feedback" [ref=e22] [cursor=pointer]:
+    - img
+    - text: Feedback
+  - button "Open Next.js Dev Tools" [ref=e28] [cursor=pointer]:
+    - img [ref=e29]
+  - alert [ref=e121]

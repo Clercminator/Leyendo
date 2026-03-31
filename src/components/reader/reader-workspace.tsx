@@ -44,6 +44,7 @@ import {
   resolvePdfSelectionAnchor,
   resolveSourcePageIndexForAnchor,
 } from "@/features/reader/pdf/navigation";
+import { getLocalizedCopy } from "@/lib/locale";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   deleteCloudBookmark,
@@ -141,6 +142,7 @@ export function ReaderWorkspace({
     updatePreferences,
   } = useReaderStore();
   const [highlightNote, setHighlightNote] = useState("");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [pdfAssetState, setPdfAssetState] = useState<
     "unknown" | "present" | "missing"
   >("unknown");
@@ -826,6 +828,40 @@ export function ReaderWorkspace({
         },
       }[preferences.readingGoal][locale]
     : undefined;
+  const sidebarToggleLabel = getLocalizedCopy(locale, {
+    en: "Notes, highlights, and bookmarks",
+    es: "Notas, destacados y marcadores",
+    pt: "Notas, destaques e marcadores",
+  });
+  const sidebarOpenLabel = getLocalizedCopy(locale, {
+    en: "Hide",
+    es: "Ocultar",
+    pt: "Ocultar",
+  });
+  const sidebarClosedLabel = getLocalizedCopy(locale, {
+    en: "Show",
+    es: "Mostrar",
+    pt: "Mostrar",
+  });
+  const sidebarSummary = getLocalizedCopy(locale, {
+    en: `${highlights.length} highlights · ${bookmarks.length} bookmarks`,
+    es: `${highlights.length} destacados · ${bookmarks.length} marcadores`,
+    pt: `${highlights.length} destaques · ${bookmarks.length} marcadores`,
+  });
+  const sidebarProps = {
+    bookmarks,
+    highlightNote,
+    highlights,
+    onChangeHighlightNote: setHighlightNote,
+    onDeleteBookmark: (bookmarkIdToDelete: string) => {
+      void handleDeleteBookmark(bookmarkIdToDelete);
+    },
+    onDeleteHighlight: (highlightIdToDelete: string) => {
+      void handleDeleteHighlight(highlightIdToDelete);
+    },
+    onJumpToBookmark: jumpToBookmark,
+    onJumpToHighlight: jumpToHighlight,
+  };
 
   const handleModeSelection = useCallback(
     (mode: ReaderPreferences["mode"]) => {
@@ -1036,7 +1072,7 @@ export function ReaderWorkspace({
 
   return (
     <section
-      className="space-y-4"
+      className="space-y-3 lg:space-y-4"
       data-reader-theme={preferences.theme}
       data-reader-font-scale={preferences.fontScale.toFixed(1)}
       data-reader-line-height={preferences.lineHeight.toFixed(1)}
@@ -1147,20 +1183,38 @@ export function ReaderWorkspace({
       </div>
 
       {isPdfPageMode ? null : (
-        <ReaderSidebar
-          bookmarks={bookmarks}
-          highlightNote={highlightNote}
-          highlights={highlights}
-          onChangeHighlightNote={setHighlightNote}
-          onDeleteBookmark={(bookmarkIdToDelete: string) => {
-            void handleDeleteBookmark(bookmarkIdToDelete);
-          }}
-          onDeleteHighlight={(highlightIdToDelete: string) => {
-            void handleDeleteHighlight(highlightIdToDelete);
-          }}
-          onJumpToBookmark={jumpToBookmark}
-          onJumpToHighlight={jumpToHighlight}
-        />
+        <>
+          <div className="lg:hidden">
+            <button
+              type="button"
+              aria-controls="reader-sidebar-mobile"
+              onClick={() => {
+                setIsMobileSidebarOpen((currentValue) => !currentValue);
+              }}
+              className="flex w-full items-start justify-between gap-4 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-card) px-4 py-3 text-left shadow-[0_14px_40px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+            >
+              <span>
+                <span className="block text-xs tracking-[0.2em] text-(--accent-sky) uppercase">
+                  {sidebarToggleLabel}
+                </span>
+                <span className="mt-1 block text-sm text-(--text-muted)">
+                  {sidebarSummary}
+                </span>
+              </span>
+              <span className="shrink-0 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-xs font-medium text-(--text-strong)">
+                {isMobileSidebarOpen ? sidebarOpenLabel : sidebarClosedLabel}
+              </span>
+            </button>
+            {isMobileSidebarOpen ? (
+              <div id="reader-sidebar-mobile" className="mt-3">
+                <ReaderSidebar {...sidebarProps} />
+              </div>
+            ) : null}
+          </div>
+          <div className="hidden lg:block">
+            <ReaderSidebar {...sidebarProps} />
+          </div>
+        </>
       )}
     </section>
   );

@@ -186,6 +186,7 @@ export function ReaderCanvas({
     | "font-scale"
     | "line-height"
     | "playback"
+    | "more"
     | null
   >(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -196,16 +197,21 @@ export function ReaderCanvas({
   const fontScaleMenuRef = useRef<HTMLDivElement>(null);
   const lineHeightMenuRef = useRef<HTMLDivElement>(null);
   const playbackMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const transportButtonClass =
-    "inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3.5 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+    "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:w-auto sm:rounded-full sm:px-3.5";
   const compactStepButtonClass =
     "rounded-full border border-(--border-soft) bg-(--surface-chip) px-2.5 py-1.5 text-xs text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-strong)";
   const settingsTriggerClass =
-    "inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3.5 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+    "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:w-auto sm:rounded-full sm:px-3.5";
   const settingsPanelClass =
-    "reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-[19rem] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl";
+    "reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-[19rem] max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl";
   const settingsRowClass =
     "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-3";
+  const topControlButtonClass =
+    "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm";
+  const statusChipClass =
+    "inline-flex min-h-10 items-center justify-center rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-center text-xs text-(--text-strong) sm:min-h-auto sm:rounded-full sm:px-3 sm:py-1.5 sm:text-sm";
 
   useEffect(() => {
     if (!openMenu) {
@@ -222,7 +228,8 @@ export function ReaderCanvas({
         themeMenuRef.current?.contains(target) ||
         fontScaleMenuRef.current?.contains(target) ||
         lineHeightMenuRef.current?.contains(target) ||
-        playbackMenuRef.current?.contains(target)
+        playbackMenuRef.current?.contains(target) ||
+        moreMenuRef.current?.contains(target)
       ) {
         return;
       }
@@ -500,6 +507,16 @@ export function ReaderCanvas({
       es: "Reducir movimiento",
       pt: "Reduzir movimento",
     }),
+    more: getLocalizedCopy(locale, {
+      en: "More",
+      es: "Mas",
+      pt: "Mais",
+    }),
+    moreActions: getLocalizedCopy(locale, {
+      en: "More actions",
+      es: "Mas acciones",
+      pt: "Mais acoes",
+    }),
     decreaseFontScale: getLocalizedCopy(locale, {
       en: "Decrease font scale",
       es: "Reducir escala tipografica",
@@ -563,7 +580,7 @@ export function ReaderCanvas({
       aria-labelledby="reader-canvas-title"
       tabIndex={-1}
       className={cn(
-        "reader-canvas relative isolate flex h-[82vh] min-h-152 w-full flex-col gap-6 overflow-visible rounded-[1.75rem] border border-(--border-soft) bg-(--surface-strong) px-6 py-5 text-left sm:px-8 sm:py-6 lg:h-[86vh] lg:min-h-176",
+          "reader-canvas relative isolate flex h-[calc(100svh-8.5rem)] min-h-136 w-full flex-col gap-4 overflow-visible rounded-[1.5rem] border border-(--border-soft) bg-(--surface-strong) px-4 py-4 text-left sm:gap-6 sm:rounded-[1.75rem] sm:px-6 sm:py-5 lg:h-[86vh] lg:min-h-176 lg:px-8 lg:py-6",
         className,
       )}
     >
@@ -571,8 +588,8 @@ export function ReaderCanvas({
         {copy.readerCanvas}
       </h2>
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex flex-wrap items-center gap-2 text-sm sm:gap-3">
             <div ref={modeMenuRef} className="relative z-40">
               <button
                 type="button"
@@ -582,7 +599,7 @@ export function ReaderCanvas({
                     current === "mode" ? null : "mode",
                   );
                 }}
-                className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm tracking-[0.22em] text-(--accent-sky) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.16em] text-(--accent-sky) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm sm:tracking-[0.22em]"
               >
                 {modeLabel}
                 <ChevronDown
@@ -590,7 +607,7 @@ export function ReaderCanvas({
                 />
               </button>
               {openMenu === "mode" ? (
-                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-64 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-64 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.readingMode}
                   </p>
@@ -625,7 +642,7 @@ export function ReaderCanvas({
                     current === "preset" ? null : "preset",
                   );
                 }}
-                className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm tracking-[0.14em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-widest text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm sm:tracking-[0.14em]"
               >
                 {activePreset
                   ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
@@ -635,7 +652,7 @@ export function ReaderCanvas({
                 />
               </button>
               {openMenu === "preset" ? (
-                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-80 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-80 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.presetMenu}
                   </p>
@@ -689,44 +706,6 @@ export function ReaderCanvas({
                 </div>
               ) : null}
             </div>
-            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
-              {copy.paragraph} {currentParagraphNumber}
-            </span>
-            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
-              {progress}% {copy.complete}
-            </span>
-            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
-              {sentenceCount} {copy.sentenceCount}
-            </span>
-            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
-              {isPlaying ? copy.playbackRunning : copy.playbackPaused}
-            </span>
-            <button
-              type="button"
-              aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
-              onClick={onAnnounceRemainingTime}
-              className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-            >
-              <Clock3 className="h-4 w-4 text-(--accent-amber)" />
-              {remainingTimeLabel}
-            </button>
-            <button
-              type="button"
-              aria-label={
-                isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
-              }
-              onClick={() => {
-                void toggleFullscreen();
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-            >
-              {isFullscreen ? (
-                <Minimize2 className="h-4 w-4" />
-              ) : (
-                <Maximize2 className="h-4 w-4" />
-              )}
-              {copy.fullscreen}
-            </button>
             <div ref={themeMenuRef} className="relative z-40">
               <button
                 type="button"
@@ -736,7 +715,7 @@ export function ReaderCanvas({
                     current === "theme" ? null : "theme",
                   );
                 }}
-                className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                className={topControlButtonClass}
               >
                 {getLocalizedCopy(locale, themeLabels[preferences.theme])}
                 <ChevronDown
@@ -744,7 +723,7 @@ export function ReaderCanvas({
                 />
               </button>
               {openMenu === "theme" ? (
-                <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.themeMenu}
                   </p>
@@ -770,13 +749,53 @@ export function ReaderCanvas({
                 </div>
               ) : null}
             </div>
+            <button
+              type="button"
+              aria-label={
+                isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
+              }
+              onClick={() => {
+                void toggleFullscreen();
+              }}
+              className={topControlButtonClass}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+              {copy.fullscreen}
+            </button>
           </div>
-          <p className="text-sm leading-7 text-(--text-muted)">
+          <div className="grid grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+            <span className={statusChipClass}>
+              {copy.paragraph} {currentParagraphNumber}
+            </span>
+            <span className={statusChipClass}>
+              {progress}% {copy.complete}
+            </span>
+            <span className={statusChipClass}>
+              {sentenceCount} {copy.sentenceCount}
+            </span>
+            <span className={statusChipClass}>
+              {isPlaying ? copy.playbackRunning : copy.playbackPaused}
+            </span>
+            <button
+              type="button"
+              aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
+              onClick={onAnnounceRemainingTime}
+              className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
+            >
+              <Clock3 className="h-4 w-4 text-(--accent-amber)" />
+              {remainingTimeLabel}
+            </button>
+          </div>
+          <p className="text-sm leading-6 text-(--text-muted) sm:leading-7">
             {copy.readingModeHelp}
           </p>
           {activePresetSummary ? (
             <p className="text-sm leading-6 text-(--text-muted)">
-              <span className="mr-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1 text-[11px] tracking-[0.18em] text-(--accent-amber) uppercase">
+              <span className="mr-2 inline-flex rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1 text-[11px] tracking-[0.18em] text-(--accent-amber) uppercase">
                 {activePreset
                   ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
                   : copy.customPreset}
@@ -785,7 +804,7 @@ export function ReaderCanvas({
             </p>
           ) : null}
         </div>
-        <div className="mt-6 flex min-h-0 flex-1">
+        <div className="mt-4 flex min-h-0 flex-1 sm:mt-6">
           <div className="flex min-h-0 flex-1 items-stretch *:h-full">
             {modeView}
           </div>
@@ -793,10 +812,10 @@ export function ReaderCanvas({
       </div>
 
       <div
-        className="shrink-0 space-y-3 border-t border-(--border-soft) pt-5"
+        className="shrink-0 space-y-3 border-t border-(--border-soft) pt-4 sm:pt-5"
         aria-label="Reader transport and annotation controls"
       >
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
           <div ref={saveMenuRef} className="relative z-30">
             <button
               type="button"
@@ -804,7 +823,7 @@ export function ReaderCanvas({
               onClick={() => {
                 setOpenMenu((current) => (current === "save" ? null : "save"));
               }}
-              className="inline-flex items-center gap-2 rounded-full border border-(--accent-amber)/35 bg-(--accent-amber)/16 px-3.5 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-amber)/55 hover:bg-(--accent-amber)/24"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--accent-amber)/35 bg-(--accent-amber)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-amber)/55 hover:bg-(--accent-amber)/24 sm:w-auto sm:rounded-full sm:px-3.5"
             >
               <BookmarkPlus className="h-4 w-4" />
               {copy.save}
@@ -813,7 +832,7 @@ export function ReaderCanvas({
               />
             </button>
             {openMenu === "save" ? (
-              <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-56 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+              <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
                 <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                   {copy.saveMenu}
                 </p>
@@ -844,8 +863,9 @@ export function ReaderCanvas({
           </div>
           <button
             type="button"
+            aria-label={isPlaying ? copy.pause : copy.play}
             onClick={onTogglePlayback}
-            className="inline-flex items-center gap-2 rounded-full border border-(--accent-sky)/35 bg-(--accent-sky)/16 px-3.5 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-sky)/55 hover:bg-(--accent-sky)/24"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--accent-sky)/35 bg-(--accent-sky)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-sky)/55 hover:bg-(--accent-sky)/24 sm:w-auto sm:rounded-full sm:px-3.5"
           >
             {isPlaying ? (
               <Pause className="h-4 w-4" />
@@ -856,14 +876,7 @@ export function ReaderCanvas({
           </button>
           <button
             type="button"
-            onClick={onMoveBackwardFive}
-            className={transportButtonClass}
-          >
-            <SkipBack className="h-4 w-4" />
-            {copy.backFive}
-          </button>
-          <button
-            type="button"
+            aria-label={copy.previous}
             onClick={onMoveBackward}
             className={transportButtonClass}
           >
@@ -872,43 +885,12 @@ export function ReaderCanvas({
           </button>
           <button
             type="button"
-            onClick={onRestart}
-            className={transportButtonClass}
-          >
-            <RotateCcw className="h-4 w-4" />
-            {copy.restart}
-          </button>
-          <button
-            type="button"
-            onClick={onRestartParagraph}
-            className={transportButtonClass}
-          >
-            <Undo2 className="h-4 w-4" />
-            {copy.restartParagraph}
-          </button>
-          <button
-            type="button"
-            onClick={onRepeatChunk}
-            className={transportButtonClass}
-          >
-            <RotateCcw className="h-4 w-4" />
-            {copy.repeatChunk}
-          </button>
-          <button
-            type="button"
+            aria-label={copy.next}
             onClick={onMoveForward}
             className={transportButtonClass}
           >
             {copy.next}
             <ChevronRight className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onMoveForwardFive}
-            className={transportButtonClass}
-          >
-            {copy.forwardFive}
-            <SkipForward className="h-4 w-4" />
           </button>
           <div ref={fontScaleMenuRef} className="relative z-30">
             <button
@@ -1041,14 +1023,19 @@ export function ReaderCanvas({
                   current === "playback" ? null : "playback",
                 );
               }}
-              className={settingsTriggerClass}
+              className={`${settingsTriggerClass} justify-between text-left sm:justify-center`}
             >
-              {copy.playback}
-              <span className="text-(--text-muted)">
+              <span className="flex flex-col items-start sm:contents">
+                <span>{copy.playback}</span>
+                <span className="text-xs text-(--text-muted) sm:hidden">
+                  {preferences.wordsPerMinute} WPM · {chunkSize} {chunkSize === 1 ? copy.word : copy.words}
+                </span>
+              </span>
+              <span className="hidden text-(--text-muted) sm:inline">
                 {preferences.wordsPerMinute} WPM
               </span>
-              <span className="text-(--text-muted)/60">•</span>
-              <span className="text-(--text-muted)">
+              <span className="hidden text-(--text-muted)/60 sm:inline">•</span>
+              <span className="hidden text-(--text-muted) sm:inline">
                 {chunkSize} {chunkSize === 1 ? copy.word : copy.words}
               </span>
               <ChevronDown
@@ -1149,6 +1136,95 @@ export function ReaderCanvas({
                       {copy.reduceMotion}
                     </button>
                   </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <div ref={moreMenuRef} className="relative z-30">
+            <button
+              type="button"
+              aria-label={copy.moreActions}
+              onClick={() => {
+                setOpenMenu((current) => (current === "more" ? null : "more"));
+              }}
+              className={settingsTriggerClass}
+            >
+              {copy.more}
+              <ChevronDown
+                className={`h-4 w-4 transition ${openMenu === "more" ? "rotate-180" : ""}`}
+              />
+            </button>
+            {openMenu === "more" ? (
+              <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                  {copy.moreActions}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMoveBackwardFive();
+                      setOpenMenu(null);
+                    }}
+                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <SkipBack className="h-4 w-4" />
+                      {copy.backFive}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRestart();
+                      setOpenMenu(null);
+                    }}
+                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4" />
+                      {copy.restart}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRestartParagraph();
+                      setOpenMenu(null);
+                    }}
+                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Undo2 className="h-4 w-4" />
+                      {copy.restartParagraph}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRepeatChunk();
+                      setOpenMenu(null);
+                    }}
+                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4" />
+                      {copy.repeatChunk}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMoveForwardFive();
+                      setOpenMenu(null);
+                    }}
+                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <SkipForward className="h-4 w-4" />
+                      {copy.forwardFive}
+                    </span>
+                  </button>
                 </div>
               </div>
             ) : null}

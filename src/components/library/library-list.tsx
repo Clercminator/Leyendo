@@ -243,7 +243,7 @@ export function LibraryList() {
 
   if (isLoading) {
     return (
-      <section className="editorial-panel fade-rise rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
+      <section className="editorial-panel fade-rise rounded-[1.5rem] border border-(--border-soft) bg-(--surface-card) p-6 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl sm:rounded-[1.75rem] sm:p-8">
         <p className="editorial-kicker text-(--accent-sky)">
           {locale === "en"
             ? "Loading library"
@@ -251,7 +251,7 @@ export function LibraryList() {
               ? "Cargando biblioteca"
               : "Carregando biblioteca"}
         </p>
-        <h2 className="font-heading mt-4 text-4xl leading-tight font-semibold text-(--text-strong)">
+        <h2 className="font-heading mt-3 text-3xl leading-tight font-semibold text-(--text-strong) sm:mt-4 sm:text-4xl">
           {locale === "en"
             ? "Bringing your saved reading history back into view."
             : locale === "es"
@@ -269,7 +269,7 @@ export function LibraryList() {
     highlights.length === 0
   ) {
     return (
-      <section className="editorial-panel fade-rise rounded-[1.75rem] border border-dashed border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
+      <section className="editorial-panel fade-rise rounded-[1.5rem] border border-dashed border-(--border-soft) bg-(--surface-card) p-6 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl sm:rounded-[1.75rem] sm:p-8">
         <p className="editorial-kicker text-(--accent-sky)">
           {locale === "en"
             ? "Library empty"
@@ -277,14 +277,14 @@ export function LibraryList() {
               ? "Biblioteca vacia"
               : "Biblioteca vazia"}
         </p>
-        <h2 className="font-heading mt-4 text-4xl leading-tight font-semibold text-(--text-strong)">
+        <h2 className="font-heading mt-3 text-3xl leading-tight font-semibold text-(--text-strong) sm:mt-4 sm:text-4xl">
           {locale === "en"
             ? "Import your first document and this space becomes your return point."
             : locale === "es"
               ? "Importa tu primer documento y este espacio se convierte en tu punto de regreso."
               : "Importe seu primeiro documento e este espaco vira seu ponto de retorno."}
         </h2>
-        <p className="mt-4 max-w-2xl text-base leading-8 text-(--text-muted)">
+        <p className="mt-4 max-w-2xl text-sm leading-7 text-(--text-muted) sm:text-base sm:leading-8">
           {locale === "en"
             ? "Import a PDF, DOCX, RTF, Markdown file, or pasted text from the home page and it will appear here with progress, bookmarks, and highlights."
             : locale === "es"
@@ -293,7 +293,7 @@ export function LibraryList() {
         </p>
         <Link
           href="/#upload-panel"
-          className="mt-6 inline-flex min-h-14 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 py-3 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+          className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 py-3 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-14"
         >
           {locale === "en"
             ? "Import a document"
@@ -306,22 +306,22 @@ export function LibraryList() {
   }
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-6 sm:space-y-8">
       <p className="sr-only" role="status" aria-live="polite">
         {statusMessage}
       </p>
 
-      <div className="fade-rise-delayed grid gap-4 lg:grid-cols-3">
+      <div className="fade-rise-delayed grid gap-3 sm:gap-4 lg:grid-cols-3">
         {overviewItems.map((item) => (
           <article
             key={item.label}
-            className="editorial-panel hover-lift rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-5 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl"
+            className="editorial-panel hover-lift rounded-[1.5rem] border border-(--border-soft) bg-(--surface-card) p-4 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl sm:rounded-[1.75rem] sm:p-5"
           >
             <p className="editorial-kicker text-(--accent-sky)">{item.label}</p>
-            <h2 className="font-heading mt-4 text-4xl leading-none font-semibold text-(--text-strong)">
+            <h2 className="font-heading mt-3 text-3xl leading-none font-semibold text-(--text-strong) sm:mt-4 sm:text-4xl">
               {item.value}
             </h2>
-            <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+            <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
               {item.note}
             </p>
           </article>
@@ -339,10 +339,10 @@ export function LibraryList() {
 
       {sessions.length > 0 ? (
         <div>
-          <h2 className="font-heading text-3xl font-semibold text-(--text-strong)">
+          <h2 className="font-heading text-2xl font-semibold text-(--text-strong) sm:text-3xl">
             Resume where you left off
           </h2>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-2">
             {sessions.map(({ session, document }) => (
               <ResumeCard
                 key={session.id}
@@ -366,35 +366,35 @@ export function LibraryList() {
 
       {highlights.length > 0 ? (
         <div>
-          <h2 className="font-heading text-3xl font-semibold text-(--text-strong)">
+          <h2 className="font-heading text-2xl font-semibold text-(--text-strong) sm:text-3xl">
             Recent highlights
           </h2>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-2">
             {highlights.map(({ highlight, document }) => (
               <article
                 key={highlight.id}
-                className="editorial-panel hover-lift rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl"
+                className="editorial-panel hover-lift rounded-[1.5rem] border border-(--border-soft) bg-(--surface-card) p-5 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl sm:rounded-[1.75rem] sm:p-6"
               >
                 <div className="flex items-center gap-2 text-sm text-(--accent-amber)">
                   <BookMarked className="h-4 w-4" />
                   {document.title}
                 </div>
-                <h3 className="font-heading mt-4 text-3xl leading-tight font-semibold text-(--text-strong)">
+                <h3 className="font-heading mt-3 text-2xl leading-tight font-semibold text-(--text-strong) sm:mt-4 sm:text-3xl">
                   {highlight.label}
                 </h3>
-                <p className="mt-3 text-sm leading-7 text-(--text-strong)">
+                <p className="mt-3 text-sm leading-6 text-(--text-strong) sm:leading-7">
                   {highlight.quote}
                 </p>
-                <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+                <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
                   {highlight.note ?? document.excerpt}
                 </p>
-                <div className="mt-6 flex items-center justify-between gap-4">
-                  <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong)">
+                <div className="mt-5 flex flex-col items-stretch gap-3 sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <span className="self-start rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong)">
                     Paragraph {highlight.paragraphIndex + 1}
                   </span>
                   <Link
                     href={`/reader?document=${document.id}&highlight=${highlight.id}`}
-                    className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:w-auto"
                   >
                     Open highlight
                   </Link>
@@ -407,32 +407,32 @@ export function LibraryList() {
 
       {bookmarks.length > 0 ? (
         <div>
-          <h2 className="font-heading text-3xl font-semibold text-(--text-strong)">
+          <h2 className="font-heading text-2xl font-semibold text-(--text-strong) sm:text-3xl">
             Recent bookmarks
           </h2>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-2">
             {bookmarks.map(({ bookmark, document }) => (
               <article
                 key={bookmark.id}
-                className="editorial-panel hover-lift rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl"
+                className="editorial-panel hover-lift rounded-[1.5rem] border border-(--border-soft) bg-(--surface-card) p-5 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl sm:rounded-[1.75rem] sm:p-6"
               >
                 <div className="flex items-center gap-2 text-sm text-(--accent-amber)">
                   <BookMarked className="h-4 w-4" />
                   {document.title}
                 </div>
-                <h3 className="font-heading mt-4 text-3xl leading-tight font-semibold text-(--text-strong)">
+                <h3 className="font-heading mt-3 text-2xl leading-tight font-semibold text-(--text-strong) sm:mt-4 sm:text-3xl">
                   {bookmark.label}
                 </h3>
-                <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+                <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
                   {formatBookmarkLocation(bookmark, locale)}
                 </p>
-                <div className="mt-6 flex items-center justify-between gap-4">
-                  <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong)">
+                <div className="mt-5 flex flex-col items-stretch gap-3 sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <span className="self-start rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong)">
                     Paragraph {bookmark.paragraphIndex + 1}
                   </span>
                   <Link
                     href={`/reader?document=${document.id}&bookmark=${bookmark.id}`}
-                    className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:w-auto"
                   >
                     Open bookmark
                   </Link>
@@ -445,30 +445,30 @@ export function LibraryList() {
 
       {documents.length > 0 ? (
         <div>
-          <h2 className="font-heading text-3xl font-semibold text-(--text-strong)">
+          <h2 className="font-heading text-2xl font-semibold text-(--text-strong) sm:text-3xl">
             Recent documents
           </h2>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-2">
             {documents.map((document) => (
               <article
                 key={document.id}
-                className="editorial-panel hover-lift rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl"
+                className="editorial-panel hover-lift rounded-[1.5rem] border border-(--border-soft) bg-(--surface-card) p-5 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl sm:rounded-[1.75rem] sm:p-6"
               >
                 <div className="flex items-center gap-2 text-sm text-(--accent-sky)">
                   <BookOpenText className="h-4 w-4" />
                   {document.sourceKind}
                 </div>
-                <h3 className="font-heading mt-4 text-3xl leading-tight font-semibold text-(--text-strong)">
+                <h3 className="font-heading mt-3 text-2xl leading-tight font-semibold text-(--text-strong) sm:mt-4 sm:text-3xl">
                   {document.title}
                 </h3>
-                <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+                <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
                   {document.excerpt}
                 </p>
-                <div className="mt-6 flex items-center justify-between gap-4">
-                  <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong)">
+                <div className="mt-5 flex flex-col items-stretch gap-3 sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <span className="self-start rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong)">
                     {document.totalChunks} chunks
                   </span>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                     <button
                       type="button"
                       aria-label={`Remove ${document.title} from this device`}
@@ -476,13 +476,13 @@ export function LibraryList() {
                       onClick={() => {
                         void handleRemoveDocument(document);
                       }}
-                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) disabled:cursor-not-allowed disabled:opacity-60"
+                      className="w-full rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-center text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                     >
                       Remove document
                     </button>
                     <Link
                       href={`/reader?document=${document.id}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:w-auto"
                     >
                       Open
                     </Link>

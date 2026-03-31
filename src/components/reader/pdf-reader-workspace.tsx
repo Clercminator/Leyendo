@@ -313,11 +313,14 @@ export function PdfReaderWorkspace({
   const viewerContainerRef = useRef<HTMLDivElement | null>(null);
   const viewerElementRef = useRef<HTMLDivElement | null>(null);
   const viewerRuntimeRef = useRef<PdfViewerRuntime | null>(null);
+  const modeMenuRef = useRef<HTMLDivElement | null>(null);
+  const viewMenuRef = useRef<HTMLDivElement | null>(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [error, setError] = useState<string>();
   const [findMatches, setFindMatches] = useState({ current: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isModeMenuOpen, setIsModeMenuOpen] = useState(false);
+  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const [outlineItems, setOutlineItems] = useState<PdfOutlineItem[]>([]);
   const [pageLabels, setPageLabels] = useState<string[] | null>(null);
   const [pdfDocument, setPdfDocument] = useState<PdfDocumentHandle | null>(
@@ -340,6 +343,41 @@ export function PdfReaderWorkspace({
   const renderingThumbnailPagesRef = useRef(new Set<number>());
   const viewerStateRef = useRef(viewerState);
   const searchQueryRef = useRef(viewerState.searchQuery);
+
+  useEffect(() => {
+    if (!isModeMenuOpen && !isViewMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (
+        modeMenuRef.current?.contains(target) ||
+        viewMenuRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setIsModeMenuOpen(false);
+      setIsViewMenuOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsModeMenuOpen(false);
+        setIsViewMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isModeMenuOpen, isViewMenuOpen]);
 
   const requestThumbnailPage = useCallback(
     (pageIndex: number) => {
@@ -949,6 +987,15 @@ export function PdfReaderWorkspace({
       }
     : undefined;
 
+  const toolbarButtonClass =
+    "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-400";
+  const toolbarChipClass =
+    "inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700";
+  const toolbarIconButtonClass =
+    "rounded-full p-1 transition hover:bg-slate-100";
+  const toolbarDropdownClass =
+    "absolute top-full left-0 z-20 mt-3 w-[min(19rem,calc(100vw-3rem))] rounded-[1.25rem] border border-slate-300 bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.16)]";
+
   const handleFindPrevious = useCallback(() => {
     const runtime = viewerRuntimeRef.current;
     const query = viewerState.searchQuery.trim();
@@ -1062,12 +1109,16 @@ export function PdfReaderWorkspace({
   return (
     <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-200 shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-300/80 bg-slate-50 px-5 py-4 text-sm text-slate-700">
-          <div className="relative">
+        <div className="flex flex-col gap-3 border-b border-slate-300/80 bg-slate-50 px-3 py-3 text-sm text-slate-700 sm:px-5 sm:py-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="relative" ref={modeMenuRef}>
             <button
               type="button"
-              onClick={() => setIsModeMenuOpen((current) => !current)}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 tracking-[0.18em] text-slate-700 uppercase transition hover:border-slate-400"
+              onClick={() => {
+                setIsModeMenuOpen((current) => !current);
+                setIsViewMenuOpen(false);
+              }}
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-xs tracking-[0.18em] text-slate-700 uppercase transition hover:border-slate-400 sm:px-4 sm:text-sm"
             >
               {getLocalizedCopy(locale, modeLabels["pdf-page"])}
               <ChevronDown
@@ -1075,7 +1126,7 @@ export function PdfReaderWorkspace({
               />
             </button>
             {isModeMenuOpen ? (
-              <div className="absolute top-full left-0 z-20 mt-3 w-64 rounded-[1.25rem] border border-slate-300 bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.16)]">
+              <div className={toolbarDropdownClass}>
                 <div className="grid gap-2">
                   {availableModes.map((mode) => (
                     <button
@@ -1099,7 +1150,7 @@ export function PdfReaderWorkspace({
             ) : null}
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700">
+          <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-slate-700">
             <button
               type="button"
               onClick={() => handlePageStep(-1)}
@@ -1113,11 +1164,11 @@ export function PdfReaderWorkspace({
                 es: "Pagina anterior",
                 pt: "Pagina anterior",
               })}
-              className="rounded-full p-1 transition hover:bg-slate-100"
+              className={toolbarIconButtonClass}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span>
+            <span className="text-sm">
               {getLocalizedCopy(locale, {
                 en: `Page ${currentPageLabel}`,
                 es: `Pagina ${currentPageLabel}`,
@@ -1137,13 +1188,13 @@ export function PdfReaderWorkspace({
                 es: "Pagina siguiente",
                 pt: "Proxima pagina",
               })}
-              className="rounded-full p-1 transition hover:bg-slate-100"
+              className={toolbarIconButtonClass}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          <span className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700">
+          <span className={toolbarChipClass}>
             {getLocalizedCopy(locale, {
               en: `${currentPageIndex + 1} of ${pdfDocument.numPages}`,
               es: `${currentPageIndex + 1} de ${pdfDocument.numPages}`,
@@ -1151,7 +1202,7 @@ export function PdfReaderWorkspace({
             })}
           </span>
 
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700">
+          <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-slate-700">
             <button
               type="button"
               onClick={() => handleZoomStep(-1)}
@@ -1165,7 +1216,7 @@ export function PdfReaderWorkspace({
                 es: "Alejar",
                 pt: "Diminuir zoom",
               })}
-              className="rounded-full p-1 transition hover:bg-slate-100"
+              className={toolbarIconButtonClass}
             >
               <ZoomOut className="h-4 w-4" />
             </button>
@@ -1183,102 +1234,142 @@ export function PdfReaderWorkspace({
                 es: "Acercar",
                 pt: "Aumentar zoom",
               })}
-              className="rounded-full p-1 transition hover:bg-slate-100"
+              className={toolbarIconButtonClass}
             >
               <ZoomIn className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {[
-              {
-                label: getLocalizedCopy(locale, {
-                  en: "Fit width",
-                  es: "Ajustar ancho",
-                  pt: "Ajustar largura",
-                }),
-                value: "page-width",
-              },
-              {
-                label: getLocalizedCopy(locale, {
-                  en: "Fit page",
-                  es: "Ajustar pagina",
-                  pt: "Ajustar pagina",
-                }),
-                value: "page-fit",
-              },
-              {
-                label: getLocalizedCopy(locale, {
-                  en: "Actual size",
-                  es: "Tamano real",
-                  pt: "Tamanho real",
-                }),
-                value: "page-actual",
-              },
-            ].map((preset) => (
-              <button
-                key={preset.value}
-                type="button"
-                onClick={() => handleZoomPreset(preset.value)}
-                className={`rounded-full border px-3 py-1.5 transition ${
-                  viewerState.zoomValue === preset.value
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-300 bg-white hover:border-slate-400"
-                }`}
-              >
-                {preset.label}
-              </button>
-            ))}
+          <div className="relative" ref={viewMenuRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsViewMenuOpen((current) => !current);
+                setIsModeMenuOpen(false);
+              }}
+              className={toolbarButtonClass}
+            >
+              {getLocalizedCopy(locale, {
+                en: "View",
+                es: "Vista",
+                pt: "Vista",
+              })}
+              <ChevronDown
+                className={`h-4 w-4 transition ${isViewMenuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {isViewMenuOpen ? (
+              <div className={`${toolbarDropdownClass} left-auto right-0 sm:left-0 sm:right-auto`}>
+                <p className="px-2 text-xs tracking-[0.2em] text-slate-500 uppercase">
+                  {getLocalizedCopy(locale, {
+                    en: "PDF view tools",
+                    es: "Herramientas de vista PDF",
+                    pt: "Ferramentas de visualizacao PDF",
+                  })}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {[
+                      {
+                        label: getLocalizedCopy(locale, {
+                          en: "Fit width",
+                          es: "Ajustar ancho",
+                          pt: "Ajustar largura",
+                        }),
+                        value: "page-width",
+                      },
+                      {
+                        label: getLocalizedCopy(locale, {
+                          en: "Fit page",
+                          es: "Ajustar pagina",
+                          pt: "Ajustar pagina",
+                        }),
+                        value: "page-fit",
+                      },
+                      {
+                        label: getLocalizedCopy(locale, {
+                          en: "Actual size",
+                          es: "Tamano real",
+                          pt: "Tamanho real",
+                        }),
+                        value: "page-actual",
+                      },
+                    ].map((preset) => (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => {
+                          handleZoomPreset(preset.value);
+                          setIsViewMenuOpen(false);
+                        }}
+                        className={`rounded-full border px-3 py-2 text-sm transition ${
+                          viewerState.zoomValue === preset.value
+                            ? "border-slate-900 bg-slate-900 text-white"
+                            : "border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleRotate();
+                      setIsViewMenuOpen(false);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+                  >
+                    <RotateCw className="h-4 w-4" />
+                    {getLocalizedCopy(locale, {
+                      en: "Rotate",
+                      es: "Rotar",
+                      pt: "Girar",
+                    })}
+                  </button>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      {
+                        label: getLocalizedCopy(locale, {
+                          en: "Continuous",
+                          es: "Continuo",
+                          pt: "Continuo",
+                        }),
+                        value: "continuous" as const,
+                      },
+                      {
+                        label: getLocalizedCopy(locale, {
+                          en: "Single page",
+                          es: "Pagina unica",
+                          pt: "Pagina unica",
+                        }),
+                        value: "single-page" as const,
+                      },
+                    ].map((scrollMode) => (
+                      <button
+                        key={scrollMode.value}
+                        type="button"
+                        onClick={() => {
+                          handleScrollModeChange(scrollMode.value);
+                          setIsViewMenuOpen(false);
+                        }}
+                        className={`rounded-full px-3 py-2 text-sm transition ${
+                          viewerState.scrollMode === scrollMode.value
+                            ? "bg-slate-900 text-white"
+                            : "border border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100"
+                        }`}
+                      >
+                        {scrollMode.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleRotate}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 transition hover:border-slate-400"
-          >
-            <RotateCw className="h-4 w-4" />
-            {getLocalizedCopy(locale, {
-              en: "Rotate",
-              es: "Rotar",
-              pt: "Girar",
-            })}
-          </button>
-
-          <div className="inline-flex rounded-full border border-slate-300 bg-white p-1">
-            {[
-              {
-                label: getLocalizedCopy(locale, {
-                  en: "Continuous",
-                  es: "Continuo",
-                  pt: "Continuo",
-                }),
-                value: "continuous" as const,
-              },
-              {
-                label: getLocalizedCopy(locale, {
-                  en: "Single page",
-                  es: "Pagina unica",
-                  pt: "Pagina unica",
-                }),
-                value: "single-page" as const,
-              },
-            ].map((scrollMode) => (
-              <button
-                key={scrollMode.value}
-                type="button"
-                onClick={() => handleScrollModeChange(scrollMode.value)}
-                className={`rounded-full px-3 py-1.5 transition ${
-                  viewerState.scrollMode === scrollMode.value
-                    ? "bg-slate-900 text-white"
-                    : "text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                {scrollMode.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="ml-auto flex min-w-72 flex-1 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2">
+          <div className="flex w-full items-center gap-2 rounded-[1rem] border border-slate-300 bg-white px-3 py-2 sm:min-w-72 sm:rounded-full">
             <Search className="h-4 w-4 text-slate-500" />
             <input
               value={viewerState.searchQuery}
@@ -1295,7 +1386,7 @@ export function PdfReaderWorkspace({
               })}
               className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
             />
-            <span className="text-xs tracking-[0.18em] text-slate-500 uppercase">
+            <span className="hidden text-xs tracking-[0.18em] text-slate-500 uppercase sm:inline">
               {searchStatusLabel}
             </span>
             <button
@@ -1311,7 +1402,7 @@ export function PdfReaderWorkspace({
                 es: "Resultado anterior",
                 pt: "Resultado anterior",
               })}
-              className="rounded-full p-1 transition hover:bg-slate-100 disabled:opacity-40"
+              className={`${toolbarIconButtonClass} disabled:opacity-40`}
               disabled={!viewerState.searchQuery.trim()}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -1329,7 +1420,7 @@ export function PdfReaderWorkspace({
                 es: "Resultado siguiente",
                 pt: "Proximo resultado",
               })}
-              className="rounded-full p-1 transition hover:bg-slate-100 disabled:opacity-40"
+              className={`${toolbarIconButtonClass} disabled:opacity-40`}
               disabled={!viewerState.searchQuery.trim()}
             >
               <ChevronRight className="h-4 w-4" />
@@ -1339,7 +1430,7 @@ export function PdfReaderWorkspace({
 
         <div
           ref={viewerContainerRef}
-          className="pdfViewer h-[82vh] min-h-152 overflow-auto bg-slate-300/70 px-4 py-6 lg:h-[86vh]"
+          className="pdfViewer h-[72vh] min-h-120 overflow-auto bg-slate-300/70 px-2 py-4 sm:h-[82vh] sm:min-h-152 sm:px-4 sm:py-6 lg:h-[86vh]"
         >
           <div ref={viewerElementRef} className="pdfViewer" />
         </div>
