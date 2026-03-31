@@ -15,7 +15,11 @@ import {
 } from "lucide-react";
 
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
-import { saveDocument, saveSession } from "@/db/repositories";
+import {
+  saveDocument,
+  saveDocumentAsset,
+  saveSession,
+} from "@/db/repositories";
 import { useLocale } from "@/components/layout/locale-provider";
 import {
   detectDocumentSourceKind,
@@ -1013,6 +1017,9 @@ export function UploadPanel() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [selectedFile, setSelectedFile] = useState<SelectedFileSummary>();
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(
+    null,
+  );
   const [selectedSourceKind, setSelectedSourceKind] =
     useState<DocumentSourceKind>("plain-text");
   const [structuredSourceBlocks, setStructuredSourceBlocks] =
@@ -1060,6 +1067,7 @@ export function UploadPanel() {
 
   const clearImportedFile = () => {
     setSelectedFile(undefined);
+    setSelectedUploadFile(null);
     setSelectedSourceKind("plain-text");
     setStructuredSourceBlocks(undefined);
     setContent("");
@@ -1162,6 +1170,7 @@ export function UploadPanel() {
       } satisfies SelectedFileSummary;
 
       setSelectedFile(nextSelectedFile);
+      setSelectedUploadFile(file);
       setSelectedSourceKind(extracted.sourceKind);
       setStructuredSourceBlocks(extracted.sourceBlocks);
       setContent(extracted.rawText);
@@ -1247,7 +1256,22 @@ export function UploadPanel() {
         updatedAt: new Date().toISOString(),
       };
 
-      await Promise.all([saveDocument(record), saveSession(session)]);
+      const assetSavePromise =
+        sourceKind === "pdf" && selectedUploadFile
+          ? saveDocumentAsset({
+              blob: selectedUploadFile,
+              documentId: document.id,
+              fileName: selectedUploadFile.name,
+              size: selectedUploadFile.size,
+              sourceKind,
+            })
+          : Promise.resolve(undefined);
+
+      await Promise.all([
+        saveDocument(record),
+        saveSession(session),
+        assetSavePromise,
+      ]);
 
       if (ownerId && supabase) {
         try {
@@ -1390,6 +1414,7 @@ export function UploadPanel() {
                     setInputMode(value);
                     if (value === "paste") {
                       setSelectedFile(undefined);
+                      setSelectedUploadFile(null);
                       setSelectedSourceKind("plain-text");
                       setStructuredSourceBlocks(undefined);
                       setStatusMessage(undefined);

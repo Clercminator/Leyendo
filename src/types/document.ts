@@ -106,3 +106,13 @@ export interface DocumentRecord extends SyncOwnedRecord {
   totalSections: number;
   payload?: DocumentModel;
 }
+
+export interface DocumentAssetRecord {
+  documentId: string;
+  sourceKind: DocumentSourceKind;
+  fileName: string;
+  blob: Blob;
+  size: number;
+  createdAt: string;
+  updatedAt: string;
+}

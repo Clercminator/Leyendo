@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   documentsBulkGet,
   documentsDelete,
+  documentAssetsDelete,
+  documentAssetsGet,
+  documentAssetsPut,
+  preferencesGet,
+  preferencesPut,
   transaction,
   sessionsDeleteMany,
   sessionsEquals,
@@ -16,6 +21,11 @@ const {
 } = vi.hoisted(() => ({
   documentsBulkGet: vi.fn(),
   documentsDelete: vi.fn(),
+  documentAssetsDelete: vi.fn(),
+  documentAssetsGet: vi.fn(),
+  documentAssetsPut: vi.fn(),
+  preferencesGet: vi.fn(),
+  preferencesPut: vi.fn(),
   transaction: vi.fn(),
   sessionsDeleteMany: vi.fn(),
   sessionsEquals: vi.fn(() => ({
@@ -39,6 +49,11 @@ vi.mock("@/db/app-db", () => ({
     documents: {
       bulkGet: documentsBulkGet,
       delete: documentsDelete,
+    },
+    documentAssets: {
+      delete: documentAssetsDelete,
+      get: documentAssetsGet,
+      put: documentAssetsPut,
     },
     sessions: {
       orderBy: vi.fn(() => ({
@@ -77,8 +92,8 @@ vi.mock("@/db/app-db", () => ({
       })),
     },
     preferences: {
-      get: vi.fn(),
-      put: vi.fn(),
+      get: preferencesGet,
+      put: preferencesPut,
     },
     transaction,
   },
@@ -91,10 +106,15 @@ vi.mock("nanoid", () => ({
 import {
   clearSessionForDocument,
   deleteDocumentAndRelatedData,
+  getDocumentAsset,
+  getStoredPdfViewerState,
   getRecentBookmarks,
   getRecentHighlights,
   getRecentSessions,
+  savePdfViewerState,
+  saveDocumentAsset,
 } from "@/db/repositories";
+import { defaultPdfViewerState } from "@/types/reader";
 
 describe("recent repository hydration", () => {
   beforeEach(() => {
@@ -228,6 +248,32 @@ describe("recent repository hydration", () => {
     expect(highlightsDeleteMany).not.toHaveBeenCalled();
   });
 
+  it("saves and loads a local document asset", async () => {
+    documentAssetsGet.mockResolvedValue(undefined);
+
+    const asset = await saveDocumentAsset({
+      blob: new Blob(["pdf-bytes"], { type: "application/pdf" }),
+      documentId: "doc-pdf",
+      fileName: "sample.pdf",
+      size: 9,
+      sourceKind: "pdf",
+    });
+
+    expect(documentAssetsPut).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: "doc-pdf",
+        fileName: "sample.pdf",
+        size: 9,
+        sourceKind: "pdf",
+      }),
+    );
+    expect(asset.documentId).toBe("doc-pdf");
+
+    documentAssetsGet.mockResolvedValue(asset);
+
+    await expect(getDocumentAsset("doc-pdf")).resolves.toEqual(asset);
+  });
+
   it("deletes a document and its related local data in one transaction", async () => {
     await deleteDocumentAndRelatedData("doc-5");
 
@@ -235,9 +281,42 @@ describe("recent repository hydration", () => {
     expect(sessionsEquals).toHaveBeenCalledWith("doc-5");
     expect(bookmarksEquals).toHaveBeenCalledWith("doc-5");
     expect(highlightsEquals).toHaveBeenCalledWith("doc-5");
+    expect(documentAssetsDelete).toHaveBeenCalledWith("doc-5");
     expect(sessionsDeleteMany).toHaveBeenCalledTimes(1);
     expect(bookmarksDeleteMany).toHaveBeenCalledTimes(1);
     expect(highlightsDeleteMany).toHaveBeenCalledTimes(1);
     expect(documentsDelete).toHaveBeenCalledWith("doc-5");
+  });
+
+  it("persists per-document PDF viewer state in preferences", async () => {
+    const state = {
+      pageIndex: 7,
+      rotation: 90 as const,
+      scrollMode: "single-page" as const,
+      searchQuery: "chapter 2",
+      zoomValue: "page-fit",
+    };
+
+    await savePdfViewerState("doc-pdf", state);
+
+    expect(preferencesPut).toHaveBeenCalledWith({
+      key: "pdf-viewer:doc-pdf",
+      value: state,
+    });
+
+    preferencesGet.mockResolvedValue({
+      key: "pdf-viewer:doc-pdf",
+      value: state,
+    });
+
+    await expect(getStoredPdfViewerState("doc-pdf")).resolves.toEqual(state);
+  });
+
+  it("falls back to the default PDF viewer state when none is stored", async () => {
+    preferencesGet.mockResolvedValue(undefined);
+
+    await expect(getStoredPdfViewerState("missing-doc")).resolves.toEqual(
+      defaultPdfViewerState,
+    );
   });
 });

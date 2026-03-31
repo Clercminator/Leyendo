@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "pdfjs-dist/web/pdf_viewer.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -550,7 +551,11 @@
     border: none;
     padding: 1.25rem 1.5rem 1.5rem;
     background:
-      radial-gradient(circle at top, color-mix(in srgb, var(--reader-canvas-bg) 82%, white 6%), transparent 52%),
+      radial-gradient(
+        circle at top,
+        color-mix(in srgb, var(--reader-canvas-bg) 82%, white 6%),
+        transparent 52%
+      ),
       var(--reader-canvas-bg);
   }
 
@@ -660,13 +665,31 @@
 
   @keyframes reader-paragraph-breathe {
     0% {
-      box-shadow: 0 14px 32px color-mix(in srgb, var(--reader-paragraph-active-shadow) 82%, transparent);
-      background: color-mix(in srgb, var(--reader-paragraph-active-bg) 88%, transparent);
+      box-shadow: 0 14px 32px
+        color-mix(
+          in srgb,
+          var(--reader-paragraph-active-shadow) 82%,
+          transparent
+        );
+      background: color-mix(
+        in srgb,
+        var(--reader-paragraph-active-bg) 88%,
+        transparent
+      );
     }
 
     55% {
-      box-shadow: 0 24px 58px color-mix(in srgb, var(--reader-paragraph-active-shadow) 118%, transparent);
-      background: color-mix(in srgb, var(--reader-paragraph-active-bg) 112%, transparent);
+      box-shadow: 0 24px 58px
+        color-mix(
+          in srgb,
+          var(--reader-paragraph-active-shadow) 118%,
+          transparent
+        );
+      background: color-mix(
+        in srgb,
+        var(--reader-paragraph-active-bg) 112%,
+        transparent
+      );
     }
 
     100% {

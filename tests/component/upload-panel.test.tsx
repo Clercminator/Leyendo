@@ -5,6 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UploadPanel } from "@/components/upload/upload-panel";
 import type { DocumentSourceKind } from "@/types/document";
 
+const { useSupabaseAuth } = vi.hoisted(() => ({
+  useSupabaseAuth: vi.fn(),
+}));
+
+vi.mock("@/components/auth/supabase-provider", () => ({
+  useSupabaseAuth,
+}));
+
 vi.mock("@/components/layout/locale-provider", () => ({
   useLocale: () => ({
     locale: "en",
@@ -80,6 +88,28 @@ vi.mock("@/features/ingest/extract/file-text-client", () => ({
   shouldOffloadPdfExtraction,
 }));
 
+const { getSupabaseBrowserClient } = vi.hoisted(() => ({
+  getSupabaseBrowserClient: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/client", () => ({
+  getSupabaseBrowserClient,
+}));
+
+const { ensureProfile, upsertCloudDocuments, upsertCloudSessions } = vi.hoisted(
+  () => ({
+    ensureProfile: vi.fn(),
+    upsertCloudDocuments: vi.fn(),
+    upsertCloudSessions: vi.fn(),
+  }),
+);
+
+vi.mock("@/lib/supabase/library-sync", () => ({
+  ensureProfile,
+  upsertCloudDocuments,
+  upsertCloudSessions,
+}));
+
 function uploadFileInput() {
   return screen.getByLabelText(
     /choose a pdf, docx, rtf, markdown, or text file/i,
@@ -89,6 +119,10 @@ function uploadFileInput() {
 describe("UploadPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useSupabaseAuth.mockReturnValue({
+      user: null,
+    });
+    getSupabaseBrowserClient.mockReturnValue(null);
     detectDocumentSourceKind.mockReturnValue(
       "plain-text" satisfies DocumentSourceKind,
     );
@@ -104,6 +138,65 @@ describe("UploadPanel", () => {
       },
       processingMode: "main-thread",
     });
+  });
+
+  it("syncs a signed-in import to Supabase so the document can reappear on another device", async () => {
+    const user = userEvent.setup();
+    const supabaseClient = { kind: "supabase" };
+
+    useSupabaseAuth.mockReturnValue({
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+    getSupabaseBrowserClient.mockReturnValue(supabaseClient);
+    buildDocumentModelAsync.mockResolvedValue({
+      document: {
+        blocks: [{ text: "Imported from file." }],
+        chunks: [{ index: 0 }],
+        createdAt: "2026-03-27T00:00:00.000Z",
+        excerpt: "Imported from file.",
+        id: "doc-cloud-sync",
+        sections: [{ index: 0 }],
+        sourceKind: "plain-text" satisfies DocumentSourceKind,
+        title: "Imported from file",
+        updatedAt: "2026-03-27T00:00:00.000Z",
+      },
+    });
+
+    render(<UploadPanel />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: /^paste text$/i }),
+      "Imported from file.",
+    );
+
+    await user.click(screen.getByRole("button", { name: /open in reader/i }));
+
+    await waitFor(() => {
+      expect(ensureProfile).toHaveBeenCalledWith(supabaseClient, "user-1");
+    });
+
+    expect(upsertCloudDocuments).toHaveBeenCalledWith(
+      supabaseClient,
+      "user-1",
+      [
+        expect.objectContaining({
+          id: "doc-cloud-sync",
+          ownerId: "user-1",
+          syncState: "synced",
+        }),
+      ],
+    );
+    expect(upsertCloudSessions).toHaveBeenCalledWith(supabaseClient, "user-1", [
+      expect.objectContaining({
+        documentId: "doc-cloud-sync",
+        ownerId: "user-1",
+        syncState: "synced",
+      }),
+    ]);
+    expect(push).toHaveBeenCalledWith("/reader?document=doc-cloud-sync");
   });
 
   it("shows a clear error for unsupported formats", async () => {

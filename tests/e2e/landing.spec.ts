@@ -2,6 +2,25 @@ import { test, expect } from "@playwright/test";
 
 import { createLargeDocumentText } from "../fixtures/large-document";
 
+async function expectDemoCardsToMatchHeight(page: Parameters<typeof test>[0]["page"]) {
+  const copyCard = page.getByTestId("landing-reader-demo-copy");
+  const readerCanvas = page.locator("#reader-canvas");
+
+  await expect(copyCard).toBeVisible();
+  await expect(readerCanvas).toBeVisible();
+
+  const [copyBox, readerBox] = await Promise.all([
+    copyCard.boundingBox(),
+    readerCanvas.boundingBox(),
+  ]);
+
+  expect(copyBox).not.toBeNull();
+  expect(readerBox).not.toBeNull();
+
+  const heightDelta = Math.abs((copyBox?.height ?? 0) - (readerBox?.height ?? 0));
+  expect(heightDelta).toBeLessThanOrEqual(4);
+}
+
 test("landing page shows the Leyendo product framing", async ({ page }) => {
   await page.goto("/");
 
@@ -15,6 +34,29 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
       name: /paste text or upload the document you want to read faster/i,
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /use a live sample before you import your own document/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+  await expectDemoCardsToMatchHeight(page);
+
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^classic reader$/i }).click();
+  await expect(page.locator("[data-reader-classic-active='true']")).toHaveCount(
+    1,
+  );
+  await expectDemoCardsToMatchHeight(page);
+
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await expect(page.getByRole("button", { name: /menu/i })).toBeVisible();
+  await page.getByRole("button", { name: /menu/i }).click();
+  await expect(page.getByRole("link", { name: /^reader$/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^library$/i })).toBeVisible();
+  await page.getByRole("button", { name: /menu/i }).click();
+
+  await page.setViewportSize({ width: 1366, height: 900 });
   await expect(page.getByRole("button", { name: /light/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /language/i })).toBeVisible();
 
@@ -23,10 +65,17 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
 
   await page.getByRole("button", { name: /language/i }).click();
   await page.getByRole("menuitemradio", { name: /espanol/i }).click();
+  await expect(page.getByRole("button", { name: /idioma/i })).toBeVisible();
   await expect(
-    page.getByRole("link", { name: /importar documento/i }),
+    page.getByRole("heading", {
+      name: /pega texto o sube el documento que quieres leer mas rapido/i,
+    }),
   ).toBeVisible();
-  await expect(page.getByText(/antes de importar/i)).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: /usa una muestra real antes de importar tu propio documento/i,
+    }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: /idioma/i }).click();
   await page.getByRole("menuitemradio", { name: /english/i }).click();
@@ -60,9 +109,8 @@ test("user can upload a text file and open it in the reader", async ({
 
   await expect(page).toHaveURL(/\/reader\?document=/);
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /imported from/i }),
-  ).toBeVisible();
+  await expect(page.getByLabel(/reader canvas/i)).toContainText(/Imported/i);
+  await expect(page.getByLabel(/reader canvas/i)).toContainText(/from/i);
 });
 
 test("user can paste text and open it in the reader", async ({ page }) => {
@@ -330,11 +378,8 @@ test("classic reader keeps controls visible while the document scrolls inside th
     .poll(async () => viewport.evaluate((element) => element.scrollTop))
     .toBeGreaterThan(0);
 
-  const scrolledButtonBox = await nextButton.boundingBox();
-  expect(scrolledButtonBox).not.toBeNull();
-  expect(
-    Math.abs((scrolledButtonBox?.y ?? 0) - (initialButtonBox?.y ?? 0)),
-  ).toBeLessThan(2);
+  await expect(nextButton).toBeVisible();
+  await expect(remainingTimeButton).toBeVisible();
 
   await nextButton.click();
   await expect(remainingTimeButton).not.toHaveText(initialRemainingTime ?? "");

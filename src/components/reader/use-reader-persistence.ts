@@ -20,7 +20,9 @@ interface UseReaderPersistenceOptions {
   currentChunkIndex: number;
   isPlaying: boolean;
   preferences: ReaderPreferences;
+  profileReaderPreferences?: ReaderPreferences;
   runtimeChunks: Chunk[];
+  syncReaderPreferences?: (preferences: ReaderPreferences) => Promise<void>;
   userId?: string;
   updatePreferences: (changes: Partial<ReaderPreferences>) => void;
 }
@@ -37,7 +39,9 @@ export function useReaderPersistence({
   currentChunkIndex,
   isPlaying,
   preferences,
+  profileReaderPreferences,
   runtimeChunks,
+  syncReaderPreferences,
   userId,
   updatePreferences,
 }: UseReaderPersistenceOptions) {
@@ -46,6 +50,9 @@ export function useReaderPersistence({
     ReturnType<typeof buildInitialSession> | undefined
   >(undefined);
   const lastSavedSignatureRef = useRef<string | undefined>(undefined);
+  const lastSyncedPreferenceSignatureRef = useRef<string | undefined>(
+    undefined,
+  );
   const lastPlaybackBoundaryRef = useRef<string | undefined>(undefined);
   const lastPlaybackStateRef = useRef(isPlaying);
 
@@ -88,6 +95,15 @@ export function useReaderPersistence({
     let cancelled = false;
 
     void (async () => {
+      if (userId && profileReaderPreferences) {
+        const signature = JSON.stringify(profileReaderPreferences);
+        lastSyncedPreferenceSignatureRef.current = signature;
+        updatePreferences(profileReaderPreferences);
+        await saveReaderPreferences(profileReaderPreferences);
+        hasHydratedPreferencesRef.current = true;
+        return;
+      }
+
       const storedPreferences = await getStoredReaderPreferences();
       if (cancelled || !storedPreferences) {
         return;
@@ -100,7 +116,7 @@ export function useReaderPersistence({
     return () => {
       cancelled = true;
     };
-  }, [updatePreferences]);
+  }, [profileReaderPreferences, updatePreferences, userId]);
 
   useEffect(() => {
     if (!hasHydratedPreferencesRef.current) {
@@ -109,12 +125,24 @@ export function useReaderPersistence({
 
     const timeoutId = window.setTimeout(() => {
       void saveReaderPreferences(preferences);
+
+      if (!userId || !syncReaderPreferences) {
+        return;
+      }
+
+      const signature = JSON.stringify(preferences);
+      if (signature === lastSyncedPreferenceSignatureRef.current) {
+        return;
+      }
+
+      lastSyncedPreferenceSignatureRef.current = signature;
+      void syncReaderPreferences(preferences);
     }, 180);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [preferences]);
+  }, [preferences, syncReaderPreferences, userId]);
 
   useEffect(() => {
     if (!document?.payload) {
@@ -129,10 +157,12 @@ export function useReaderPersistence({
       currentTokenIndex: activeChunk?.anchorTokenIndex ?? 0,
       currentParagraphIndex: activeChunk?.paragraphIndex ?? 0,
       currentSectionIndex: activeChunk?.sectionIndex ?? 0,
+      ownerId: document.ownerId,
       percentComplete: deriveReaderProgress(
         { chunks: runtimeChunks },
         currentChunkIndex,
       ),
+      syncState: document.syncState,
       updatedAt: new Date().toISOString(),
     };
 

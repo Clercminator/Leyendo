@@ -123,6 +123,11 @@ export function useReaderDocument({
           : targetBookmark && targetBookmark.documentId === record.id
             ? targetBookmark
             : undefined;
+      const isPageOnlyBookmark =
+        targetAnchor &&
+        "sourcePageIndex" in targetAnchor &&
+        typeof targetAnchor.sourcePageIndex === "number" &&
+        targetAnchor.chunkIndex < 0;
 
       const [storedBookmarks, storedHighlights] = await Promise.all([
         getBookmarksForDocument(record.id),
@@ -135,7 +140,7 @@ export function useReaderDocument({
 
       setDocument(record);
       setSavedSession(
-        targetAnchor
+        targetAnchor && !isPageOnlyBookmark
           ? {
               ...buildInitialSession(record.payload),
               currentChunkIndex: targetAnchor.chunkIndex,

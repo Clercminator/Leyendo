@@ -20,6 +20,7 @@ import {
 
 import { useLocale } from "@/components/layout/locale-provider";
 import { getLocalizedCopy } from "@/lib/locale";
+import { cn } from "@/lib/utils";
 import {
   readerModes,
   readerPresets,
@@ -28,6 +29,8 @@ import {
 
 interface ReaderCanvasProps {
   activeGoalLabel?: string;
+  availableModes?: (typeof readerModes)[number][];
+  className?: string;
   chunkSize: number;
   currentParagraphNumber: number;
   isPlaying: boolean;
@@ -78,6 +81,11 @@ const modeLabels: Record<
   (typeof readerModes)[number],
   Record<"en" | "es" | "pt", string>
 > = {
+  "pdf-page": {
+    en: "Acrobat PDF",
+    es: "PDF Acrobat",
+    pt: "PDF Acrobat",
+  },
   "focus-word": { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
   "phrase-chunk": {
     en: "Phrase Chunk",
@@ -135,6 +143,8 @@ const presetCopy: Record<
 
 export function ReaderCanvas({
   activeGoalLabel,
+  availableModes = [...readerModes],
+  className,
   chunkSize,
   currentParagraphNumber,
   isPlaying,
@@ -552,229 +562,228 @@ export function ReaderCanvas({
       id="reader-canvas"
       aria-labelledby="reader-canvas-title"
       tabIndex={-1}
-      className="reader-canvas relative isolate flex h-[82vh] min-h-152 w-full flex-col gap-6 overflow-visible rounded-[1.75rem] border border-(--border-soft) bg-(--surface-strong) px-6 py-5 text-left sm:px-8 sm:py-6 lg:h-[86vh] lg:min-h-176"
+      className={cn(
+        "reader-canvas relative isolate flex h-[82vh] min-h-152 w-full flex-col gap-6 overflow-visible rounded-[1.75rem] border border-(--border-soft) bg-(--surface-strong) px-6 py-5 text-left sm:px-8 sm:py-6 lg:h-[86vh] lg:min-h-176",
+        className,
+      )}
     >
       <h2 id="reader-canvas-title" className="sr-only">
         {copy.readerCanvas}
       </h2>
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <div ref={modeMenuRef} className="relative z-40">
-                <button
-                  type="button"
-                  aria-label={copy.changeReadingMode}
-                  onClick={() => {
-                    setOpenMenu((current) =>
-                      current === "mode" ? null : "mode",
-                    );
-                  }}
-                  className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm tracking-[0.22em] text-(--accent-sky) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                >
-                  {modeLabel}
-                  <ChevronDown
-                    className={`h-4 w-4 transition ${openMenu === "mode" ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {openMenu === "mode" ? (
-                  <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-64 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
-                    <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                      {copy.readingMode}
-                    </p>
-                    <div className="mt-3 grid gap-2">
-                      {Object.entries(modeLabels).map(([value, labels]) => (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <div ref={modeMenuRef} className="relative z-40">
+              <button
+                type="button"
+                aria-label={copy.changeReadingMode}
+                onClick={() => {
+                  setOpenMenu((current) =>
+                    current === "mode" ? null : "mode",
+                  );
+                }}
+                className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm tracking-[0.22em] text-(--accent-sky) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                {modeLabel}
+                <ChevronDown
+                  className={`h-4 w-4 transition ${openMenu === "mode" ? "rotate-180" : ""}`}
+                />
+              </button>
+              {openMenu === "mode" ? (
+                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-64 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                    {copy.readingMode}
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    {availableModes.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          onSelectMode(value as (typeof readerModes)[number]);
+                          setOpenMenu(null);
+                        }}
+                        className={`rounded-full border px-3 py-2 text-left text-sm transition ${
+                          preferences.mode === value
+                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                            : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                        }`}
+                      >
+                        {getLocalizedCopy(locale, modeLabels[value])}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div ref={presetMenuRef} className="relative z-40">
+              <button
+                type="button"
+                aria-label={copy.changePreset}
+                onClick={() => {
+                  setOpenMenu((current) =>
+                    current === "preset" ? null : "preset",
+                  );
+                }}
+                className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm tracking-[0.14em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                {activePreset
+                  ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
+                  : copy.customPreset}
+                <ChevronDown
+                  className={`h-4 w-4 transition ${openMenu === "preset" ? "rotate-180" : ""}`}
+                />
+              </button>
+              {openMenu === "preset" ? (
+                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-80 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                    {copy.presetMenu}
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    {readerPresets.map((preset) => {
+                      const isActive = activePreset?.id === preset.id;
+
+                      return (
                         <button
-                          key={value}
+                          key={preset.id}
                           type="button"
                           onClick={() => {
-                            onSelectMode(value as (typeof readerModes)[number]);
+                            onSelectPreset(preset.id);
                             setOpenMenu(null);
                           }}
-                          className={`rounded-full border px-3 py-2 text-left text-sm transition ${
-                            preferences.mode === value
+                          className={`rounded-[1rem] border px-3 py-3 text-left transition ${
+                            isActive
                               ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
                               : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
                           }`}
                         >
-                          {getLocalizedCopy(locale, labels)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-              <div ref={presetMenuRef} className="relative z-40">
-                <button
-                  type="button"
-                  aria-label={copy.changePreset}
-                  onClick={() => {
-                    setOpenMenu((current) =>
-                      current === "preset" ? null : "preset",
-                    );
-                  }}
-                  className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm tracking-[0.14em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                >
-                  {activePreset
-                    ? getLocalizedCopy(
-                        locale,
-                        presetCopy[activePreset.id].label,
-                      )
-                    : copy.customPreset}
-                  <ChevronDown
-                    className={`h-4 w-4 transition ${openMenu === "preset" ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {openMenu === "preset" ? (
-                  <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-80 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
-                    <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                      {copy.presetMenu}
-                    </p>
-                    <div className="mt-3 grid gap-2">
-                      {readerPresets.map((preset) => {
-                        const isActive = activePreset?.id === preset.id;
-
-                        return (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() => {
-                              onSelectPreset(preset.id);
-                              setOpenMenu(null);
-                            }}
-                            className={`rounded-[1rem] border px-3 py-3 text-left transition ${
-                              isActive
-                                ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                                : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="text-sm font-semibold">
-                                {getLocalizedCopy(
-                                  locale,
-                                  presetCopy[preset.id].label,
-                                )}
-                              </p>
-                              <span
-                                className={`rounded-full border px-2 py-0.5 text-[11px] ${
-                                  isActive
-                                    ? "border-white/20 bg-white/10 text-white/80"
-                                    : "border-(--border-soft) bg-(--surface-chip) text-(--text-muted)"
-                                }`}
-                              >
-                                {preset.wordsPerMinute} WPM
-                              </span>
-                            </div>
-                            <p
-                              className={`mt-1.5 text-xs leading-5 ${isActive ? "text-white/80" : "text-(--text-muted)"}`}
-                            >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold">
                               {getLocalizedCopy(
                                 locale,
-                                presetCopy[preset.id].summary,
+                                presetCopy[preset.id].label,
                               )}
                             </p>
-                          </button>
-                        );
-                      })}
-                    </div>
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                                isActive
+                                  ? "border-white/20 bg-white/10 text-white/80"
+                                  : "border-(--border-soft) bg-(--surface-chip) text-(--text-muted)"
+                              }`}
+                            >
+                              {preset.wordsPerMinute} WPM
+                            </span>
+                          </div>
+                          <p
+                            className={`mt-1.5 text-xs leading-5 ${isActive ? "text-white/80" : "text-(--text-muted)"}`}
+                          >
+                            {getLocalizedCopy(
+                              locale,
+                              presetCopy[preset.id].summary,
+                            )}
+                          </p>
+                        </button>
+                      );
+                    })}
                   </div>
-                ) : null}
-              </div>
-              <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
-                {copy.paragraph} {currentParagraphNumber}
-              </span>
-              <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
-                {progress}% {copy.complete}
-              </span>
-              <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
-                {sentenceCount} {copy.sentenceCount}
-              </span>
-              <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
-                {isPlaying ? copy.playbackRunning : copy.playbackPaused}
-              </span>
+                </div>
+              ) : null}
+            </div>
+            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
+              {copy.paragraph} {currentParagraphNumber}
+            </span>
+            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
+              {progress}% {copy.complete}
+            </span>
+            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
+              {sentenceCount} {copy.sentenceCount}
+            </span>
+            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong)">
+              {isPlaying ? copy.playbackRunning : copy.playbackPaused}
+            </span>
+            <button
+              type="button"
+              aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
+              onClick={onAnnounceRemainingTime}
+              className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+            >
+              <Clock3 className="h-4 w-4 text-(--accent-amber)" />
+              {remainingTimeLabel}
+            </button>
+            <button
+              type="button"
+              aria-label={
+                isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
+              }
+              onClick={() => {
+                void toggleFullscreen();
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+              {copy.fullscreen}
+            </button>
+            <div ref={themeMenuRef} className="relative z-40">
               <button
                 type="button"
-                aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
-                onClick={onAnnounceRemainingTime}
-                className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-              >
-                <Clock3 className="h-4 w-4 text-(--accent-amber)" />
-                {remainingTimeLabel}
-              </button>
-              <button
-                type="button"
-                aria-label={isFullscreen ? copy.exitFullscreen : copy.enterFullscreen}
+                aria-label={copy.changeTheme}
                 onClick={() => {
-                  void toggleFullscreen();
+                  setOpenMenu((current) =>
+                    current === "theme" ? null : "theme",
+                  );
                 }}
                 className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
               >
-                {isFullscreen ? (
-                  <Minimize2 className="h-4 w-4" />
-                ) : (
-                  <Maximize2 className="h-4 w-4" />
-                )}
-                {copy.fullscreen}
+                {getLocalizedCopy(locale, themeLabels[preferences.theme])}
+                <ChevronDown
+                  className={`h-4 w-4 transition ${openMenu === "theme" ? "rotate-180" : ""}`}
+                />
               </button>
-              <div ref={themeMenuRef} className="relative z-40">
-                <button
-                  type="button"
-                  aria-label={copy.changeTheme}
-                  onClick={() => {
-                    setOpenMenu((current) =>
-                      current === "theme" ? null : "theme",
-                    );
-                  }}
-                  className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                >
-                  {getLocalizedCopy(locale, themeLabels[preferences.theme])}
-                  <ChevronDown
-                    className={`h-4 w-4 transition ${openMenu === "theme" ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {openMenu === "theme" ? (
-                  <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
-                    <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                      {copy.themeMenu}
-                    </p>
-                    <div className="mt-3 grid gap-2">
-                      {Object.entries(themeLabels).map(([value, labels]) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => {
-                            onSelectTheme(value as ReaderPreferences["theme"]);
-                            setOpenMenu(null);
-                          }}
-                          className={`rounded-full border px-3 py-2 text-left text-sm transition ${
-                            preferences.theme === value
-                              ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                              : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                          }`}
-                        >
-                          {getLocalizedCopy(locale, labels)}
-                        </button>
-                      ))}
-                    </div>
+              {openMenu === "theme" ? (
+                <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                    {copy.themeMenu}
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    {Object.entries(themeLabels).map(([value, labels]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          onSelectTheme(value as ReaderPreferences["theme"]);
+                          setOpenMenu(null);
+                        }}
+                        className={`rounded-full border px-3 py-2 text-left text-sm transition ${
+                          preferences.theme === value
+                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                            : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                        }`}
+                      >
+                        {getLocalizedCopy(locale, labels)}
+                      </button>
+                    ))}
                   </div>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
             </div>
-            <p className="text-sm leading-7 text-(--text-muted)">
-              {copy.readingModeHelp}
+          </div>
+          <p className="text-sm leading-7 text-(--text-muted)">
+            {copy.readingModeHelp}
+          </p>
+          {activePresetSummary ? (
+            <p className="text-sm leading-6 text-(--text-muted)">
+              <span className="mr-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1 text-[11px] tracking-[0.18em] text-(--accent-amber) uppercase">
+                {activePreset
+                  ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
+                  : copy.customPreset}
+              </span>
+              {activePresetSummary}
             </p>
-            {activePresetSummary ? (
-              <p className="text-sm leading-6 text-(--text-muted)">
-                <span className="mr-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1 text-[11px] tracking-[0.18em] text-(--accent-amber) uppercase">
-                  {activePreset
-                    ? getLocalizedCopy(
-                        locale,
-                        presetCopy[activePreset.id].label,
-                      )
-                    : copy.customPreset}
-                </span>
-                {activePresetSummary}
-              </p>
-            ) : null}
+          ) : null}
         </div>
         <div className="mt-6 flex min-h-0 flex-1">
           <div className="flex min-h-0 flex-1 items-stretch *:h-full">

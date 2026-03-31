@@ -13,6 +13,7 @@ import {
 import {
   deleteBookmark,
   deleteHighlight,
+  getDocumentAsset,
   saveBookmark,
   saveHighlight,
 } from "@/db/repositories";
@@ -21,6 +22,7 @@ import { useLocale } from "@/components/layout/locale-provider";
 import { ClassicReaderView } from "@/components/reader/classic-reader-view";
 import { FocusWordView } from "@/components/reader/focus-word-view";
 import { GuidedLineView } from "@/components/reader/guided-line-view";
+import { PdfReaderWorkspace } from "@/components/reader/pdf-reader-workspace";
 import { PhraseChunkView } from "@/components/reader/phrase-chunk-view";
 import { ReaderCanvas } from "@/components/reader/reader-canvas";
 import { ReaderSidebar } from "@/components/reader/reader-sidebar";
@@ -38,6 +40,10 @@ import {
 } from "@/features/reader/engine/navigation";
 import { deriveRemainingPlaybackMs } from "@/features/reader/engine/timing";
 import { getMatchingReadingGoal } from "@/features/reader/engine/presets";
+import {
+  resolvePdfSelectionAnchor,
+  resolveSourcePageIndexForAnchor,
+} from "@/features/reader/pdf/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   deleteCloudBookmark,
@@ -46,8 +52,12 @@ import {
   upsertCloudHighlights,
 } from "@/lib/supabase/library-sync";
 import { useReaderStore } from "@/state/reader-store";
-import type { ReaderPreferences } from "@/types/reader";
-import { readerPresets } from "@/types/reader";
+import type {
+  Bookmark,
+  ReaderMode,
+  ReaderPreferences,
+} from "@/types/reader";
+import { readerModes, readerPresets } from "@/types/reader";
 
 interface ReaderWorkspaceProps {
   documentId?: string;
@@ -122,7 +132,7 @@ export function ReaderWorkspace({
   highlightId,
 }: ReaderWorkspaceProps) {
   const { locale } = useLocale();
-  const { user } = useSupabaseAuth();
+  const { profile, syncReaderPreferences, user } = useSupabaseAuth();
   const userId = user?.id;
   const {
     currentChunkIndex,
@@ -135,6 +145,12 @@ export function ReaderWorkspace({
     updatePreferences,
   } = useReaderStore();
   const [highlightNote, setHighlightNote] = useState("");
+  const [pdfAssetState, setPdfAssetState] = useState<
+    "unknown" | "present" | "missing"
+  >("unknown");
+  const [pdfPageJumpRequest, setPdfPageJumpRequest] = useState<
+    { nonce: number; pageIndex: number } | undefined
+  >();
   const [statusMessage, setStatusMessage] = useState("");
   const hasHydratedSessionRef = useRef(false);
   const lastAnchorTokenRef = useRef<number | undefined>(undefined);
@@ -205,7 +221,31 @@ export function ReaderWorkspace({
   const remainingTimeLabel = useMemo(() => {
     return formatRemainingTimeLabel(remainingTimeMs, locale);
   }, [locale, remainingTimeMs]);
+  const hasExtractedText = Boolean(
+    payload && payload.tokens.length > 0 && payload.text.trim().length > 0,
+  );
+  const canUsePdfPageMode =
+    payload?.sourceKind === "pdf" && pdfAssetState === "present";
+  const availableModes = useMemo<ReaderMode[]>(() => {
+    if (canUsePdfPageMode && hasExtractedText) {
+      return [...readerModes];
+    }
+
+    if (canUsePdfPageMode) {
+      return ["pdf-page"];
+    }
+
+    return readerModes.filter((mode) => mode !== "pdf-page");
+  }, [canUsePdfPageMode, hasExtractedText]);
+  const isPdfPageMode =
+    canUsePdfPageMode && (!hasExtractedText || preferences.mode === "pdf-page");
+  const canvasMode = isPdfPageMode
+    ? "pdf-page"
+    : preferences.mode === "pdf-page"
+      ? "classic-reader"
+      : preferences.mode;
   const modeLabel = {
+    "pdf-page": { en: "Acrobat PDF", es: "PDF Acrobat", pt: "PDF Acrobat" },
     "focus-word": { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
     "phrase-chunk": {
       en: "Phrase Chunk",
@@ -222,7 +262,7 @@ export function ReaderWorkspace({
       es: "Lector clasico",
       pt: "Leitor classico",
     },
-  }[preferences.mode][locale];
+  }[canvasMode][locale];
 
   useReaderPersistence({
     document,
@@ -230,7 +270,9 @@ export function ReaderWorkspace({
     currentChunkIndex: resolvedChunkIndex,
     isPlaying,
     preferences,
+    profileReaderPreferences: profile?.readerPreferences,
     runtimeChunks,
+    syncReaderPreferences,
     userId,
     updatePreferences,
   });
@@ -244,6 +286,32 @@ export function ReaderWorkspace({
     setChunkIndex,
     setPlaying,
   });
+
+  useEffect(() => {
+    if (document?.sourceKind !== "pdf") {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const asset = await getDocumentAsset(document.id);
+
+      if (!cancelled) {
+        setPdfAssetState(asset?.sourceKind === "pdf" ? "present" : "missing");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [document?.id, document?.sourceKind]);
+
+  useEffect(() => {
+    if (isPdfPageMode && isPlaying) {
+      setPlaying(false);
+    }
+  }, [isPdfPageMode, isPlaying, setPlaying]);
 
   useEffect(() => {
     if (
@@ -270,6 +338,27 @@ export function ReaderWorkspace({
       lastAnchorTokenRef.current = activeChunk.anchorTokenIndex;
     }
   }, [activeChunk]);
+
+  useEffect(() => {
+    if (!bookmarkId || !isPdfPageMode) {
+      return;
+    }
+
+    const pageBookmark = bookmarks.find((bookmark) => bookmark.id === bookmarkId);
+
+    if (typeof pageBookmark?.sourcePageIndex !== "number") {
+      return;
+    }
+
+    const sourcePageIndex = pageBookmark.sourcePageIndex;
+
+    startTransition(() => {
+      setPdfPageJumpRequest({
+        nonce: Date.now(),
+        pageIndex: sourcePageIndex,
+      });
+    });
+  }, [bookmarkId, bookmarks, isPdfPageMode]);
 
   useEffect(() => {
     if (runtimeChunks.length === 0) {
@@ -411,6 +500,62 @@ export function ReaderWorkspace({
     userId,
   ]);
 
+  const handleSavePdfBookmark = useCallback(
+    async ({ pageIndex }: { pageIndex: number }) => {
+      if (!document || !payload) {
+        return;
+      }
+
+      const chunkIndexForPage = runtimeChunks.findIndex(
+        (runtimeChunk) => runtimeChunk.sourcePageIndex === pageIndex,
+      );
+      const resolvedIndex =
+        chunkIndexForPage >= 0 ? chunkIndexForPage : resolvedChunkIndex;
+      const anchorChunk = runtimeChunks[resolvedIndex];
+      const isPageOnlyBookmark = !anchorChunk;
+
+      const bookmark = await saveBookmark({
+        documentId: document.id,
+        label: `Bookmark ${bookmarks.length + 1}`,
+        ownerId: userId,
+        chunkIndex: isPageOnlyBookmark ? -1 : resolvedIndex,
+        tokenIndex: isPageOnlyBookmark ? -1 : anchorChunk.anchorTokenIndex,
+        paragraphIndex: isPageOnlyBookmark ? -1 : anchorChunk.paragraphIndex,
+        sectionIndex: isPageOnlyBookmark ? -1 : anchorChunk.sectionIndex,
+        sourcePageIndex: pageIndex,
+        syncState: userId ? "synced" : undefined,
+      });
+
+      prependBookmark(bookmark);
+      if (userId) {
+        const supabase = getSupabaseBrowserClient();
+        if (supabase) {
+          void upsertCloudBookmarks(supabase, userId, [bookmark]).catch(
+            (error) => {
+              console.warn("bookmark sync failed", error);
+            },
+          );
+        }
+      }
+
+      announce(
+        isPageOnlyBookmark
+          ? `${bookmark.label} saved on page ${pageIndex + 1}.`
+          : `${bookmark.label} saved.`,
+      );
+    },
+    [
+      announce,
+      bookmarks.length,
+      document,
+      payload,
+      prependBookmark,
+      resolvedChunkIndex,
+      runtimeChunks,
+      userId,
+    ],
+  );
+
   const handleSaveHighlight = useCallback(async () => {
     if (!document || !activeChunk) {
       return;
@@ -452,6 +597,79 @@ export function ReaderWorkspace({
     resolvedChunkIndex,
     userId,
   ]);
+
+  const handleSavePdfHighlight = useCallback(
+    async (args: { pageIndex: number; selectionText?: string }) => {
+      if (!document || !payload || runtimeChunks.length === 0) {
+        return;
+      }
+
+      const selectionText = args.selectionText?.trim();
+      const resolvedAnchor = selectionText
+        ? resolvePdfSelectionAnchor({
+            document: payload,
+            pageIndex: args.pageIndex,
+            quote: selectionText,
+          })
+        : null;
+      const chunkIndexForSelection = resolvedAnchor
+        ? resolveSessionChunkIndex(runtimeChunks, {
+            currentChunkIndex: resolvedChunkIndex,
+            currentTokenIndex: resolvedAnchor.tokenIndex,
+          })
+        : runtimeChunks.findIndex(
+            (runtimeChunk) => runtimeChunk.sourcePageIndex === args.pageIndex,
+          );
+      const resolvedIndex =
+        chunkIndexForSelection >= 0
+          ? chunkIndexForSelection
+          : resolvedChunkIndex;
+      const anchorChunk = runtimeChunks[resolvedIndex];
+
+      if (!anchorChunk) {
+        return;
+      }
+
+      const highlight = await saveHighlight({
+        documentId: document.id,
+        label: `Highlight ${highlights.length + 1}`,
+        ownerId: userId,
+        quote: selectionText || anchorChunk.text,
+        note: highlightNote.trim() || undefined,
+        chunkIndex: resolvedIndex,
+        tokenIndex: resolvedAnchor?.tokenIndex ?? anchorChunk.anchorTokenIndex,
+        paragraphIndex:
+          resolvedAnchor?.paragraphIndex ?? anchorChunk.paragraphIndex,
+        sectionIndex: resolvedAnchor?.sectionIndex ?? anchorChunk.sectionIndex,
+        syncState: userId ? "synced" : undefined,
+      });
+
+      prependHighlight(highlight);
+      if (userId) {
+        const supabase = getSupabaseBrowserClient();
+        if (supabase) {
+          void upsertCloudHighlights(supabase, userId, [highlight]).catch(
+            (error) => {
+              console.warn("highlight sync failed", error);
+            },
+          );
+        }
+      }
+      setHighlightNote("");
+      announce(`${highlight.label} saved.`);
+    },
+    [
+      announce,
+      document,
+      highlightNote,
+      highlights.length,
+      payload,
+      prependHighlight,
+      resolvedChunkIndex,
+      runtimeChunks,
+      userId,
+    ],
+  );
 
   const handleDeleteBookmark = useCallback(
     async (bookmarkIdToDelete: string) => {
@@ -495,22 +713,46 @@ export function ReaderWorkspace({
 
   const jumpToAnchor = useCallback(
     (anchor: { chunkIndex: number; tokenIndex: number }) => {
-      moveToChunk(
-        resolveSessionChunkIndex(runtimeChunks, {
-          currentChunkIndex: anchor.chunkIndex,
-          currentTokenIndex: anchor.tokenIndex,
-        }),
-      );
+      const nextChunkIndex = resolveSessionChunkIndex(runtimeChunks, {
+        currentChunkIndex: anchor.chunkIndex,
+        currentTokenIndex: anchor.tokenIndex,
+      });
+
+      moveToChunk(nextChunkIndex);
+
+      if (!isPdfPageMode || !payload) {
+        return;
+      }
+
+      const pageIndex = resolveSourcePageIndexForAnchor(payload, anchor);
+      if (typeof pageIndex === "number") {
+        setPdfPageJumpRequest({ nonce: Date.now(), pageIndex });
+      }
     },
-    [moveToChunk, runtimeChunks],
+    [isPdfPageMode, moveToChunk, payload, runtimeChunks],
   );
 
   const jumpToBookmark = useCallback(
-    (bookmark: { chunkIndex: number; tokenIndex: number; label: string }) => {
+    (bookmark: Pick<Bookmark, "chunkIndex" | "label" | "sourcePageIndex" | "tokenIndex">) => {
+      if (
+        typeof bookmark.sourcePageIndex === "number" &&
+        (runtimeChunks.length === 0 || bookmark.chunkIndex < 0)
+      ) {
+        if (isPdfPageMode) {
+          setPdfPageJumpRequest({
+            nonce: Date.now(),
+            pageIndex: bookmark.sourcePageIndex,
+          });
+        }
+
+        announce(`${bookmark.label} loaded.`);
+        return;
+      }
+
       jumpToAnchor(bookmark);
       announce(`${bookmark.label} loaded.`);
     },
-    [announce, jumpToAnchor],
+    [announce, isPdfPageMode, jumpToAnchor, runtimeChunks.length],
   );
 
   const jumpToHighlight = useCallback(
@@ -526,7 +768,7 @@ export function ReaderWorkspace({
       return null;
     }
 
-    switch (preferences.mode) {
+    switch (canvasMode) {
       case "classic-reader":
         return (
           <ClassicReaderView
@@ -682,13 +924,17 @@ export function ReaderWorkspace({
   }, [announce, applyPreferenceChanges, preferences.reduceMotion]);
 
   const handlePlaybackToggle = useCallback(() => {
+    if (isPdfPageMode) {
+      return;
+    }
+
     if (!activeChunk) {
       return;
     }
 
     setPlaying(!isPlaying);
     announce(isPlaying ? "Playback paused." : "Playback resumed.");
-  }, [activeChunk, announce, isPlaying, setPlaying]);
+  }, [activeChunk, announce, isPdfPageMode, isPlaying, setPlaying]);
 
   if (!documentId) {
     return (
@@ -756,7 +1002,7 @@ export function ReaderWorkspace({
     );
   }
 
-  if (error || !payload || !activeChunk) {
+  if (error || !payload || (!activeChunk && !isPdfPageMode)) {
     return (
       <section className="editorial-panel fade-rise rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-10 text-center shadow-[0_20px_80px_rgba(20,26,56,0.12)] backdrop-blur-xl">
         <p className="editorial-kicker text-(--accent-amber)">
@@ -797,73 +1043,122 @@ export function ReaderWorkspace({
           {statusMessage}
         </p>
 
-        <ReaderCanvas
-          activeGoalLabel={activeGoalLabel}
-          chunkSize={preferences.chunkSize}
-          currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
-          isPlaying={isPlaying}
-          modeLabel={modeLabel}
-          modeView={renderModeView()}
-          remainingTimeLabel={remainingTimeLabel}
-          preferences={preferences}
-          sentenceCount={payload.sentences.length}
-          onAnnounceRemainingTime={announceRemainingTime}
-          onChangeFontScale={handleFontScaleChange}
-          onChangeLineHeight={handleLineHeightChange}
-          onChangeWordsPerMinute={changeWordsPerMinute}
-          onDecreaseChunkSize={handleDecreaseChunkSize}
-          onIncreaseChunkSize={handleIncreaseChunkSize}
-          onMoveBackward={() => moveToChunk(resolvedChunkIndex - 1)}
-          onMoveBackwardFive={() =>
-            moveToChunk(
-              jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, -5),
-            )
-          }
-          onMoveForward={() => moveToChunk(resolvedChunkIndex + 1)}
-          onMoveForwardFive={() =>
-            moveToChunk(
-              jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, 5),
-            )
-          }
-          onRepeatChunk={() =>
-            moveToChunk(repeatChunkIndex(resolvedChunkIndex))
-          }
-          onRestart={() => moveToChunk(0)}
-          onRestartParagraph={() =>
-            moveToChunk(
-              restartParagraphChunkIndex(runtimeChunks, resolvedChunkIndex),
-            )
-          }
-          onSaveBookmark={() => {
-            void handleSaveBookmark();
-          }}
-          onSaveHighlight={() => {
-            void handleSaveHighlight();
-          }}
-          onSelectMode={handleModeSelection}
-          onSelectPreset={handlePresetSelection}
-          onSelectTheme={handleThemeSelection}
-          onToggleNaturalPauses={handleNaturalPausesToggle}
-          onTogglePlayback={handlePlaybackToggle}
-          onToggleReduceMotion={handleReduceMotionToggle}
-          progress={progress}
-        />
+        {isPdfPageMode ? (
+          <PdfReaderWorkspace
+            availableModes={availableModes}
+            bookmarks={bookmarks}
+            document={document}
+            hasExtractedText={hasExtractedText}
+            highlightNote={highlightNote}
+            highlights={highlights}
+            jumpRequest={pdfPageJumpRequest}
+            onChangeHighlightNote={setHighlightNote}
+            onDeleteBookmark={(bookmarkIdToDelete: string) => {
+              void handleDeleteBookmark(bookmarkIdToDelete);
+            }}
+            onDeleteHighlight={(highlightIdToDelete: string) => {
+              void handleDeleteHighlight(highlightIdToDelete);
+            }}
+            onJumpToBookmark={jumpToBookmark}
+            onJumpToHighlight={jumpToHighlight}
+            onPageChange={(pageIndex) => {
+              if (!hasExtractedText) {
+                return;
+              }
+
+              const chunkIndexForPage = runtimeChunks.findIndex(
+                (runtimeChunk) => runtimeChunk.sourcePageIndex === pageIndex,
+              );
+
+              if (
+                chunkIndexForPage >= 0 &&
+                chunkIndexForPage !== resolvedChunkIndex
+              ) {
+                startTransition(() => {
+                  setChunkIndex(chunkIndexForPage);
+                });
+              }
+            }}
+            onSaveBookmark={(args) => {
+              void handleSavePdfBookmark(args);
+            }}
+            onSaveHighlight={(args) => {
+              void handleSavePdfHighlight(args);
+            }}
+            onSelectMode={handleModeSelection}
+          />
+        ) : (
+          <ReaderCanvas
+            activeGoalLabel={activeGoalLabel}
+            availableModes={availableModes}
+            chunkSize={preferences.chunkSize}
+            currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
+            isPlaying={isPlaying}
+            modeLabel={modeLabel}
+            modeView={renderModeView()}
+            remainingTimeLabel={remainingTimeLabel}
+            preferences={preferences}
+            sentenceCount={payload.sentences.length}
+            onAnnounceRemainingTime={announceRemainingTime}
+            onChangeFontScale={handleFontScaleChange}
+            onChangeLineHeight={handleLineHeightChange}
+            onChangeWordsPerMinute={changeWordsPerMinute}
+            onDecreaseChunkSize={handleDecreaseChunkSize}
+            onIncreaseChunkSize={handleIncreaseChunkSize}
+            onMoveBackward={() => moveToChunk(resolvedChunkIndex - 1)}
+            onMoveBackwardFive={() =>
+              moveToChunk(
+                jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, -5),
+              )
+            }
+            onMoveForward={() => moveToChunk(resolvedChunkIndex + 1)}
+            onMoveForwardFive={() =>
+              moveToChunk(
+                jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, 5),
+              )
+            }
+            onRepeatChunk={() =>
+              moveToChunk(repeatChunkIndex(resolvedChunkIndex))
+            }
+            onRestart={() => moveToChunk(0)}
+            onRestartParagraph={() =>
+              moveToChunk(
+                restartParagraphChunkIndex(runtimeChunks, resolvedChunkIndex),
+              )
+            }
+            onSaveBookmark={() => {
+              void handleSaveBookmark();
+            }}
+            onSaveHighlight={() => {
+              void handleSaveHighlight();
+            }}
+            onSelectMode={handleModeSelection}
+            onSelectPreset={handlePresetSelection}
+            onSelectTheme={handleThemeSelection}
+            onToggleNaturalPauses={handleNaturalPausesToggle}
+            onTogglePlayback={handlePlaybackToggle}
+            onToggleReduceMotion={handleReduceMotionToggle}
+            progress={progress}
+          />
+        )}
       </div>
 
-      <ReaderSidebar
-        bookmarks={bookmarks}
-        highlightNote={highlightNote}
-        highlights={highlights}
-        onChangeHighlightNote={setHighlightNote}
-        onDeleteBookmark={(bookmarkIdToDelete: string) => {
-          void handleDeleteBookmark(bookmarkIdToDelete);
-        }}
-        onDeleteHighlight={(highlightIdToDelete: string) => {
-          void handleDeleteHighlight(highlightIdToDelete);
-        }}
-        onJumpToBookmark={jumpToBookmark}
-        onJumpToHighlight={jumpToHighlight}
-      />
+      {isPdfPageMode ? null : (
+        <ReaderSidebar
+          bookmarks={bookmarks}
+          highlightNote={highlightNote}
+          highlights={highlights}
+          onChangeHighlightNote={setHighlightNote}
+          onDeleteBookmark={(bookmarkIdToDelete: string) => {
+            void handleDeleteBookmark(bookmarkIdToDelete);
+          }}
+          onDeleteHighlight={(highlightIdToDelete: string) => {
+            void handleDeleteHighlight(highlightIdToDelete);
+          }}
+          onJumpToBookmark={jumpToBookmark}
+          onJumpToHighlight={jumpToHighlight}
+        />
+      )}
     </section>
   );
 }

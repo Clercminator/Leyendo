@@ -37,7 +37,9 @@ export function AccountPanel() {
     guestLibrarySummary,
     isConfigured,
     isLoading,
+    isProfileSaving,
     lastSyncedAt,
+    profile,
     signIn,
     signInWithGoogle,
     signInWithMagicLink,
@@ -46,11 +48,13 @@ export function AccountPanel() {
     syncLocalLibraryToCloud,
     syncStatus,
     syncWithCloud,
+    updateProfile,
     user,
   } = useSupabaseAuth();
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayNameDraft, setDisplayNameDraft] = useState<string>();
   const [statusMessage, setStatusMessage] = useState<string>();
   const [pendingAction, setPendingAction] = useState<string>();
 
@@ -60,24 +64,48 @@ export function AccountPanel() {
     if (locale === "es") {
       return {
         accountReady: "Cuenta conectada",
-        accountSync: "Tu biblioteca sincronizada aparecera en cualquier dispositivo donde entres con esta cuenta.",
+        accountSync:
+          "Tu biblioteca sincronizada aparecera en cualquier dispositivo donde entres con esta cuenta.",
         backupAction: "Respaldar este dispositivo",
-        backupDone: "La biblioteca local de este dispositivo ya esta en la nube.",
-        backupHint: "Los documentos que importaste antes de iniciar sesion todavia viven solo en este dispositivo. Puedes subirlos a la nube ahora.",
-        cloudSignInRequired: "Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para activar cuentas, sincronizacion y feedback.",
+        backupDone:
+          "La biblioteca local de este dispositivo ya esta en la nube.",
+        backupHint:
+          "Los documentos que importaste antes de iniciar sesion todavia viven solo en este dispositivo. Puedes subirlos a la nube ahora.",
+        cloudSignInRequired:
+          "Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para activar cuentas, sincronizacion y feedback.",
         createAccount: "Crear cuenta",
-        createAccountHint: "La sincronizacion es opcional. Sin cuenta, Leyendo sigue funcionando de forma local.",
-        emailSent: "Revisa tu bandeja de entrada. El enlace magico ya fue enviado.",
+        createAccountHint:
+          "La sincronizacion es opcional. Sin cuenta, Leyendo sigue funcionando de forma local.",
+        deviceBackup: "Respaldo del dispositivo",
+        displayNameLabel: "Nombre visible",
+        displayNamePlaceholder: "Como quieres aparecer en tu cuenta",
+        emailSent:
+          "Revisa tu bandeja de entrada. El enlace magico ya fue enviado.",
         googleSignIn: "Continuar con Google",
+        lastCloudSync: "Ultima sincronizacion",
+        localOnlyDocs: "Solo en este dispositivo",
         magicLink: "Enviar enlace magico",
         password: "Contrasena",
+        profileSaved: "Perfil actualizado.",
+        profileSaveFallback: "El perfil no pudo actualizarse.",
+        profileSaveLabel: "Guardar perfil",
         refreshSync: "Sincronizar ahora",
+        readerSetupEmpty:
+          "Abre cualquier documento y ajusta el ritmo o el tema para guardar esa configuracion en tu cuenta.",
+        readerSetupTitle: "Configuracion de lectura sincronizada",
         signIn: "Entrar",
         signOut: "Cerrar sesion",
+        syncChecklist: [
+          "Tus documentos importados viajan con esta cuenta.",
+          "El progreso de lectura se restaura en otros dispositivos.",
+          "Marcadores y destacados vuelven a aparecer sin reimportar el archivo.",
+        ],
         syncError: "La sincronizacion no termino correctamente.",
         syncIdle: "Listo para sincronizar esta biblioteca con la nube.",
         syncInProgress: "Sincronizando documentos, progreso y marcadores...",
+        syncStatusLabel: "Estado de sincronizacion",
         syncSuccess: "Biblioteca sincronizada.",
+        syncedLibraryTitle: "Lo que ya se sincroniza",
         useMagicLink: "Usar enlace magico",
       };
     }
@@ -85,51 +113,104 @@ export function AccountPanel() {
     if (locale === "pt") {
       return {
         accountReady: "Conta conectada",
-        accountSync: "Sua biblioteca sincronizada aparece em qualquer dispositivo onde voce entrar com esta conta.",
+        accountSync:
+          "Sua biblioteca sincronizada aparece em qualquer dispositivo onde voce entrar com esta conta.",
         backupAction: "Enviar esta biblioteca para a nuvem",
         backupDone: "A biblioteca local deste dispositivo ja esta na nuvem.",
-        backupHint: "Os documentos importados antes do login ainda vivem so neste dispositivo. Voce pode envia-los para a nuvem agora.",
-        cloudSignInRequired: "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY para ativar contas, sincronizacao e feedback.",
+        backupHint:
+          "Os documentos importados antes do login ainda vivem so neste dispositivo. Voce pode envia-los para a nuvem agora.",
+        cloudSignInRequired:
+          "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY para ativar contas, sincronizacao e feedback.",
         createAccount: "Criar conta",
-        createAccountHint: "A sincronizacao e opcional. Sem conta, o Leyendo continua local.",
-        emailSent: "Confira sua caixa de entrada. O link magico ja foi enviado.",
+        createAccountHint:
+          "A sincronizacao e opcional. Sem conta, o Leyendo continua local.",
+        deviceBackup: "Backup do dispositivo",
+        displayNameLabel: "Nome de exibicao",
+        displayNamePlaceholder: "Como voce quer aparecer na conta",
+        emailSent:
+          "Confira sua caixa de entrada. O link magico ja foi enviado.",
         googleSignIn: "Continuar com Google",
+        lastCloudSync: "Ultima sincronizacao",
+        localOnlyDocs: "So neste dispositivo",
         magicLink: "Enviar link magico",
         password: "Senha",
+        profileSaved: "Perfil atualizado.",
+        profileSaveFallback: "Nao foi possivel atualizar o perfil.",
+        profileSaveLabel: "Salvar perfil",
         refreshSync: "Sincronizar agora",
+        readerSetupEmpty:
+          "Abra qualquer documento e ajuste ritmo ou tema para salvar essa configuracao na sua conta.",
+        readerSetupTitle: "Configuracao de leitura sincronizada",
         signIn: "Entrar",
         signOut: "Sair",
+        syncChecklist: [
+          "Seus documentos importados acompanham esta conta.",
+          "O progresso de leitura reaparece em outros dispositivos.",
+          "Marcadores e destaques voltam sem precisar enviar o arquivo de novo.",
+        ],
         syncError: "A sincronizacao nao terminou corretamente.",
         syncIdle: "Pronto para sincronizar esta biblioteca com a nuvem.",
         syncInProgress: "Sincronizando documentos, progresso e marcadores...",
+        syncStatusLabel: "Estado da sincronizacao",
         syncSuccess: "Biblioteca sincronizada.",
+        syncedLibraryTitle: "O que ja sincroniza",
         useMagicLink: "Usar link magico",
       };
     }
 
     return {
       accountReady: "Account connected",
-      accountSync: "Your synced library will appear on any device where you sign in with this account.",
+      accountSync:
+        "Your synced library will appear on any device where you sign in with this account.",
       backupAction: "Back up this device",
       backupDone: "This device already has its local library in the cloud.",
-      backupHint: "Documents imported before you signed in still live only on this device. You can upload them to the cloud now.",
-      cloudSignInRequired: "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable accounts, sync, and feedback.",
+      backupHint:
+        "Documents imported before you signed in still live only on this device. You can upload them to the cloud now.",
+      cloudSignInRequired:
+        "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable accounts, sync, and feedback.",
       createAccount: "Create account",
-      createAccountHint: "Sync is optional. Without an account, Leyendo still works locally.",
+      createAccountHint:
+        "Sync is optional. Without an account, Leyendo still works locally.",
+      deviceBackup: "Device backup",
+      displayNameLabel: "Display name",
+      displayNamePlaceholder: "How you want this account to appear",
       emailSent: "Check your inbox. The magic link has been sent.",
       googleSignIn: "Continue with Google",
+      lastCloudSync: "Last cloud sync",
+      localOnlyDocs: "Local-only docs",
       magicLink: "Send magic link",
       password: "Password",
+      profileSaved: "Profile updated.",
+      profileSaveFallback: "Profile could not be updated.",
+      profileSaveLabel: "Save profile",
       refreshSync: "Sync now",
+      readerSetupEmpty:
+        "Open any document and adjust pacing or theme once to save that setup to your account.",
+      readerSetupTitle: "Synced reader setup",
       signIn: "Sign in",
       signOut: "Sign out",
+      syncChecklist: [
+        "Imported documents follow this account across devices.",
+        "Reading progress comes back when you open Leyendo elsewhere.",
+        "Bookmarks and highlights return without uploading the same file again.",
+      ],
       syncError: "Cloud sync did not finish correctly.",
       syncIdle: "Ready to sync this library to the cloud.",
       syncInProgress: "Syncing documents, progress, and anchors...",
+      syncStatusLabel: "Sync status",
       syncSuccess: "Library synced.",
+      syncedLibraryTitle: "What already syncs",
       useMagicLink: "Use magic link",
     };
   }, [locale]);
+
+  const profileDisplayName = profile?.displayName ?? "";
+  const profileNameInput = displayNameDraft ?? profileDisplayName;
+  const hasProfileChanges =
+    profileNameInput.trim() !== profileDisplayName.trim();
+  const readerSetupSummary = profile?.readerPreferences
+    ? `${profile.readerPreferences.wordsPerMinute} WPM / ${profile.readerPreferences.chunkSize} ${profile.readerPreferences.chunkSize === 1 ? "word" : "words"} / ${profile.readerPreferences.theme}`
+    : helperCopy.readerSetupEmpty;
 
   const syncCopy =
     syncStatus === "syncing"
@@ -216,6 +297,25 @@ export function AccountPanel() {
     }
   }
 
+  async function handleProfileSave() {
+    setPendingAction("profile");
+    setStatusMessage(undefined);
+
+    try {
+      await updateProfile({
+        displayName: profileNameInput,
+      });
+      setDisplayNameDraft(undefined);
+      setStatusMessage(helperCopy.profileSaved);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : helperCopy.profileSaveFallback,
+      );
+    } finally {
+      setPendingAction(undefined);
+    }
+  }
+
   if (!isConfigured) {
     return (
       <section className="editorial-panel rounded-[2rem] border border-dashed border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
@@ -263,8 +363,9 @@ export function AccountPanel() {
                 {helperCopy.accountReady}
               </p>
               <h2 className="font-heading mt-4 text-4xl font-semibold text-(--text-strong)">
-                {user.email}
+                {profileDisplayName.trim() || user.email}
               </h2>
+              <p className="mt-3 text-sm text-(--text-muted)">{user.email}</p>
               <p className="mt-4 max-w-3xl text-base leading-8 text-(--text-muted)">
                 {helperCopy.accountSync}
               </p>
@@ -274,10 +375,49 @@ export function AccountPanel() {
             </div>
           </div>
 
+          <div className="mt-8 grid gap-3">
+            <label
+              className="text-sm font-medium text-(--text-strong)"
+              htmlFor="profile-display-name"
+            >
+              {helperCopy.displayNameLabel}
+            </label>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                id="profile-display-name"
+                type="text"
+                value={profileNameInput}
+                onChange={(event) => {
+                  setDisplayNameDraft(event.target.value);
+                }}
+                className="h-12 flex-1 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+                placeholder={helperCopy.displayNamePlaceholder}
+              />
+              <Button
+                className="h-12 rounded-[1.25rem] px-5"
+                disabled={
+                  pendingAction === "profile" ||
+                  isProfileSaving ||
+                  !hasProfileChanges
+                }
+                onClick={() => {
+                  void handleProfileSave();
+                }}
+              >
+                {pendingAction === "profile" || isProfileSaving ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <UserRound className="h-4 w-4" />
+                )}
+                {helperCopy.profileSaveLabel}
+              </Button>
+            </div>
+          </div>
+
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
               <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                Sync status
+                {helperCopy.syncStatusLabel}
               </p>
               <p className="mt-3 text-lg font-semibold text-(--text-strong)">
                 {syncCopy}
@@ -285,7 +425,7 @@ export function AccountPanel() {
             </div>
             <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
               <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                Local-only docs
+                {helperCopy.localOnlyDocs}
               </p>
               <p className="mt-3 text-3xl font-semibold text-(--text-strong)">
                 {guestDocuments}
@@ -293,7 +433,7 @@ export function AccountPanel() {
             </div>
             <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
               <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                Last cloud sync
+                {helperCopy.lastCloudSync}
               </p>
               <p className="mt-3 text-lg font-semibold text-(--text-strong)">
                 {lastSyncedLabel ?? "-"}
@@ -341,14 +481,47 @@ export function AccountPanel() {
 
         <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
           <p className="editorial-kicker text-(--accent-amber)">
-            Device backup
+            {helperCopy.deviceBackup}
           </p>
           <h2 className="font-heading mt-4 text-3xl font-semibold text-(--text-strong)">
-            {guestDocuments > 0 ? helperCopy.backupAction : helperCopy.backupDone}
+            {helperCopy.syncedLibraryTitle}
           </h2>
           <p className="mt-4 text-base leading-8 text-(--text-muted)">
-            {guestDocuments > 0 ? helperCopy.backupHint : helperCopy.accountSync}
+            {helperCopy.accountSync}
           </p>
+
+          <ul className="mt-6 space-y-3 text-sm leading-7 text-(--text-muted)">
+            {helperCopy.syncChecklist.map((item) => (
+              <li key={item} className="flex gap-2">
+                <span className="text-(--accent-amber)">*</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-6 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+            <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+              {helperCopy.localOnlyDocs}
+            </p>
+            <p className="mt-3 text-3xl font-semibold text-(--text-strong)">
+              {guestDocuments}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+              {guestDocuments > 0
+                ? helperCopy.backupHint
+                : helperCopy.backupDone}
+            </p>
+          </div>
+
+          <div className="mt-4 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+            <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+              {helperCopy.readerSetupTitle}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-(--text-strong)">
+              {readerSetupSummary}
+            </p>
+          </div>
+
           {statusMessage || errorMessage ? (
             <p className="mt-6 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
               {statusMessage ?? errorMessage}
@@ -417,7 +590,7 @@ export function AccountPanel() {
             {helperCopy.googleSignIn}
           </Button>
 
-          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.24em] text-(--text-muted)">
+          <div className="flex items-center gap-3 text-xs tracking-[0.24em] text-(--text-muted) uppercase">
             <span className="h-px flex-1 bg-(--border-soft)" />
             <span>
               {locale === "en"
@@ -429,7 +602,10 @@ export function AccountPanel() {
             <span className="h-px flex-1 bg-(--border-soft)" />
           </div>
 
-          <label className="text-sm font-medium text-(--text-strong)" htmlFor="account-email">
+          <label
+            className="text-sm font-medium text-(--text-strong)"
+            htmlFor="account-email"
+          >
             Email
           </label>
           <div className="relative">
@@ -441,14 +617,17 @@ export function AccountPanel() {
               onChange={(event) => {
                 setEmail(event.target.value);
               }}
-              className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pl-11 pr-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+              className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
               placeholder="reader@example.com"
             />
           </div>
 
           {mode !== "magic-link" ? (
             <>
-              <label className="text-sm font-medium text-(--text-strong)" htmlFor="account-password">
+              <label
+                className="text-sm font-medium text-(--text-strong)"
+                htmlFor="account-password"
+              >
                 {helperCopy.password}
               </label>
               <div className="relative">
@@ -460,7 +639,7 @@ export function AccountPanel() {
                   onChange={(event) => {
                     setPassword(event.target.value);
                   }}
-                  className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pl-11 pr-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+                  className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
                   placeholder="At least 6 characters"
                 />
               </div>
@@ -469,7 +648,11 @@ export function AccountPanel() {
 
           <Button
             className="mt-2 h-12 rounded-[1.25rem]"
-            disabled={pendingAction === "auth" || !email || (mode !== "magic-link" && password.length < 6)}
+            disabled={
+              pendingAction === "auth" ||
+              !email ||
+              (mode !== "magic-link" && password.length < 6)
+            }
             onClick={() => {
               void handleSubmit();
             }}

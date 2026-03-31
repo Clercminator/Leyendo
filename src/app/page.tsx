@@ -6,6 +6,7 @@ import { ArrowRight, FileStack, ShieldCheck, Sparkles } from "lucide-react";
 
 import { useLocale } from "@/components/layout/locale-provider";
 import { AppShell } from "@/components/layout/app-shell";
+import { LandingReaderDemo } from "@/components/reader/landing-reader-demo";
 import { ModeGallery } from "@/components/reader/mode-gallery";
 import { UploadPanel } from "@/components/upload/upload-panel";
 import { getLocalizedCopy } from "@/lib/locale";
@@ -115,6 +116,8 @@ export default function Home() {
     >
       <div className="space-y-10">
         <UploadPanel />
+
+        <LandingReaderDemo />
 
         <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="editorial-panel hover-lift fade-rise relative overflow-hidden rounded-[2rem] border border-(--border-soft) bg-(--surface-strong) p-8 shadow-[0_28px_120px_rgba(20,26,56,0.16)]">

@@ -27,14 +27,13 @@ interface MutableSection {
   blockIndexes: number[];
   chunkStart: number;
   chunkEnd: number;
+  sourcePageIndex?: number;
 }
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const tokenBoundary = /\s+/;
 
-function buildPlainTextBlocks(
-  rawText: string,
-): DocumentBlockInput[] {
+function buildPlainTextBlocks(rawText: string): DocumentBlockInput[] {
   const normalized = normalizeText(rawText);
 
   return normalized.paragraphs.map((paragraph) => ({
@@ -90,9 +89,7 @@ export function buildDocumentModel({
     sourceKind,
     sourceBlocks,
     chunkSize,
-  }).filter(
-    (block) => block.text.trim().length > 0,
-  );
+  }).filter((block) => block.text.trim().length > 0);
   const normalizedText = resolvedBlocks.map((block) => block.text).join("\n\n");
   const excerpt = normalizedText.slice(0, 180);
 
@@ -108,7 +105,11 @@ export function buildDocumentModel({
   let absoluteOffset = 0;
   let currentSection: MutableSection | undefined;
 
-  const startSection = (heading: string, blockIndex: number) => {
+  const startSection = (
+    heading: string,
+    blockIndex: number,
+    sourcePageIndex?: number,
+  ) => {
     if (currentSection) {
       currentSection.chunkEnd = Math.max(
         currentSection.chunkEnd,
@@ -121,6 +122,7 @@ export function buildDocumentModel({
       blockIndexes: [blockIndex],
       chunkStart: chunkIndex,
       chunkEnd: chunkIndex,
+      sourcePageIndex,
     };
 
     sections.push(currentSection);
@@ -131,11 +133,13 @@ export function buildDocumentModel({
       startSection(
         sourceBlock.kind === "heading" ? sourceBlock.text : "Document",
         blockIndex,
+        sourceBlock.sourcePageIndex,
       );
     } else if (sourceBlock.kind === "heading") {
-      startSection(sourceBlock.text, blockIndex);
+      startSection(sourceBlock.text, blockIndex, sourceBlock.sourcePageIndex);
     } else {
       currentSection.blockIndexes.push(blockIndex);
+      currentSection.sourcePageIndex ??= sourceBlock.sourcePageIndex;
     }
 
     const blockSentenceStart = sentenceIndex;
@@ -159,6 +163,7 @@ export function buildDocumentModel({
           normalizedValue: value.toLowerCase(),
           paragraphIndex: blockIndex,
           sentenceIndex,
+          sourcePageIndex: sourceBlock.sourcePageIndex,
           absoluteOffset,
         });
         absoluteOffset += value.length + 1;
@@ -170,6 +175,7 @@ export function buildDocumentModel({
       sentences.push({
         index: sentenceIndex,
         paragraphIndex: blockIndex,
+        sourcePageIndex: sourceBlock.sourcePageIndex,
         text: sentenceText,
         tokenStart: sentenceTokenStart,
         tokenEnd: sentenceTokenEnd,
@@ -192,6 +198,7 @@ export function buildDocumentModel({
           paragraphIndex: blockIndex,
           sentenceIndex,
           sectionIndex: sections.length - 1,
+          sourcePageIndex: sourceBlock.sourcePageIndex,
           absoluteReadingPosition: chunkIndex,
         });
         chunkIndex += 1;
@@ -227,6 +234,7 @@ export function buildDocumentModel({
     blockIndexes: section.blockIndexes,
     chunkStart: section.chunkStart,
     chunkEnd: section.chunkEnd,
+    sourcePageIndex: section.sourcePageIndex,
   }));
 
   return {

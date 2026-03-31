@@ -65,7 +65,12 @@ function normalizeRuntimeChunkOptions(
 ): RuntimeChunkOptions {
   const focusWindow = Math.max(
     1,
-    Math.min(4, typeof options === "number" ? defaultReaderPreferences.focusWindow : options.focusWindow),
+    Math.min(
+      4,
+      typeof options === "number"
+        ? defaultReaderPreferences.focusWindow
+        : options.focusWindow,
+    ),
   ) as RuntimeChunkOptions["focusWindow"];
 
   if (typeof options === "number") {
@@ -214,7 +219,10 @@ function buildClassicReaderChunks(
       cursor < sentenceTokens.length;
       cursor += options.chunkSize
     ) {
-      const tokenSlice = sentenceTokens.slice(cursor, cursor + options.chunkSize);
+      const tokenSlice = sentenceTokens.slice(
+        cursor,
+        cursor + options.chunkSize,
+      );
 
       nextChunks.push(
         createChunk({
@@ -239,7 +247,10 @@ function buildFocusWordChunks(
   options: RuntimeChunkOptions,
 ) {
   const sectionIndexByBlock = buildSectionIndexByBlock(document);
-  const windowRadius = Math.max(0, Math.max(options.chunkSize, options.focusWindow) - 1);
+  const windowRadius = Math.max(
+    0,
+    Math.max(options.chunkSize, options.focusWindow) - 1,
+  );
   const nextChunks: Chunk[] = [];
   let chunkIndex = 0;
 
@@ -275,7 +286,10 @@ function buildFocusWordChunks(
   return nextChunks;
 }
 
-function buildPhraseChunks(document: DocumentModel, options: RuntimeChunkOptions) {
+function buildPhraseChunks(
+  document: DocumentModel,
+  options: RuntimeChunkOptions,
+) {
   const sectionIndexByBlock = buildSectionIndexByBlock(document);
   const targetWords = Math.max(2, Math.min(6, options.chunkSize + 1));
   const nextChunks: Chunk[] = [];
@@ -364,7 +378,8 @@ function buildGuidedLineChunks(
             index: chunkIndex,
             paragraphIndex: block.index,
             sectionIndex: sectionIndexByBlock.get(block.index) ?? 0,
-            sentenceIndex: currentTokens[0]?.sentenceIndex ?? block.sentenceStart,
+            sentenceIndex:
+              currentTokens[0]?.sentenceIndex ?? block.sentenceStart,
             sourcePageIndex: block.sourcePageIndex,
             tokens: currentTokens,
           }),

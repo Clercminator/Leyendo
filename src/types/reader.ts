@@ -1,6 +1,7 @@
 import type { SyncOwnedRecord } from "@/types/sync";
 
 export const readerModes = [
+  "pdf-page",
   "focus-word",
   "phrase-chunk",
   "guided-line",
@@ -9,13 +10,39 @@ export const readerModes = [
 
 export type ReaderMode = (typeof readerModes)[number];
 
+export const readingGoals = [
+  "study-carefully",
+  "read-faster",
+  "skim-overview",
+  "practice-focus",
+] as const;
+
 export type ReadingGoal =
   | "study-carefully"
   | "read-faster"
   | "skim-overview"
   | "practice-focus";
 
+export const readerThemes = [
+  "midnight",
+  "ember",
+  "indigo",
+  "high-contrast",
+] as const;
+
 export type ReaderTheme = "midnight" | "ember" | "indigo" | "high-contrast";
+
+export const pdfScrollModes = ["continuous", "single-page"] as const;
+
+export type PdfScrollMode = (typeof pdfScrollModes)[number];
+
+export interface PdfViewerState {
+  pageIndex: number;
+  zoomValue: string;
+  rotation: 0 | 90 | 180 | 270;
+  scrollMode: PdfScrollMode;
+  searchQuery: string;
+}
 
 export interface ReaderPreferences {
   readingGoal?: ReadingGoal;
@@ -51,6 +78,7 @@ export interface Bookmark extends SyncOwnedRecord {
   tokenIndex: number;
   paragraphIndex: number;
   sectionIndex: number;
+  sourcePageIndex?: number;
   createdAt: string;
 }
 
@@ -92,6 +120,14 @@ export const defaultReaderPreferences: ReaderPreferences = {
   naturalPauses: true,
   smartPacing: true,
   reduceMotion: false,
+};
+
+export const defaultPdfViewerState: PdfViewerState = {
+  pageIndex: 0,
+  zoomValue: "page-width",
+  rotation: 0,
+  scrollMode: "continuous",
+  searchQuery: "",
 };
 
 export const readerPresets: ReaderPreset[] = [

@@ -1,10 +1,16 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 
 import { appLocales, defaultLocale, type AppLocale } from "@/lib/locale";
 
 const STORAGE_KEY = "lee-locale";
+const localeListeners = new Set<() => void>();
 
 interface LocaleContextValue {
   locale: AppLocale;
@@ -17,27 +23,52 @@ function isAppLocale(value: string): value is AppLocale {
   return appLocales.includes(value as AppLocale);
 }
 
+function getStoredLocale() {
+  const storedLocale = window.localStorage.getItem(STORAGE_KEY);
+
+  if (storedLocale && isAppLocale(storedLocale)) {
+    return storedLocale;
+  }
+
+  return defaultLocale;
+}
+
+function subscribeToLocale(callback: () => void) {
+  localeListeners.add(callback);
+
+  function handleStorage(event: StorageEvent) {
+    if (event.key === STORAGE_KEY) {
+      callback();
+    }
+  }
+
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    localeListeners.delete(callback);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+function emitLocaleChange() {
+  for (const listener of localeListeners) {
+    listener();
+  }
+}
+
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<AppLocale>(() => {
-    if (typeof window === "undefined") {
-      return defaultLocale;
-    }
-
-    const storedLocale = window.localStorage.getItem(STORAGE_KEY);
-
-    if (storedLocale && isAppLocale(storedLocale)) {
-      return storedLocale;
-    }
-
-    return defaultLocale;
-  });
+  const locale = useSyncExternalStore(
+    subscribeToLocale,
+    getStoredLocale,
+    () => defaultLocale,
+  );
 
   const value = useMemo<LocaleContextValue>(
     () => ({
       locale,
       setLocale: (nextLocale) => {
-        setLocaleState(nextLocale);
         window.localStorage.setItem(STORAGE_KEY, nextLocale);
+        emitLocaleChange();
       },
     }),
     [locale],

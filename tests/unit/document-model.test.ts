@@ -70,5 +70,9 @@ describe("buildDocumentModel", () => {
         sourcePageIndex: 0,
       }),
     );
+    expect(document.sentences[0]?.sourcePageIndex).toBe(0);
+    expect(document.tokens[0]?.sourcePageIndex).toBe(0);
+    expect(document.chunks[0]?.sourcePageIndex).toBe(0);
+    expect(document.sections[0]?.sourcePageIndex).toBe(0);
   });
 });

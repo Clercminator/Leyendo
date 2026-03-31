@@ -77,6 +77,18 @@ function formatBookmarkLocation(
   bookmark: RecentBookmarkRecord["bookmark"],
   locale: "en" | "es" | "pt",
 ) {
+  if (typeof bookmark.sourcePageIndex === "number") {
+    if (locale === "es") {
+      return `Guardado en la pagina ${bookmark.sourcePageIndex + 1}`;
+    }
+
+    if (locale === "pt") {
+      return `Salvo na pagina ${bookmark.sourcePageIndex + 1}`;
+    }
+
+    return `Saved on page ${bookmark.sourcePageIndex + 1}`;
+  }
+
   if (locale === "es") {
     return `Guardado en el parrafo ${bookmark.paragraphIndex + 1}`;
   }

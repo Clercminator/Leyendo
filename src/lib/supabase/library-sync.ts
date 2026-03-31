@@ -1,8 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { db } from "@/db/app-db";
-import type { DocumentModel, DocumentRecord, DocumentSourceKind } from "@/types/document";
-import type { Bookmark, Highlight, ReadingSession } from "@/types/reader";
+import type {
+  DocumentModel,
+  DocumentRecord,
+  DocumentSourceKind,
+} from "@/types/document";
+import {
+  defaultReaderPreferences,
+  readingGoals,
+  readerModes,
+  readerThemes,
+  type Bookmark,
+  type Highlight,
+  type ReaderPreferences,
+  type ReadingSession,
+} from "@/types/reader";
 
 const DOCUMENTS_TABLE = "user_documents";
 const SESSIONS_TABLE = "user_sessions";
@@ -44,6 +57,7 @@ interface RemoteBookmarkRow {
   note: string | null;
   paragraph_index: number;
   section_index: number;
+  source_page_index: number | null;
   token_index: number;
   user_id: string;
 }
@@ -62,6 +76,22 @@ interface RemoteHighlightRow {
   user_id: string;
 }
 
+interface RemoteProfileRow {
+  created_at: string;
+  display_name: string | null;
+  reader_preferences: unknown | null;
+  updated_at: string;
+  user_id: string;
+}
+
+export interface UserProfile {
+  createdAt: string;
+  displayName?: string;
+  readerPreferences?: ReaderPreferences;
+  updatedAt: string;
+  userId: string;
+}
+
 export interface LocalLibrarySummary {
   bookmarks: number;
   documents: number;
@@ -69,7 +99,10 @@ export interface LocalLibrarySummary {
   sessions: number;
 }
 
-function toRemoteDocumentRow(userId: string, record: DocumentRecord): RemoteDocumentRow {
+function toRemoteDocumentRow(
+  userId: string,
+  record: DocumentRecord,
+): RemoteDocumentRow {
   if (!record.payload) {
     throw new Error("Cannot sync a document without its payload.");
   }
@@ -88,7 +121,10 @@ function toRemoteDocumentRow(userId: string, record: DocumentRecord): RemoteDocu
   };
 }
 
-function toRemoteSessionRow(userId: string, session: ReadingSession): RemoteSessionRow {
+function toRemoteSessionRow(
+  userId: string,
+  session: ReadingSession,
+): RemoteSessionRow {
   return {
     current_chunk_index: session.currentChunkIndex,
     current_paragraph_index: session.currentParagraphIndex,
@@ -101,7 +137,10 @@ function toRemoteSessionRow(userId: string, session: ReadingSession): RemoteSess
   };
 }
 
-function toRemoteBookmarkRow(userId: string, bookmark: Bookmark): RemoteBookmarkRow {
+function toRemoteBookmarkRow(
+  userId: string,
+  bookmark: Bookmark,
+): RemoteBookmarkRow {
   return {
     chunk_index: bookmark.chunkIndex,
     created_at: bookmark.createdAt,
@@ -111,12 +150,16 @@ function toRemoteBookmarkRow(userId: string, bookmark: Bookmark): RemoteBookmark
     note: bookmark.note ?? null,
     paragraph_index: bookmark.paragraphIndex,
     section_index: bookmark.sectionIndex,
+    source_page_index: bookmark.sourcePageIndex ?? null,
     token_index: bookmark.tokenIndex,
     user_id: userId,
   };
 }
 
-function toRemoteHighlightRow(userId: string, highlight: Highlight): RemoteHighlightRow {
+function toRemoteHighlightRow(
+  userId: string,
+  highlight: Highlight,
+): RemoteHighlightRow {
   return {
     chunk_index: highlight.chunkIndex,
     created_at: highlight.createdAt,
@@ -174,6 +217,7 @@ function toSyncedBookmarkRecord(row: RemoteBookmarkRow): Bookmark {
     ownerId: row.user_id,
     paragraphIndex: row.paragraph_index,
     sectionIndex: row.section_index,
+    sourcePageIndex: row.source_page_index ?? undefined,
     syncState: "synced",
     tokenIndex: row.token_index,
   };
@@ -193,6 +237,88 @@ function toSyncedHighlightRecord(row: RemoteHighlightRow): Highlight {
     sectionIndex: row.section_index,
     syncState: "synced",
     tokenIndex: row.token_index,
+  };
+}
+
+function normalizeReaderPreferences(input: unknown) {
+  if (!input || typeof input !== "object") {
+    return undefined;
+  }
+
+  const candidate = input as Partial<Record<keyof ReaderPreferences, unknown>>;
+  const mode =
+    typeof candidate.mode === "string" &&
+    readerModes.includes(candidate.mode as (typeof readerModes)[number])
+      ? (candidate.mode as ReaderPreferences["mode"])
+      : defaultReaderPreferences.mode;
+  const theme =
+    typeof candidate.theme === "string" &&
+    readerThemes.includes(candidate.theme as (typeof readerThemes)[number])
+      ? (candidate.theme as ReaderPreferences["theme"])
+      : defaultReaderPreferences.theme;
+  const readingGoal =
+    typeof candidate.readingGoal === "string" &&
+    readingGoals.includes(
+      candidate.readingGoal as (typeof readingGoals)[number],
+    )
+      ? (candidate.readingGoal as ReaderPreferences["readingGoal"])
+      : undefined;
+  const focusWindowRaw = Number(candidate.focusWindow);
+  const focusWindow =
+    focusWindowRaw === 1 ||
+    focusWindowRaw === 2 ||
+    focusWindowRaw === 3 ||
+    focusWindowRaw === 4
+      ? focusWindowRaw
+      : defaultReaderPreferences.focusWindow;
+
+  return {
+    chunkSize:
+      typeof candidate.chunkSize === "number" &&
+      Number.isFinite(candidate.chunkSize)
+        ? Math.max(1, Math.min(6, Math.round(candidate.chunkSize)))
+        : defaultReaderPreferences.chunkSize,
+    focusWindow,
+    fontScale:
+      typeof candidate.fontScale === "number" &&
+      Number.isFinite(candidate.fontScale)
+        ? Math.max(0.8, Math.min(1.8, Number(candidate.fontScale.toFixed(1))))
+        : defaultReaderPreferences.fontScale,
+    lineHeight:
+      typeof candidate.lineHeight === "number" &&
+      Number.isFinite(candidate.lineHeight)
+        ? Math.max(1.2, Math.min(2.2, Number(candidate.lineHeight.toFixed(1))))
+        : defaultReaderPreferences.lineHeight,
+    mode,
+    naturalPauses:
+      typeof candidate.naturalPauses === "boolean"
+        ? candidate.naturalPauses
+        : defaultReaderPreferences.naturalPauses,
+    readingGoal,
+    reduceMotion:
+      typeof candidate.reduceMotion === "boolean"
+        ? candidate.reduceMotion
+        : defaultReaderPreferences.reduceMotion,
+    smartPacing:
+      typeof candidate.smartPacing === "boolean"
+        ? candidate.smartPacing
+        : defaultReaderPreferences.smartPacing,
+    theme,
+    wordsPerMinute:
+      typeof candidate.wordsPerMinute === "number" &&
+      Number.isFinite(candidate.wordsPerMinute)
+        ? Math.max(120, Math.min(700, Math.round(candidate.wordsPerMinute)))
+        : defaultReaderPreferences.wordsPerMinute,
+  } satisfies ReaderPreferences;
+}
+
+function toUserProfile(row: RemoteProfileRow): UserProfile {
+  return {
+    createdAt: row.created_at,
+    displayName: row.display_name ?? undefined,
+    readerPreferences: normalizeReaderPreferences(row.reader_preferences),
+    updatedAt: row.updated_at,
+    userId: row.user_id,
   };
 }
 
@@ -227,7 +353,77 @@ export async function ensureProfile(supabase: SupabaseClient, userId?: string) {
   );
 }
 
-export async function isRemoteLibraryEmpty(supabase: SupabaseClient, userId: string) {
+export async function getProfile(supabase: SupabaseClient, userId?: string) {
+  const currentUserId = userId ?? (await fetchCurrentUserId(supabase));
+
+  if (!currentUserId) {
+    return undefined;
+  }
+
+  const { data, error } = await supabase
+    .from(PROFILES_TABLE)
+    .select("*")
+    .eq("user_id", currentUserId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? toUserProfile(data as RemoteProfileRow) : undefined;
+}
+
+export async function upsertProfile(
+  supabase: SupabaseClient,
+  input: {
+    displayName?: string;
+    readerPreferences?: ReaderPreferences;
+    userId?: string;
+  },
+) {
+  const currentUserId = input.userId ?? (await fetchCurrentUserId(supabase));
+
+  if (!currentUserId) {
+    throw new Error("Authentication required.");
+  }
+
+  await ensureProfile(supabase, currentUserId);
+
+  const normalizedDisplayName = input.displayName?.trim();
+  const updates: {
+    display_name?: string | null;
+    reader_preferences?: ReaderPreferences | null;
+    updated_at: string;
+  } = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if ("displayName" in input) {
+    updates.display_name = normalizedDisplayName ? normalizedDisplayName : null;
+  }
+
+  if ("readerPreferences" in input) {
+    updates.reader_preferences = input.readerPreferences ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from(PROFILES_TABLE)
+    .update(updates)
+    .eq("user_id", currentUserId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toUserProfile(data as RemoteProfileRow);
+}
+
+export async function isRemoteLibraryEmpty(
+  supabase: SupabaseClient,
+  userId: string,
+) {
   const { count, error } = await supabase
     .from(DOCUMENTS_TABLE)
     .select("document_id", { count: "exact", head: true })
@@ -272,6 +468,42 @@ export async function clearSyncedLibraryForUser(userId: string) {
   );
 }
 
+async function clearSyncedDocumentBundleForUser(
+  userId: string,
+  documentId: string,
+) {
+  const [document, sessions, bookmarks, highlights] = await Promise.all([
+    db.documents.get(documentId),
+    db.sessions.where("documentId").equals(documentId).toArray(),
+    db.bookmarks.where("documentId").equals(documentId).toArray(),
+    db.highlights.where("documentId").equals(documentId).toArray(),
+  ]);
+
+  if (document?.ownerId === userId) {
+    await db.documents.delete(documentId);
+  }
+
+  const sessionIds = sessions
+    .filter((session) => session.ownerId === userId)
+    .map((session) => session.id);
+  const bookmarkIds = bookmarks
+    .filter((bookmark) => bookmark.ownerId === userId)
+    .map((bookmark) => bookmark.id);
+  const highlightIds = highlights
+    .filter((highlight) => highlight.ownerId === userId)
+    .map((highlight) => highlight.id);
+
+  if (sessionIds.length > 0) {
+    await db.sessions.bulkDelete(sessionIds);
+  }
+  if (bookmarkIds.length > 0) {
+    await db.bookmarks.bulkDelete(bookmarkIds);
+  }
+  if (highlightIds.length > 0) {
+    await db.highlights.bulkDelete(highlightIds);
+  }
+}
+
 export async function backUpLocalLibraryToCloud(
   supabase: SupabaseClient,
   userId: string,
@@ -288,30 +520,54 @@ export async function backUpLocalLibraryToCloud(
     return { backedUpDocuments: 0 };
   }
 
-  const localDocumentIds = new Set(localDocuments.map((document) => document.id));
-  const localSessions = sessions.filter((session) => localDocumentIds.has(session.documentId));
-  const localBookmarks = bookmarks.filter((bookmark) => localDocumentIds.has(bookmark.documentId));
-  const localHighlights = highlights.filter((highlight) => localDocumentIds.has(highlight.documentId));
+  const localDocumentIds = new Set(
+    localDocuments.map((document) => document.id),
+  );
+  const localSessions = sessions.filter((session) =>
+    localDocumentIds.has(session.documentId),
+  );
+  const localBookmarks = bookmarks.filter((bookmark) =>
+    localDocumentIds.has(bookmark.documentId),
+  );
+  const localHighlights = highlights.filter((highlight) =>
+    localDocumentIds.has(highlight.documentId),
+  );
 
   await upsertCloudDocuments(
     supabase,
     userId,
-    localDocuments.map((document) => ({ ...document, ownerId: userId, syncState: "synced" })),
+    localDocuments.map((document) => ({
+      ...document,
+      ownerId: userId,
+      syncState: "synced",
+    })),
   );
   await upsertCloudSessions(
     supabase,
     userId,
-    localSessions.map((session) => ({ ...session, ownerId: userId, syncState: "synced" })),
+    localSessions.map((session) => ({
+      ...session,
+      ownerId: userId,
+      syncState: "synced",
+    })),
   );
   await upsertCloudBookmarks(
     supabase,
     userId,
-    localBookmarks.map((bookmark) => ({ ...bookmark, ownerId: userId, syncState: "synced" })),
+    localBookmarks.map((bookmark) => ({
+      ...bookmark,
+      ownerId: userId,
+      syncState: "synced",
+    })),
   );
   await upsertCloudHighlights(
     supabase,
     userId,
-    localHighlights.map((highlight) => ({ ...highlight, ownerId: userId, syncState: "synced" })),
+    localHighlights.map((highlight) => ({
+      ...highlight,
+      ownerId: userId,
+      syncState: "synced",
+    })),
   );
 
   await db.transaction(
@@ -396,10 +652,16 @@ export async function hydrateCloudLibraryToLocal(
     throw highlightsResult.error;
   }
 
-  const syncedDocuments = (documentsResult.data ?? []).map(toSyncedDocumentRecord);
+  const syncedDocuments = (documentsResult.data ?? []).map(
+    toSyncedDocumentRecord,
+  );
   const syncedSessions = (sessionsResult.data ?? []).map(toSyncedSessionRecord);
-  const syncedBookmarks = (bookmarksResult.data ?? []).map(toSyncedBookmarkRecord);
-  const syncedHighlights = (highlightsResult.data ?? []).map(toSyncedHighlightRecord);
+  const syncedBookmarks = (bookmarksResult.data ?? []).map(
+    toSyncedBookmarkRecord,
+  );
+  const syncedHighlights = (highlightsResult.data ?? []).map(
+    toSyncedHighlightRecord,
+  );
 
   await db.transaction(
     "rw",
@@ -485,7 +747,9 @@ export async function hydrateRemoteDocumentToLocal(
   }
 
   const document = toSyncedDocumentRecord(documentResult.data);
-  const session = sessionResult.data ? toSyncedSessionRecord(sessionResult.data) : undefined;
+  const session = sessionResult.data
+    ? toSyncedSessionRecord(sessionResult.data)
+    : undefined;
   const bookmarks = (bookmarksResult.data ?? []).map(toSyncedBookmarkRecord);
   const highlights = (highlightsResult.data ?? []).map(toSyncedHighlightRecord);
 
@@ -496,6 +760,8 @@ export async function hydrateRemoteDocumentToLocal(
     db.bookmarks,
     db.highlights,
     async () => {
+      await clearSyncedDocumentBundleForUser(userId, documentId);
+
       await db.documents.put(document);
       if (session) {
         await db.sessions.put(session);
@@ -521,7 +787,9 @@ export async function upsertCloudDocuments(
     return;
   }
 
-  const rows = documents.map((document) => toRemoteDocumentRow(userId, document));
+  const rows = documents.map((document) =>
+    toRemoteDocumentRow(userId, document),
+  );
   const { error } = await supabase.from(DOCUMENTS_TABLE).upsert(rows, {
     onConflict: "user_id,document_id",
   });
@@ -559,7 +827,9 @@ export async function upsertCloudBookmarks(
     return;
   }
 
-  const rows = bookmarks.map((bookmark) => toRemoteBookmarkRow(userId, bookmark));
+  const rows = bookmarks.map((bookmark) =>
+    toRemoteBookmarkRow(userId, bookmark),
+  );
   const { error } = await supabase.from(BOOKMARKS_TABLE).upsert(rows, {
     onConflict: "user_id,id",
   });
@@ -578,7 +848,9 @@ export async function upsertCloudHighlights(
     return;
   }
 
-  const rows = highlights.map((highlight) => toRemoteHighlightRow(userId, highlight));
+  const rows = highlights.map((highlight) =>
+    toRemoteHighlightRow(userId, highlight),
+  );
   const { error } = await supabase.from(HIGHLIGHTS_TABLE).upsert(rows, {
     onConflict: "user_id,id",
   });

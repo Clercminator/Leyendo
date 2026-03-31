@@ -11,15 +11,19 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { ReaderPreferences } from "@/types/reader";
 
 import {
   backUpLocalLibraryToCloud,
   clearSyncedLibraryForUser,
   ensureProfile,
+  getProfile,
   getLocalOnlyLibrarySummary,
   hydrateCloudLibraryToLocal,
   isRemoteLibraryEmpty,
   type LocalLibrarySummary,
+  type UserProfile,
+  upsertProfile,
 } from "@/lib/supabase/library-sync";
 import {
   getSupabaseBrowserClient,
@@ -33,16 +37,21 @@ interface SupabaseAuthContextValue {
   guestLibrarySummary: LocalLibrarySummary;
   isConfigured: boolean;
   isLoading: boolean;
+  isProfileSaving: boolean;
   lastSyncedAt?: string;
+  profile?: UserProfile;
+  refreshProfile: () => Promise<void>;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  syncReaderPreferences: (preferences: ReaderPreferences) => Promise<void>;
   syncLocalLibraryToCloud: () => Promise<number>;
   syncStatus: SyncStatus;
   syncWithCloud: () => Promise<void>;
+  updateProfile: (input: { displayName?: string }) => Promise<void>;
   user: User | null;
 }
 
@@ -57,7 +66,9 @@ const defaultSupabaseAuthContext: SupabaseAuthContextValue = {
   guestLibrarySummary: defaultGuestLibrarySummary,
   isConfigured: isSupabaseConfigured,
   isLoading: false,
+  isProfileSaving: false,
   session: null,
+  refreshProfile: async () => {},
   signIn: async () => {
     throw new Error("SupabaseProvider is not mounted.");
   },
@@ -71,9 +82,13 @@ const defaultSupabaseAuthContext: SupabaseAuthContextValue = {
   signUp: async () => {
     throw new Error("SupabaseProvider is not mounted.");
   },
+  syncReaderPreferences: async () => {},
   syncLocalLibraryToCloud: async () => 0,
   syncStatus: "idle",
   syncWithCloud: async () => {},
+  updateProfile: async () => {
+    throw new Error("SupabaseProvider is not mounted.");
+  },
   user: null,
 };
 
@@ -91,6 +106,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [lastSyncedAt, setLastSyncedAt] = useState<string>();
   const [errorMessage, setErrorMessage] = useState<string>();
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [profile, setProfile] = useState<UserProfile>();
   const [guestLibrarySummary, setGuestLibrarySummary] =
     useState<LocalLibrarySummary>(defaultGuestLibrarySummary);
 
@@ -98,6 +115,22 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     const summary = await getLocalOnlyLibrarySummary();
     setGuestLibrarySummary(summary);
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!supabase) {
+      setProfile(undefined);
+      return;
+    }
+
+    const userId = currentUserIdRef.current;
+    if (!userId) {
+      setProfile(undefined);
+      return;
+    }
+
+    const nextProfile = await getProfile(supabase, userId);
+    setProfile(nextProfile);
+  }, [supabase]);
 
   const syncWithCloud = useCallback(async () => {
     if (!supabase) {
@@ -120,9 +153,11 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
       try {
         await ensureProfile(supabase, userId);
+        setProfile(await getProfile(supabase, userId));
         const remoteEmpty = await isRemoteLibraryEmpty(supabase, userId);
+        const localSummary = await getLocalOnlyLibrarySummary();
 
-        if (remoteEmpty) {
+        if (remoteEmpty || localSummary.documents > 0) {
           await backUpLocalLibraryToCloud(supabase, userId);
         }
 
@@ -145,6 +180,57 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     syncLockRef.current = syncPromise;
     return syncPromise;
   }, [refreshGuestLibrarySummary, supabase]);
+
+  const updateProfile = useCallback(
+    async (input: { displayName?: string }) => {
+      if (!supabase || !currentUserIdRef.current) {
+        throw new Error("You need to be signed in to update your profile.");
+      }
+
+      setIsProfileSaving(true);
+      setErrorMessage(undefined);
+
+      try {
+        await ensureProfile(supabase, currentUserIdRef.current);
+        const nextProfile = await upsertProfile(supabase, {
+          displayName: input.displayName,
+          userId: currentUserIdRef.current,
+        });
+
+        setProfile(nextProfile);
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Profile could not be updated.",
+        );
+        throw error;
+      } finally {
+        setIsProfileSaving(false);
+      }
+    },
+    [supabase],
+  );
+
+  const syncReaderPreferences = useCallback(
+    async (preferences: ReaderPreferences) => {
+      if (!supabase || !currentUserIdRef.current) {
+        return;
+      }
+
+      try {
+        const nextProfile = await upsertProfile(supabase, {
+          readerPreferences: preferences,
+          userId: currentUserIdRef.current,
+        });
+
+        setProfile(nextProfile);
+      } catch (error) {
+        console.warn("reader preference sync failed", error);
+      }
+    },
+    [supabase],
+  );
 
   const syncLocalLibraryToCloud = useCallback(async () => {
     if (!supabase || !currentUserIdRef.current) {
@@ -199,6 +285,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
       if (nextSession?.user) {
         await syncWithCloud();
+      } else {
+        setProfile(undefined);
       }
     });
 
@@ -216,6 +304,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      setProfile(undefined);
       setSyncStatus("idle");
       setLastSyncedAt(undefined);
       if (previousUserId) {
@@ -323,6 +412,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       await clearSyncedLibraryForUser(previousUserId);
     }
 
+    setProfile(undefined);
     await refreshGuestLibrarySummary();
   }, [refreshGuestLibrarySummary, supabase]);
 
@@ -332,32 +422,42 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       guestLibrarySummary,
       isConfigured: isSupabaseConfigured,
       isLoading,
+      isProfileSaving,
       lastSyncedAt,
+      profile,
+      refreshProfile,
       session,
       signIn,
       signInWithGoogle,
       signInWithMagicLink,
       signOut,
       signUp,
+      syncReaderPreferences,
       syncLocalLibraryToCloud,
       syncStatus,
       syncWithCloud,
+      updateProfile,
       user,
     }),
     [
       errorMessage,
       guestLibrarySummary,
       isLoading,
+      isProfileSaving,
       lastSyncedAt,
+      profile,
+      refreshProfile,
       session,
       signIn,
       signInWithGoogle,
       signInWithMagicLink,
       signOut,
       signUp,
+      syncReaderPreferences,
       syncLocalLibraryToCloud,
       syncStatus,
       syncWithCloud,
+      updateProfile,
       user,
     ],
   );

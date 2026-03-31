@@ -1,13 +1,23 @@
-import { db } from "@/db/app-db";
 import { nanoid } from "nanoid";
-import type { DocumentModel, DocumentRecord } from "@/types/document";
+import { db } from "@/db/app-db";
+import type {
+  DocumentAssetRecord,
+  DocumentModel,
+  DocumentRecord,
+} from "@/types/document";
 import {
+  defaultPdfViewerState,
   type Bookmark,
   defaultReaderPreferences,
   type Highlight,
+  type PdfViewerState,
   type ReaderPreferences,
   type ReadingSession,
 } from "@/types/reader";
+
+function getPdfViewerStateKey(documentId: string) {
+  return `pdf-viewer:${documentId}`;
+}
 
 export async function saveDocument(record: DocumentRecord) {
   await db.documents.put(record);
@@ -16,6 +26,25 @@ export async function saveDocument(record: DocumentRecord) {
 
 export async function getDocumentById(documentId: string) {
   return db.documents.get(documentId);
+}
+
+export async function saveDocumentAsset(
+  asset: Omit<DocumentAssetRecord, "createdAt" | "updatedAt">,
+) {
+  const existingAsset = await db.documentAssets.get(asset.documentId);
+  const timestamp = new Date().toISOString();
+  const record: DocumentAssetRecord = {
+    ...asset,
+    createdAt: existingAsset?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+  };
+
+  await db.documentAssets.put(record);
+  return record;
+}
+
+export async function getDocumentAsset(documentId: string) {
+  return db.documentAssets.get(documentId);
 }
 
 export async function getRecentDocuments(limit = 8) {
@@ -177,6 +206,8 @@ export async function deleteHighlight(highlightId: string) {
 }
 
 export async function deleteDocumentAndRelatedData(documentId: string) {
+  await db.documentAssets.delete(documentId);
+
   await db.transaction(
     "rw",
     db.documents,
@@ -203,7 +234,26 @@ export async function saveReaderPreferences(preferences: ReaderPreferences) {
 
 export async function getStoredReaderPreferences() {
   const record = await db.preferences.get("reader-preferences");
-  return record?.value ?? defaultReaderPreferences;
+  return (
+    (record?.value as ReaderPreferences | undefined) ?? defaultReaderPreferences
+  );
+}
+
+export async function savePdfViewerState(
+  documentId: string,
+  state: PdfViewerState,
+) {
+  await db.preferences.put({
+    key: getPdfViewerStateKey(documentId),
+    value: state,
+  });
+
+  return state;
+}
+
+export async function getStoredPdfViewerState(documentId: string) {
+  const record = await db.preferences.get(getPdfViewerStateKey(documentId));
+  return (record?.value as PdfViewerState | undefined) ?? defaultPdfViewerState;
 }
 
 export function buildInitialSession(document: DocumentModel): ReadingSession {

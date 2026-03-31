@@ -1,20 +1,22 @@
 import Dexie, { type EntityTable } from "dexie";
 
-import type { DocumentRecord } from "@/types/document";
+import type { DocumentAssetRecord, DocumentRecord } from "@/types/document";
 import type {
   Bookmark,
   Highlight,
+  PdfViewerState,
   ReaderPreferences,
   ReadingSession,
 } from "@/types/reader";
 
 export interface PreferenceRecord {
   key: string;
-  value: ReaderPreferences;
+  value: ReaderPreferences | PdfViewerState;
 }
 
 export class LeeDatabase extends Dexie {
   documents!: EntityTable<DocumentRecord, "id">;
+  documentAssets!: EntityTable<DocumentAssetRecord, "documentId">;
   sessions!: EntityTable<ReadingSession, "id">;
   bookmarks!: EntityTable<Bookmark, "id">;
   highlights!: EntityTable<Highlight, "id">;
@@ -40,6 +42,15 @@ export class LeeDatabase extends Dexie {
 
     this.version(3).stores({
       documents: "id, updatedAt, sourceKind, ownerId, syncState",
+      sessions: "id, documentId, updatedAt, ownerId, syncState",
+      bookmarks: "id, documentId, createdAt, ownerId, syncState",
+      highlights: "id, documentId, createdAt, ownerId, syncState",
+      preferences: "key",
+    });
+
+    this.version(4).stores({
+      documents: "id, updatedAt, sourceKind, ownerId, syncState",
+      documentAssets: "documentId, sourceKind, updatedAt",
       sessions: "id, documentId, updatedAt, ownerId, syncState",
       bookmarks: "id, documentId, createdAt, ownerId, syncState",
       highlights: "id, documentId, createdAt, ownerId, syncState",

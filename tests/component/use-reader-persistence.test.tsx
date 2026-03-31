@@ -15,9 +15,10 @@ const { getStoredReaderPreferences, saveReaderPreferences, saveSession } =
   }));
 
 vi.mock("@/db/repositories", async () => {
-  const actual = await vi.importActual<typeof import("@/db/repositories")>(
-    "@/db/repositories",
-  );
+  const actual =
+    await vi.importActual<typeof import("@/db/repositories")>(
+      "@/db/repositories",
+    );
 
   return {
     ...actual,
@@ -195,5 +196,93 @@ describe("useReaderPersistence", () => {
         currentChunkIndex: 1,
       }),
     );
+  });
+
+  it("preserves ownership metadata when persisting a synced session locally", async () => {
+    const updatePreferences = vi.fn();
+    const syncedRecord = {
+      ...record,
+      ownerId: "user-1",
+      syncState: "synced" as const,
+    };
+
+    renderHook(() =>
+      useReaderPersistence({
+        document: syncedRecord,
+        activeChunk: runtimeChunks[0],
+        currentChunkIndex: 0,
+        isPlaying: false,
+        preferences: defaultReaderPreferences,
+        runtimeChunks,
+        updatePreferences,
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(saveSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: syncedRecord.id,
+        ownerId: "user-1",
+        syncState: "synced",
+      }),
+    );
+  });
+
+  it("hydrates reader preferences from the signed-in profile and syncs later changes back to cloud", async () => {
+    const updatePreferences = vi.fn();
+    const syncReaderPreferences = vi.fn().mockResolvedValue(undefined);
+    const cloudPreferences = {
+      ...defaultReaderPreferences,
+      chunkSize: 1,
+      theme: "ember" as const,
+      wordsPerMinute: 420,
+    };
+    const { rerender } = renderHook(
+      ({ preferences }) =>
+        useReaderPersistence({
+          document: record,
+          activeChunk: runtimeChunks[0],
+          currentChunkIndex: 0,
+          isPlaying: false,
+          preferences,
+          profileReaderPreferences: cloudPreferences,
+          runtimeChunks,
+          syncReaderPreferences,
+          updatePreferences,
+          userId: "user-1",
+        }),
+      {
+        initialProps: {
+          preferences: cloudPreferences,
+        },
+      },
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(updatePreferences).toHaveBeenCalledWith(cloudPreferences);
+    expect(saveReaderPreferences).toHaveBeenCalledWith(cloudPreferences);
+    expect(syncReaderPreferences).not.toHaveBeenCalled();
+
+    const nextPreferences = {
+      ...cloudPreferences,
+      wordsPerMinute: 440,
+    };
+
+    rerender({ preferences: nextPreferences });
+
+    await act(async () => {
+      vi.advanceTimersByTime(250);
+      await Promise.resolve();
+    });
+
+    expect(saveReaderPreferences).toHaveBeenCalledWith(nextPreferences);
+    expect(syncReaderPreferences).toHaveBeenCalledWith(nextPreferences);
   });
 });
