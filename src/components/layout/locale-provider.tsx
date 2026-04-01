@@ -3,11 +3,17 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useSyncExternalStore,
 } from "react";
 
-import { appLocales, defaultLocale, type AppLocale } from "@/lib/locale";
+import {
+  appLocales,
+  defaultLocale,
+  resolvePreferredLocale,
+  type AppLocale,
+} from "@/lib/locale";
 
 const STORAGE_KEY = "lee-locale";
 const localeListeners = new Set<() => void>();
@@ -23,14 +29,20 @@ function isAppLocale(value: string): value is AppLocale {
   return appLocales.includes(value as AppLocale);
 }
 
-function getStoredLocale() {
+function getBrowserLocale() {
+  return resolvePreferredLocale(
+    navigator.languages.length > 0 ? navigator.languages : [navigator.language],
+  );
+}
+
+function getCurrentLocale() {
   const storedLocale = window.localStorage.getItem(STORAGE_KEY);
 
   if (storedLocale && isAppLocale(storedLocale)) {
     return storedLocale;
   }
 
-  return defaultLocale;
+  return getBrowserLocale();
 }
 
 function subscribeToLocale(callback: () => void) {
@@ -59,9 +71,13 @@ function emitLocaleChange() {
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const locale = useSyncExternalStore(
     subscribeToLocale,
-    getStoredLocale,
+    getCurrentLocale,
     () => defaultLocale,
   );
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const value = useMemo<LocaleContextValue>(
     () => ({

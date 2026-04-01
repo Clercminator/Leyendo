@@ -58,6 +58,12 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
   await page.getByRole("button", { name: /menu/i }).click();
   await expect(page.getByRole("link", { name: /^reader$/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /^library$/i })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /^(guides|guias)$/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /^(about|sobre)$/i }),
+  ).toBeVisible();
   await page.getByRole("button", { name: /menu/i }).click();
 
   await page.setViewportSize({ width: 1366, height: 900 });
@@ -88,6 +94,46 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
     page.getByRole("heading", {
       name: /paste text or upload the document you want to read faster/i,
     }),
+  ).toBeVisible();
+});
+
+test("guides hub exposes public SEO articles", async ({ page }) => {
+  await page.goto("/guides");
+
+  await expect(
+    page.getByRole("heading", {
+      name: /public guides for reading speed, fast reading, and lectura rapida/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /read guide/i }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /start by goal/i }),
+  ).toBeVisible();
+
+  await page.goto("/guides/reading-speed-for-real-documents");
+
+  await expect(
+    page.getByRole("heading", { name: /reading speed for real documents/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /frequently asked questions/i }),
+  ).toBeVisible();
+  await expect(page.getByText(/on this page/i)).toBeVisible();
+  await expect(page.getByText(/recommended path/i)).toBeVisible();
+});
+
+test("about page cross-links into the public guides", async ({ page }) => {
+  await page.goto("/about");
+
+  await expect(
+    page.getByRole("heading", {
+      name: /read the guide layer behind the product/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /browse all guides/i }),
   ).toBeVisible();
 });
 
@@ -133,7 +179,7 @@ test("user can paste text and open it in the reader", async ({ page }) => {
     page.getByRole("button", { name: /playback settings/i }),
   ).toContainText(/2 words/i);
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
-  const activeRun = page.locator(".reader-active-run").first();
+  const activeRun = page.locator(".reader-active-run:visible").first();
   await expect(activeRun).toBeVisible();
   const initialActiveRunText = (await activeRun.textContent())?.trim();
   await expect(

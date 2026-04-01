@@ -1,5 +1,16 @@
+import type { Metadata } from "next";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { ReaderWorkspace } from "@/components/reader/reader-workspace";
+import { createPageMetadata } from "@/lib/site";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Reader",
+  description:
+    "The private Leyendo reading workspace for imported documents and saved reading sessions.",
+  path: "/reader",
+  index: false,
+});
 
 interface ReaderPageProps {
   searchParams?: Promise<{

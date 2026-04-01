@@ -1,5 +1,16 @@
+import type { Metadata } from "next";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { LibraryList } from "@/components/library/library-list";
+import { createPageMetadata } from "@/lib/site";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Library",
+  description:
+    "Your private Leyendo library for documents, progress, highlights, and return points.",
+  path: "/library",
+  index: false,
+});
 
 export default function LibraryPage() {
   return (

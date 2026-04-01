@@ -1,36 +1,8 @@
 <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="leyendo-mark" x1="20" y1="18" x2="100" y2="104" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D3FAFF" />
-      <stop offset="0.52" stop-color="#7EE9FF" />
-      <stop offset="1" stop-color="#3D93FF" />
-    </linearGradient>
-    <linearGradient id="leyendo-fill" x1="28" y1="28" x2="92" y2="92" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D3FAFF" stop-opacity="0.3" />
-      <stop offset="1" stop-color="#3D93FF" stop-opacity="0.08" />
-    </linearGradient>
-    <linearGradient id="leyendo-bg" x1="14" y1="10" x2="114" y2="118" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#11233A" />
-      <stop offset="1" stop-color="#08131D" />
-    </linearGradient>
-    <filter id="leyendo-glow" x="8" y="10" width="112" height="104" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feFlood flood-opacity="0" result="BackgroundImageFix" />
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="blur" />
-      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.32 0 0 0 0 0.88 0 0 0 0 1 0 0 0 0.72 0" result="glow" />
-      <feBlend in="SourceGraphic" in2="glow" mode="screen" result="shape" />
-    </filter>
-  </defs>
-  <rect width="128" height="128" rx="30" fill="url(#leyendo-bg)" />
-  <g filter="url(#leyendo-glow)">
-    <path d="M30 30H44C54.493 30 63 38.507 63 49V84C56.808 79.023 49.165 76.536 39.25 76.536H30V30Z" fill="url(#leyendo-fill)" />
-    <path d="M98 30H84C73.507 30 65 38.507 65 49V84C71.192 79.023 78.835 76.536 88.75 76.536H98V30Z" fill="url(#leyendo-fill)" />
-    <path d="M30 30H44C54.493 30 63 38.507 63 49V84C56.808 79.023 49.165 76.536 39.25 76.536H30V30Z" stroke="url(#leyendo-mark)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-    <path d="M98 30H84C73.507 30 65 38.507 65 49V84C71.192 79.023 78.835 76.536 88.75 76.536H98V30Z" stroke="url(#leyendo-mark)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-    <path d="M64 43V83" stroke="url(#leyendo-mark)" stroke-width="6" stroke-linecap="round" />
-    <path d="M16 38H31" stroke="url(#leyendo-mark)" stroke-width="6" stroke-linecap="round" />
-    <path d="M13 52H31" stroke="url(#leyendo-mark)" stroke-width="6" stroke-linecap="round" opacity="0.92" />
-    <path d="M16 66H31" stroke="url(#leyendo-mark)" stroke-width="6" stroke-linecap="round" opacity="0.82" />
-    <path d="M75 58H101" stroke="url(#leyendo-mark)" stroke-width="6" stroke-linecap="round" />
-    <path d="M88 45L104 58L88 71" stroke="url(#leyendo-mark)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-  </g>
+  <rect width="128" height="128" rx="32" fill="#162033" />
+  <path d="M30 31H45C54.3888 31 62 38.6112 62 48V83C56.4597 78.5476 49.6167 76.3214 40.75 76.3214H30V31Z" stroke="#F8F6F2" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M98 31H83C73.6112 31 66 38.6112 66 48V83C71.5403 78.5476 78.3833 76.3214 87.25 76.3214H98V31Z" stroke="#F8F6F2" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M64 42V83" stroke="#5F77D7" stroke-width="6" stroke-linecap="round" />
+  <path d="M74 58H96" stroke="#D58A53" stroke-width="6" stroke-linecap="round" />
+  <path d="M84 48L98 58L84 68" stroke="#D58A53" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
 </svg>

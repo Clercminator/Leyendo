@@ -1,5 +1,16 @@
+import type { Metadata } from "next";
+
 import { AccountPanel } from "@/components/auth/account-panel";
 import { AppShell } from "@/components/layout/app-shell";
+import { createPageMetadata } from "@/lib/site";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Account",
+  description:
+    "Optional Leyendo account access for people who want cloud backup and cross-device reading.",
+  path: "/account",
+  index: false,
+});
 
 export default function AccountPage() {
   return (

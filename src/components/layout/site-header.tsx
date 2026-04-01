@@ -10,6 +10,8 @@ import {
   Check,
   ChevronDown,
   Cloud,
+  FileText,
+  Info,
   LibraryBig,
   Languages,
   Menu,
@@ -35,6 +37,16 @@ const links = [
     href: "/library",
     label: { en: "Library", es: "Biblioteca", pt: "Biblioteca" },
     icon: LibraryBig,
+  },
+  {
+    href: "/about",
+    label: { en: "About", es: "Sobre", pt: "Sobre" },
+    icon: Info,
+  },
+  {
+    href: "/guides",
+    label: { en: "Guides", es: "Guias", pt: "Guias" },
+    icon: FileText,
   },
   {
     href: "/privacy",
@@ -183,7 +195,10 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-90 border-b border-(--border-soft) bg-(--surface-overlay) shadow-[0_14px_40px_rgba(8,12,22,0.08)] backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
-        <Link href="/" className="flex min-w-0 shrink items-center gap-3 sm:gap-4">
+        <Link
+          href="/"
+          className="flex min-w-0 shrink items-center gap-3 sm:gap-4"
+        >
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.15rem] border border-(--border-soft) bg-[radial-gradient(circle_at_30%_20%,rgba(120,231,255,0.2),transparent_55%),linear-gradient(160deg,rgba(17,34,58,0.95),rgba(8,19,29,0.98))] shadow-[0_20px_48px_rgba(6,12,24,0.3)] sm:h-14 sm:w-14 sm:rounded-[1.35rem]">
             <Image
               src="/leyendo-logo.svg"
