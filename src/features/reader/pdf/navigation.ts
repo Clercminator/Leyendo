@@ -252,3 +252,37 @@ export function getPdfPageLabel(
 ) {
   return pageLabels?.[pageIndex] ?? String(pageIndex + 1);
 }
+
+export function resolvePdfPageInput(args: {
+  input: string;
+  pageCount: number;
+  pageLabels: string[] | null;
+}) {
+  const { input, pageCount, pageLabels } = args;
+  const normalizedInput = input.trim().toLowerCase();
+
+  if (!normalizedInput || pageCount <= 0) {
+    return null;
+  }
+
+  const matchingLabelIndex =
+    pageLabels?.findIndex((pageLabel) => {
+      return pageLabel.trim().toLowerCase() === normalizedInput;
+    }) ?? -1;
+
+  if (matchingLabelIndex >= 0) {
+    return matchingLabelIndex;
+  }
+
+  if (!/^\d+$/.test(normalizedInput)) {
+    return null;
+  }
+
+  const pageIndex = Number(normalizedInput) - 1;
+
+  if (!Number.isInteger(pageIndex) || pageIndex < 0 || pageIndex >= pageCount) {
+    return null;
+  }
+
+  return pageIndex;
+}

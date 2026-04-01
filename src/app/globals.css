@@ -318,6 +318,56 @@
     text-transform: uppercase;
   }
 
+  .about-founder-layout {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .about-founder-copy {
+    min-width: 0;
+  }
+
+  .about-founder-photo {
+    margin-inline: auto;
+  }
+
+  @media (min-width: 900px) {
+    .about-founder-layout {
+      display: block;
+      min-height: 24rem;
+    }
+
+    .about-founder-copy {
+      max-width: none;
+      padding-right: 20rem;
+    }
+
+    .about-founder-photo {
+      position: absolute;
+      top: 0;
+      right: 0;
+      margin-inline: 0;
+    }
+
+    .about-founder-photo-image {
+      height: 20rem;
+      width: 15rem;
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .about-founder-copy {
+      padding-right: 24rem;
+    }
+
+    .about-founder-photo-image {
+      height: 21rem;
+      width: 16rem;
+    }
+  }
+
   .app-shell-background {
     position: absolute;
     isolation: isolate;

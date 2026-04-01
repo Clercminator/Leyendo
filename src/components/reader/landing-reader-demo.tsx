@@ -115,15 +115,15 @@ const demoTips = {
 };
 
 const demoCallout = {
-  en: "The sample text is only for practice. Import your own PDF or text when you want saved progress, bookmarks, highlights, sync, or the Acrobat PDF view.",
-  es: "El texto de muestra sirve solo para practicar. Importa tu propio PDF o texto cuando quieras guardar progreso, marcadores, destacados, sincronizacion o la vista Acrobat PDF.",
-  pt: "O texto de exemplo serve apenas para praticar. Importe seu proprio PDF ou texto quando quiser salvar progresso, marcadores, destaques, sincronizacao ou a visualizacao Acrobat PDF.",
+  en: "The sample text is only for practice. Import your own PDF or text when you want saved progress, bookmarks, highlights, sync, or the Standard PDF view.",
+  es: "El texto de muestra sirve solo para practicar. Importa tu propio PDF o texto cuando quieras guardar progreso, marcadores, destacados, sincronizacion o la vista Standard PDF.",
+  pt: "O texto de exemplo serve apenas para praticar. Importe seu proprio PDF ou texto quando quiser salvar progresso, marcadores, destaques, sincronizacao ou a visualizacao Standard PDF.",
 };
 
 const demoPdfNote = {
-  en: "Acrobat PDF mode is not part of this sample because it needs the original PDF file and page assets. You will see it after importing a real PDF and opening it in the reader.",
-  es: "El modo Acrobat PDF no forma parte de esta muestra porque necesita el archivo PDF original y sus paginas. Lo veras despues de importar un PDF real y abrirlo en el lector.",
-  pt: "O modo Acrobat PDF nao faz parte desta amostra porque precisa do arquivo PDF original e de suas paginas. Voce vai ve-lo depois de importar um PDF real e abri-lo no leitor.",
+  en: "Standard PDF mode is not part of this sample because it needs the original PDF file and page assets. You will see it after importing a real PDF and opening it in the reader.",
+  es: "El modo Standard PDF no forma parte de esta muestra porque necesita el archivo PDF original y sus paginas. Lo veras despues de importar un PDF real y abrirlo en el lector.",
+  pt: "O modo Standard PDF nao faz parte desta amostra porque precisa do arquivo PDF original e de suas paginas. Voce vai ve-lo depois de importar um PDF real e abri-lo no leitor.",
 };
 
 const demoStatusIdle = {

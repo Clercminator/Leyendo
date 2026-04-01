@@ -82,9 +82,9 @@ const modeLabels: Record<
   Record<"en" | "es" | "pt", string>
 > = {
   "pdf-page": {
-    en: "Acrobat PDF",
-    es: "PDF Acrobat",
-    pt: "PDF Acrobat",
+    en: "Standard",
+    es: "Standard",
+    pt: "Standard",
   },
   "focus-word": { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
   "phrase-chunk": {
@@ -580,7 +580,7 @@ export function ReaderCanvas({
       aria-labelledby="reader-canvas-title"
       tabIndex={-1}
       className={cn(
-          "reader-canvas relative isolate flex h-[calc(100svh-8.5rem)] min-h-136 w-full flex-col gap-4 overflow-visible rounded-[1.5rem] border border-(--border-soft) bg-(--surface-strong) px-4 py-4 text-left sm:gap-6 sm:rounded-[1.75rem] sm:px-6 sm:py-5 lg:h-[86vh] lg:min-h-176 lg:px-8 lg:py-6",
+        "reader-canvas relative isolate flex h-[calc(100svh-8.5rem)] min-h-136 w-full flex-col gap-4 overflow-visible rounded-[1.5rem] border border-(--border-soft) bg-(--surface-strong) px-4 py-4 text-left sm:gap-6 sm:rounded-[1.75rem] sm:px-6 sm:py-5 lg:h-[86vh] lg:min-h-176 lg:px-8 lg:py-6",
         className,
       )}
     >
@@ -1028,7 +1028,8 @@ export function ReaderCanvas({
               <span className="flex flex-col items-start sm:contents">
                 <span>{copy.playback}</span>
                 <span className="text-xs text-(--text-muted) sm:hidden">
-                  {preferences.wordsPerMinute} WPM · {chunkSize} {chunkSize === 1 ? copy.word : copy.words}
+                  {preferences.wordsPerMinute} WPM · {chunkSize}{" "}
+                  {chunkSize === 1 ? copy.word : copy.words}
                 </span>
               </span>
               <span className="hidden text-(--text-muted) sm:inline">

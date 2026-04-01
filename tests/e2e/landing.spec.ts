@@ -1,10 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 import { createLargeDocumentText } from "../fixtures/large-document";
 
-async function expectDemoCardsToMatchHeight(
-  page: Parameters<typeof test>[0]["page"],
-) {
+async function expectDemoCardsToMatchHeight(page: Page) {
   const copyCard = page.getByTestId("landing-reader-demo-copy");
   const readerCanvas = page.locator("#reader-canvas");
 
@@ -144,6 +142,11 @@ test("guides hub exposes public SEO articles", async ({ page }) => {
 test("about page cross-links into the public guides", async ({ page }) => {
   await page.goto("/about");
 
+  await expect(page.getByTestId("about-founder-photo")).toBeVisible();
+  await expect(page.getByAltText(/david clerc portrait/i)).toHaveAttribute(
+    "src",
+    /David%20Clerc%20empresarial%20traje\.webp/i,
+  );
   await expect(
     page.getByRole("heading", {
       name: /read the guide layer behind the product/i,
@@ -172,7 +175,11 @@ test("user can upload a text file and open it in the reader", async ({
     /Imported from file/i,
   );
 
-  await page.getByRole("button", { name: /open in reader/i }).click();
+  const openImportedFileButton = page.getByRole("button", {
+    name: /open imported file/i,
+  });
+  await expect(openImportedFileButton).toBeVisible();
+  await openImportedFileButton.click();
 
   await expect(page).toHaveURL(/\/reader\?document=/);
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
@@ -408,8 +415,10 @@ test("classic reader keeps controls visible while the document scrolls inside th
     .getByRole("textbox", { name: /^paste text$/i })
     .fill(createLargeDocumentText(48, 24));
 
-  await page.getByRole("button", { name: /open in reader/i }).click();
-  await expect(page).toHaveURL(/\/reader\?document=/);
+  await Promise.all([
+    page.waitForURL(/\/reader\?document=/),
+    page.getByRole("button", { name: /open in reader/i }).click(),
+  ]);
 
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^classic reader$/i }).click();

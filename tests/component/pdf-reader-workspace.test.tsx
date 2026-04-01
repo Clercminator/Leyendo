@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -117,8 +117,17 @@ vi.mock("@/lib/pdf/pdfjs", () => ({
 describe("PdfReaderWorkspace", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     eventHandlers.clear();
     vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => {
+      return {
+        fillRect: vi.fn(),
+      } as unknown as CanvasRenderingContext2D;
+    });
+    HTMLCanvasElement.prototype.toDataURL = vi.fn(
+      () => "data:image/png;base64,thumb",
+    );
 
     getDocumentAsset.mockResolvedValue({
       blob: new Blob(["pdf"], { type: "application/pdf" }),
@@ -217,6 +226,83 @@ describe("PdfReaderWorkspace", () => {
     expect(
       screen.queryByRole("button", { name: /save highlight/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows Standard tools, selected highlight guidance, and the mobile PDF sheet", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PdfReaderWorkspace
+        availableModes={["pdf-page", "classic-reader"]}
+        bookmarks={[]}
+        document={{
+          createdAt: "2026-03-30T10:00:00.000Z",
+          excerpt: "",
+          id: "pdf-text",
+          sourceKind: "pdf",
+          title: "Text PDF",
+          totalChunks: 0,
+          totalSections: 0,
+          updatedAt: "2026-03-30T10:00:00.000Z",
+        }}
+        hasExtractedText
+        highlightNote=""
+        highlights={[]}
+        onChangeHighlightNote={vi.fn()}
+        onDeleteBookmark={vi.fn()}
+        onDeleteHighlight={vi.fn()}
+        onJumpToBookmark={vi.fn()}
+        onJumpToHighlight={vi.fn()}
+        onPageChange={vi.fn()}
+        onSaveBookmark={vi.fn()}
+        onSaveHighlight={vi.fn()}
+        onSelectMode={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /^standard$/i }),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("textbox", { name: /jump to page/i })).toHaveValue(
+      "1",
+    );
+    expect(
+      screen.getByRole("button", { name: /show tools/i }),
+    ).toBeInTheDocument();
+
+    const viewerContainer = document.querySelector(".pdfViewer");
+
+    expect(viewerContainer).not.toBeNull();
+
+    vi.stubGlobal("getSelection", () => {
+      return {
+        anchorNode: viewerContainer,
+        focusNode: viewerContainer,
+        toString: () => "Clause on page two",
+      } as unknown as Selection;
+    });
+
+    await act(async () => {
+      document.dispatchEvent(new Event("selectionchange"));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/selected pdf text ready:/i)).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("button", { name: /save selected highlight/i }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /show tools/i }));
+
+    expect(
+      screen.getByRole("dialog", { name: /pages, outline, and notes/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders only the requested thumbnail window instead of every page eagerly", async () => {

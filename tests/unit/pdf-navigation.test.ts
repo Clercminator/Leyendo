@@ -4,6 +4,7 @@ import {
   buildResolvedPdfOutline,
   getPdfPageLabel,
   resolvePdfDestinationPageIndex,
+  resolvePdfPageInput,
   resolvePdfSelectionAnchor,
   resolveSourcePageIndexForAnchor,
 } from "@/features/reader/pdf/navigation";
@@ -121,5 +122,31 @@ describe("pdf navigation helpers", () => {
   it("falls back to numeric page labels when a PDF has none", () => {
     expect(getPdfPageLabel(0, null)).toBe("1");
     expect(getPdfPageLabel(2, ["i", "ii", "1"])).toBe("1");
+  });
+
+  it("resolves page jump input from page labels before numeric fallback", () => {
+    expect(
+      resolvePdfPageInput({
+        input: "ii",
+        pageCount: 3,
+        pageLabels: ["i", "ii", "1"],
+      }),
+    ).toBe(1);
+
+    expect(
+      resolvePdfPageInput({
+        input: "2",
+        pageCount: 3,
+        pageLabels: ["i", "ii", "1"],
+      }),
+    ).toBe(1);
+
+    expect(
+      resolvePdfPageInput({
+        input: "99",
+        pageCount: 3,
+        pageLabels: ["i", "ii", "1"],
+      }),
+    ).toBeNull();
   });
 });

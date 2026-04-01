@@ -243,7 +243,7 @@ export function ReaderWorkspace({
       ? "classic-reader"
       : preferences.mode;
   const modeLabel = {
-    "pdf-page": { en: "Acrobat PDF", es: "PDF Acrobat", pt: "PDF Acrobat" },
+    "pdf-page": { en: "Standard", es: "Standard", pt: "Standard" },
     "focus-word": { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
     "phrase-chunk": {
       en: "Phrase Chunk",

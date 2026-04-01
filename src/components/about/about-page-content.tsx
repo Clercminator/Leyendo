@@ -1,6 +1,8 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import { useState } from "react";
 
 import { ArrowUpRight, UserRound } from "lucide-react";
 
@@ -111,8 +113,17 @@ const publicGuidesCopy = {
   },
 };
 
+const founderPhotoAlt = {
+  en: `${founderName} portrait`,
+  es: `Retrato de ${founderName}`,
+  pt: `Retrato de ${founderName}`,
+};
+
+const founderPhotoSrc = "/David%20Clerc%20empresarial%20traje.webp";
+
 export function AboutPageContent() {
   const { locale } = useLocale();
+  const [founderImgError, setFounderImgError] = useState(false);
 
   const aboutJsonLd = {
     "@context": "https://schema.org",
@@ -234,22 +245,20 @@ export function AboutPageContent() {
           <p className="editorial-kicker text-(--accent-sky)">
             {getLocalizedCopy(locale, sectionCopy.founderTitle)}
           </p>
-          <div className="mt-6 flex flex-col gap-8 lg:flex-row lg:items-start">
-            <div className="flex h-40 w-40 shrink-0 items-center justify-center rounded-[2rem] border border-(--border-soft) bg-[radial-gradient(circle_at_top,rgba(95,119,215,0.16),transparent_60%),linear-gradient(180deg,rgba(255,255,255,0.82),rgba(244,236,223,0.9))] text-(--accent-sky)">
-              <UserRound className="h-16 w-16" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-heading text-3xl font-semibold text-(--text-strong)">
+          <p className="mt-5 max-w-4xl text-sm leading-7 text-(--text-muted)">
+            {getLocalizedCopy(locale, sectionCopy.founderBody)}
+          </p>
+          <div className="editorial-rule mt-8" />
+          <div className="about-founder-layout mt-8">
+            <div className="about-founder-copy min-w-0 max-w-2xl">
+              <h2 className="font-heading text-2xl font-semibold text-(--text-strong) sm:text-3xl">
                 {founderName}
               </h2>
               <p className="mt-2 text-sm tracking-[0.18em] text-(--text-muted) uppercase">
                 {founderRole}
               </p>
-              <p className="mt-5 max-w-3xl text-sm leading-7 text-(--text-muted)">
+              <p className="mt-5 text-sm leading-8 text-(--text-muted)">
                 {founderBio}
-              </p>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-(--text-muted)">
-                {getLocalizedCopy(locale, sectionCopy.founderBody)}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <a
@@ -271,6 +280,29 @@ export function AboutPageContent() {
                   <ArrowUpRight className="h-4 w-4 text-(--accent-amber)" />
                 </a>
               </div>
+            </div>
+            <div
+              data-testid="about-founder-photo"
+              className="about-founder-photo mx-auto overflow-hidden rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) shadow-[0_18px_48px_rgba(20,26,56,0.16)]"
+            >
+              {!founderImgError ? (
+                <img
+                  src={founderPhotoSrc}
+                  alt={getLocalizedCopy(locale, founderPhotoAlt)}
+                  width={512}
+                  height={640}
+                  loading="lazy"
+                  decoding="async"
+                  className="about-founder-photo-image h-72 w-56 object-cover object-top sm:h-80 sm:w-64"
+                  onError={() => {
+                    setFounderImgError(true);
+                  }}
+                />
+              ) : (
+                <div className="about-founder-photo-image flex h-72 w-56 items-center justify-center bg-[linear-gradient(180deg,rgba(255,255,255,0.18),rgba(20,26,56,0.18))] text-(--text-muted) sm:h-80 sm:w-64">
+                  <UserRound className="h-10 w-10" aria-hidden />
+                </div>
+              )}
             </div>
           </div>
         </section>

@@ -27,6 +27,7 @@ import {
 import {
   buildResolvedPdfOutline,
   getPdfPageLabel,
+  resolvePdfPageInput,
   type PdfOutlineItem,
 } from "@/features/reader/pdf/navigation";
 import { getLocalizedCopy } from "@/lib/locale";
@@ -319,9 +320,12 @@ export function PdfReaderWorkspace({
   const [error, setError] = useState<string>();
   const [findMatches, setFindMatches] = useState({ current: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isModeMenuOpen, setIsModeMenuOpen] = useState(false);
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const [outlineItems, setOutlineItems] = useState<PdfOutlineItem[]>([]);
+  const [pageJumpError, setPageJumpError] = useState<string>();
+  const [pageJumpValue, setPageJumpValue] = useState("");
   const [pageLabels, setPageLabels] = useState<string[] | null>(null);
   const [pdfDocument, setPdfDocument] = useState<PdfDocumentHandle | null>(
     null,
@@ -339,6 +343,9 @@ export function PdfReaderWorkspace({
     defaultPdfViewerState,
   );
   const [zoomPercent, setZoomPercent] = useState(100);
+  const [selectedPdfText, setSelectedPdfText] = useState<string>();
+  const isViewerReadyRef = useRef(false);
+  const pendingPageNumberRef = useRef<number>();
   const renderedThumbnailPagesRef = useRef(new Set<number>());
   const renderingThumbnailPagesRef = useRef(new Set<number>());
   const viewerStateRef = useRef(viewerState);
@@ -447,9 +454,9 @@ export function PdfReaderWorkspace({
 
   const modeLabels: Record<ReaderMode, Record<"en" | "es" | "pt", string>> = {
     "pdf-page": {
-      en: "Acrobat PDF",
-      es: "PDF Acrobat",
-      pt: "PDF Acrobat",
+      en: "Standard",
+      es: "Standard",
+      pt: "Standard",
     },
     "focus-word": { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
     "phrase-chunk": {
@@ -496,9 +503,9 @@ export function PdfReaderWorkspace({
           if (!cancelled) {
             setError(
               getLocalizedCopy(locale, {
-                en: "The original PDF is not stored on this device. Re-import the PDF locally to use the Acrobat view.",
-                es: "El PDF original no esta guardado en este dispositivo. Importalo otra vez localmente para usar la vista Acrobat.",
-                pt: "O PDF original nao esta salvo neste dispositivo. Importe o PDF novamente localmente para usar a visualizacao Acrobat.",
+                en: "The original PDF is not stored on this device. Re-import the PDF locally to use the Standard view.",
+                es: "El PDF original no esta guardado en este dispositivo. Importalo otra vez localmente para usar la vista Standard.",
+                pt: "O PDF original nao esta salvo neste dispositivo. Importe o PDF novamente localmente para usar a visualizacao Standard.",
               }),
             );
           }
@@ -601,23 +608,34 @@ export function PdfReaderWorkspace({
       viewer: viewerElement,
     });
 
-    linkService.setViewer(pdfViewer);
-    linkService.setDocument(pdfDocument);
-    findController.setDocument(pdfDocument);
-    pdfViewer.setDocument(pdfDocument);
-    pdfViewer.setPageLabels(pageLabels);
-
     const initialViewerState = sanitizePdfViewerState(
       viewerStateRef.current,
       pdfDocument.numPages,
     );
-    pdfViewer.scrollMode =
-      initialViewerState.scrollMode === "single-page"
-        ? pdfViewerModule.ScrollMode.PAGE
-        : pdfViewerModule.ScrollMode.VERTICAL;
-    pdfViewer.pagesRotation = initialViewerState.rotation;
-    pdfViewer.currentScaleValue = initialViewerState.zoomValue;
-    pdfViewer.currentPageNumber = initialViewerState.pageIndex + 1;
+    isViewerReadyRef.current = false;
+    pendingPageNumberRef.current = initialViewerState.pageIndex + 1;
+
+    const applyPendingPageNumber = () => {
+      const pendingPageNumber = pendingPageNumberRef.current;
+
+      if (!pendingPageNumber) {
+        return;
+      }
+
+      pdfViewer.currentPageNumber = pendingPageNumber;
+      pendingPageNumberRef.current = undefined;
+    };
+
+    const handlePagesInit = () => {
+      isViewerReadyRef.current = true;
+      pdfViewer.scrollMode =
+        initialViewerState.scrollMode === "single-page"
+          ? pdfViewerModule.ScrollMode.PAGE
+          : pdfViewerModule.ScrollMode.VERTICAL;
+      pdfViewer.pagesRotation = initialViewerState.rotation;
+      pdfViewer.currentScaleValue = initialViewerState.zoomValue;
+      applyPendingPageNumber();
+    };
 
     const handlePageChanging = (event: PdfPageChangingEvent) => {
       const nextPageIndex = Math.max(0, Number(event.pageNumber ?? 1) - 1);
@@ -700,6 +718,7 @@ export function PdfReaderWorkspace({
     };
 
     eventBus.on("pagechanging", handlePageChanging);
+    eventBus.on("pagesinit", handlePagesInit);
     eventBus.on("rotationchanging", handleRotationChanging);
     eventBus.on("scalechanging", handleScaleChanging);
     eventBus.on("scrollmodechanged", handleScrollModeChanged);
@@ -715,13 +734,22 @@ export function PdfReaderWorkspace({
       },
     };
 
+    linkService.setViewer(pdfViewer);
+    linkService.setDocument(pdfDocument);
+    findController.setDocument(pdfDocument);
+    pdfViewer.setDocument(pdfDocument);
+    pdfViewer.setPageLabels(pageLabels);
+
     if (initialViewerState.searchQuery.trim()) {
       dispatchFind(viewerRuntimeRef.current, initialViewerState.searchQuery);
     }
 
     return () => {
       viewerRuntimeRef.current = null;
+      isViewerReadyRef.current = false;
+      pendingPageNumberRef.current = undefined;
       eventBus.off("pagechanging", handlePageChanging);
+      eventBus.off("pagesinit", handlePagesInit);
       eventBus.off("rotationchanging", handleRotationChanging);
       eventBus.off("scalechanging", handleScaleChanging);
       eventBus.off("scrollmodechanged", handleScrollModeChanged);
@@ -743,9 +771,53 @@ export function PdfReaderWorkspace({
       return;
     }
 
+    if (!isViewerReadyRef.current) {
+      pendingPageNumberRef.current = jumpRequest.pageIndex + 1;
+      return;
+    }
+
     viewerRuntimeRef.current.pdfViewer.currentPageNumber =
       jumpRequest.pageIndex + 1;
   }, [jumpRequest]);
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
+    if (!hasExtractedText) {
+      setSelectedPdfText(undefined);
+      return;
+    }
+
+    const handleSelectionChange = () => {
+      setSelectedPdfText(getPdfSelectionText(viewerContainerRef.current));
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+    };
+  }, [hasExtractedText]);
 
   useEffect(() => {
     if (!pdfDocument) {
@@ -937,6 +1009,10 @@ export function PdfReaderWorkspace({
     return getPdfPageLabel(currentPageIndex, pageLabels);
   }, [currentPageIndex, pageLabels]);
 
+  useEffect(() => {
+    setPageJumpValue(currentPageLabel);
+  }, [currentPageLabel]);
+
   const searchStatusLabel = useMemo(() => {
     if (!viewerState.searchQuery.trim()) {
       return getLocalizedCopy(locale, {
@@ -992,6 +1068,63 @@ export function PdfReaderWorkspace({
         tone: "warning" as const,
       }
     : undefined;
+  const mobileSidebarToggleLabel = getLocalizedCopy(locale, {
+    en: "Pages, outline, and notes",
+    es: "Paginas, indice y notas",
+    pt: "Paginas, sumario e notas",
+  });
+  const mobileSidebarOpenLabel = getLocalizedCopy(locale, {
+    en: "Hide tools",
+    es: "Ocultar panel",
+    pt: "Ocultar painel",
+  });
+  const mobileSidebarClosedLabel = getLocalizedCopy(locale, {
+    en: "Show tools",
+    es: "Mostrar panel",
+    pt: "Mostrar painel",
+  });
+  const mobileSidebarSummary = getLocalizedCopy(locale, {
+    en: `Page ${currentPageLabel} · ${highlights.length} highlights · ${bookmarks.length} bookmarks`,
+    es: `Pagina ${currentPageLabel} · ${highlights.length} destacados · ${bookmarks.length} marcadores`,
+    pt: `Pagina ${currentPageLabel} · ${highlights.length} destaques · ${bookmarks.length} marcadores`,
+  });
+  const selectedPdfTextPreview = selectedPdfText
+    ? `${selectedPdfText.slice(0, 96)}${selectedPdfText.length > 96 ? "..." : ""}`
+    : undefined;
+  const highlightNoteLabel = getLocalizedCopy(locale, {
+    en: "Note for selected text or current page",
+    es: "Nota para el texto seleccionado o la pagina actual",
+    pt: "Nota para o texto selecionado ou a pagina atual",
+  });
+  const highlightNotePlaceholder = getLocalizedCopy(locale, {
+    en: "Add context before saving this PDF highlight.",
+    es: "Agrega contexto antes de guardar este destacado del PDF.",
+    pt: "Adicione contexto antes de salvar este destaque do PDF.",
+  });
+  const highlightHelperText = hasExtractedText
+    ? selectedPdfTextPreview
+      ? getLocalizedCopy(locale, {
+          en: `Selected PDF text ready: "${selectedPdfTextPreview}". Saving a highlight will anchor this exact quote on page ${currentPageLabel}.`,
+          es: `Texto PDF seleccionado listo: "${selectedPdfTextPreview}". Guardar el destacado anclara esta cita exacta en la pagina ${currentPageLabel}.`,
+          pt: `Texto PDF selecionado pronto: "${selectedPdfTextPreview}". Salvar o destaque vai ancorar esta citacao exata na pagina ${currentPageLabel}.`,
+        })
+      : getLocalizedCopy(locale, {
+          en: `No PDF text is selected. Saving a highlight will anchor the closest extracted passage on page ${currentPageLabel}.`,
+          es: `No hay texto PDF seleccionado. Guardar el destacado anclara el pasaje extraido mas cercano en la pagina ${currentPageLabel}.`,
+          pt: `Nenhum texto do PDF esta selecionado. Salvar o destaque vai ancorar o trecho extraido mais proximo na pagina ${currentPageLabel}.`,
+        })
+    : undefined;
+  const saveHighlightLabel = selectedPdfText
+    ? getLocalizedCopy(locale, {
+        en: "Save selected highlight",
+        es: "Guardar destacado seleccionado",
+        pt: "Salvar destaque selecionado",
+      })
+    : getLocalizedCopy(locale, {
+        en: "Save page highlight",
+        es: "Guardar destacado de pagina",
+        pt: "Salvar destaque da pagina",
+      });
 
   const toolbarButtonClass =
     "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-400";
@@ -1063,18 +1196,59 @@ export function PdfReaderWorkspace({
     [],
   );
 
-  const handlePageStep = useCallback(
-    (delta: -1 | 1) => {
-      if (!viewerRuntimeRef.current) {
+  const goToPageIndex = useCallback(
+    (pageIndex: number) => {
+      if (!viewerRuntimeRef.current || !pdfDocument) {
         return;
       }
 
-      viewerRuntimeRef.current.pdfViewer.currentPageNumber = Math.max(
+      const nextPageNumber = Math.max(
         1,
-        Math.min(pdfDocument?.numPages ?? 1, currentPageIndex + 1 + delta),
+        Math.min(pdfDocument.numPages, pageIndex + 1),
       );
+
+      if (!isViewerReadyRef.current) {
+        pendingPageNumberRef.current = nextPageNumber;
+        return;
+      }
+
+      viewerRuntimeRef.current.pdfViewer.currentPageNumber = nextPageNumber;
+      setPageJumpError(undefined);
+      setIsMobileSidebarOpen(false);
     },
-    [currentPageIndex, pdfDocument?.numPages],
+    [pdfDocument],
+  );
+
+  const handlePageJump = useCallback(() => {
+    const resolvedPageIndex = resolvePdfPageInput({
+      input: pageJumpValue,
+      pageCount: pdfDocument?.numPages ?? 0,
+      pageLabels,
+    });
+
+    if (resolvedPageIndex === null) {
+      setPageJumpError(
+        getLocalizedCopy(locale, {
+          en: "Enter a valid page label or number.",
+          es: "Ingresa una pagina o etiqueta valida.",
+          pt: "Digite uma pagina ou etiqueta valida.",
+        }),
+      );
+      return;
+    }
+
+    goToPageIndex(resolvedPageIndex);
+  }, [goToPageIndex, locale, pageJumpValue, pageLabels, pdfDocument?.numPages]);
+
+  const handlePageStep = useCallback(
+    (delta: -1 | 1) => {
+      if (!pdfDocument) {
+        return;
+      }
+
+      goToPageIndex(currentPageIndex + delta);
+    },
+    [currentPageIndex, goToPageIndex, pdfDocument],
   );
 
   if (isLoading) {
@@ -1100,9 +1274,9 @@ export function PdfReaderWorkspace({
         <FileWarning className="mx-auto h-8 w-8 text-amber-700" />
         <h2 className="mt-5 text-3xl font-semibold tracking-tight">
           {getLocalizedCopy(locale, {
-            en: "The Acrobat view is unavailable",
-            es: "La vista Acrobat no esta disponible",
-            pt: "A visualizacao Acrobat nao esta disponivel",
+            en: "The Standard PDF view is unavailable",
+            es: "La vista Standard PDF no esta disponible",
+            pt: "A visualizacao Standard PDF nao esta disponivel",
           })}
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-amber-900/80">
@@ -1207,6 +1381,44 @@ export function PdfReaderWorkspace({
                 pt: `${currentPageIndex + 1} de ${pdfDocument.numPages}`,
               })}
             </span>
+
+            <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-slate-700">
+              <input
+                value={pageJumpValue}
+                onChange={(event) => {
+                  setPageJumpValue(event.target.value);
+                  setPageJumpError(undefined);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handlePageJump();
+                  }
+                }}
+                aria-label={getLocalizedCopy(locale, {
+                  en: "Jump to page",
+                  es: "Ir a la pagina",
+                  pt: "Ir para a pagina",
+                })}
+                placeholder={getLocalizedCopy(locale, {
+                  en: "Page",
+                  es: "Pagina",
+                  pt: "Pagina",
+                })}
+                className="w-18 min-w-0 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handlePageJump}
+                className="rounded-full border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+              >
+                {getLocalizedCopy(locale, {
+                  en: "Go",
+                  es: "Ir",
+                  pt: "Ir",
+                })}
+              </button>
+            </div>
 
             <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-slate-700">
               <button
@@ -1434,65 +1646,197 @@ export function PdfReaderWorkspace({
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
+          {pageJumpError ? (
+            <p className="text-sm text-amber-700">{pageJumpError}</p>
+          ) : null}
         </div>
 
-        <div
-          ref={viewerContainerRef}
-          className="pdfViewer h-[72vh] min-h-120 overflow-auto bg-slate-300/70 px-2 py-4 sm:h-[82vh] sm:min-h-152 sm:px-4 sm:py-6 lg:h-[86vh]"
-        >
-          <div ref={viewerElementRef} className="pdfViewer" />
+        <div className="relative h-[72vh] min-h-120 sm:h-[82vh] sm:min-h-152 lg:h-[86vh]">
+          <div
+            ref={viewerContainerRef}
+            className="absolute inset-0 overflow-auto bg-slate-300/70 px-2 py-4 sm:px-4 sm:py-6"
+          >
+            <div ref={viewerElementRef} className="pdfViewer" />
+          </div>
         </div>
       </div>
 
-      <ReaderSidebar
-        bookmarks={bookmarks}
-        currentPdfPageIndex={currentPageIndex}
-        currentPdfPageLabel={currentPageLabel}
-        highlightNote={highlightNote}
-        highlights={highlights}
-        notice={viewerNotice}
-        onChangeHighlightNote={onChangeHighlightNote}
-        onDeleteBookmark={onDeleteBookmark}
-        onDeleteHighlight={onDeleteHighlight}
-        onJumpToBookmark={onJumpToBookmark}
-        onJumpToHighlight={onJumpToHighlight}
-        onJumpToOutlineItem={(outlineItem) => {
-          if (
-            typeof outlineItem.pageIndex === "number" &&
-            viewerRuntimeRef.current
-          ) {
-            viewerRuntimeRef.current.pdfViewer.currentPageNumber =
-              outlineItem.pageIndex + 1;
-          }
-        }}
-        onJumpToThumbnail={(pageIndex) => {
-          if (!viewerRuntimeRef.current) {
-            return;
-          }
+      <div className="lg:hidden">
+        <button
+          type="button"
+          aria-controls="pdf-reader-sidebar-mobile"
+          aria-haspopup="dialog"
+          onClick={() => {
+            setIsMobileSidebarOpen(true);
+          }}
+          className="flex w-full items-start justify-between gap-4 rounded-[1.35rem] border border-slate-300 bg-white px-4 py-3 text-left text-slate-700 shadow-[0_14px_40px_rgba(15,23,42,0.08)] transition hover:border-slate-400 hover:bg-slate-50"
+        >
+          <span>
+            <span className="block text-xs tracking-[0.2em] text-sky-700 uppercase">
+              {mobileSidebarToggleLabel}
+            </span>
+            <span className="mt-1 block text-sm text-slate-500">
+              {mobileSidebarSummary}
+            </span>
+          </span>
+          <span className="shrink-0 rounded-full border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+            {isMobileSidebarOpen
+              ? mobileSidebarOpenLabel
+              : mobileSidebarClosedLabel}
+          </span>
+        </button>
 
-          viewerRuntimeRef.current.pdfViewer.currentPageNumber = pageIndex + 1;
-        }}
-        onRequestThumbnail={requestThumbnailPage}
-        onSaveBookmark={() => {
-          onSaveBookmark({ pageIndex: currentPageIndex });
-        }}
-        onSaveHighlight={
-          hasExtractedText
-            ? () => {
-                onSaveHighlight({
-                  pageIndex: currentPageIndex,
-                  selectionText: getPdfSelectionText(
-                    viewerContainerRef.current,
-                  ),
-                });
-              }
-            : undefined
-        }
-        outlineItems={outlineItems}
-        pdfThumbnails={thumbnails}
-        saveHighlightDisabled={!hasExtractedText}
-        showHighlightComposer
-      />
+        {isMobileSidebarOpen ? (
+          <div className="fixed inset-0 z-80 lg:hidden">
+            <button
+              type="button"
+              aria-label={getLocalizedCopy(locale, {
+                en: "Close PDF tools",
+                es: "Cerrar herramientas PDF",
+                pt: "Fechar ferramentas PDF",
+              })}
+              onClick={() => {
+                setIsMobileSidebarOpen(false);
+              }}
+              className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]"
+            />
+            <div
+              id="pdf-reader-sidebar-mobile"
+              role="dialog"
+              aria-modal="true"
+              aria-label={mobileSidebarToggleLabel}
+              className="absolute inset-x-0 bottom-0 max-h-[82svh] overflow-hidden rounded-t-[1.75rem] border border-slate-300 bg-slate-50 shadow-[0_-24px_80px_rgba(15,23,42,0.2)]"
+            >
+              <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
+                <div>
+                  <p className="text-xs tracking-[0.2em] text-sky-700 uppercase">
+                    {mobileSidebarToggleLabel}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {mobileSidebarSummary}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+                >
+                  {getLocalizedCopy(locale, {
+                    en: "Close",
+                    es: "Cerrar",
+                    pt: "Fechar",
+                  })}
+                </button>
+              </div>
+              <div className="max-h-[calc(82svh-4.75rem)] overflow-y-auto p-4">
+                <ReaderSidebar
+                  bookmarks={bookmarks}
+                  currentPdfPageIndex={currentPageIndex}
+                  currentPdfPageLabel={currentPageLabel}
+                  highlightHelperText={highlightHelperText}
+                  highlightNote={highlightNote}
+                  highlightNoteLabel={highlightNoteLabel}
+                  highlightNotePlaceholder={highlightNotePlaceholder}
+                  highlights={highlights}
+                  notice={viewerNotice}
+                  onChangeHighlightNote={onChangeHighlightNote}
+                  onDeleteBookmark={onDeleteBookmark}
+                  onDeleteHighlight={onDeleteHighlight}
+                  onJumpToBookmark={(bookmark) => {
+                    onJumpToBookmark(bookmark);
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  onJumpToHighlight={(highlight) => {
+                    onJumpToHighlight(highlight);
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  onJumpToOutlineItem={(outlineItem) => {
+                    if (typeof outlineItem.pageIndex === "number") {
+                      goToPageIndex(outlineItem.pageIndex);
+                    }
+                  }}
+                  onJumpToThumbnail={(pageIndex) => {
+                    goToPageIndex(pageIndex);
+                  }}
+                  onRequestThumbnail={requestThumbnailPage}
+                  onSaveBookmark={() => {
+                    onSaveBookmark({ pageIndex: currentPageIndex });
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  onSaveHighlight={
+                    hasExtractedText
+                      ? () => {
+                          onSaveHighlight({
+                            pageIndex: currentPageIndex,
+                            selectionText: getPdfSelectionText(
+                              viewerContainerRef.current,
+                            ),
+                          });
+                          setIsMobileSidebarOpen(false);
+                        }
+                      : undefined
+                  }
+                  outlineItems={outlineItems}
+                  pdfThumbnails={thumbnails}
+                  saveHighlightDisabled={!hasExtractedText}
+                  saveHighlightLabel={saveHighlightLabel}
+                  showHighlightComposer={hasExtractedText}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="hidden lg:block">
+        <ReaderSidebar
+          bookmarks={bookmarks}
+          currentPdfPageIndex={currentPageIndex}
+          currentPdfPageLabel={currentPageLabel}
+          highlightHelperText={highlightHelperText}
+          highlightNote={highlightNote}
+          highlightNoteLabel={highlightNoteLabel}
+          highlightNotePlaceholder={highlightNotePlaceholder}
+          highlights={highlights}
+          notice={viewerNotice}
+          onChangeHighlightNote={onChangeHighlightNote}
+          onDeleteBookmark={onDeleteBookmark}
+          onDeleteHighlight={onDeleteHighlight}
+          onJumpToBookmark={onJumpToBookmark}
+          onJumpToHighlight={onJumpToHighlight}
+          onJumpToOutlineItem={(outlineItem) => {
+            if (typeof outlineItem.pageIndex === "number") {
+              goToPageIndex(outlineItem.pageIndex);
+            }
+          }}
+          onJumpToThumbnail={(pageIndex) => {
+            goToPageIndex(pageIndex);
+          }}
+          onRequestThumbnail={requestThumbnailPage}
+          onSaveBookmark={() => {
+            onSaveBookmark({ pageIndex: currentPageIndex });
+          }}
+          onSaveHighlight={
+            hasExtractedText
+              ? () => {
+                  onSaveHighlight({
+                    pageIndex: currentPageIndex,
+                    selectionText: getPdfSelectionText(
+                      viewerContainerRef.current,
+                    ),
+                  });
+                }
+              : undefined
+          }
+          outlineItems={outlineItems}
+          pdfThumbnails={thumbnails}
+          saveHighlightDisabled={!hasExtractedText}
+          saveHighlightLabel={saveHighlightLabel}
+          showHighlightComposer={hasExtractedText}
+        />
+      </div>
     </section>
   );
 }

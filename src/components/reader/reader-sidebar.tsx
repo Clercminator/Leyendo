@@ -26,7 +26,10 @@ interface ReaderSidebarProps {
   bookmarks: Bookmark[];
   currentPdfPageIndex?: number;
   currentPdfPageLabel?: string;
+  highlightHelperText?: string;
   highlightNote: string;
+  highlightNoteLabel?: string;
+  highlightNotePlaceholder?: string;
   highlights: Highlight[];
   outlineItems?: PdfOutlineItem[];
   notice?: ReaderSidebarNotice;
@@ -41,6 +44,7 @@ interface ReaderSidebarProps {
   onSaveBookmark?: () => void;
   onSaveHighlight?: () => void;
   pdfThumbnails?: PdfThumbnailItem[];
+  saveHighlightLabel?: string;
   saveHighlightDisabled?: boolean;
   showHighlightComposer?: boolean;
 }
@@ -49,7 +53,10 @@ export const ReaderSidebar = memo(function ReaderSidebar({
   bookmarks,
   currentPdfPageIndex,
   currentPdfPageLabel,
+  highlightHelperText,
   highlightNote,
+  highlightNoteLabel,
+  highlightNotePlaceholder,
   highlights,
   outlineItems,
   notice,
@@ -64,6 +71,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
   onSaveBookmark,
   onSaveHighlight,
   pdfThumbnails,
+  saveHighlightLabel,
   saveHighlightDisabled = false,
   showHighlightComposer = true,
 }: ReaderSidebarProps) {
@@ -174,6 +182,35 @@ export const ReaderSidebar = memo(function ReaderSidebar({
     ));
   };
 
+  const resolvedHighlightNoteLabel =
+    highlightNoteLabel ??
+    getLocalizedCopy(locale, {
+      en: "Note for current passage",
+      es: "Nota para el pasaje actual",
+      pt: "Nota para o trecho atual",
+    });
+  const resolvedHighlightNotePlaceholder =
+    highlightNotePlaceholder ??
+    getLocalizedCopy(locale, {
+      en: "Add context, a takeaway, or a reminder before saving this highlight.",
+      es: "Agrega contexto, una idea clave o un recordatorio antes de guardar este destacado.",
+      pt: "Adicione contexto, um ponto-chave ou um lembrete antes de salvar este destaque.",
+    });
+  const resolvedHighlightHelperText =
+    highlightHelperText ??
+    getLocalizedCopy(locale, {
+      en: "Highlights keep the active chunk anchored, so reopening still lands on the right passage even if chunk size changes later.",
+      es: "Los destacados mantienen el bloque activo anclado, asi que al reabrir sigues llegando al pasaje correcto aunque cambie el tamano del bloque.",
+      pt: "Os destaques mantem o bloco ativo ancorado, entao ao reabrir voce volta ao trecho certo mesmo se o tamanho do bloco mudar depois.",
+    });
+  const resolvedSaveHighlightLabel =
+    saveHighlightLabel ??
+    getLocalizedCopy(locale, {
+      en: "Save highlight",
+      es: "Guardar destacado",
+      pt: "Salvar destaque",
+    });
+
   return (
     <aside aria-label="Reader details" className="relative z-0">
       <section className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-card) p-4 backdrop-blur-xl sm:rounded-[1.75rem] sm:p-6">
@@ -190,11 +227,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
               className="mt-4 block text-sm text-(--text-strong)"
               htmlFor="highlight-note"
             >
-              {getLocalizedCopy(locale, {
-                en: "Note for current passage",
-                es: "Nota para el pasaje actual",
-                pt: "Nota para o trecho atual",
-              })}
+              {resolvedHighlightNoteLabel}
             </label>
             <textarea
               id="highlight-note"
@@ -202,54 +235,43 @@ export const ReaderSidebar = memo(function ReaderSidebar({
               onChange={(event) => {
                 onChangeHighlightNote(event.target.value);
               }}
-              placeholder={getLocalizedCopy(locale, {
-                en: "Add context, a takeaway, or a reminder before saving this highlight.",
-                es: "Agrega contexto, una idea clave o un recordatorio antes de guardar este destacado.",
-                pt: "Adicione contexto, um ponto-chave ou um lembrete antes de salvar este destaque.",
-              })}
+              placeholder={resolvedHighlightNotePlaceholder}
               className="mt-3 min-h-24 w-full rounded-2xl border border-(--border-soft) bg-(--surface-input) px-4 py-3 text-sm text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none sm:min-h-28"
             />
             <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
-              {getLocalizedCopy(locale, {
-                en: "Highlights keep the active chunk anchored, so reopening still lands on the right passage even if chunk size changes later.",
-                es: "Los destacados mantienen el bloque activo anclado, asi que al reabrir sigues llegando al pasaje correcto aunque cambie el tamano del bloque.",
-                pt: "Os destaques mantem o bloco ativo ancorado, entao ao reabrir voce volta ao trecho certo mesmo se o tamanho do bloco mudar depois.",
-              })}
+              {resolvedHighlightHelperText}
             </p>
-            {onSaveBookmark || onSaveHighlight ? (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {onSaveBookmark ? (
-                  <button
-                    type="button"
-                    onClick={onSaveBookmark}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    <BookmarkPlus className="h-4 w-4" />
-                    {getLocalizedCopy(locale, {
-                      en: "Save bookmark",
-                      es: "Guardar marcador",
-                      pt: "Salvar marcador",
-                    })}
-                  </button>
-                ) : null}
-                {onSaveHighlight ? (
-                  <button
-                    type="button"
-                    disabled={saveHighlightDisabled}
-                    onClick={onSaveHighlight}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Highlighter className="h-4 w-4" />
-                    {getLocalizedCopy(locale, {
-                      en: "Save highlight",
-                      es: "Guardar destacado",
-                      pt: "Salvar destaque",
-                    })}
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
           </>
+        ) : null}
+
+        {onSaveBookmark || onSaveHighlight ? (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {onSaveBookmark ? (
+              <button
+                type="button"
+                onClick={onSaveBookmark}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                <BookmarkPlus className="h-4 w-4" />
+                {getLocalizedCopy(locale, {
+                  en: "Save bookmark",
+                  es: "Guardar marcador",
+                  pt: "Salvar marcador",
+                })}
+              </button>
+            ) : null}
+            {onSaveHighlight ? (
+              <button
+                type="button"
+                disabled={saveHighlightDisabled}
+                onClick={onSaveHighlight}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Highlighter className="h-4 w-4" />
+                {resolvedSaveHighlightLabel}
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         {notice ? (
