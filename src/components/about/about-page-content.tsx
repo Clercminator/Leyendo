@@ -250,7 +250,7 @@ export function AboutPageContent() {
           </p>
           <div className="editorial-rule mt-8" />
           <div className="about-founder-layout mt-8">
-            <div className="about-founder-copy min-w-0 max-w-2xl">
+            <div className="about-founder-copy max-w-2xl min-w-0">
               <h2 className="font-heading text-2xl font-semibold text-(--text-strong) sm:text-3xl">
                 {founderName}
               </h2>
