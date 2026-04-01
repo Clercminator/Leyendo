@@ -153,6 +153,18 @@ const browseGuidesLabel = {
   pt: "Ver todas as guias",
 };
 
+const importDocumentLabel = {
+  en: "Import a document",
+  es: "Importar documento",
+  pt: "Importar documento",
+};
+
+const openLibraryLabel = {
+  en: "Open library",
+  es: "Abrir biblioteca",
+  pt: "Abrir biblioteca",
+};
+
 export function HomePageContent() {
   const { locale } = useLocale();
 
@@ -245,22 +257,14 @@ export function HomePageContent() {
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/16">
                   <ArrowRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
                 </span>
-                {locale === "en"
-                  ? "Import a document"
-                  : locale === "es"
-                    ? "Importar documento"
-                    : "Importar documento"}
+                {getLocalizedCopy(locale, importDocumentLabel)}
               </Link>
               <Link
                 href="/library"
                 className="inline-flex min-h-16 items-center gap-2 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-6 py-4 text-base text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
               >
                 <FileStack className="h-4 w-4 text-(--accent-sky)" />
-                {locale === "en"
-                  ? "Open library"
-                  : locale === "es"
-                    ? "Abrir biblioteca"
-                    : "Abrir biblioteca"}
+                {getLocalizedCopy(locale, openLibraryLabel)}
               </Link>
             </div>
           </div>

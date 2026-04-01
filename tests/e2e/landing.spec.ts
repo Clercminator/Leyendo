@@ -67,8 +67,10 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
   await page.getByRole("button", { name: /menu/i }).click();
 
   await page.setViewportSize({ width: 1366, height: 900 });
+  await expect(page.getByRole("link", { name: /^reader$/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /light/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /language/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^menu$/i })).not.toBeVisible();
 
   await page.getByRole("button", { name: /light/i }).click();
   await expect(page.locator("html")).toHaveClass(/light/);
@@ -86,6 +88,21 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
       name: /usa una muestra real antes de importar tu propio documento/i,
     }),
   ).toBeVisible();
+
+  await page.getByRole("button", { name: /idioma/i }).click();
+  await page.getByRole("menuitemradio", { name: /portugues/i }).click();
+  await expect(page.getByRole("button", { name: /idioma/i })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /cole texto ou envie o documento que voce quer ler mais rapido/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /use uma amostra real antes de importar seu proprio documento/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/blocos de frases a 320 wpm/i)).toBeVisible();
 
   await page.getByRole("button", { name: /idioma/i }).click();
   await page.getByRole("menuitemradio", { name: /english/i }).click();

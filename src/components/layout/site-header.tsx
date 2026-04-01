@@ -95,6 +95,12 @@ const navigationLabel: LocalizedCopy = {
   pt: "Navegacao",
 };
 
+const primaryNavigationLabel: LocalizedCopy = {
+  en: "Primary navigation",
+  es: "Navegacion principal",
+  pt: "Navegacao principal",
+};
+
 const accountPanelLabel: LocalizedCopy = {
   en: "Account",
   es: "Cuenta",
@@ -197,7 +203,7 @@ export function SiteHeader() {
       <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
         <Link
           href="/"
-          className="flex min-w-0 shrink items-center gap-3 sm:gap-4"
+          className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-4"
         >
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.15rem] border border-(--border-soft) bg-[radial-gradient(circle_at_30%_20%,rgba(120,231,255,0.2),transparent_55%),linear-gradient(160deg,rgba(17,34,58,0.95),rgba(8,19,29,0.98))] shadow-[0_20px_48px_rgba(6,12,24,0.3)] sm:h-14 sm:w-14 sm:rounded-[1.35rem]">
             <Image
@@ -212,22 +218,22 @@ export function SiteHeader() {
             <p className="text-[0.72rem] tracking-[0.18em] text-(--text-muted) uppercase sm:text-[0.78rem] sm:tracking-[0.22em]">
               Leyendo
             </p>
-            <p className="hidden text-sm leading-5 text-(--text-strong) lg:block">
+            <p className="hidden text-sm leading-5 text-(--text-strong) 2xl:block">
               {getLocalizedCopy(locale, brandLabel)}
             </p>
           </div>
         </Link>
 
         <nav
-          aria-label="Primary"
-          className="hidden min-w-0 flex-1 items-center justify-center gap-2 xl:flex"
+          aria-label={getLocalizedCopy(locale, primaryNavigationLabel)}
+          className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 xl:flex"
         >
           {localizedLinks.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
               className={[
-                "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm whitespace-nowrap transition",
+                "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm whitespace-nowrap transition 2xl:px-4",
                 pathname === href
                   ? "border-(--border-strong) bg-(--surface-strong) text-(--text-strong)"
                   : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted) hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong)",
@@ -264,13 +270,16 @@ export function SiteHeader() {
             <button
               type="button"
               aria-haspopup="menu"
+              aria-label={`${getLocalizedCopy(locale, localeMenuLabel)} ${localeOptions[locale].short}`}
               onClick={() => {
                 setIsLocaleMenuOpen((currentValue) => !currentValue);
               }}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip) 2xl:px-4"
             >
               <Languages className="h-4 w-4 text-(--accent-sky)" />
-              <span>{getLocalizedCopy(locale, localeMenuLabel)}</span>
+              <span className="hidden 2xl:inline">
+                {getLocalizedCopy(locale, localeMenuLabel)}
+              </span>
               <span className="rounded-full bg-(--surface-chip) px-2 py-0.5 text-xs font-semibold text-(--text-muted)">
                 {localeOptions[locale].short}
               </span>
@@ -347,7 +356,7 @@ export function SiteHeader() {
               className={controlButtonClass(activeTheme === "light")}
             >
               <SunMedium className="h-4 w-4" />
-              <span className="hidden sm:inline">
+              <span className="hidden 2xl:inline">
                 {getLocalizedCopy(locale, themeLabels.light)}
               </span>
             </button>
@@ -360,7 +369,7 @@ export function SiteHeader() {
               className={controlButtonClass(activeTheme === "dark")}
             >
               <MoonStar className="h-4 w-4" />
-              <span className="hidden sm:inline">
+              <span className="hidden 2xl:inline">
                 {getLocalizedCopy(locale, themeLabels.dark)}
               </span>
             </button>

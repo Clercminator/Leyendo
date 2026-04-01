@@ -132,6 +132,27 @@ const demoStatusIdle = {
   pt: "Demo do leitor pronta.",
 };
 
+const demoRecommendedStart = {
+  en: "Recommended start",
+  es: "Inicio recomendado",
+  pt: "Inicio recomendado",
+};
+
+const demoRecommendedPreset = {
+  en: "Phrase Chunk at 320 WPM",
+  es: "Bloques de frases a 320 WPM",
+  pt: "Blocos de frases a 320 WPM",
+};
+
+const demoStructureSummary = {
+  en: (sectionCount: number, sentenceCount: number) =>
+    `${sectionCount} sections, ${sentenceCount} sentences`,
+  es: (sectionCount: number, sentenceCount: number) =>
+    `${sectionCount} secciones, ${sentenceCount} frases`,
+  pt: (sectionCount: number, sentenceCount: number) =>
+    `${sectionCount} secoes, ${sentenceCount} frases`,
+};
+
 const demoSaveMessage = {
   en: "This homepage demo does not save bookmarks or highlights. Import your own document to keep anchors.",
   es: "Esta demo de la pagina inicial no guarda marcadores ni destacados. Importa tu propio documento para conservar esos puntos.",
@@ -445,14 +466,10 @@ export function LandingReaderDemo() {
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-[1.2rem] border border-(--border-soft) bg-(--surface-card) px-4 py-4">
               <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                {getLocalizedCopy(locale, {
-                  en: "Recommended start",
-                  es: "Inicio recomendado",
-                  pt: "Inicio recomendado",
-                })}
+                {getLocalizedCopy(locale, demoRecommendedStart)}
               </p>
               <p className="mt-2 text-lg font-semibold text-(--text-strong)">
-                Phrase Chunk at 320 WPM
+                {getLocalizedCopy(locale, demoRecommendedPreset)}
               </p>
             </div>
             <div className="rounded-[1.2rem] border border-(--border-soft) bg-(--surface-card) px-4 py-4">
@@ -464,8 +481,10 @@ export function LandingReaderDemo() {
                 })}
               </p>
               <p className="mt-2 text-lg font-semibold text-(--text-strong)">
-                {document.sections.length} sections, {document.sentences.length}{" "}
-                sentences
+                {demoStructureSummary[locale](
+                  document.sections.length,
+                  document.sentences.length,
+                )}
               </p>
             </div>
           </div>
