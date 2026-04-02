@@ -345,7 +345,7 @@ export function PdfReaderWorkspace({
   const [zoomPercent, setZoomPercent] = useState(100);
   const [selectedPdfText, setSelectedPdfText] = useState<string>();
   const isViewerReadyRef = useRef(false);
-  const pendingPageNumberRef = useRef<number>();
+  const pendingPageNumberRef = useRef<number | undefined>(undefined);
   const renderedThumbnailPagesRef = useRef(new Set<number>());
   const renderingThumbnailPagesRef = useRef(new Set<number>());
   const viewerStateRef = useRef(viewerState);

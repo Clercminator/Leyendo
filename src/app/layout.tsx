@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Manrope, Newsreader } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import { SupabaseProvider } from "@/components/auth/supabase-provider";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
@@ -117,6 +118,7 @@ export default function RootLayout({
             <SupabaseProvider>
               {children}
               <FeedbackButton />
+              <Analytics />
             </SupabaseProvider>
           </LocaleProvider>
         </ThemeProvider>

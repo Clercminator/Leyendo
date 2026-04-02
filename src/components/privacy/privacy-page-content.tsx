@@ -30,19 +30,19 @@ export function PrivacyPageContent() {
   const noCloudItems = {
     en: [
       "No mandatory sign-in",
-      "No analytics dependency",
+      "No uploaded document text sent to analytics",
       "No automatic cloud backup unless you sign in",
       "No hidden upload of guest documents to a cloud account",
     ],
     es: [
       "Sin inicio de sesion obligatorio",
-      "Sin dependencia de analitica",
+      "Sin enviar el texto de tus documentos a analitica",
       "Sin respaldo en la nube automatico salvo que inicies sesion",
       "Sin subidas ocultas de documentos invitados a una cuenta en la nube",
     ],
     pt: [
       "Sem login obrigatorio",
-      "Sem dependencia de analitica",
+      "Sem enviar o texto dos seus documentos para analitica",
       "Sem backup automatico na nuvem a menos que voce entre",
       "Sem envio oculto de documentos de convidado para uma conta na nuvem",
     ],
