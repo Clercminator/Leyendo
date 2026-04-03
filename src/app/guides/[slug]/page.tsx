@@ -2,15 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ArrowRight } from "lucide-react";
-
+import { OpenGuideInReaderButton } from "@/components/guides/open-guide-in-reader-button";
 import { AppShell } from "@/components/layout/app-shell";
-import {
-  getGuideBySlug,
-  getReadingPathGuides,
-  getRelatedGuides,
-  guides,
-} from "@/lib/guides";
+import { getGuideBySlug, guides, serializeGuideToMarkdown } from "@/lib/guides";
 import { absoluteUrl, createPageMetadata, siteName, siteUrl } from "@/lib/site";
 
 export const dynamicParams = false;
@@ -51,8 +45,7 @@ export default async function GuidePage({
     notFound();
   }
 
-  const relatedGuides = getRelatedGuides(guide);
-  const readingPathGuides = getReadingPathGuides(guide);
+  const guideReaderMarkdown = serializeGuideToMarkdown(guide);
   const guidePath = `/guides/${guide.slug}`;
   const articleJsonLd = {
     "@context": "https://schema.org",
@@ -111,12 +104,8 @@ export default async function GuidePage({
   };
 
   const guidesLabel = guide.language === "es" ? "Guias" : "Guides";
-  const backLabel =
-    guide.language === "es" ? "Volver a guias" : "Back to guides";
   const importLabel =
     guide.language === "es" ? "Importar documento" : "Import a document";
-  const relatedLabel =
-    guide.language === "es" ? "Guias relacionadas" : "Related guides";
   const faqLabel =
     guide.language === "es"
       ? "Preguntas frecuentes"
@@ -124,10 +113,6 @@ export default async function GuidePage({
   const audienceLabel = guide.language === "es" ? "Ideal para" : "Best for";
   const takeawaysLabel =
     guide.language === "es" ? "Puntos clave" : "Key takeaways";
-  const contentsLabel =
-    guide.language === "es" ? "En esta pagina" : "On this page";
-  const readingPathLabel =
-    guide.language === "es" ? "Ruta recomendada" : "Recommended path";
   const keepExploringLabel =
     guide.language === "es" ? "Sigue explorando" : "Keep exploring";
   const aboutLabel =
@@ -135,16 +120,22 @@ export default async function GuidePage({
   const hubLabel =
     guide.language === "es" ? "Ver todas las guias" : "Browse all guides";
   const skipToContentsLabel =
+    guide.language === "es" ? "Ir al articulo" : "Skip to the article";
+  const readerLabel =
     guide.language === "es"
-      ? "Ir al contenido de la guia"
-      : "Skip to guide contents";
+      ? "Leer este articulo mas rapido con Leyendo"
+      : "Read this article faster with Leyendo";
+  const readerLoadingLabel =
+    guide.language === "es" ? "Abriendo en Leyendo" : "Opening in Leyendo";
+  const readerErrorLabel =
+    guide.language === "es"
+      ? "No se pudo abrir la guia en el lector. Intentalo otra vez."
+      : "Could not open the guide in the reader. Try again.";
 
   return (
     <AppShell
-      eyebrow={guidesLabel}
-      title={guide.title}
-      description={guide.description}
-      secondarySkipTargetId="guide-contents"
+      mainClassName="max-w-[92rem] px-4 py-6 sm:px-6 sm:py-8 xl:px-8 xl:py-10"
+      secondarySkipTargetId="guide-article"
       secondarySkipLabel={skipToContentsLabel}
     >
       <script
@@ -154,135 +145,156 @@ export default async function GuidePage({
         }}
       />
 
-      <div className="space-y-6">
-        <section className="rounded-[2rem] border border-(--border-soft) bg-(--surface-strong) p-8 shadow-[0_18px_70px_rgba(20,26,56,0.1)]">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1 text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-              {guide.languageLabel}
-            </span>
-            <span className="text-sm text-(--text-muted)">
-              {guide.readingTime}
-            </span>
-          </div>
-          <p className="mt-5 max-w-4xl text-base leading-8 text-(--text-muted)">
-            {guide.intro}
-          </p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {guide.keywords.map((keyword) => (
-              <span
-                key={keyword}
-                className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong)"
-              >
-                {keyword}
-              </span>
-            ))}
-          </div>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link
-              href="/guides"
-              className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 py-3 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-            >
-              {backLabel}
-            </Link>
-            <Link
-              href="/#upload-panel"
-              className="inline-flex items-center gap-2 rounded-full bg-(--text-strong) px-5 py-3 text-sm font-semibold text-(--text-on-accent) transition hover:opacity-92"
-            >
-              <ArrowRight className="h-4 w-4" />
-              {importLabel}
-            </Link>
-          </div>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <article className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl">
-            <p className="editorial-kicker text-(--accent-sky)">
-              {audienceLabel}
-            </p>
-            <p className="mt-4 text-base leading-8 text-(--text-muted)">
-              {guide.audience}
-            </p>
-          </article>
-          <article className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl">
+      <div className="space-y-14 xl:space-y-16">
+        <section className="grid gap-8 lg:grid-cols-[minmax(0,1.58fr)_minmax(24rem,0.82fr)] lg:items-end xl:gap-12">
+          <div className="max-w-none">
             <p className="editorial-kicker text-(--accent-amber)">
-              {takeawaysLabel}
+              {guidesLabel}
             </p>
-            <ul className="mt-4 space-y-3 text-sm leading-7 text-(--text-muted)">
-              {guide.keyTakeaways.map((takeaway) => (
-                <li
-                  key={takeaway}
-                  className="rounded-[1.15rem] bg-(--surface-soft) px-4 py-3"
-                >
-                  {takeaway}
-                </li>
-              ))}
-            </ul>
-          </article>
+            <h1 className="guide-hero-title font-heading mt-4 text-(--text-strong)">
+              {guide.title}
+            </h1>
+          </div>
+
+          <div className="max-w-none lg:pb-5 xl:pb-6">
+            <p className="guide-hero-description text-(--text-muted)">
+              {guide.description}
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
+              <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1 text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                {guide.languageLabel}
+              </span>
+              <span className="text-sm text-(--text-muted)">
+                {guide.readingTime}
+              </span>
+              <OpenGuideInReaderButton
+                guideSlug={guide.slug}
+                guideTitle={guide.title}
+                guideMarkdown={guideReaderMarkdown}
+                label={readerLabel}
+                loadingLabel={readerLoadingLabel}
+                errorLabel={readerErrorLabel}
+                className="px-5 py-3 text-sm shadow-[0_14px_34px_rgba(7,11,22,0.12)]"
+              />
+            </div>
+          </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
-          <article className="space-y-6">
-            {guide.sections.map((section) => (
-              <section
-                key={section.id}
-                id={section.id}
-                className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl"
-              >
-                <h2 className="font-heading text-2xl leading-tight font-semibold text-(--text-strong)">
-                  {section.title}
-                </h2>
-                <div className="mt-4 space-y-4 text-base leading-8 text-(--text-muted)">
-                  {section.paragraphs.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
+        <article
+          id="guide-article"
+          className="editorial-panel overflow-hidden rounded-[2rem] border border-(--border-soft) bg-(--surface-card) shadow-[0_20px_80px_rgba(20,26,56,0.12)] backdrop-blur-xl"
+        >
+          <header className="border-b border-(--border-soft) p-7 sm:p-9 xl:p-12">
+            <p className="guide-article-intro text-(--text-muted)">
+              {guide.intro}
+            </p>
+
+            <div className="mt-7 flex flex-wrap gap-2.5">
+              {guide.keywords.map((keyword) => (
+                <span
+                  key={keyword}
+                  className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-muted)"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+
+            <section className="mt-9 rounded-[1.6rem] border border-(--border-soft) bg-(--surface-soft) p-6 sm:p-7">
+              <div className="grid gap-6 xl:grid-cols-[minmax(18rem,0.78fr)_minmax(0,1.22fr)] xl:gap-8">
+                <div>
+                  <p className="editorial-kicker text-(--accent-sky)">
+                    {audienceLabel}
+                  </p>
+                  <p className="mt-4 text-[1.02rem] leading-8 text-(--text-muted)">
+                    {guide.audience}
+                  </p>
                 </div>
-                {section.bullets ? (
-                  <ul className="mt-5 space-y-3 text-sm leading-7 text-(--text-muted)">
-                    {section.bullets.map((bullet) => (
-                      <li
-                        key={bullet}
-                        className="rounded-[1.1rem] bg-(--surface-soft) px-4 py-3"
-                      >
-                        {bullet}
+                <div>
+                  <p className="editorial-kicker text-(--accent-amber)">
+                    {takeawaysLabel}
+                  </p>
+                  <ul className="mt-5 space-y-3.5 text-[0.98rem] leading-8 text-(--text-muted)">
+                    {guide.keyTakeaways.map((takeaway) => (
+                      <li key={takeaway} className="flex items-start gap-3">
+                        <span className="mt-2 h-2.5 w-2.5 rounded-full bg-(--accent-sky)" />
+                        <span>{takeaway}</span>
                       </li>
                     ))}
                   </ul>
-                ) : null}
+                </div>
+              </div>
+            </section>
+          </header>
+
+          <div className="p-7 sm:p-9 xl:p-12">
+            {guide.sections.map((section, index) => (
+              <section
+                key={section.id}
+                id={section.id}
+                className={
+                  index === 0
+                    ? "scroll-mt-24 pb-12 xl:pb-14"
+                    : "scroll-mt-24 border-t border-(--border-soft) py-12 xl:py-14"
+                }
+              >
+                <div>
+                  <h2 className="guide-section-heading font-heading font-semibold text-(--text-strong)">
+                    {section.title}
+                  </h2>
+                  <div className="guide-body-copy mt-7 space-y-6 text-(--text-muted)">
+                    {section.paragraphs.map((paragraph) => (
+                      <p key={paragraph}>{paragraph}</p>
+                    ))}
+                  </div>
+                  {section.bullets ? (
+                    <ul className="mt-9 space-y-5 text-[1.03rem] leading-8 text-(--text-muted)">
+                      {section.bullets.map((bullet) => (
+                        <li key={bullet} className="flex items-start gap-3">
+                          <span className="mt-3 h-2.5 w-2.5 rounded-full bg-(--accent-amber)" />
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
               </section>
             ))}
 
             <section
               id="faq"
-              className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl"
+              className="scroll-mt-24 border-t border-(--border-soft) py-12 xl:py-14"
             >
-              <h2 className="font-heading text-2xl leading-tight font-semibold text-(--text-strong)">
-                {faqLabel}
-              </h2>
-              <div className="mt-5 space-y-4">
-                {guide.faqs.map((faq) => (
-                  <article
-                    key={faq.question}
-                    className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-soft) p-4"
-                  >
-                    <h3 className="text-base font-semibold text-(--text-strong)">
-                      {faq.question}
-                    </h3>
-                    <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-                      {faq.answer}
-                    </p>
-                  </article>
-                ))}
+              <div>
+                <h2 className="guide-section-heading font-heading font-semibold text-(--text-strong)">
+                  {faqLabel}
+                </h2>
+                <div className="mt-7 space-y-4.5">
+                  {guide.faqs.map((faq) => (
+                    <details
+                      key={faq.question}
+                      className="rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-4.5 sm:px-6"
+                    >
+                      <summary className="cursor-pointer list-none text-[1.02rem] font-semibold text-(--text-strong) sm:text-[1.08rem]">
+                        {faq.question}
+                      </summary>
+                      <p className="mt-3.5 pr-6 text-[1.02rem] leading-8 text-(--text-muted)">
+                        {faq.answer}
+                      </p>
+                    </details>
+                  ))}
+                </div>
               </div>
             </section>
 
-            <section className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl">
-              <h2 className="font-heading text-2xl leading-tight font-semibold text-(--text-strong)">
+            <section className="border-t border-(--border-soft) pt-12 xl:pt-14">
+              <h2 className="guide-section-heading font-heading font-semibold text-(--text-strong)">
                 {keepExploringLabel}
               </h2>
-              <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              <div className="mt-7 grid gap-4 lg:grid-cols-3">
                 <Link
                   href="/guides"
-                  className="rounded-[1.2rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  className="rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-5 transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
                 >
                   <p className="text-sm font-semibold text-(--text-strong)">
                     {hubLabel}
@@ -295,7 +307,7 @@ export default async function GuidePage({
                 </Link>
                 <Link
                   href="/about"
-                  className="rounded-[1.2rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  className="rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-5 transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
                 >
                   <p className="text-sm font-semibold text-(--text-strong)">
                     {aboutLabel}
@@ -308,7 +320,7 @@ export default async function GuidePage({
                 </Link>
                 <Link
                   href="/#upload-panel"
-                  className="rounded-[1.2rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  className="rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-5 transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
                 >
                   <p className="text-sm font-semibold text-(--text-strong)">
                     {importLabel}
@@ -321,83 +333,8 @@ export default async function GuidePage({
                 </Link>
               </div>
             </section>
-          </article>
-
-          <aside
-            id="guide-contents"
-            className="space-y-4 lg:sticky lg:top-24 lg:self-start"
-          >
-            <section className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-5 backdrop-blur-xl">
-              <p className="editorial-kicker text-(--accent-amber)">
-                {contentsLabel}
-              </p>
-              <div className="mt-4 space-y-2">
-                {guide.sections.map((section) => (
-                  <Link
-                    key={section.id}
-                    href={`#${section.id}`}
-                    className="block rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    {section.title}
-                  </Link>
-                ))}
-                <Link
-                  href="#faq"
-                  className="block rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                >
-                  {faqLabel}
-                </Link>
-              </div>
-            </section>
-
-            <section className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-5 backdrop-blur-xl">
-              <p className="editorial-kicker text-(--accent-sky)">
-                {relatedLabel}
-              </p>
-              <div className="mt-4 space-y-3">
-                {relatedGuides.map((relatedGuide) => (
-                  <Link
-                    key={relatedGuide.slug}
-                    href={`/guides/${relatedGuide.slug}`}
-                    className="block rounded-[1.2rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    <p className="text-sm text-(--text-muted)">
-                      {relatedGuide.languageLabel}
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-(--text-strong)">
-                      {relatedGuide.title}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-5 backdrop-blur-xl">
-              <p className="editorial-kicker text-(--accent-sky)">
-                {readingPathLabel}
-              </p>
-              <div className="mt-4 space-y-3">
-                {readingPathGuides.map(({ guide: stepGuide, reason }) => (
-                  <Link
-                    key={stepGuide.slug}
-                    href={`/guides/${stepGuide.slug}`}
-                    className="block rounded-[1.2rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    <p className="text-sm text-(--text-muted)">
-                      {stepGuide.clusterLabel}
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-(--text-strong)">
-                      {stepGuide.title}
-                    </p>
-                    <p className="mt-2 text-sm leading-7 text-(--text-muted)">
-                      {reason}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          </aside>
-        </section>
+          </div>
+        </article>
       </div>
     </AppShell>
   );

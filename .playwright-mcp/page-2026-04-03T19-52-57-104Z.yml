@@ -1,0 +1,147 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Skip to content" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - link "Ir al contenido de la guia" [ref=e4] [cursor=pointer]:
+      - /url: "#guide-contents"
+    - generic [ref=e5]:
+      - banner [ref=e6]:
+        - generic [ref=e7]:
+          - link "Leyendo logo Leyendo" [ref=e8] [cursor=pointer]:
+            - /url: /
+            - img "Leyendo logo" [ref=e10]
+            - paragraph [ref=e12]: Leyendo
+          - generic [ref=e13]:
+            - button "Language EN" [ref=e15] [cursor=pointer]:
+              - img [ref=e16]
+              - generic [ref=e20]: EN
+              - img [ref=e21]
+            - generic [ref=e23]:
+              - button "Light" [ref=e24] [cursor=pointer]:
+                - img [ref=e25]
+                - generic [ref=e31]: Light
+              - button "Dark" [ref=e32] [cursor=pointer]:
+                - img [ref=e33]
+                - generic [ref=e35]: Dark
+            - button "Menu" [ref=e37] [cursor=pointer]:
+              - img [ref=e38]
+              - generic [ref=e39]: Menu
+      - main [ref=e40]:
+        - generic [ref=e41]:
+          - paragraph [ref=e42]: Guias
+          - heading "Velocidad de lectura y comprension lectora" [level=1] [ref=e43]
+          - paragraph [ref=e44]: Como mejorar velocidad de lectura y comprension lectora al mismo tiempo cuando estudias, trabajas con PDF o repasas documentos largos.
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - generic [ref=e47]:
+              - generic [ref=e48]: Guia en espanol
+              - generic [ref=e49]: 7 min de lectura
+            - paragraph [ref=e50]: Velocidad de lectura y comprension lectora no tienen por que competir. En muchos casos mejoran juntas cuando el lector reduce friccion, organiza mejor el texto y decide con mas claridad cuando acelerar y cuando revisar con calma.
+            - generic [ref=e51]:
+              - generic [ref=e52]: velocidad de lectura
+              - generic [ref=e53]: comprension lectora
+              - generic [ref=e54]: leer mas rapido
+              - generic [ref=e55]: como mejorar la comprension lectora
+            - generic [ref=e56]:
+              - link "Volver a guias" [ref=e57] [cursor=pointer]:
+                - /url: /guides
+              - link "Importar documento" [ref=e58] [cursor=pointer]:
+                - /url: /#upload-panel
+                - img [ref=e59]
+                - text: Importar documento
+          - generic [ref=e61]:
+            - article [ref=e62]:
+              - paragraph [ref=e63]: Ideal para
+              - paragraph [ref=e64]: Ideal para estudiantes y profesionales que necesitan entender mejor sin resignarse a una lectura siempre lenta.
+            - article [ref=e65]:
+              - paragraph [ref=e66]: Puntos clave
+              - list [ref=e67]:
+                - listitem [ref=e68]: La comprension suele caer por perdida de continuidad, no solo por velocidad alta.
+                - listitem [ref=e69]: Ver mejor la estructura del texto ayuda a sostener ritmo y recuerdo al mismo tiempo.
+                - listitem [ref=e70]: Una herramienta con varias vistas y anclas de revision une mejor velocidad y comprension.
+          - generic [ref=e71]:
+            - article [ref=e72]:
+              - generic [ref=e73]:
+                - heading "Por que comprension y velocidad suelen separarse mal" [level=2] [ref=e74]
+                - generic [ref=e75]:
+                  - paragraph [ref=e76]: "En muchas explicaciones populares aparece una falsa eleccion: o lees rapido o entiendes bien. Pero en la practica el problema suele ser otro. El lector pierde atencion, vuelve atras sin plan y rompe la continuidad del texto, y eso perjudica tanto la velocidad como la comprension."
+                  - paragraph [ref=e77]: Cuando la lectura tiene un ritmo mas estable, la mente detecta mejor el orden del argumento. Eso facilita entender ideas principales, anticipar conexiones y recordar con mas facilidad donde estaba cada punto importante.
+              - generic [ref=e78]:
+                - heading "Que ayuda a mejorar comprension lectora en documentos largos" [level=2] [ref=e79]
+                - generic [ref=e80]:
+                  - paragraph [ref=e81]: La comprension lectora mejora cuando el texto deja de sentirse como una pared uniforme. Ver bloques, frases y transiciones ayuda a ubicar el sentido global antes de volver al detalle. Esa estructura reduce la fatiga y mejora el recuerdo.
+                  - paragraph [ref=e82]: Tambien importa la posibilidad de revisar sin perderse. Si puedes guardar anclas, volver a un pasaje concreto y mantener progreso por documento, entonces la revision deja de ser una repeticion ciega y se convierte en una lectura de segunda pasada mucho mas util.
+                - list [ref=e83]:
+                  - listitem [ref=e84]: Usa una vista que te muestre estructura, no solo palabras aisladas.
+                  - listitem [ref=e85]: Sube el ritmo de forma gradual para sostener atencion.
+                  - listitem [ref=e86]: Marca ideas clave para una segunda lectura mas corta y precisa.
+                  - listitem [ref=e87]: Reserva el modo mas lento para definiciones, argumentos delicados y pasajes tecnicos.
+              - generic [ref=e88]:
+                - heading "Como revisar sin destruir el ritmo" [level=2] [ref=e89]
+                - generic [ref=e90]:
+                  - paragraph [ref=e91]: Revisar bien no significa volver al inicio cada vez que algo incomoda. Una revision util tiene puntos de retorno claros. Eso permite que la primera pasada siga avanzando y que la segunda pasada sea mas precisa, mas corta y mas orientada a las secciones que realmente importan.
+                  - paragraph [ref=e92]: Este detalle importa para SEO y para producto. Muchas personas que buscan comprension lectora o velocidad de lectura en realidad buscan una forma de estudiar o trabajar sin agotarse. La revision con anclas responde a esa necesidad mucho mejor que los consejos genericos.
+              - generic [ref=e93]:
+                - heading "Una herramienta de lectura puede unir ambas metas" [level=2] [ref=e94]
+                - generic [ref=e95]:
+                  - paragraph [ref=e96]: Una buena herramienta no te obliga a escoger entre velocidad de lectura y comprension lectora. Te da varias formas de leer el mismo documento segun lo que necesitas en ese momento y mantiene el estado para que el avance no se pierda.
+                  - paragraph [ref=e97]: Leyendo apunta a ese equilibrio. Sirve para lectores que quieren leer mas rapido, pero tambien para quienes necesitan recordar mejor, revisar con orden y tratar documentos reales con mas respeto que el que ofrecen los visores comunes.
+              - generic [ref=e98]:
+                - heading "Preguntas frecuentes" [level=2] [ref=e99]
+                - generic [ref=e100]:
+                  - article [ref=e101]:
+                    - heading "Como mejorar velocidad de lectura y comprension a la vez?" [level=3] [ref=e102]
+                    - paragraph [ref=e103]: La combinacion mas fiable es ritmo estable, menos friccion visual, agrupacion por frases y revision apoyada en marcadores o destacados.
+                  - article [ref=e104]:
+                    - heading "La comprension lectora mejora con practica diaria?" [level=3] [ref=e105]
+                    - paragraph [ref=e106]: Si. La practica frecuente mejora vocabulario, reconocimiento de estructuras y capacidad de sostener atencion en textos largos.
+                  - article [ref=e107]:
+                    - heading "Que tipo de lector se beneficia mas de este enfoque?" [level=3] [ref=e108]
+                    - paragraph [ref=e109]: Estudiantes, profesionales y lectores que trabajan con PDF, informes, articulos o documentos largos suelen notar mas beneficio porque el costo de perder contexto es alto.
+              - generic [ref=e110]:
+                - heading "Sigue explorando" [level=2] [ref=e111]
+                - generic [ref=e112]:
+                  - link "Ver todas las guias Explora todas las rutas publicas por idioma e intencion." [ref=e113] [cursor=pointer]:
+                    - /url: /guides
+                    - paragraph [ref=e114]: Ver todas las guias
+                    - paragraph [ref=e115]: Explora todas las rutas publicas por idioma e intencion.
+                  - link "Sobre Leyendo Ve por que existe Leyendo y como se conecta con estas guias." [ref=e116] [cursor=pointer]:
+                    - /url: /about
+                    - paragraph [ref=e117]: Sobre Leyendo
+                    - paragraph [ref=e118]: Ve por que existe Leyendo y como se conecta con estas guias.
+                  - link "Importar documento Pasa del contenido publico a una prueba real con tu propio documento." [ref=e119] [cursor=pointer]:
+                    - /url: /#upload-panel
+                    - paragraph [ref=e120]: Importar documento
+                    - paragraph [ref=e121]: Pasa del contenido publico a una prueba real con tu propio documento.
+            - complementary [ref=e122]:
+              - generic [ref=e123]:
+                - paragraph [ref=e124]: En esta pagina
+                - generic [ref=e125]:
+                  - link "Por que comprension y velocidad suelen separarse mal" [ref=e126] [cursor=pointer]:
+                    - /url: "#comprension-falsa-eleccion"
+                  - link "Que ayuda a mejorar comprension lectora en documentos largos" [ref=e127] [cursor=pointer]:
+                    - /url: "#comprension-documentos-largos"
+                  - link "Como revisar sin destruir el ritmo" [ref=e128] [cursor=pointer]:
+                    - /url: "#comprension-revision"
+                  - link "Una herramienta de lectura puede unir ambas metas" [ref=e129] [cursor=pointer]:
+                    - /url: "#comprension-leyendo"
+                  - link "Preguntas frecuentes" [ref=e130] [cursor=pointer]:
+                    - /url: "#faq"
+              - generic [ref=e131]:
+                - paragraph [ref=e132]: Guias relacionadas
+                - link "Guia en espanol Lectura rapida para documentos reales" [ref=e134] [cursor=pointer]:
+                  - /url: /guides/lectura-rapida-para-documentos-reales
+                  - paragraph [ref=e135]: Guia en espanol
+                  - paragraph [ref=e136]: Lectura rapida para documentos reales
+              - generic [ref=e137]:
+                - paragraph [ref=e138]: Ruta recomendada
+                - link "Lectura rapida Lectura rapida para documentos reales Sigue con esta guia si quieres una entrada mas directa desde la intencion de lectura rapida." [ref=e140] [cursor=pointer]:
+                  - /url: /guides/lectura-rapida-para-documentos-reales
+                  - paragraph [ref=e141]: Lectura rapida
+                  - paragraph [ref=e142]: Lectura rapida para documentos reales
+                  - paragraph [ref=e143]: Sigue con esta guia si quieres una entrada mas directa desde la intencion de lectura rapida.
+  - button "Feedback" [ref=e144] [cursor=pointer]:
+    - img
+    - text: Feedback
+  - button "Open Next.js Dev Tools" [ref=e150] [cursor=pointer]:
+    - img [ref=e151]

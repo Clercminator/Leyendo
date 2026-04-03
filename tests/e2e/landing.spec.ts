@@ -140,8 +140,11 @@ test("guides hub exposes public SEO articles", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: /frequently asked questions/i }),
   ).toBeVisible();
-  await expect(page.getByText(/on this page/i)).toBeVisible();
-  await expect(page.getByText(/recommended path/i)).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: /read this article faster with leyendo/i,
+    }),
+  ).toBeVisible();
 });
 
 test("about page cross-links into the public guides", async ({ page }) => {

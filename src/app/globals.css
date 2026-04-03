@@ -318,6 +318,64 @@
     text-transform: uppercase;
   }
 
+  .guide-hero-title {
+    max-width: 12ch;
+    font-size: clamp(4.35rem, 7vw, 7.8rem);
+    line-height: 0.84;
+    letter-spacing: -0.055em;
+  }
+
+  .guide-hero-description {
+    max-width: 34ch;
+    font-size: clamp(1.1rem, 1.5vw, 1.32rem);
+    line-height: 1.72;
+  }
+
+  .guide-article-intro {
+    font-size: clamp(1.2rem, 1.45vw, 1.46rem);
+    line-height: 1.82;
+  }
+
+  .guide-section-heading {
+    font-size: clamp(2.35rem, 3vw, 3.45rem);
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+  }
+
+  .guide-body-copy {
+    font-size: 1.14rem;
+    line-height: 1.94;
+  }
+
+  @media (max-width: 780px) {
+    .guide-hero-title {
+      max-width: none;
+      font-size: clamp(2.85rem, 10.5vw, 4.5rem);
+      line-height: 0.9;
+    }
+
+    .guide-hero-description {
+      max-width: none;
+      font-size: 1.08rem;
+      line-height: 1.72;
+    }
+
+    .guide-article-intro {
+      max-width: none;
+      font-size: 1.08rem;
+      line-height: 1.8;
+    }
+
+    .guide-section-heading {
+      font-size: clamp(2rem, 8vw, 2.8rem);
+    }
+
+    .guide-body-copy {
+      font-size: 1.04rem;
+      line-height: 1.86;
+    }
+  }
+
   .about-founder-layout {
     position: relative;
     display: flex;

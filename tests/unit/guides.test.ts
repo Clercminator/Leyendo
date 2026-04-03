@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   featuredGuides,
   getGuideBySlug,
+  getGuideReaderDocumentId,
   getGuidesForLocale,
   getGuidesByCluster,
   getReadingPathGuides,
   getRelatedGuides,
   guides,
+  serializeGuideToMarkdown,
 } from "@/lib/guides";
 
 describe("guides", () => {
@@ -70,5 +72,21 @@ describe("guides", () => {
         ({ guide }) => guide.language === "es",
       ),
     ).toBe(true);
+  });
+
+  it("serializes a guide into stable markdown for the reader handoff", () => {
+    const guide = getGuideBySlug("velocidad-de-lectura-y-comprension");
+
+    expect(guide).toBeDefined();
+    expect(getGuideReaderDocumentId(guide!.slug)).toBe(
+      "guide:velocidad-de-lectura-y-comprension:v1",
+    );
+
+    const markdown = serializeGuideToMarkdown(guide!);
+
+    expect(markdown).toContain(`# ${guide!.title}`);
+    expect(markdown).toContain("## Preguntas frecuentes");
+    expect(markdown).toContain(`### ${guide!.faqs[0]?.question}`);
+    expect(markdown).toContain(`## ${guide!.sections[0]?.title}`);
   });
 });

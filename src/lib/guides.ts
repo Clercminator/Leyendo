@@ -513,3 +513,36 @@ export function getFeaturedGuidesForLocale(locale: AppLocale, limit = 2) {
 }
 
 export const featuredGuides = guides.slice(0, 4);
+
+export function getGuideReaderDocumentId(slug: string) {
+  return `guide:${slug}:v1`;
+}
+
+export function serializeGuideToMarkdown(guide: Guide) {
+  const audienceHeading = guide.language === "es" ? "Ideal para" : "Best for";
+  const takeawaysHeading =
+    guide.language === "es" ? "Puntos clave" : "Key takeaways";
+  const faqHeading =
+    guide.language === "es"
+      ? "Preguntas frecuentes"
+      : "Frequently asked questions";
+
+  const content = [
+    `# ${guide.title}`,
+    guide.description,
+    guide.intro,
+    `## ${audienceHeading}`,
+    guide.audience,
+    `## ${takeawaysHeading}`,
+    ...guide.keyTakeaways.map((takeaway) => `- ${takeaway}`),
+    ...guide.sections.flatMap((section) => [
+      `## ${section.title}`,
+      ...section.paragraphs,
+      ...(section.bullets?.map((bullet) => `- ${bullet}`) ?? []),
+    ]),
+    `## ${faqHeading}`,
+    ...guide.faqs.flatMap((faq) => [`### ${faq.question}`, faq.answer]),
+  ];
+
+  return content.join("\n\n");
+}

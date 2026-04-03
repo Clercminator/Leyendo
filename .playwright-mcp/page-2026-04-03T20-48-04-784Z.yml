@@ -1,0 +1,122 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Skip to content" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - link "Skip to the article" [ref=e4] [cursor=pointer]:
+      - /url: "#guide-article"
+    - generic [ref=e5]:
+      - banner [ref=e6]:
+        - generic [ref=e7]:
+          - link "Leyendo logo Leyendo" [ref=e8] [cursor=pointer]:
+            - /url: /
+            - img "Leyendo logo" [ref=e10]
+            - paragraph [ref=e12]: Leyendo
+          - generic [ref=e13]:
+            - button "Language EN" [ref=e15] [cursor=pointer]:
+              - img [ref=e16]
+              - generic [ref=e20]: EN
+              - img [ref=e21]
+            - generic [ref=e23]:
+              - button "Light" [ref=e24] [cursor=pointer]:
+                - img [ref=e25]
+                - generic [ref=e31]: Light
+              - button "Dark" [ref=e32] [cursor=pointer]:
+                - img [ref=e33]
+                - generic [ref=e35]: Dark
+            - button "Menu" [ref=e37] [cursor=pointer]:
+              - img [ref=e38]
+              - generic [ref=e39]: Menu
+      - main [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - paragraph [ref=e44]: Guides
+              - heading "Reading Speed for Real Documents" [level=1] [ref=e45]
+            - generic [ref=e46]:
+              - paragraph [ref=e47]: A practical guide for people searching reading speed advice that actually works on PDFs, reports, academic papers, and long-form documents.
+              - generic [ref=e48]:
+                - generic [ref=e49]: English guide
+                - generic [ref=e50]: 6 min read
+                - button "Read this article faster with Leyendo" [ref=e52] [cursor=pointer]:
+                  - img [ref=e53]
+                  - text: Read this article faster with Leyendo
+          - article [ref=e55]:
+            - generic [ref=e56]:
+              - paragraph [ref=e57]: "Reading speed improves when the document, the pacing, and the recovery path all work together. Real reading is not a stopwatch exercise. It is a control problem: how quickly you can move while still understanding structure, argument, and detail."
+              - generic [ref=e58]:
+                - generic [ref=e59]: reading speed
+                - generic [ref=e60]: reading speed for PDFs
+                - generic [ref=e61]: read documents faster
+                - generic [ref=e62]: reading speed app
+              - generic [ref=e63]:
+                - generic [ref=e64]:
+                  - paragraph [ref=e65]: Best for
+                  - paragraph [ref=e66]: Best for readers working through PDFs, research papers, reports, and study material that feel slower than they should.
+                - generic [ref=e67]:
+                  - paragraph [ref=e68]: Key takeaways
+                  - list [ref=e69]:
+                    - listitem [ref=e70]:
+                      - generic [ref=e72]: Reading speed is more useful on real documents when you can change pace without losing structure.
+                    - listitem [ref=e73]:
+                      - generic [ref=e75]: The first gains usually come from less hesitation and cleaner visual flow, not forced extreme speed.
+                    - listitem [ref=e76]:
+                      - generic [ref=e78]: A document-aware reader makes speed more sustainable because it protects recovery and comprehension.
+            - generic [ref=e79]:
+              - generic [ref=e81]:
+                - heading "What reading speed means outside toy demos" [level=2] [ref=e82]
+                - generic [ref=e83]:
+                  - paragraph [ref=e84]: A lot of reading speed advice is measured on short snippets that are too clean to resemble real work. Reports, research papers, contracts, and study material are different. They contain headings, jargon, citations, interruptions in rhythm, and sections that deserve slower review.
+                  - paragraph [ref=e85]: That means the useful question is not simply how many words per minute you can hit. The better question is whether you can move through a real document with less friction, fewer unnecessary regressions, and better control over when to speed up or slow down.
+              - generic [ref=e87]:
+                - heading "How to raise reading speed without losing your place" [level=2] [ref=e88]
+                - generic [ref=e89]:
+                  - paragraph [ref=e90]: The first improvement usually comes from reducing hesitation, not from forcing extreme speed. If you can keep visual attention moving, group words more naturally, and return to a passage without getting disoriented, your reading speed becomes more stable almost immediately.
+                  - paragraph [ref=e91]: This is where document-aware reading tools matter. A clear focus mode helps you stay in motion. A phrase-based mode helps you see structure instead of isolated words. A classic mode gives full context back when the material becomes dense or technical.
+                - list [ref=e92]:
+                  - listitem [ref=e93]:
+                    - generic [ref=e95]: Start with a pace that feels slightly ambitious, not chaotic.
+                  - listitem [ref=e96]:
+                    - generic [ref=e98]: Treat phrase groups as the unit of progress instead of single words.
+                  - listitem [ref=e99]:
+                    - generic [ref=e101]: Slow down on diagrams, formulas, and dense transitions instead of pretending every line should move at the same speed.
+                  - listitem [ref=e102]:
+                    - generic [ref=e104]: Use bookmarks or highlights so review is deliberate instead of anxious rereading.
+              - generic [ref=e106]:
+                - heading "A realistic workflow for faster reading" [level=2] [ref=e107]
+                - generic [ref=e108]:
+                  - paragraph [ref=e109]: A realistic reading-speed workflow has phases. First, you open the document and establish rhythm. Second, you accelerate through familiar or structurally clear material. Third, you deliberately slow down where the argument turns technical, novel, or high stakes.
+                  - paragraph [ref=e110]: That sounds simple, but most generic viewers do not support it well. If every adjustment costs attention, then readers default to a flat speed and compensate with random rereading. A better workflow keeps your place, your markers, and your fallback context close by.
+              - generic [ref=e112]:
+                - heading "Why Leyendo targets reading speed on real documents" [level=2] [ref=e113]
+                - generic [ref=e114]:
+                  - paragraph [ref=e115]: Leyendo is designed around this practical version of reading speed. You can import PDFs and document files, switch views depending on the material, and keep progress tied to the document instead of losing it between sessions.
+                  - paragraph [ref=e116]: That matters for search intent too. People searching reading speed often do not want theory alone. They want a way to read faster that respects comprehension, supports real files, and makes return trips easier. That is exactly the gap Leyendo is built to cover.
+              - generic [ref=e118]:
+                - heading "Frequently asked questions" [level=2] [ref=e119]
+                - generic [ref=e120]:
+                  - group [ref=e121]:
+                    - generic "Can reading speed improve without speed-reading tricks?" [ref=e122] [cursor=pointer]
+                  - group [ref=e123]:
+                    - generic "Does faster reading always hurt comprehension?" [ref=e124] [cursor=pointer]
+                  - group [ref=e125]:
+                    - generic "What kind of material benefits most from a reading speed tool?" [ref=e126] [cursor=pointer]
+              - generic [ref=e127]:
+                - heading "Keep exploring" [level=2] [ref=e128]
+                - generic [ref=e129]:
+                  - link "Browse all guides Explore every public path by language and search intent." [ref=e130] [cursor=pointer]:
+                    - /url: /guides
+                    - paragraph [ref=e131]: Browse all guides
+                    - paragraph [ref=e132]: Explore every public path by language and search intent.
+                  - link "About Leyendo See why Leyendo exists and how the product ties into these guides." [ref=e133] [cursor=pointer]:
+                    - /url: /about
+                    - paragraph [ref=e134]: About Leyendo
+                    - paragraph [ref=e135]: See why Leyendo exists and how the product ties into these guides.
+                  - link "Import a document Move from public content into a real test with your own document." [ref=e136] [cursor=pointer]:
+                    - /url: /#upload-panel
+                    - paragraph [ref=e137]: Import a document
+                    - paragraph [ref=e138]: Move from public content into a real test with your own document.
+  - button "Feedback" [ref=e139] [cursor=pointer]:
+    - img
+    - text: Feedback
+  - button "Open Next.js Dev Tools" [ref=e145] [cursor=pointer]:
+    - img [ref=e146]
