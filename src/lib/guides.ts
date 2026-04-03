@@ -453,7 +453,7 @@ export function getRelatedGuides(guide: Guide) {
     .map((slug) => getGuideBySlug(slug))
     .filter(
       (relatedGuide): relatedGuide is Guide =>
-        Boolean(relatedGuide) && relatedGuide.language === guide.language,
+        relatedGuide !== undefined && relatedGuide.language === guide.language,
     );
 }
 
@@ -477,7 +477,7 @@ export function getReadingPathGuides(guide: Guide) {
       ): step is {
         guide: Guide;
         reason: string;
-      } => Boolean(step) && step.guide.language === guide.language,
+      } => step !== undefined && step.guide.language === guide.language,
     );
 }
 
