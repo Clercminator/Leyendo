@@ -9,7 +9,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { LandingReaderDemo } from "@/components/reader/landing-reader-demo";
 import { ModeGallery } from "@/components/reader/mode-gallery";
 import { UploadPanel } from "@/components/upload/upload-panel";
-import { featuredGuides } from "@/lib/guides";
+import { getFeaturedGuidesForLocale } from "@/lib/guides";
 import { getLocalizedCopy } from "@/lib/locale";
 import { absoluteUrl, siteDescription, siteName, siteUrl } from "@/lib/site";
 
@@ -136,9 +136,9 @@ const guidesTitle = {
 };
 
 const guidesDescription = {
-  en: "These guide pages expand Leyendo's public surface around reading speed, fast reading, and comprehension for real documents in both English and Spanish.",
-  es: "Estas guias amplian la superficie publica de Leyendo alrededor de velocidad de lectura, lectura rapida y comprension para documentos reales en ingles y espanol.",
-  pt: "Estas guias ampliam a superficie publica do Leyendo em torno de velocidade de leitura, leitura rapida e compreensao para documentos reais em ingles e espanhol.",
+  en: "These guides help readers work through real documents with better pace, comprehension, and recovery.",
+  es: "Estas guias ayudan a trabajar documentos reales con mejor ritmo, comprension y capacidad de retomar.",
+  pt: "Estas guias ajudam a trabalhar documentos reais com melhor ritmo, compreensao e retomada.",
 };
 
 const readGuideLabel = {
@@ -167,6 +167,7 @@ const openLibraryLabel = {
 
 export function HomePageContent() {
   const { locale } = useLocale();
+  const featuredGuides = getFeaturedGuidesForLocale(locale);
 
   const homeJsonLd = {
     "@context": "https://schema.org",

@@ -117,15 +117,20 @@ test("guides hub exposes public SEO articles", async ({ page }) => {
 
   await expect(
     page.getByRole("heading", {
-      name: /public guides for reading speed, fast reading, and lectura rapida/i,
+      name: /public guides for reading real documents with better pace and comprehension/i,
     }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /read guide/i }).first(),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /start by goal/i }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /reading speed for real documents/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /lectura rapida para documentos reales/i,
+    }),
+  ).toHaveCount(0);
 
   await page.goto("/guides/reading-speed-for-real-documents");
 

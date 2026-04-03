@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   featuredGuides,
   getGuideBySlug,
+  getGuidesForLocale,
   getGuidesByCluster,
+  getReadingPathGuides,
+  getRelatedGuides,
   guides,
 } from "@/lib/guides";
 
@@ -36,5 +39,36 @@ describe("guides", () => {
   it("groups guides by cluster for the hub", () => {
     expect(getGuidesByCluster("reading-speed").length).toBeGreaterThan(0);
     expect(getGuidesByCluster("comprension").length).toBeGreaterThan(0);
+  });
+
+  it("returns guides only for the current locale on public surfaces", () => {
+    expect(
+      getGuidesForLocale("en").every((guide) => guide.language === "en"),
+    ).toBe(true);
+    expect(
+      getGuidesForLocale("es").every((guide) => guide.language === "es"),
+    ).toBe(true);
+    expect(
+      getGuidesForLocale("pt").every((guide) => guide.language === "en"),
+    ).toBe(true);
+  });
+
+  it("keeps related and reading-path guides inside the same language", () => {
+    const englishGuide = getGuideBySlug("reading-speed-for-real-documents");
+    const spanishGuide = getGuideBySlug(
+      "lectura-rapida-para-documentos-reales",
+    );
+
+    expect(englishGuide).toBeDefined();
+    expect(spanishGuide).toBeDefined();
+
+    expect(
+      getRelatedGuides(englishGuide!).every((guide) => guide.language === "en"),
+    ).toBe(true);
+    expect(
+      getReadingPathGuides(spanishGuide!).every(
+        ({ guide }) => guide.language === "es",
+      ),
+    ).toBe(true);
   });
 });

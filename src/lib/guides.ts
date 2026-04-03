@@ -1,3 +1,5 @@
+import type { AppLocale } from "@/lib/locale";
+
 export type GuideLanguage = "en" | "es";
 
 export type GuideSection = {
@@ -449,7 +451,10 @@ export function getGuideBySlug(slug: string) {
 export function getRelatedGuides(guide: Guide) {
   return guide.relatedSlugs
     .map((slug) => getGuideBySlug(slug))
-    .filter((relatedGuide): relatedGuide is Guide => Boolean(relatedGuide));
+    .filter(
+      (relatedGuide): relatedGuide is Guide =>
+        Boolean(relatedGuide) && relatedGuide.language === guide.language,
+    );
 }
 
 export function getReadingPathGuides(guide: Guide) {
@@ -472,8 +477,12 @@ export function getReadingPathGuides(guide: Guide) {
       ): step is {
         guide: Guide;
         reason: string;
-      } => Boolean(step),
+      } => Boolean(step) && step.guide.language === guide.language,
     );
+}
+
+export function resolveGuideLanguage(locale: AppLocale): GuideLanguage {
+  return locale === "es" ? "es" : "en";
 }
 
 export function getGuidesByLanguage(language: GuideLanguage) {
@@ -482,6 +491,25 @@ export function getGuidesByLanguage(language: GuideLanguage) {
 
 export function getGuidesByCluster(cluster: GuideCluster) {
   return guides.filter((guide) => guide.cluster === cluster);
+}
+
+export function getGuidesForLocale(locale: AppLocale) {
+  return getGuidesByLanguage(resolveGuideLanguage(locale));
+}
+
+export function getGuidesByClusterForLocale(
+  cluster: GuideCluster,
+  locale: AppLocale,
+) {
+  const language = resolveGuideLanguage(locale);
+
+  return guides.filter(
+    (guide) => guide.cluster === cluster && guide.language === language,
+  );
+}
+
+export function getFeaturedGuidesForLocale(locale: AppLocale, limit = 2) {
+  return getGuidesForLocale(locale).slice(0, limit);
 }
 
 export const featuredGuides = guides.slice(0, 4);

@@ -6,13 +6,13 @@ import { createPageMetadata } from "@/lib/site";
 export const metadata: Metadata = createPageMetadata({
   title: "Guides",
   description:
-    "Browse Leyendo guides for reading speed, fast reading, lectura rapida, leer mas rapido, and comprehension on real documents.",
+    "Browse Leyendo guides for reading real documents with better pace, comprehension, and control.",
   keywords: [
     "reading speed guides",
     "fast reading guides",
-    "lectura rapida",
-    "leer mas rapido",
-    "velocidad de lectura",
+    "read real documents faster",
+    "reading comprehension guides",
+    "document reading workflow",
   ],
   path: "/guides",
 });

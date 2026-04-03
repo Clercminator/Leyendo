@@ -8,7 +8,7 @@ import { ArrowUpRight, UserRound } from "lucide-react";
 
 import { useLocale } from "@/components/layout/locale-provider";
 import { AppShell } from "@/components/layout/app-shell";
-import { featuredGuides } from "@/lib/guides";
+import { getFeaturedGuidesForLocale } from "@/lib/guides";
 import { getLocalizedCopy } from "@/lib/locale";
 import {
   absoluteUrl,
@@ -97,9 +97,9 @@ const publicGuidesCopy = {
     pt: "Leia a camada de guias que acompanha o produto.",
   },
   body: {
-    en: "The public guides now cover reading speed, fast reading, lectura rapida, and comprehension in both English and Spanish. They give Leyendo a stronger public knowledge surface instead of relying on a single landing page.",
-    es: "Las guias publicas ahora cubren reading speed, fast reading, lectura rapida y comprension en ingles y espanol. Eso le da a Leyendo una superficie publica de conocimiento mas fuerte que depender de una sola landing page.",
-    pt: "Os guias publicos agora cobrem reading speed, fast reading, lectura rapida e compreensao em ingles e espanhol. Isso da ao Leyendo uma superficie publica de conhecimento mais forte do que depender de uma unica landing page.",
+    en: "The public guides explain how Leyendo approaches pace, comprehension, and recovery on real documents without forcing users through a single landing page.",
+    es: "Las guias publicas explican como Leyendo aborda ritmo, comprension y recuperacion en documentos reales sin obligar a todo el mundo a pasar por una sola landing page.",
+    pt: "As guias publicas explicam como o Leyendo trata ritmo, compreensao e retomada em documentos reais sem obrigar todo mundo a passar por uma unica landing page.",
   },
   browseAll: {
     en: "Browse all guides",
@@ -123,6 +123,7 @@ const founderPhotoSrc = "/David%20Clerc%20empresarial%20traje.webp";
 
 export function AboutPageContent() {
   const { locale } = useLocale();
+  const featuredGuides = getFeaturedGuidesForLocale(locale);
   const [founderImgError, setFounderImgError] = useState(false);
 
   const aboutJsonLd = {
@@ -209,7 +210,7 @@ export function AboutPageContent() {
             {getLocalizedCopy(locale, publicGuidesCopy.body)}
           </p>
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {featuredGuides.slice(0, 2).map((guide) => (
+            {featuredGuides.map((guide) => (
               <Link
                 key={guide.slug}
                 href={`/guides/${guide.slug}`}
