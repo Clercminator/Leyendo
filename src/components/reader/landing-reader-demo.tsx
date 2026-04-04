@@ -114,12 +114,6 @@ const demoTips = {
   ],
 };
 
-const demoCallout = {
-  en: "The sample text is only for practice. Import your own PDF or text when you want saved progress, bookmarks, highlights, sync, or the Standard PDF view.",
-  es: "El texto de muestra sirve solo para practicar. Importa tu propio PDF o texto cuando quieras guardar progreso, marcadores, destacados, sincronizacion o la vista Standard PDF.",
-  pt: "O texto de exemplo serve apenas para praticar. Importe seu proprio PDF ou texto quando quiser salvar progresso, marcadores, destaques, sincronizacao ou a visualizacao Standard PDF.",
-};
-
 const demoPdfNote = {
   en: "Standard PDF mode is not part of this sample because it needs the original PDF file and page assets. You will see it after importing a real PDF and opening it in the reader.",
   es: "El modo Standard PDF no forma parte de esta muestra porque necesita el archivo PDF original y sus paginas. Lo veras despues de importar un PDF real y abrirlo en el lector.",
@@ -507,9 +501,6 @@ export function LandingReaderDemo() {
           </ul>
         </div>
 
-        <p className="mt-6 text-sm leading-7 text-(--text-muted)">
-          {getLocalizedCopy(locale, demoCallout)}
-        </p>
         <div className="mt-5 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 text-sm leading-7 text-(--text-muted)">
           {getLocalizedCopy(locale, demoPdfNote)}
         </div>

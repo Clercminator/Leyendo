@@ -472,9 +472,9 @@ export function ReaderCanvas({
       pt: "Sair da tela cheia",
     }),
     fullscreen: getLocalizedCopy(locale, {
-      en: "Fullscreen",
-      es: "Pantalla completa",
-      pt: "Tela cheia",
+      en: "Expand",
+      es: "Expandir",
+      pt: "Expandir",
     }),
     currentValue: getLocalizedCopy(locale, {
       en: "Current",
@@ -872,16 +872,10 @@ export function ReaderCanvas({
           </div>
           <div className="hidden grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-3">
             <span className={statusChipClass}>
-              {copy.paragraph} {currentParagraphNumber}
-            </span>
-            <span className={statusChipClass}>
               {progress}% {copy.complete}
             </span>
             <span className={statusChipClass}>
               {sentenceCount} {copy.sentenceCount}
-            </span>
-            <span className={statusChipClass}>
-              {isPlaying ? copy.playbackRunning : copy.playbackPaused}
             </span>
             <button
               type="button"

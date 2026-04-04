@@ -1,0 +1,16 @@
+[     354ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[     430ms] [LOG] [Fast Refresh] done in 191ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[     725ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[     865ms] [LOG] [HMR] connected @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[     930ms] [WARNING] Supabase is not configured. Missing variables: @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[     930ms] [WARNING] - NEXT_PUBLIC_SUPABASE_URL @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[     931ms] [WARNING] - NEXT_PUBLIC_SUPABASE_ANON_KEY @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    1110ms] [WARNING] Image with src "/leyendo-logo.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    1409ms] [LOG] %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    1410ms] [LOG] %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {route: /, path: /} @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    1417ms] [LOG] %c[Vercel Web Analytics]%c [view] http://127.0.0.1:3000/ color: rgb(120, 120, 120) color: inherit {o: http://127.0.0.1:3000/, sv: 0.1.3, sdkn: @vercel/analytics/next, sdkv: 2.0.1, ts: 1775344506294} /_vercel/insights/view @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   20543ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   20730ms] [LOG] [Fast Refresh] done in 265ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   27135ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   27264ms] [LOG] [Fast Refresh] done in 177ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
