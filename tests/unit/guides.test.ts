@@ -21,7 +21,10 @@ describe("guides", () => {
 
   it("can resolve a guide by slug", () => {
     expect(getGuideBySlug("reading-speed-for-real-documents")?.title).toBe(
-      "Reading Speed for Real Documents",
+      "Reading Speed for PDFs and Long Documents",
+    );
+    expect(getGuideBySlug("ler-aumenta-o-qi")?.title).toBe(
+      "Ler aumenta o QI? Nao diretamente, mas muda a forma como voce pensa",
     );
   });
 
@@ -43,16 +46,35 @@ describe("guides", () => {
     expect(getGuidesByCluster("comprension").length).toBeGreaterThan(0);
   });
 
-  it("returns guides only for the current locale on public surfaces", () => {
-    expect(
-      getGuidesForLocale("en").every((guide) => guide.language === "en"),
-    ).toBe(true);
-    expect(
-      getGuidesForLocale("es").every((guide) => guide.language === "es"),
-    ).toBe(true);
-    expect(
-      getGuidesForLocale("pt").every((guide) => guide.language === "en"),
-    ).toBe(true);
+  it("returns locale-specific guides and keeps locale article counts aligned", () => {
+    const englishGuides = getGuidesForLocale("en");
+    const spanishGuides = getGuidesForLocale("es");
+    const portugueseGuides = getGuidesForLocale("pt");
+
+    expect(englishGuides.every((guide) => guide.language === "en")).toBe(true);
+    expect(spanishGuides.every((guide) => guide.language === "es")).toBe(true);
+    expect(portugueseGuides.every((guide) => guide.language === "pt")).toBe(
+      true,
+    );
+    expect(englishGuides.length).toBeGreaterThan(0);
+    expect(spanishGuides.length).toBe(englishGuides.length);
+    expect(portugueseGuides.length).toBe(englishGuides.length);
+  });
+
+  it("keeps every guide in the same public article format", () => {
+    for (const guide of guides) {
+      expect(guide.keyTakeaways).toHaveLength(3);
+      expect(guide.keywords).toHaveLength(4);
+      expect(guide.sections).toHaveLength(4);
+      expect(guide.faqs).toHaveLength(3);
+      expect(guide.intro.length).toBeGreaterThan(20);
+      expect(guide.audience.length).toBeGreaterThan(20);
+
+      for (const section of guide.sections) {
+        expect(section.paragraphs).toHaveLength(2);
+        expect(section.title.length).toBeGreaterThan(5);
+      }
+    }
   });
 
   it("keeps related and reading-path guides inside the same language", () => {
@@ -74,19 +96,33 @@ describe("guides", () => {
     ).toBe(true);
   });
 
+  it("resolves every related and reading-path slug within the same locale", () => {
+    for (const guide of guides) {
+      expect(getRelatedGuides(guide)).toHaveLength(guide.relatedSlugs.length);
+      expect(getReadingPathGuides(guide)).toHaveLength(
+        guide.readingPath.length,
+      );
+    }
+  });
+
   it("serializes a guide into stable markdown for the reader handoff", () => {
     const guide = getGuideBySlug("velocidad-de-lectura-y-comprension");
+    const portugueseGuide = getGuideBySlug("ler-aumenta-o-qi");
 
     expect(guide).toBeDefined();
+    expect(portugueseGuide).toBeDefined();
     expect(getGuideReaderDocumentId(guide!.slug)).toBe(
       "guide:velocidad-de-lectura-y-comprension:v1",
     );
 
     const markdown = serializeGuideToMarkdown(guide!);
+    const portugueseMarkdown = serializeGuideToMarkdown(portugueseGuide!);
 
     expect(markdown).toContain(`# ${guide!.title}`);
     expect(markdown).toContain("## Preguntas frecuentes");
     expect(markdown).toContain(`### ${guide!.faqs[0]?.question}`);
     expect(markdown).toContain(`## ${guide!.sections[0]?.title}`);
+    expect(portugueseMarkdown).toContain("## Pontos-chave");
+    expect(portugueseMarkdown).toContain("## Perguntas frequentes");
   });
 });

@@ -862,6 +862,35 @@ export function ReaderWorkspace({
     onJumpToBookmark: jumpToBookmark,
     onJumpToHighlight: jumpToHighlight,
   };
+  const mobileSidebarSection = isPdfPageMode ? null : (
+    <div className="lg:hidden">
+      <button
+        type="button"
+        aria-controls="reader-sidebar-mobile"
+        onClick={() => {
+          setIsMobileSidebarOpen((currentValue) => !currentValue);
+        }}
+        className="flex w-full items-start justify-between gap-4 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-card) px-4 py-3 text-left shadow-[0_14px_40px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+      >
+        <span>
+          <span className="block text-xs tracking-[0.2em] text-(--accent-sky) uppercase">
+            {sidebarToggleLabel}
+          </span>
+          <span className="mt-1 block text-sm text-(--text-muted)">
+            {sidebarSummary}
+          </span>
+        </span>
+        <span className="shrink-0 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-xs font-medium text-(--text-strong)">
+          {isMobileSidebarOpen ? sidebarOpenLabel : sidebarClosedLabel}
+        </span>
+      </button>
+      {isMobileSidebarOpen ? (
+        <div id="reader-sidebar-mobile" className="mt-3">
+          <ReaderSidebar {...sidebarProps} />
+        </div>
+      ) : null}
+    </div>
+  );
 
   const handleModeSelection = useCallback(
     (mode: ReaderPreferences["mode"]) => {
@@ -1077,6 +1106,7 @@ export function ReaderWorkspace({
       data-reader-font-scale={preferences.fontScale.toFixed(1)}
       data-reader-line-height={preferences.lineHeight.toFixed(1)}
     >
+      {mobileSidebarSection}
       <div className="fade-rise-delayed relative z-20">
         <p className="sr-only" role="status" aria-live="polite">
           {statusMessage}
@@ -1184,33 +1214,6 @@ export function ReaderWorkspace({
 
       {isPdfPageMode ? null : (
         <>
-          <div className="lg:hidden">
-            <button
-              type="button"
-              aria-controls="reader-sidebar-mobile"
-              onClick={() => {
-                setIsMobileSidebarOpen((currentValue) => !currentValue);
-              }}
-              className="flex w-full items-start justify-between gap-4 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-card) px-4 py-3 text-left shadow-[0_14px_40px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-            >
-              <span>
-                <span className="block text-xs tracking-[0.2em] text-(--accent-sky) uppercase">
-                  {sidebarToggleLabel}
-                </span>
-                <span className="mt-1 block text-sm text-(--text-muted)">
-                  {sidebarSummary}
-                </span>
-              </span>
-              <span className="shrink-0 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1.5 text-xs font-medium text-(--text-strong)">
-                {isMobileSidebarOpen ? sidebarOpenLabel : sidebarClosedLabel}
-              </span>
-            </button>
-            {isMobileSidebarOpen ? (
-              <div id="reader-sidebar-mobile" className="mt-3">
-                <ReaderSidebar {...sidebarProps} />
-              </div>
-            ) : null}
-          </div>
           <div className="hidden lg:block">
             <ReaderSidebar {...sidebarProps} />
           </div>

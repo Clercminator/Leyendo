@@ -54,7 +54,12 @@ export default async function GuidePage({
         "@type": "Article",
         headline: guide.title,
         description: guide.description,
-        inLanguage: guide.language === "es" ? "es" : "en",
+        inLanguage:
+          guide.language === "es"
+            ? "es"
+            : guide.language === "pt"
+              ? "pt"
+              : "en",
         mainEntityOfPage: absoluteUrl(guidePath),
         url: absoluteUrl(guidePath),
         keywords: guide.keywords.join(", "),
@@ -103,34 +108,74 @@ export default async function GuidePage({
     ],
   };
 
-  const guidesLabel = guide.language === "es" ? "Guias" : "Guides";
+  const guidesLabel =
+    guide.language === "es"
+      ? "Guias"
+      : guide.language === "pt"
+        ? "Guias"
+        : "Guides";
   const importLabel =
-    guide.language === "es" ? "Importar documento" : "Import a document";
+    guide.language === "es" || guide.language === "pt"
+      ? "Importar documento"
+      : "Import a document";
   const faqLabel =
     guide.language === "es"
       ? "Preguntas frecuentes"
-      : "Frequently asked questions";
-  const audienceLabel = guide.language === "es" ? "Ideal para" : "Best for";
+      : guide.language === "pt"
+        ? "Perguntas frequentes"
+        : "Frequently asked questions";
+  const audienceLabel =
+    guide.language === "es" || guide.language === "pt"
+      ? "Ideal para"
+      : "Best for";
   const takeawaysLabel =
-    guide.language === "es" ? "Puntos clave" : "Key takeaways";
+    guide.language === "es"
+      ? "Puntos clave"
+      : guide.language === "pt"
+        ? "Pontos-chave"
+        : "Key takeaways";
   const keepExploringLabel =
-    guide.language === "es" ? "Sigue explorando" : "Keep exploring";
+    guide.language === "es"
+      ? "Sigue explorando"
+      : guide.language === "pt"
+        ? "Continue explorando"
+        : "Keep exploring";
   const aboutLabel =
-    guide.language === "es" ? "Sobre Leyendo" : "About Leyendo";
+    guide.language === "es"
+      ? "Sobre Leyendo"
+      : guide.language === "pt"
+        ? "Sobre o Leyendo"
+        : "About Leyendo";
   const hubLabel =
-    guide.language === "es" ? "Ver todas las guias" : "Browse all guides";
+    guide.language === "es"
+      ? "Ver todas las guias"
+      : guide.language === "pt"
+        ? "Ver todas as guias"
+        : "Browse all guides";
   const skipToContentsLabel =
-    guide.language === "es" ? "Ir al articulo" : "Skip to the article";
+    guide.language === "es"
+      ? "Ir al articulo"
+      : guide.language === "pt"
+        ? "Ir para o artigo"
+        : "Skip to the article";
   const readerLabel =
     guide.language === "es"
       ? "Leer este articulo mas rapido con Leyendo"
-      : "Read this article faster with Leyendo";
+      : guide.language === "pt"
+        ? "Ler este artigo mais rapido com Leyendo"
+        : "Read this article faster with Leyendo";
   const readerLoadingLabel =
-    guide.language === "es" ? "Abriendo en Leyendo" : "Opening in Leyendo";
+    guide.language === "es"
+      ? "Abriendo en Leyendo"
+      : guide.language === "pt"
+        ? "Abrindo no Leyendo"
+        : "Opening in Leyendo";
   const readerErrorLabel =
     guide.language === "es"
       ? "No se pudo abrir la guia en el lector. Intentalo otra vez."
-      : "Could not open the guide in the reader. Try again.";
+      : guide.language === "pt"
+        ? "Nao foi possivel abrir a guia no leitor. Tente novamente."
+        : "Could not open the guide in the reader. Try again.";
 
   return (
     <AppShell
@@ -302,7 +347,9 @@ export default async function GuidePage({
                   <p className="mt-2 text-sm leading-7 text-(--text-muted)">
                     {guide.language === "es"
                       ? "Explora todas las rutas publicas por idioma e intencion."
-                      : "Explore every public path by language and search intent."}
+                      : guide.language === "pt"
+                        ? "Explore todos os caminhos publicos por idioma e intencao."
+                        : "Explore every public path by language and search intent."}
                   </p>
                 </Link>
                 <Link
@@ -315,7 +362,9 @@ export default async function GuidePage({
                   <p className="mt-2 text-sm leading-7 text-(--text-muted)">
                     {guide.language === "es"
                       ? "Ve por que existe Leyendo y como se conecta con estas guias."
-                      : "See why Leyendo exists and how the product ties into these guides."}
+                      : guide.language === "pt"
+                        ? "Veja por que o Leyendo existe e como ele se conecta com estas guias."
+                        : "See why Leyendo exists and how the product ties into these guides."}
                   </p>
                 </Link>
                 <Link
@@ -328,7 +377,9 @@ export default async function GuidePage({
                   <p className="mt-2 text-sm leading-7 text-(--text-muted)">
                     {guide.language === "es"
                       ? "Pasa del contenido publico a una prueba real con tu propio documento."
-                      : "Move from public content into a real test with your own document."}
+                      : guide.language === "pt"
+                        ? "Saia do conteudo publico e teste com o seu proprio documento."
+                        : "Move from public content into a real test with your own document."}
                   </p>
                 </Link>
               </div>

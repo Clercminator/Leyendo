@@ -1,0 +1,75 @@
+[    1013ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    1223ms] [LOG] [HMR] connected @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    1451ms] [WARNING] Supabase is not configured. Missing variables: @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    1453ms] [WARNING] - NEXT_PUBLIC_SUPABASE_URL @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    1453ms] [WARNING] - NEXT_PUBLIC_SUPABASE_ANON_KEY @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    1698ms] [WARNING] Image with src "/leyendo-logo.svg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    2190ms] [LOG] %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    2191ms] [LOG] %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {route: /, path: /} @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[    2193ms] [LOG] %c[Vercel Web Analytics]%c [view] http://127.0.0.1:3000/ color: rgb(120, 120, 120) color: inherit {o: http://127.0.0.1:3000/, sv: 0.1.3, sdkn: @vercel/analytics/next, sdkv: 2.0.1, ts: 1775341782130} /_vercel/insights/view @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   57730ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   57916ms] [LOG] [Fast Refresh] done in 286ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   87774ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   87979ms] [LOG] [Fast Refresh] done in 305ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   91936ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[   92060ms] [LOG] [Fast Refresh] done in 228ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  107250ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  107353ms] [LOG] [Fast Refresh] done in 204ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  107559ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  107611ms] [LOG] [Fast Refresh] done in 166ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  107636ms] [LOG] %c[Vercel Web Analytics]%c [view] http://127.0.0.1:3000/reader?document=fCkH335Id1YPTNwKA8ooi color: rgb(120, 120, 120) color: inherit {o: http://127.0.0.1:3000/reader?document=fCkH335Id1YPTNwKA8ooi, sv: 0.1.3, sdkn: @vercel/analytics/next, sdkv: 2.0.1, ts: 1775341887567} /_vercel/insights/view @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  109274ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  109385ms] [LOG] [Fast Refresh] done in 215ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  124967ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  125137ms] [LOG] [Fast Refresh] done in 272ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  130767ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  130878ms] [LOG] [Fast Refresh] done in 224ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  191433ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  191724ms] [LOG] [Fast Refresh] done in 406ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  260594ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  260731ms] [LOG] [Fast Refresh] done in 242ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  329808ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  330482ms] [LOG] [Fast Refresh] done in 745ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  335504ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  336280ms] [LOG] [Fast Refresh] done in 891ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  344139ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  344753ms] [LOG] [Fast Refresh] done in 723ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  360821ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  360904ms] [LOG] [Fast Refresh] done in 193ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  390685ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  391258ms] [LOG] [Fast Refresh] done in 676ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  391432ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  391507ms] [LOG] [Fast Refresh] done in 188ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  391722ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  392053ms] [LOG] [Fast Refresh] done in 433ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  397236ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  397389ms] [LOG] [Fast Refresh] done in 256ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  400641ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  401467ms] [LOG] [Fast Refresh] done in 932ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  402949ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  402995ms] [LOG] [Fast Refresh] done in 158ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  404918ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  405304ms] [LOG] [Fast Refresh] done in 489ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  426563ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  426806ms] [LOG] [Fast Refresh] done in 355ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  480255ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  480479ms] [LOG] [Fast Refresh] done in 303ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  484571ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  485239ms] [LOG] [Fast Refresh] done in 772ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  524110ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  524231ms] [LOG] [Fast Refresh] done in 223ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  524371ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  524445ms] [LOG] [Fast Refresh] done in 176ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  529568ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  529645ms] [LOG] [Fast Refresh] done in 189ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  529788ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  529903ms] [LOG] [Fast Refresh] done in 225ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  532460ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[  532983ms] [LOG] [Fast Refresh] done in 634ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[ 1170104ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[ 1170122ms] [LOG] [Fast Refresh] done in 123ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[ 1176645ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[ 1177633ms] [LOG] [Fast Refresh] done in 1102ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[ 1182311ms] [LOG] [Fast Refresh] rebuilding @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431
+[ 1182831ms] [LOG] [Fast Refresh] done in 637ms @ http://127.0.0.1:3000/_next/static/chunks/12ox_next_dist_0u5rn~.._.js:2431

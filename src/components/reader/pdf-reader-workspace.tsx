@@ -1288,6 +1288,135 @@ export function PdfReaderWorkspace({
 
   return (
     <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="lg:hidden">
+        <button
+          type="button"
+          aria-controls="pdf-reader-sidebar-mobile"
+          aria-haspopup="dialog"
+          onClick={() => {
+            setIsMobileSidebarOpen(true);
+          }}
+          className="flex w-full items-start justify-between gap-4 rounded-[1.35rem] border border-slate-300 bg-white px-4 py-3 text-left text-slate-700 shadow-[0_14px_40px_rgba(15,23,42,0.08)] transition hover:border-slate-400 hover:bg-slate-50"
+        >
+          <span>
+            <span className="block text-xs tracking-[0.2em] text-sky-700 uppercase">
+              {mobileSidebarToggleLabel}
+            </span>
+            <span className="mt-1 block text-sm text-slate-500">
+              {mobileSidebarSummary}
+            </span>
+          </span>
+          <span className="shrink-0 rounded-full border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+            {isMobileSidebarOpen
+              ? mobileSidebarOpenLabel
+              : mobileSidebarClosedLabel}
+          </span>
+        </button>
+
+        {isMobileSidebarOpen ? (
+          <div className="fixed inset-0 z-80 lg:hidden">
+            <button
+              type="button"
+              aria-label={getLocalizedCopy(locale, {
+                en: "Close PDF tools",
+                es: "Cerrar herramientas PDF",
+                pt: "Fechar ferramentas PDF",
+              })}
+              onClick={() => {
+                setIsMobileSidebarOpen(false);
+              }}
+              className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]"
+            />
+            <div
+              id="pdf-reader-sidebar-mobile"
+              role="dialog"
+              aria-modal="true"
+              aria-label={mobileSidebarToggleLabel}
+              className="absolute inset-x-0 bottom-0 max-h-[82svh] overflow-hidden rounded-t-[1.75rem] border border-slate-300 bg-slate-50 shadow-[0_-24px_80px_rgba(15,23,42,0.2)]"
+            >
+              <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
+                <div>
+                  <p className="text-xs tracking-[0.2em] text-sky-700 uppercase">
+                    {mobileSidebarToggleLabel}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {mobileSidebarSummary}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+                >
+                  {getLocalizedCopy(locale, {
+                    en: "Close",
+                    es: "Cerrar",
+                    pt: "Fechar",
+                  })}
+                </button>
+              </div>
+              <div className="max-h-[calc(82svh-4.75rem)] overflow-y-auto p-4">
+                <ReaderSidebar
+                  bookmarks={bookmarks}
+                  currentPdfPageIndex={currentPageIndex}
+                  currentPdfPageLabel={currentPageLabel}
+                  highlightHelperText={highlightHelperText}
+                  highlightNote={highlightNote}
+                  highlightNoteLabel={highlightNoteLabel}
+                  highlightNotePlaceholder={highlightNotePlaceholder}
+                  highlights={highlights}
+                  notice={viewerNotice}
+                  onChangeHighlightNote={onChangeHighlightNote}
+                  onDeleteBookmark={onDeleteBookmark}
+                  onDeleteHighlight={onDeleteHighlight}
+                  onJumpToBookmark={(bookmark) => {
+                    onJumpToBookmark(bookmark);
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  onJumpToHighlight={(highlight) => {
+                    onJumpToHighlight(highlight);
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  onJumpToOutlineItem={(outlineItem) => {
+                    if (typeof outlineItem.pageIndex === "number") {
+                      goToPageIndex(outlineItem.pageIndex);
+                    }
+                  }}
+                  onJumpToThumbnail={(pageIndex) => {
+                    goToPageIndex(pageIndex);
+                  }}
+                  onRequestThumbnail={requestThumbnailPage}
+                  onSaveBookmark={() => {
+                    onSaveBookmark({ pageIndex: currentPageIndex });
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  onSaveHighlight={
+                    hasExtractedText
+                      ? () => {
+                          onSaveHighlight({
+                            pageIndex: currentPageIndex,
+                            selectionText: getPdfSelectionText(
+                              viewerContainerRef.current,
+                            ),
+                          });
+                          setIsMobileSidebarOpen(false);
+                        }
+                      : undefined
+                  }
+                  outlineItems={outlineItems}
+                  pdfThumbnails={thumbnails}
+                  saveHighlightDisabled={!hasExtractedText}
+                  saveHighlightLabel={saveHighlightLabel}
+                  showHighlightComposer={hasExtractedText}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
       <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-200 shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
         <div className="flex flex-col gap-3 border-b border-slate-300/80 bg-slate-50 px-3 py-3 text-sm text-slate-700 sm:px-5 sm:py-4">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -1659,135 +1788,6 @@ export function PdfReaderWorkspace({
             <div ref={viewerElementRef} className="pdfViewer" />
           </div>
         </div>
-      </div>
-
-      <div className="lg:hidden">
-        <button
-          type="button"
-          aria-controls="pdf-reader-sidebar-mobile"
-          aria-haspopup="dialog"
-          onClick={() => {
-            setIsMobileSidebarOpen(true);
-          }}
-          className="flex w-full items-start justify-between gap-4 rounded-[1.35rem] border border-slate-300 bg-white px-4 py-3 text-left text-slate-700 shadow-[0_14px_40px_rgba(15,23,42,0.08)] transition hover:border-slate-400 hover:bg-slate-50"
-        >
-          <span>
-            <span className="block text-xs tracking-[0.2em] text-sky-700 uppercase">
-              {mobileSidebarToggleLabel}
-            </span>
-            <span className="mt-1 block text-sm text-slate-500">
-              {mobileSidebarSummary}
-            </span>
-          </span>
-          <span className="shrink-0 rounded-full border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
-            {isMobileSidebarOpen
-              ? mobileSidebarOpenLabel
-              : mobileSidebarClosedLabel}
-          </span>
-        </button>
-
-        {isMobileSidebarOpen ? (
-          <div className="fixed inset-0 z-80 lg:hidden">
-            <button
-              type="button"
-              aria-label={getLocalizedCopy(locale, {
-                en: "Close PDF tools",
-                es: "Cerrar herramientas PDF",
-                pt: "Fechar ferramentas PDF",
-              })}
-              onClick={() => {
-                setIsMobileSidebarOpen(false);
-              }}
-              className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]"
-            />
-            <div
-              id="pdf-reader-sidebar-mobile"
-              role="dialog"
-              aria-modal="true"
-              aria-label={mobileSidebarToggleLabel}
-              className="absolute inset-x-0 bottom-0 max-h-[82svh] overflow-hidden rounded-t-[1.75rem] border border-slate-300 bg-slate-50 shadow-[0_-24px_80px_rgba(15,23,42,0.2)]"
-            >
-              <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
-                <div>
-                  <p className="text-xs tracking-[0.2em] text-sky-700 uppercase">
-                    {mobileSidebarToggleLabel}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {mobileSidebarSummary}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
-                >
-                  {getLocalizedCopy(locale, {
-                    en: "Close",
-                    es: "Cerrar",
-                    pt: "Fechar",
-                  })}
-                </button>
-              </div>
-              <div className="max-h-[calc(82svh-4.75rem)] overflow-y-auto p-4">
-                <ReaderSidebar
-                  bookmarks={bookmarks}
-                  currentPdfPageIndex={currentPageIndex}
-                  currentPdfPageLabel={currentPageLabel}
-                  highlightHelperText={highlightHelperText}
-                  highlightNote={highlightNote}
-                  highlightNoteLabel={highlightNoteLabel}
-                  highlightNotePlaceholder={highlightNotePlaceholder}
-                  highlights={highlights}
-                  notice={viewerNotice}
-                  onChangeHighlightNote={onChangeHighlightNote}
-                  onDeleteBookmark={onDeleteBookmark}
-                  onDeleteHighlight={onDeleteHighlight}
-                  onJumpToBookmark={(bookmark) => {
-                    onJumpToBookmark(bookmark);
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  onJumpToHighlight={(highlight) => {
-                    onJumpToHighlight(highlight);
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  onJumpToOutlineItem={(outlineItem) => {
-                    if (typeof outlineItem.pageIndex === "number") {
-                      goToPageIndex(outlineItem.pageIndex);
-                    }
-                  }}
-                  onJumpToThumbnail={(pageIndex) => {
-                    goToPageIndex(pageIndex);
-                  }}
-                  onRequestThumbnail={requestThumbnailPage}
-                  onSaveBookmark={() => {
-                    onSaveBookmark({ pageIndex: currentPageIndex });
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  onSaveHighlight={
-                    hasExtractedText
-                      ? () => {
-                          onSaveHighlight({
-                            pageIndex: currentPageIndex,
-                            selectionText: getPdfSelectionText(
-                              viewerContainerRef.current,
-                            ),
-                          });
-                          setIsMobileSidebarOpen(false);
-                        }
-                      : undefined
-                  }
-                  outlineItems={outlineItems}
-                  pdfThumbnails={thumbnails}
-                  saveHighlightDisabled={!hasExtractedText}
-                  saveHighlightLabel={saveHighlightLabel}
-                  showHighlightComposer={hasExtractedText}
-                />
-              </div>
-            </div>
-          </div>
-        ) : null}
       </div>
 
       <div className="hidden lg:block">

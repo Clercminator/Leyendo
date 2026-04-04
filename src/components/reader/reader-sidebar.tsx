@@ -290,6 +290,131 @@ export const ReaderSidebar = memo(function ReaderSidebar({
         ) : null}
 
         <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
+          <div>
+            <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+              {getLocalizedCopy(locale, {
+                en: "Recent highlights",
+                es: "Destacados recientes",
+                pt: "Destaques recentes",
+              })}
+            </p>
+            {highlights.length === 0 ? (
+              <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
+                {getLocalizedCopy(locale, {
+                  en: "Save a highlight to keep the current quoted passage and note on this device.",
+                  es: "Guarda un destacado para conservar el pasaje actual y su nota en este dispositivo.",
+                  pt: "Salve um destaque para manter o trecho atual e a nota neste dispositivo.",
+                })}
+              </p>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {highlights.map((highlight) => (
+                  <div
+                    key={highlight.id}
+                    className="pointer-events-none rounded-2xl border border-(--border-soft) bg-(--surface-soft) px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-(--text-strong)">
+                          {highlight.label}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-(--text-strong)">
+                          {highlight.quote}
+                        </p>
+                        {highlight.note ? (
+                          <p className="mt-2 text-sm leading-6 text-(--text-muted)">
+                            {highlight.note}
+                          </p>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`${getLocalizedCopy(locale, { en: "Delete", es: "Eliminar", pt: "Excluir" })} ${highlight.label}`}
+                        onClick={() => {
+                          onDeleteHighlight(highlight.id);
+                        }}
+                        className="pointer-events-auto rounded-full border border-(--border-soft) bg-(--surface-soft) p-2 text-(--text-muted) transition hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong)"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onJumpToHighlight(highlight)}
+                      className="pointer-events-auto relative z-10 mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      {getLocalizedCopy(locale, {
+                        en: "Jump to highlight",
+                        es: "Ir al destacado",
+                        pt: "Ir ao destaque",
+                      })}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+              {getLocalizedCopy(locale, {
+                en: "Recent bookmarks",
+                es: "Marcadores recientes",
+                pt: "Marcadores recentes",
+              })}
+            </p>
+            {bookmarks.length === 0 ? (
+              <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
+                {getLocalizedCopy(locale, {
+                  en: "Save a bookmark to return to this exact reading position later.",
+                  es: "Guarda un marcador para volver a esta posicion exacta mas tarde.",
+                  pt: "Salve um marcador para voltar a esta posicao exata depois.",
+                })}
+              </p>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {bookmarks.map((bookmark) => (
+                  <div
+                    key={bookmark.id}
+                    className="pointer-events-none rounded-2xl border border-(--border-soft) bg-(--surface-soft) px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-(--text-strong)">
+                          {bookmark.label}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-(--text-muted)">
+                          {formatBookmarkLocation(bookmark)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`${getLocalizedCopy(locale, { en: "Delete", es: "Eliminar", pt: "Excluir" })} ${bookmark.label}`}
+                        onClick={() => {
+                          onDeleteBookmark(bookmark.id);
+                        }}
+                        className="pointer-events-auto rounded-full border border-(--border-soft) bg-(--surface-soft) p-2 text-(--text-muted) transition hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong)"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onJumpToBookmark(bookmark)}
+                      className="pointer-events-auto relative z-10 mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      {getLocalizedCopy(locale, {
+                        en: "Jump to bookmark",
+                        es: "Ir al marcador",
+                        pt: "Ir ao marcador",
+                      })}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {pdfThumbnails && pdfThumbnails.length > 0 ? (
             <div>
               <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
@@ -385,131 +510,6 @@ export const ReaderSidebar = memo(function ReaderSidebar({
               </div>
             </div>
           ) : null}
-
-          <div>
-            <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-              {getLocalizedCopy(locale, {
-                en: "Recent highlights",
-                es: "Destacados recientes",
-                pt: "Destaques recentes",
-              })}
-            </p>
-            {highlights.length === 0 ? (
-              <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
-                {getLocalizedCopy(locale, {
-                  en: "Save a highlight to keep the current quoted passage and note on this device.",
-                  es: "Guarda un destacado para conservar el pasaje actual y su nota en este dispositivo.",
-                  pt: "Salve um destaque para manter o trecho atual e a nota neste dispositivo.",
-                })}
-              </p>
-            ) : (
-              <div className="mt-3 space-y-3">
-                {highlights.map((highlight) => (
-                  <div
-                    key={highlight.id}
-                    className="rounded-2xl border border-(--border-soft) bg-(--surface-soft) px-4 py-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-(--text-strong)">
-                          {highlight.label}
-                        </p>
-                        <p className="mt-1 text-sm leading-6 text-(--text-strong)">
-                          {highlight.quote}
-                        </p>
-                        {highlight.note ? (
-                          <p className="mt-2 text-sm leading-6 text-(--text-muted)">
-                            {highlight.note}
-                          </p>
-                        ) : null}
-                      </div>
-                      <button
-                        type="button"
-                        aria-label={`${getLocalizedCopy(locale, { en: "Delete", es: "Eliminar", pt: "Excluir" })} ${highlight.label}`}
-                        onClick={() => {
-                          onDeleteHighlight(highlight.id);
-                        }}
-                        className="rounded-full border border-(--border-soft) bg-(--surface-soft) p-2 text-(--text-muted) transition hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong)"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onJumpToHighlight(highlight)}
-                      className="mt-3 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      {getLocalizedCopy(locale, {
-                        en: "Jump to highlight",
-                        es: "Ir al destacado",
-                        pt: "Ir ao destaque",
-                      })}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-              {getLocalizedCopy(locale, {
-                en: "Recent bookmarks",
-                es: "Marcadores recientes",
-                pt: "Marcadores recentes",
-              })}
-            </p>
-            {bookmarks.length === 0 ? (
-              <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
-                {getLocalizedCopy(locale, {
-                  en: "Save a bookmark to return to this exact reading position later.",
-                  es: "Guarda un marcador para volver a esta posicion exacta mas tarde.",
-                  pt: "Salve um marcador para voltar a esta posicao exata depois.",
-                })}
-              </p>
-            ) : (
-              <div className="mt-3 space-y-3">
-                {bookmarks.map((bookmark) => (
-                  <div
-                    key={bookmark.id}
-                    className="rounded-2xl border border-(--border-soft) bg-(--surface-soft) px-4 py-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-(--text-strong)">
-                          {bookmark.label}
-                        </p>
-                        <p className="mt-1 text-sm leading-6 text-(--text-muted)">
-                          {formatBookmarkLocation(bookmark)}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        aria-label={`${getLocalizedCopy(locale, { en: "Delete", es: "Eliminar", pt: "Excluir" })} ${bookmark.label}`}
-                        onClick={() => {
-                          onDeleteBookmark(bookmark.id);
-                        }}
-                        className="rounded-full border border-(--border-soft) bg-(--surface-soft) p-2 text-(--text-muted) transition hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong)"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onJumpToBookmark(bookmark)}
-                      className="mt-3 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      {getLocalizedCopy(locale, {
-                        en: "Jump to bookmark",
-                        es: "Ir al marcador",
-                        pt: "Ir ao marcador",
-                      })}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </section>
     </aside>

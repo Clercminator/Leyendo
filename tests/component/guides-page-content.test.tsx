@@ -54,7 +54,7 @@ describe("GuidesPageContent", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", {
-        name: /reading speed for real documents/i,
+        name: /reading speed for pdfs and long documents/i,
       }),
     ).not.toBeInTheDocument();
     expect(
@@ -73,17 +73,42 @@ describe("GuidesPageContent", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /reading speed for real documents/i,
+        name: /reading speed for pdfs and long documents/i,
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
-        name: /fast reading without losing comprehension/i,
+        name: /fast reading workflow for real documents/i,
       }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", {
         name: /lectura rapida para documentos reales/i,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Portuguese guides on the Portuguese site", () => {
+    useLocale.mockReturnValue({
+      locale: "pt",
+      setLocale: vi.fn(),
+    });
+
+    render(<GuidesPageContent />);
+
+    expect(
+      screen.getByRole("heading", {
+        name: /ler aumenta o qi\? nao diretamente, mas muda a forma como voce pensa/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: /reading speed for pdfs and long documents/i,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: /velocidad de lectura y comprension lectora/i,
       }),
     ).not.toBeInTheDocument();
   });

@@ -145,6 +145,38 @@ test("guides hub exposes public SEO articles", async ({ page }) => {
       name: /read this article faster with leyendo/i,
     }),
   ).toBeVisible();
+
+  await page.goto("/guides/velocidad-de-lectura-y-comprension");
+
+  await expect(
+    page.getByRole("heading", {
+      name: /velocidad de lectura y comprension lectora/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /preguntas frecuentes/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: /leer este articulo mas rapido con leyendo/i,
+    }),
+  ).toBeVisible();
+
+  await page.goto("/guides/ler-aumenta-o-qi");
+
+  await expect(
+    page.getByRole("heading", {
+      name: /ler aumenta o qi\? nao diretamente, mas muda a forma como voce pensa/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /perguntas frequentes/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: /ler este artigo mais rapido com leyendo/i,
+    }),
+  ).toBeVisible();
 });
 
 test("about page cross-links into the public guides", async ({ page }) => {

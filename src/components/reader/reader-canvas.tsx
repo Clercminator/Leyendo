@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   BookmarkPlus,
@@ -13,9 +13,11 @@ import {
   Pause,
   Play,
   RotateCcw,
+  SlidersHorizontal,
   SkipBack,
   SkipForward,
   Undo2,
+  X,
 } from "lucide-react";
 
 import { useLocale } from "@/components/layout/locale-provider";
@@ -190,6 +192,8 @@ export function ReaderCanvas({
     | null
   >(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMobileChromeVisible, setIsMobileChromeVisible] = useState(false);
+  const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const presetMenuRef = useRef<HTMLDivElement>(null);
   const saveMenuRef = useRef<HTMLDivElement>(null);
@@ -209,9 +213,17 @@ export function ReaderCanvas({
   const settingsRowClass =
     "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-3";
   const topControlButtonClass =
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm";
+    "min-h-10 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm";
   const statusChipClass =
     "inline-flex min-h-10 items-center justify-center rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-center text-xs text-(--text-strong) sm:min-h-auto sm:rounded-full sm:px-3 sm:py-1.5 sm:text-sm";
+  const mobileStatCardClass =
+    "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-left";
+  const mobilePrimaryButtonClass =
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+  const mobileToolsSectionClass =
+    "rounded-[1.2rem] border border-(--border-soft) bg-(--surface-strong) p-3";
+  const sheetActionButtonClass =
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
 
   useEffect(() => {
     if (!openMenu) {
@@ -255,6 +267,28 @@ export function ReaderCanvas({
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isMobileToolsOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMobileToolsOpen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileToolsOpen]);
 
   const activePreset = readerPresets.find((preset) => {
     return (
@@ -512,6 +546,31 @@ export function ReaderCanvas({
       es: "Mas",
       pt: "Mais",
     }),
+    tools: getLocalizedCopy(locale, {
+      en: "Tools",
+      es: "Herramientas",
+      pt: "Ferramentas",
+    }),
+    readingTools: getLocalizedCopy(locale, {
+      en: "Reading tools",
+      es: "Herramientas de lectura",
+      pt: "Ferramentas de leitura",
+    }),
+    closeTools: getLocalizedCopy(locale, {
+      en: "Close tools",
+      es: "Cerrar herramientas",
+      pt: "Fechar ferramentas",
+    }),
+    showControlsHint: getLocalizedCopy(locale, {
+      en: "Tap the text to show controls",
+      es: "Toca el texto para mostrar controles",
+      pt: "Toque o texto para mostrar os controles",
+    }),
+    hideControlsHint: getLocalizedCopy(locale, {
+      en: "Tap the text again to hide controls",
+      es: "Toca el texto otra vez para ocultar controles",
+      pt: "Toque o texto novamente para ocultar os controles",
+    }),
     moreActions: getLocalizedCopy(locale, {
       en: "More actions",
       es: "Mas acciones",
@@ -573,6 +632,23 @@ export function ReaderCanvas({
     await canvasRef.current?.requestFullscreen();
   };
 
+  const toggleMobileChrome = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.matchMedia?.("(min-width: 640px)").matches ?? false) {
+      return;
+    }
+
+    if (isMobileToolsOpen) {
+      return;
+    }
+
+    setOpenMenu(null);
+    setIsMobileChromeVisible((current) => !current);
+  }, [isMobileToolsOpen]);
+
   return (
     <section
       ref={canvasRef}
@@ -580,7 +656,7 @@ export function ReaderCanvas({
       aria-labelledby="reader-canvas-title"
       tabIndex={-1}
       className={cn(
-        "reader-canvas relative isolate flex h-[calc(100svh-8.5rem)] min-h-136 w-full flex-col gap-4 overflow-visible rounded-[1.5rem] border border-(--border-soft) bg-(--surface-strong) px-4 py-4 text-left sm:gap-6 sm:rounded-[1.75rem] sm:px-6 sm:py-5 lg:h-[86vh] lg:min-h-176 lg:px-8 lg:py-6",
+        "reader-canvas relative isolate flex h-[calc(100svh-6.75rem)] min-h-120 w-full flex-col gap-3 overflow-visible rounded-[1.5rem] border border-(--border-soft) bg-(--surface-strong) px-3 py-3 text-left sm:h-[calc(100svh-8.5rem)] sm:min-h-136 sm:gap-6 sm:rounded-[1.75rem] sm:px-6 sm:py-5 lg:h-[86vh] lg:min-h-176 lg:px-8 lg:py-6",
         className,
       )}
     >
@@ -588,8 +664,13 @@ export function ReaderCanvas({
         {copy.readerCanvas}
       </h2>
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="space-y-3 sm:space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm sm:gap-3">
+        <div
+          className={cn(
+            "space-y-3 sm:space-y-4",
+            !isMobileChromeVisible && "hidden sm:block",
+          )}
+        >
+          <div className="grid grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-3">
             <div ref={modeMenuRef} className="relative z-40">
               <button
                 type="button"
@@ -599,7 +680,7 @@ export function ReaderCanvas({
                     current === "mode" ? null : "mode",
                   );
                 }}
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.16em] text-(--accent-sky) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm sm:tracking-[0.22em]"
+                className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.16em] text-(--accent-sky) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:w-auto sm:justify-center sm:px-4 sm:py-2.5 sm:text-sm sm:tracking-[0.22em]"
               >
                 {modeLabel}
                 <ChevronDown
@@ -642,7 +723,7 @@ export function ReaderCanvas({
                     current === "preset" ? null : "preset",
                   );
                 }}
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-widest text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm sm:tracking-[0.14em]"
+                className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-widest text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:w-auto sm:justify-center sm:px-4 sm:py-2.5 sm:text-sm sm:tracking-[0.14em]"
               >
                 {activePreset
                   ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
@@ -715,7 +796,7 @@ export function ReaderCanvas({
                     current === "theme" ? null : "theme",
                   );
                 }}
-                className={topControlButtonClass}
+                className={`hidden ${topControlButtonClass} sm:inline-flex`}
               >
                 {getLocalizedCopy(locale, themeLabels[preferences.theme])}
                 <ChevronDown
@@ -757,7 +838,7 @@ export function ReaderCanvas({
               onClick={() => {
                 void toggleFullscreen();
               }}
-              className={topControlButtonClass}
+              className={`hidden ${topControlButtonClass} sm:inline-flex`}
             >
               {isFullscreen ? (
                 <Minimize2 className="h-4 w-4" />
@@ -767,7 +848,29 @@ export function ReaderCanvas({
               {copy.fullscreen}
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+          <div className="grid gap-2 text-sm sm:hidden">
+            <div className="flex flex-wrap gap-2">
+              <span className={statusChipClass}>
+                {copy.paragraph} {currentParagraphNumber} · {progress}%
+              </span>
+              <span className={statusChipClass}>
+                {sentenceCount} {copy.sentenceCount}
+              </span>
+              <button
+                type="button"
+                aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
+                onClick={onAnnounceRemainingTime}
+                className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
+              >
+                <Clock3 className="h-4 w-4 text-(--accent-amber)" />
+                {remainingTimeLabel}
+              </button>
+            </div>
+            <p className="text-xs leading-6 text-(--text-muted)">
+              {copy.hideControlsHint}
+            </p>
+          </div>
+          <div className="hidden grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-3">
             <span className={statusChipClass}>
               {copy.paragraph} {currentParagraphNumber}
             </span>
@@ -790,11 +893,11 @@ export function ReaderCanvas({
               {remainingTimeLabel}
             </button>
           </div>
-          <p className="text-sm leading-6 text-(--text-muted) sm:leading-7">
+          <p className="hidden text-sm leading-6 text-(--text-muted) sm:block sm:leading-7">
             {copy.readingModeHelp}
           </p>
           {activePresetSummary ? (
-            <p className="text-sm leading-6 text-(--text-muted)">
+            <p className="hidden text-sm leading-6 text-(--text-muted) sm:block">
               <span className="mr-2 inline-flex rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1 text-[11px] tracking-[0.18em] text-(--accent-amber) uppercase">
                 {activePreset
                   ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
@@ -804,18 +907,77 @@ export function ReaderCanvas({
             </p>
           ) : null}
         </div>
-        <div className="mt-4 flex min-h-0 flex-1 sm:mt-6">
-          <div className="flex min-h-0 flex-1 items-stretch *:h-full">
+        <div className="mt-3 flex min-h-0 flex-1 sm:mt-6">
+          <div
+            className="relative flex min-h-0 flex-1 items-stretch *:h-full"
+            onClick={toggleMobileChrome}
+          >
             {modeView}
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center sm:hidden">
+              {!isMobileChromeVisible ? (
+                <span className="rounded-full border border-(--border-soft) bg-slate-950/66 px-3 py-1.5 text-xs tracking-[0.16em] text-white/88 uppercase shadow-[0_10px_26px_rgba(12,18,36,0.28)] backdrop-blur-md">
+                  {copy.showControlsHint}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
 
       <div
-        className="shrink-0 space-y-3 border-t border-(--border-soft) pt-4 sm:pt-5"
+        className={cn(
+          "shrink-0 space-y-3 border-t border-(--border-soft) pt-4 sm:pt-5",
+          !isMobileChromeVisible && "hidden sm:block",
+        )}
         aria-label="Reader transport and annotation controls"
       >
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+        <div className="grid grid-cols-4 gap-2 sm:hidden">
+          <button
+            type="button"
+            aria-label={copy.previous}
+            onClick={onMoveBackward}
+            className={mobilePrimaryButtonClass}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {copy.previous}
+          </button>
+          <button
+            type="button"
+            aria-label={isPlaying ? copy.pause : copy.play}
+            onClick={onTogglePlayback}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--accent-sky)/35 bg-(--accent-sky)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-sky)/55 hover:bg-(--accent-sky)/24"
+          >
+            {isPlaying ? (
+              <Pause className="h-4 w-4" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            {isPlaying ? copy.pause : copy.play}
+          </button>
+          <button
+            type="button"
+            aria-label={copy.next}
+            onClick={onMoveForward}
+            className={mobilePrimaryButtonClass}
+          >
+            {copy.next}
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-label={copy.readingTools}
+            onClick={() => {
+              setOpenMenu(null);
+              setIsMobileToolsOpen(true);
+            }}
+            className={mobilePrimaryButtonClass}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {copy.tools}
+          </button>
+        </div>
+        <div className="hidden grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
           <div ref={saveMenuRef} className="relative z-30">
             <button
               type="button"
@@ -1232,6 +1394,359 @@ export function ReaderCanvas({
           </div>
         </div>
       </div>
+
+      {isMobileToolsOpen ? (
+        <div className="fixed inset-0 z-80 bg-slate-950/55 backdrop-blur-sm sm:hidden">
+          <button
+            type="button"
+            aria-label={copy.closeTools}
+            onClick={() => {
+              setIsMobileChromeVisible(false);
+              setIsMobileToolsOpen(false);
+            }}
+            className="absolute inset-0"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={copy.readingTools}
+            className="absolute inset-x-0 bottom-0 max-h-[82svh] overflow-y-auto rounded-t-[1.6rem] border border-(--border-strong) bg-(--surface-card) p-4 shadow-[0_-20px_80px_rgba(20,26,56,0.28)]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                  {copy.tools}
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-(--text-strong)">
+                  {copy.readingTools}
+                </h3>
+              </div>
+              <button
+                type="button"
+                aria-label={copy.closeTools}
+                onClick={() => {
+                  setIsMobileChromeVisible(false);
+                  setIsMobileToolsOpen(false);
+                }}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <section className={mobileToolsSectionClass}>
+                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
+                  {copy.saveMenu}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSaveBookmark();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    <BookmarkPlus className="h-4 w-4" />
+                    {copy.saveBookmark}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSaveHighlight();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    <BookmarkPlus className="h-4 w-4" />
+                    {copy.saveHighlight}
+                  </button>
+                </div>
+              </section>
+
+              <section className={mobileToolsSectionClass}>
+                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
+                  {copy.appearance}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  <div className={settingsRowClass}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                          {copy.fontScale}
+                        </p>
+                        <p className="mt-1 text-sm text-(--text-strong)">
+                          {preferences.fontScale.toFixed(1)}x
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          aria-label={copy.decreaseFontScale}
+                          onClick={() => {
+                            onChangeFontScale(-0.1);
+                          }}
+                          className={compactStepButtonClass}
+                        >
+                          -0.1
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={copy.increaseFontScale}
+                          onClick={() => {
+                            onChangeFontScale(0.1);
+                          }}
+                          className={compactStepButtonClass}
+                        >
+                          +0.1
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={settingsRowClass}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                          {copy.lineHeight}
+                        </p>
+                        <p className="mt-1 text-sm text-(--text-strong)">
+                          {preferences.lineHeight.toFixed(1)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          aria-label={copy.decreaseLineHeight}
+                          onClick={() => {
+                            onChangeLineHeight(-0.1);
+                          }}
+                          className={compactStepButtonClass}
+                        >
+                          -0.1
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={copy.increaseLineHeight}
+                          onClick={() => {
+                            onChangeLineHeight(0.1);
+                          }}
+                          className={compactStepButtonClass}
+                        >
+                          +0.1
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={
+                      isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
+                    }
+                    onClick={() => {
+                      void toggleFullscreen();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    {isFullscreen ? (
+                      <Minimize2 className="h-4 w-4" />
+                    ) : (
+                      <Maximize2 className="h-4 w-4" />
+                    )}
+                    {copy.fullscreen}
+                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(themeLabels).map(([value, labels]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          onSelectTheme(value as ReaderPreferences["theme"]);
+                        }}
+                        className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
+                          preferences.theme === value
+                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                            : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                        }`}
+                      >
+                        {getLocalizedCopy(locale, labels)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <section className={mobileToolsSectionClass}>
+                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
+                  {copy.playback}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  <div className={settingsRowClass}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                          {copy.speed}
+                        </p>
+                        <p className="mt-1 text-sm text-(--text-strong)">
+                          {preferences.wordsPerMinute} WPM
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onChangeWordsPerMinute(-20);
+                          }}
+                          aria-label={copy.decreaseReadingSpeed}
+                          className={compactStepButtonClass}
+                        >
+                          -20
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onChangeWordsPerMinute(20);
+                          }}
+                          aria-label={copy.increaseReadingSpeed}
+                          className={compactStepButtonClass}
+                        >
+                          +20
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={settingsRowClass}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                          {copy.chunkSize}
+                        </p>
+                        <p className="mt-1 text-sm text-(--text-strong)">
+                          {chunkSize} {chunkSize === 1 ? copy.word : copy.words}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={onDecreaseChunkSize}
+                          aria-label={copy.decreaseChunkSize}
+                          className={compactStepButtonClass}
+                        >
+                          -1
+                        </button>
+                        <button
+                          type="button"
+                          onClick={onIncreaseChunkSize}
+                          aria-label={copy.increaseChunkSize}
+                          className={compactStepButtonClass}
+                        >
+                          +1
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={onToggleNaturalPauses}
+                      className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
+                        preferences.naturalPauses
+                          ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                          : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                      }`}
+                    >
+                      {copy.naturalPauses}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onToggleReduceMotion}
+                      className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
+                        preferences.reduceMotion
+                          ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                          : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                      }`}
+                    >
+                      {copy.reduceMotion}
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <section className={mobileToolsSectionClass}>
+                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
+                  {copy.moreActions}
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMoveBackwardFive();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    <SkipBack className="h-4 w-4" />
+                    {copy.backFive}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMoveForwardFive();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    <SkipForward className="h-4 w-4" />
+                    {copy.forwardFive}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRestart();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    {copy.restart}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRestartParagraph();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    <Undo2 className="h-4 w-4" />
+                    {copy.restartParagraph}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRepeatChunk();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    {copy.repeatChunk}
+                  </button>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

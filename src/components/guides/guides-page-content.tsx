@@ -55,7 +55,7 @@ const browseByGoalDescription = {
 const guideLanguageNotice = {
   en: "",
   es: "",
-  pt: "As guias publicas ainda estao disponiveis em ingles.",
+  pt: "",
 };
 
 export function GuidesPageContent() {

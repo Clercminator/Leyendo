@@ -17,6 +17,8 @@ test("@mobile reader route stays usable at phone width for text modes", async ({
   await expect(page).toHaveURL(/\/reader\?document=/);
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
 
+  await page.getByLabel(/reader canvas/i).click();
+
   const mobileSidebarToggle = page.getByRole("button", {
     name: /notes, highlights, and bookmarks/i,
   });
@@ -56,6 +58,8 @@ test("@mobile phone users can save Standard PDF bookmarks and highlights from a 
 
   await expect(page).toHaveURL(/\/reader\?document=/);
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+
+  await page.getByLabel(/reader canvas/i).click();
 
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^standard$/i }).click();
