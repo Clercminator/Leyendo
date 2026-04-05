@@ -145,7 +145,9 @@ describe("ReaderCanvas", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     );
 
-    await user.click(screen.getByRole("button", { name: /font scale settings/i }));
+    await user.click(
+      screen.getByRole("button", { name: /font scale settings/i }),
+    );
 
     const fontScalePanel = screen
       .getByText("Current")

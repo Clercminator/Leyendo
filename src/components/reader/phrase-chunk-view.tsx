@@ -12,13 +12,20 @@ interface PhraseChunkViewProps {
   chunks: Chunk[];
 }
 
-export function PhraseChunkView({ document, chunk, chunks }: PhraseChunkViewProps) {
+export function PhraseChunkView({
+  document,
+  chunk,
+  chunks,
+}: PhraseChunkViewProps) {
   const { locale } = useLocale();
   const sentenceChunks = useMemo(() => {
     let start = chunk.index;
     let end = chunk.index;
 
-    while (start > 0 && chunks[start - 1]?.sentenceIndex === chunk.sentenceIndex) {
+    while (
+      start > 0 &&
+      chunks[start - 1]?.sentenceIndex === chunk.sentenceIndex
+    ) {
       start -= 1;
     }
 
@@ -55,7 +62,11 @@ export function PhraseChunkView({ document, chunk, chunks }: PhraseChunkViewProp
               return (
                 <span
                   key={sentenceChunk.index}
-                  className={isActiveChunk ? "reader-active-run px-3 py-1.5 text-xl text-white sm:px-5 sm:py-2 sm:text-4xl" : "reader-dim text-lg sm:text-4xl"}
+                  className={
+                    isActiveChunk
+                      ? "reader-active-run px-3 py-1.5 text-xl text-white sm:px-5 sm:py-2 sm:text-4xl"
+                      : "reader-dim text-lg sm:text-4xl"
+                  }
                 >
                   {sentenceChunk.text}
                 </span>
