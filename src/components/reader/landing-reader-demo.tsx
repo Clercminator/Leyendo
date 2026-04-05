@@ -421,7 +421,7 @@ export function LandingReaderDemo() {
     return null;
   }
 
-  const canvasClassName = "min-h-232 lg:min-h-248 xl:h-full xl:min-h-[86vh]";
+  const canvasClassName = "min-h-232 lg:min-h-248";
 
   return (
     <section className="fade-rise-delayed grid gap-6 xl:grid-cols-[0.7fr_minmax(0,1fr)] xl:items-start">
