@@ -226,7 +226,7 @@ export function AccountPanel() {
       return {
         accountReady: "Cuenta conectada",
         accountSync:
-          "Tu biblioteca sincronizada aparecera en cualquier dispositivo donde entres con esta cuenta.",
+          "Tu biblioteca sincronizada aparecerá en cualquier dispositivo donde entres con esta cuenta.",
         avatarHint:
           "La foto se guarda en esta cuenta y se puede reemplazar cuando quieras.",
         avatarPick: "Subir foto",
@@ -234,70 +234,70 @@ export function AccountPanel() {
         avatarUndo: "Deshacer cambio de foto",
         backupAction: "Respaldar este dispositivo",
         backupDone:
-          "La biblioteca local de este dispositivo ya esta en la nube.",
+          "La biblioteca local de este dispositivo ya está en la nube.",
         backupHint:
-          "Los documentos que importaste antes de iniciar sesion todavia viven solo en este dispositivo. Puedes subirlos a la nube ahora.",
-        birthYearLabel: "Ano de nacimiento",
+          "Los documentos que importaste antes de iniciar sesión todavía viven solo en este dispositivo. Puedes subirlos a la nube ahora.",
+        birthYearLabel: "Año de nacimiento",
         cityLabel: "Ciudad",
         cloudBookmarks: "Marcadores",
         cloudDocuments: "Docs en la nube",
         cloudHighlights: "Destacados",
         cloudSessions: "Sesiones",
         cloudSignInRequired:
-          "Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para activar cuentas, sincronizacion y feedback.",
+          "Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para activar cuentas, sincronización y feedback.",
         createAccount: "Crear cuenta",
         createAccountHint:
-          "La sincronizacion es opcional. Sin cuenta, Leyendo sigue funcionando de forma local.",
-        countryLabel: "Pais",
+          "La sincronización es opcional. Sin cuenta, Leyendo sigue funcionando de forma local.",
+        countryLabel: "País",
         deviceBackup: "Respaldo del dispositivo",
         displayNameLabel: "Nombre visible",
         displayNamePlaceholder: "Como quieres aparecer en tu cuenta",
         emailSent:
-          "Revisa tu bandeja de entrada. El enlace magico ya fue enviado.",
+          "Revisa tu bandeja de entrada. El enlace mágico ya fue enviado.",
         googleSignIn: "Continuar con Google",
         industryLabel: "Industria",
         interestsLabel: "Intereses",
-        interestsPlaceholder: "lectura, productividad, educacion",
-        lastCloudSync: "Ultima sincronizacion",
+        interestsPlaceholder: "lectura, productividad, educación",
+        lastCloudSync: "Última sincronización",
         localOnlyDocs: "Solo en este dispositivo",
-        magicLink: "Enviar enlace magico",
+        magicLink: "Enviar enlace mágico",
         marketingConsentHint:
           "Permite usar estos datos para recomendaciones personalizadas y futuras promociones.",
         marketingConsentLabel:
           "Acepto recomendaciones personalizadas y futuras promociones.",
-        occupationLabel: "Ocupacion",
-        password: "Contrasena",
+        occupationLabel: "Ocupación",
+        password: "Contraseña",
         personalInfoIntro:
-          "Datos opcionales para analisis de audiencia, segmentacion y futuras campanas.",
+          "Datos opcionales para análisis de audiencia, segmentación y futuras campañas.",
         personalInfoTitle: "Perfil de audiencia",
         profileSaved: "Perfil actualizado.",
         profileSaveFallback: "El perfil no pudo actualizarse.",
         profileSaveLabel: "Guardar perfil",
-        profileUseCaseLabel: "Para que usas Leyendo",
+        profileUseCaseLabel: "Para qué usas Leyendo",
         profileUseCasePlaceholder:
-          "Preparacion de examenes, lectura legal, investigacion, practica de idiomas...",
+          "Preparación de exámenes, lectura legal, investigación, práctica de idiomas...",
         refreshSync: "Sincronizar ahora",
         readerSetupEmpty:
-          "Abre cualquier documento y ajusta el ritmo o el tema para guardar esa configuracion en tu cuenta.",
-        readerSetupTitle: "Configuracion de lectura sincronizada",
+          "Abre cualquier documento y ajusta el ritmo o el tema para guardar esa configuración en tu cuenta.",
+        readerSetupTitle: "Configuración de lectura sincronizada",
         signIn: "Entrar",
-        signOut: "Cerrar sesion",
+        signOut: "Cerrar sesión",
         syncResultEmpty:
-          "Pulsa Sincronizar ahora para confirmar cuantos documentos, sesiones, marcadores y destacados puede restaurar esta cuenta.",
-        syncResultTitle: "Resultado de la ultima sincronizacion",
+          "Pulsa Sincronizar ahora para confirmar cuántos documentos, sesiones, marcadores y destacados puede restaurar esta cuenta.",
+        syncResultTitle: "Resultado de la última sincronización",
         syncChecklist: [
           "Tus documentos importados viajan con esta cuenta.",
           "El progreso de lectura se restaura en otros dispositivos.",
           "Marcadores y destacados vuelven a aparecer sin reimportar el archivo.",
         ],
-        syncError: "La sincronizacion no termino correctamente.",
+        syncError: "La sincronización no terminó correctamente.",
         syncIdle: "Listo para sincronizar esta biblioteca con la nube.",
         syncInProgress: "Sincronizando documentos, progreso y marcadores...",
-        syncStatusLabel: "Estado de sincronizacion",
+        syncStatusLabel: "Estado de sincronización",
         syncSuccess: "Biblioteca sincronizada.",
         syncedLibraryTitle: "Lo que ya se sincroniza",
         uploadedFromDevice: "Subidos desde este dispositivo",
-        useMagicLink: "Usar enlace magico",
+        useMagicLink: "Usar enlace mágico",
       };
     }
 
@@ -499,7 +499,7 @@ export function AccountPanel() {
           locale === "en"
             ? "Account created. Check your inbox if email confirmation is enabled."
             : locale === "es"
-              ? "Cuenta creada. Revisa tu correo si la confirmacion por email esta activa."
+              ? "Cuenta creada. Revisa tu correo si la confirmación por email está activa."
               : "Conta criada. Verifique seu email se a confirmacao estiver ativa.",
         );
       } else {
@@ -640,7 +640,7 @@ export function AccountPanel() {
             {locale === "en"
               ? "Checking session..."
               : locale === "es"
-                ? "Comprobando sesion..."
+                ? "Comprobando sesión..."
                 : "Verificando sessao..."}
           </span>
         </div>
@@ -903,33 +903,6 @@ export function AccountPanel() {
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                {helperCopy.syncStatusLabel}
-              </p>
-              <p className="mt-3 text-lg font-semibold text-(--text-strong)">
-                {syncCopy}
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                {helperCopy.localOnlyDocs}
-              </p>
-              <p className="mt-3 text-3xl font-semibold text-(--text-strong)">
-                {guestDocuments}
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                {helperCopy.lastCloudSync}
-              </p>
-              <p className="mt-3 text-lg font-semibold text-(--text-strong)">
-                {lastSyncedLabel ?? "-"}
-              </p>
-            </div>
-          </div>
-
           <div className="mt-8 flex flex-wrap gap-3">
             <Button
               className="h-11 rounded-full px-5"
@@ -998,20 +971,6 @@ export function AccountPanel() {
 
           <div className="mt-6 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
             <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-              {helperCopy.localOnlyDocs}
-            </p>
-            <p className="mt-3 text-3xl font-semibold text-(--text-strong)">
-              {guestDocuments}
-            </p>
-            <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-              {guestDocuments > 0
-                ? helperCopy.backupHint
-                : helperCopy.backupDone}
-            </p>
-          </div>
-
-          <div className="mt-4 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-            <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
               {helperCopy.readerSetupTitle}
             </p>
             <p className="mt-3 text-sm leading-7 text-(--text-strong)">
@@ -1073,6 +1032,38 @@ export function AccountPanel() {
             )}
           </div>
 
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                {helperCopy.syncStatusLabel}
+              </p>
+              <p className="mt-3 text-lg font-semibold text-(--text-strong)">
+                {syncCopy}
+              </p>
+            </div>
+            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                {helperCopy.localOnlyDocs}
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-(--text-strong)">
+                {guestDocuments}
+              </p>
+              <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+                {guestDocuments > 0
+                  ? helperCopy.backupHint
+                  : helperCopy.backupDone}
+              </p>
+            </div>
+            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                {helperCopy.lastCloudSync}
+              </p>
+              <p className="mt-3 text-lg font-semibold text-(--text-strong)">
+                {lastSyncedLabel ?? "-"}
+              </p>
+            </div>
+          </div>
+
           {statusMessage || errorMessage ? (
             <p className="mt-6 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
               {statusMessage ?? errorMessage}
@@ -1096,7 +1087,7 @@ export function AccountPanel() {
           {locale === "en"
             ? "Sign in only if you want your documents, reading progress, bookmarks, and highlights to follow you across devices."
             : locale === "es"
-              ? "Inicia sesion solo si quieres que tus documentos, progreso, marcadores y destacados te acompanen entre dispositivos."
+              ? "Inicia sesión solo si quieres que tus documentos, progreso, marcadores y destacados te acompañen entre dispositivos."
               : "Entre apenas se quiser que seus documentos, progresso, marcadores e destaques acompanhem voce entre dispositivos."}
         </p>
 
