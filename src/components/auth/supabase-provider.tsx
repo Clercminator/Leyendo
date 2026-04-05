@@ -16,6 +16,7 @@ import type { ReaderPreferences } from "@/types/reader";
 import {
   backUpLocalLibraryToCloud,
   clearSyncedLibraryForUser,
+  deleteProfileAvatar,
   ensureProfile,
   getProfile,
   getLocalOnlyLibrarySummary,
@@ -23,6 +24,8 @@ import {
   isRemoteLibraryEmpty,
   type LocalLibrarySummary,
   type UserProfile,
+  type UserPersonalInfo,
+  uploadProfileAvatar,
   upsertProfile,
 } from "@/lib/supabase/library-sync";
 import {
@@ -32,6 +35,19 @@ import {
 
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
+interface CloudSyncSummary extends LocalLibrarySummary {
+  finishedAt: string;
+  uploadedDocuments: number;
+}
+
+interface ProfileUpdateInput {
+  avatarFile?: File | null;
+  displayName?: string;
+  marketingConsent?: boolean;
+  personalInfo?: UserPersonalInfo | null;
+  removeAvatar?: boolean;
+}
+
 interface SupabaseAuthContextValue {
   errorMessage?: string;
   guestLibrarySummary: LocalLibrarySummary;
@@ -39,6 +55,7 @@ interface SupabaseAuthContextValue {
   isLoading: boolean;
   isProfileSaving: boolean;
   lastSyncedAt?: string;
+  lastSyncSummary?: CloudSyncSummary;
   profile?: UserProfile;
   refreshProfile: () => Promise<void>;
   session: Session | null;
@@ -51,7 +68,7 @@ interface SupabaseAuthContextValue {
   syncLocalLibraryToCloud: () => Promise<number>;
   syncStatus: SyncStatus;
   syncWithCloud: () => Promise<void>;
-  updateProfile: (input: { displayName?: string }) => Promise<void>;
+  updateProfile: (input: ProfileUpdateInput) => Promise<void>;
   user: User | null;
 }
 
@@ -68,6 +85,7 @@ const defaultSupabaseAuthContext: SupabaseAuthContextValue = {
   isLoading: false,
   isProfileSaving: false,
   session: null,
+  lastSyncSummary: undefined,
   refreshProfile: async () => {},
   signIn: async () => {
     throw new Error("SupabaseProvider is not mounted.");
@@ -105,6 +123,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [lastSyncedAt, setLastSyncedAt] = useState<string>();
+  const [lastSyncSummary, setLastSyncSummary] = useState<CloudSyncSummary>();
   const [errorMessage, setErrorMessage] = useState<string>();
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [profile, setProfile] = useState<UserProfile>();
@@ -156,14 +175,29 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         setProfile(await getProfile(supabase, userId));
         const remoteEmpty = await isRemoteLibraryEmpty(supabase, userId);
         const localSummary = await getLocalOnlyLibrarySummary();
+        let uploadedDocuments = 0;
 
         if (remoteEmpty || localSummary.documents > 0) {
-          await backUpLocalLibraryToCloud(supabase, userId);
+          const backupResult = await backUpLocalLibraryToCloud(
+            supabase,
+            userId,
+          );
+          uploadedDocuments = backupResult.backedUpDocuments;
         }
 
-        await hydrateCloudLibraryToLocal(supabase, userId);
+        const hydratedSummary = await hydrateCloudLibraryToLocal(
+          supabase,
+          userId,
+        );
+        const finishedAt = new Date().toISOString();
+
         setSyncStatus("synced");
-        setLastSyncedAt(new Date().toISOString());
+        setLastSyncedAt(finishedAt);
+        setLastSyncSummary({
+          ...hydratedSummary,
+          finishedAt,
+          uploadedDocuments,
+        });
       } catch (error) {
         setSyncStatus("error");
         setErrorMessage(
@@ -182,23 +216,77 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   }, [refreshGuestLibrarySummary, supabase]);
 
   const updateProfile = useCallback(
-    async (input: { displayName?: string }) => {
+    async (input: ProfileUpdateInput) => {
       if (!supabase || !currentUserIdRef.current) {
         throw new Error("You need to be signed in to update your profile.");
       }
 
       setIsProfileSaving(true);
       setErrorMessage(undefined);
+      let uploadedAvatarPath: string | undefined;
 
       try {
-        await ensureProfile(supabase, currentUserIdRef.current);
+        const currentUserId = currentUserIdRef.current;
+        await ensureProfile(supabase, currentUserId);
+
+        const currentProfile =
+          profile ?? (await getProfile(supabase, currentUserId));
+        const avatarUpdateNeeded =
+          Boolean(input.avatarFile) || input.removeAvatar === true;
+        const previousAvatarPath = currentProfile?.avatarPath;
+        let nextAvatarPath: string | null | undefined = undefined;
+
+        if (input.avatarFile) {
+          uploadedAvatarPath = await uploadProfileAvatar(supabase, {
+            file: input.avatarFile,
+            userId: currentUserId,
+          });
+          nextAvatarPath = uploadedAvatarPath;
+        } else if (input.removeAvatar) {
+          nextAvatarPath = null;
+        }
+
         const nextProfile = await upsertProfile(supabase, {
+          ...(avatarUpdateNeeded ? { avatarPath: nextAvatarPath ?? null } : {}),
           displayName: input.displayName,
-          userId: currentUserIdRef.current,
+          marketingConsent: input.marketingConsent,
+          personalInfo: input.personalInfo,
+          userId: currentUserId,
         });
+
+        if (
+          input.avatarFile &&
+          previousAvatarPath &&
+          previousAvatarPath !== nextProfile.avatarPath
+        ) {
+          try {
+            await deleteProfileAvatar(supabase, previousAvatarPath);
+          } catch (error) {
+            console.warn("previous profile avatar could not be removed", error);
+          }
+        }
+
+        if (input.removeAvatar && previousAvatarPath) {
+          try {
+            await deleteProfileAvatar(supabase, previousAvatarPath);
+          } catch (error) {
+            console.warn("previous profile avatar could not be removed", error);
+          }
+        }
 
         setProfile(nextProfile);
       } catch (error) {
+        if (typeof uploadedAvatarPath === "string") {
+          try {
+            await deleteProfileAvatar(supabase, uploadedAvatarPath);
+          } catch (cleanupError) {
+            console.warn(
+              "new profile avatar could not be removed",
+              cleanupError,
+            );
+          }
+        }
+
         setErrorMessage(
           error instanceof Error
             ? error.message
@@ -245,9 +333,19 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         supabase,
         currentUserIdRef.current,
       );
-      await hydrateCloudLibraryToLocal(supabase, currentUserIdRef.current);
+      const hydratedSummary = await hydrateCloudLibraryToLocal(
+        supabase,
+        currentUserIdRef.current,
+      );
+      const finishedAt = new Date().toISOString();
+
       setSyncStatus("synced");
-      setLastSyncedAt(new Date().toISOString());
+      setLastSyncedAt(finishedAt);
+      setLastSyncSummary({
+        ...hydratedSummary,
+        finishedAt,
+        uploadedDocuments: result.backedUpDocuments,
+      });
       await refreshGuestLibrarySummary();
       return result.backedUpDocuments;
     } catch (error) {
@@ -287,6 +385,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         await syncWithCloud();
       } else {
         setProfile(undefined);
+        setLastSyncSummary(undefined);
       }
     });
 
@@ -307,6 +406,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       setProfile(undefined);
       setSyncStatus("idle");
       setLastSyncedAt(undefined);
+      setLastSyncSummary(undefined);
       if (previousUserId) {
         void clearSyncedLibraryForUser(previousUserId).then(() => {
           void refreshGuestLibrarySummary();
@@ -413,6 +513,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     }
 
     setProfile(undefined);
+    setLastSyncSummary(undefined);
     await refreshGuestLibrarySummary();
   }, [refreshGuestLibrarySummary, supabase]);
 
@@ -424,6 +525,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       isLoading,
       isProfileSaving,
       lastSyncedAt,
+      lastSyncSummary,
       profile,
       refreshProfile,
       session,
@@ -445,6 +547,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       isLoading,
       isProfileSaving,
       lastSyncedAt,
+      lastSyncSummary,
       profile,
       refreshProfile,
       session,

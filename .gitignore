@@ -42,3 +42,7 @@ next-env.d.ts
 
 /data
 
+# local browser-debug artifacts
+/.playwright-mcp/
+/account-page-before.md
+

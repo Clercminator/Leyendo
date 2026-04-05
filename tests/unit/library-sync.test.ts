@@ -68,7 +68,10 @@ vi.mock("@/db/app-db", () => ({
   },
 }));
 
-import { hydrateRemoteDocumentToLocal } from "@/lib/supabase/library-sync";
+import {
+  getProfile,
+  hydrateRemoteDocumentToLocal,
+} from "@/lib/supabase/library-sync";
 
 function createQueryResult<T>(result: T) {
   const chain = {
@@ -200,5 +203,63 @@ describe("library sync hydration", () => {
         syncState: "synced",
       }),
     ]);
+  });
+
+  it("normalizes optional profile fields and signs avatar URLs", async () => {
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: {
+        signedUrl: "https://cdn.example.com/avatar.png",
+      },
+      error: null,
+    });
+
+    const supabase = {
+      from: vi.fn(() => ({
+        select: vi.fn(() =>
+          createQueryResult({
+            data: {
+              avatar_path: "user-1/avatar.png",
+              created_at: "2026-03-30T10:00:00.000Z",
+              display_name: "Lee Reader",
+              marketing_consent: true,
+              personal_info: {
+                city: "Madrid",
+                country: "Spain",
+                interests: ["reading", "productivity"],
+                occupation: "Student",
+              },
+              reader_preferences: null,
+              updated_at: "2026-03-30T10:00:00.000Z",
+              user_id: "user-1",
+            },
+            error: null,
+          }),
+        ),
+      })),
+      storage: {
+        from: vi.fn(() => ({
+          createSignedUrl,
+        })),
+      },
+    };
+
+    const result = await getProfile(supabase as never, "user-1");
+
+    expect(result).toEqual({
+      avatarPath: "user-1/avatar.png",
+      avatarUrl: "https://cdn.example.com/avatar.png",
+      createdAt: "2026-03-30T10:00:00.000Z",
+      displayName: "Lee Reader",
+      marketingConsent: true,
+      personalInfo: {
+        city: "Madrid",
+        country: "Spain",
+        interests: ["reading", "productivity"],
+        occupation: "Student",
+      },
+      readerPreferences: undefined,
+      updatedAt: "2026-03-30T10:00:00.000Z",
+      userId: "user-1",
+    });
   });
 });

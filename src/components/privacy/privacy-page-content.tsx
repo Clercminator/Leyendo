@@ -27,23 +27,44 @@ export function PrivacyPageContent() {
     ],
   };
 
+  const optionalAccountItems = {
+    en: [
+      "Optional display name and profile photo for your signed-in account",
+      "Optional audience-profile details such as city, country, occupation, industry, interests, and reading use case",
+      "Marketing consent is only stored when you explicitly opt in",
+    ],
+    es: [
+      "Nombre visible y foto de perfil opcionales para tu cuenta con sesion",
+      "Datos opcionales de audiencia como ciudad, pais, ocupacion, industria, intereses y uso de lectura",
+      "El consentimiento de marketing solo se guarda cuando lo aceptas de forma explicita",
+    ],
+    pt: [
+      "Nome de exibicao e foto de perfil opcionais para sua conta com login",
+      "Dados opcionais de audiencia como cidade, pais, ocupacao, industria, interesses e uso de leitura",
+      "O consentimento de marketing so e salvo quando voce aceita de forma explicita",
+    ],
+  };
+
   const noCloudItems = {
     en: [
       "No mandatory sign-in",
       "No uploaded document text sent to analytics",
       "No automatic cloud backup unless you sign in",
+      "No ad targeting built from your document text",
       "No hidden upload of guest documents to a cloud account",
     ],
     es: [
       "Sin inicio de sesion obligatorio",
       "Sin enviar el texto de tus documentos a analitica",
       "Sin respaldo en la nube automatico salvo que inicies sesion",
+      "Sin segmentacion publicitaria basada en el texto de tus documentos",
       "Sin subidas ocultas de documentos invitados a una cuenta en la nube",
     ],
     pt: [
       "Sem login obrigatorio",
       "Sem enviar o texto dos seus documentos para analitica",
       "Sem backup automatico na nuvem a menos que voce entre",
+      "Sem segmentacao publicitaria baseada no texto dos seus documentos",
       "Sem envio oculto de documentos de convidado para uma conta na nuvem",
     ],
   };
@@ -91,6 +112,21 @@ export function PrivacyPageContent() {
           </h2>
           <ul className="mt-4 space-y-3 text-sm leading-7 text-(--text-muted)">
             {noCloudItems[locale].map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl lg:col-span-2">
+          <h2 className="text-xl font-semibold text-(--text-strong)">
+            {locale === "en"
+              ? "What an optional signed-in profile can store"
+              : locale === "es"
+                ? "Lo que puede guardar un perfil opcional con sesion"
+                : "O que um perfil opcional com login pode guardar"}
+          </h2>
+          <ul className="mt-4 space-y-3 text-sm leading-7 text-(--text-muted)">
+            {optionalAccountItems[locale].map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
