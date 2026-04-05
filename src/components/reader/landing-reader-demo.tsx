@@ -421,13 +421,13 @@ export function LandingReaderDemo() {
     return null;
   }
 
-  const canvasClassName = "min-h-232 lg:min-h-248";
+  const canvasClassName = "min-h-232 lg:min-h-248 xl:h-full xl:min-h-[86vh]";
 
   return (
-    <section className="fade-rise-delayed grid gap-6 xl:grid-cols-[0.7fr_minmax(0,1fr)] xl:items-stretch">
+    <section className="fade-rise-delayed grid gap-6 xl:grid-cols-[0.7fr_minmax(0,1fr)] xl:items-start">
       <div
         data-testid="landing-reader-demo-copy"
-        className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-7 shadow-[0_20px_80px_rgba(20,26,56,0.1)] backdrop-blur-xl xl:h-[86vh] xl:min-h-248"
+        className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-7 shadow-[0_20px_80px_rgba(20,26,56,0.1)] backdrop-blur-xl xl:min-h-[86vh]"
       >
         <p className="editorial-kicker text-(--accent-amber)">
           {getLocalizedCopy(locale, demoIntroEyebrow)}
@@ -507,7 +507,7 @@ export function LandingReaderDemo() {
       </div>
 
       <div
-        className="flex min-h-0 flex-col space-y-4"
+        className="relative z-20 flex min-h-0 flex-col space-y-4 xl:self-stretch"
         data-reader-theme={preferences.theme}
         data-reader-font-scale={preferences.fontScale.toFixed(1)}
         data-reader-line-height={preferences.lineHeight.toFixed(1)}

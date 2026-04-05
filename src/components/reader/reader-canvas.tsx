@@ -208,8 +208,13 @@ export function ReaderCanvas({
     "rounded-full border border-(--border-soft) bg-(--surface-chip) px-2.5 py-1.5 text-xs text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-strong)";
   const settingsTriggerClass =
     "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:w-auto sm:rounded-full sm:px-3.5";
-  const settingsPanelClass =
-    "reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-[19rem] max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl";
+  const desktopBottomMenuPositionClass = isFullscreen
+    ? "bottom-full top-auto mb-3 mt-0"
+    : "top-full mt-3";
+  const settingsPanelClass = cn(
+    "reader-dropdown-panel absolute left-0 z-60 w-[19rem] max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
+    desktopBottomMenuPositionClass,
+  );
   const settingsRowClass =
     "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-3";
   const topControlButtonClass =
@@ -471,10 +476,15 @@ export function ReaderCanvas({
       es: "Salir de pantalla completa",
       pt: "Sair da tela cheia",
     }),
-    fullscreen: getLocalizedCopy(locale, {
+    expand: getLocalizedCopy(locale, {
       en: "Expand",
       es: "Expandir",
       pt: "Expandir",
+    }),
+    collapse: getLocalizedCopy(locale, {
+      en: "Collapse",
+      es: "Contraer",
+      pt: "Recolher",
     }),
     currentValue: getLocalizedCopy(locale, {
       en: "Current",
@@ -830,6 +840,25 @@ export function ReaderCanvas({
                 </div>
               ) : null}
             </div>
+            {isFullscreen ? (
+              <>
+                <span className={`hidden ${statusChipClass} sm:inline-flex`}>
+                  {progress}% {copy.complete}
+                </span>
+                <span className={`hidden ${statusChipClass} sm:inline-flex`}>
+                  {sentenceCount} {copy.sentenceCount}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
+                  onClick={onAnnounceRemainingTime}
+                  className={`hidden ${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:inline-flex`}
+                >
+                  <Clock3 className="h-4 w-4 text-(--accent-amber)" />
+                  {remainingTimeLabel}
+                </button>
+              </>
+            ) : null}
             <button
               type="button"
               aria-label={
@@ -845,7 +874,7 @@ export function ReaderCanvas({
               ) : (
                 <Maximize2 className="h-4 w-4" />
               )}
-              {copy.fullscreen}
+              {isFullscreen ? copy.collapse : copy.expand}
             </button>
           </div>
           <div className="grid gap-2 text-sm sm:hidden">
@@ -870,7 +899,12 @@ export function ReaderCanvas({
               {copy.hideControlsHint}
             </p>
           </div>
-          <div className="hidden grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+          <div
+            className={cn(
+              "hidden grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-3",
+              isFullscreen && "sm:hidden",
+            )}
+          >
             <span className={statusChipClass}>
               {progress}% {copy.complete}
             </span>
@@ -988,7 +1022,12 @@ export function ReaderCanvas({
               />
             </button>
             {openMenu === "save" ? (
-              <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+              <div
+                className={cn(
+                  "reader-dropdown-panel absolute left-0 z-60 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
+                  desktopBottomMenuPositionClass,
+                )}
+              >
                 <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                   {copy.saveMenu}
                 </p>
@@ -1312,7 +1351,12 @@ export function ReaderCanvas({
               />
             </button>
             {openMenu === "more" ? (
-              <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+              <div
+                className={cn(
+                  "reader-dropdown-panel absolute right-0 z-60 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
+                  desktopBottomMenuPositionClass,
+                )}
+              >
                 <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                   {copy.moreActions}
                 </p>
@@ -1551,7 +1595,7 @@ export function ReaderCanvas({
                     ) : (
                       <Maximize2 className="h-4 w-4" />
                     )}
-                    {copy.fullscreen}
+                    {isFullscreen ? copy.collapse : copy.expand}
                   </button>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(themeLabels).map(([value, labels]) => (

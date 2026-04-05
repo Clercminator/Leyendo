@@ -119,18 +119,42 @@ describe("ReaderCanvas", () => {
     const enterButton = screen.getByRole("button", {
       name: /enter fullscreen/i,
     });
+    const themeButton = screen.getByRole("button", { name: /change theme/i });
 
     await user.click(enterButton);
 
     expect(HTMLElement.prototype.requestFullscreen).toHaveBeenCalledTimes(1);
 
+    const exitButton = await screen.findByRole("button", {
+      name: /exit fullscreen/i,
+    });
+    const topRow = exitButton.parentElement as HTMLElement;
+    const themeControl = themeButton.parentElement as HTMLElement;
+    const sentenceChip = within(topRow).getByText("8 sentences");
+
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /exit fullscreen/i }),
-      ).toBeInTheDocument();
+      expect(exitButton).toHaveTextContent("Collapse");
     });
 
-    await user.click(screen.getByRole("button", { name: /exit fullscreen/i }));
+    expect(
+      themeControl.compareDocumentPosition(sentenceChip) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      sentenceChip.compareDocumentPosition(exitButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+
+    await user.click(screen.getByRole("button", { name: /font scale settings/i }));
+
+    const fontScalePanel = screen
+      .getByText("Current")
+      .closest(".reader-dropdown-panel");
+
+    expect(fontScalePanel).toHaveClass("bottom-full");
+    expect(fontScalePanel).toHaveClass("top-auto");
+
+    await user.click(exitButton);
 
     expect(document.exitFullscreen).toHaveBeenCalledTimes(1);
   });
