@@ -463,22 +463,25 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     [supabase],
   );
 
-  const signInWithOAuth = useCallback(async (provider: "github" | "google") => {
-    if (!supabase) {
-      throw new Error("Supabase is not configured.");
-    }
+  const signInWithOAuth = useCallback(
+    async (provider: "github" | "google") => {
+      if (!supabase) {
+        throw new Error("Supabase is not configured.");
+      }
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/account`,
-      },
-    });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/account`,
+        },
+      });
 
-    if (error) {
-      throw error;
-    }
-  }, [supabase]);
+      if (error) {
+        throw error;
+      }
+    },
+    [supabase],
+  );
 
   const signInWithGitHub = useCallback(async () => {
     await signInWithOAuth("github");

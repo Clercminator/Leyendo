@@ -253,7 +253,9 @@ describe("AccountPanel", () => {
 
     render(<AccountPanel />);
 
-    await user.click(screen.getByRole("button", { name: /continue with github/i }));
+    await user.click(
+      screen.getByRole("button", { name: /continue with github/i }),
+    );
 
     await waitFor(() => {
       expect(signInWithGitHub).toHaveBeenCalledTimes(1);
