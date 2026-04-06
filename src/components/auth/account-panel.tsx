@@ -170,6 +170,7 @@ export function AccountPanel() {
     lastSyncSummary,
     profile,
     signIn,
+    signInWithGitHub,
     signInWithGoogle,
     signInWithMagicLink,
     signOut,
@@ -252,15 +253,18 @@ export function AccountPanel() {
         deviceBackup: "Respaldo del dispositivo",
         displayNameLabel: "Nombre visible",
         displayNamePlaceholder: "Como quieres aparecer en tu cuenta",
+        emailLinkModeDescription:
+          "Te enviaremos un enlace de acceso de un solo uso a tu email. No necesitas contraseña. Si este correo es nuevo, abrir el enlace también puede crear la cuenta.",
         emailSent:
-          "Revisa tu bandeja de entrada. El enlace mágico ya fue enviado.",
+          "Revisa tu bandeja de entrada. Ya enviamos un enlace de acceso de un solo uso.",
+        githubSignIn: "Continuar con GitHub",
         googleSignIn: "Continuar con Google",
         industryLabel: "Industria",
         interestsLabel: "Intereses",
         interestsPlaceholder: "lectura, productividad, educación",
         lastCloudSync: "Última sincronización",
         localOnlyDocs: "Solo en este dispositivo",
-        magicLink: "Enviar enlace mágico",
+        magicLink: "Enviar enlace de acceso por email",
         marketingConsentHint:
           "Permite usar estos datos para recomendaciones personalizadas y futuras promociones.",
         marketingConsentLabel:
@@ -281,6 +285,8 @@ export function AccountPanel() {
           "Abre cualquier documento y ajusta el ritmo o el tema para guardar esa configuración en tu cuenta.",
         readerSetupTitle: "Configuración de lectura sincronizada",
         signIn: "Entrar",
+        signInModeDescription:
+          "Usa tu email y contraseña si ya creaste una cuenta.",
         signOut: "Cerrar sesión",
         syncResultEmpty:
           "Pulsa Sincronizar ahora para confirmar cuántos documentos, sesiones, marcadores y destacados puede restaurar esta cuenta.",
@@ -297,7 +303,9 @@ export function AccountPanel() {
         syncSuccess: "Biblioteca sincronizada.",
         syncedLibraryTitle: "Lo que ya se sincroniza",
         uploadedFromDevice: "Subidos desde este dispositivo",
-        useMagicLink: "Usar enlace mágico",
+        useMagicLink: "Enlace por email",
+        createAccountModeDescription:
+          "Crea una cuenta con email y contraseña, o usa GitHub o Google para entrar más rápido la primera vez.",
       };
     }
 
@@ -330,15 +338,18 @@ export function AccountPanel() {
         deviceBackup: "Backup do dispositivo",
         displayNameLabel: "Nome de exibicao",
         displayNamePlaceholder: "Como voce quer aparecer na conta",
+        emailLinkModeDescription:
+          "Vamos enviar um link unico de acesso para seu email. Nao precisa de senha. Se este email for novo, abrir o link tambem pode criar a conta.",
         emailSent:
-          "Confira sua caixa de entrada. O link magico ja foi enviado.",
+          "Confira sua caixa de entrada. Enviamos um link unico de acesso.",
+        githubSignIn: "Continuar com GitHub",
         googleSignIn: "Continuar com Google",
         industryLabel: "Industria",
         interestsLabel: "Interesses",
         interestsPlaceholder: "leitura, produtividade, educacao",
         lastCloudSync: "Ultima sincronizacao",
         localOnlyDocs: "So neste dispositivo",
-        magicLink: "Enviar link magico",
+        magicLink: "Enviar link de acesso por email",
         marketingConsentHint:
           "Permite usar estes dados para recomendacoes personalizadas e futuras promocoes.",
         marketingConsentLabel:
@@ -359,6 +370,8 @@ export function AccountPanel() {
           "Abra qualquer documento e ajuste ritmo ou tema para salvar essa configuracao na sua conta.",
         readerSetupTitle: "Configuracao de leitura sincronizada",
         signIn: "Entrar",
+        signInModeDescription:
+          "Use seu email e senha se voce ja criou uma conta.",
         signOut: "Sair",
         syncResultEmpty:
           "Use Sincronizar agora para confirmar quantos documentos, sessoes, marcadores e destaques esta conta consegue restaurar.",
@@ -375,7 +388,9 @@ export function AccountPanel() {
         syncSuccess: "Biblioteca sincronizada.",
         syncedLibraryTitle: "O que ja sincroniza",
         uploadedFromDevice: "Enviados deste dispositivo",
-        useMagicLink: "Usar link magico",
+        useMagicLink: "Link por email",
+        createAccountModeDescription:
+          "Crie uma conta com email e senha, ou use GitHub ou Google para entrar mais rapido na primeira vez.",
       };
     }
 
@@ -407,14 +422,17 @@ export function AccountPanel() {
       deviceBackup: "Device backup",
       displayNameLabel: "Display name",
       displayNamePlaceholder: "How you want this account to appear",
-      emailSent: "Check your inbox. The magic link has been sent.",
+      emailLinkModeDescription:
+        "We'll email you a one-time sign-in link. No password needed. If this email is new, opening the link can also create the account.",
+      emailSent: "Check your inbox. We sent a one-time sign-in link.",
+      githubSignIn: "Continue with GitHub",
       googleSignIn: "Continue with Google",
       industryLabel: "Industry",
       interestsLabel: "Interests",
       interestsPlaceholder: "reading, productivity, education",
       lastCloudSync: "Last cloud sync",
       localOnlyDocs: "Local-only docs",
-      magicLink: "Send magic link",
+      magicLink: "Send email sign-in link",
       marketingConsentHint:
         "Allow Leyendo to use this profile for personalized recommendations and future promotions.",
       marketingConsentLabel:
@@ -435,6 +453,8 @@ export function AccountPanel() {
         "Open any document and adjust pacing or theme once to save that setup to your account.",
       readerSetupTitle: "Synced reader setup",
       signIn: "Sign in",
+      signInModeDescription:
+        "Use your email and password if you already created an account.",
       signOut: "Sign out",
       syncResultEmpty:
         "Run Sync now to confirm how many documents, sessions, bookmarks, and highlights this account can restore.",
@@ -451,7 +471,9 @@ export function AccountPanel() {
       syncSuccess: "Library synced.",
       syncedLibraryTitle: "What already syncs",
       uploadedFromDevice: "Uploaded from this device",
-      useMagicLink: "Use magic link",
+      useMagicLink: "Email link",
+      createAccountModeDescription:
+        "Create an email and password account, or use GitHub or Google for a faster first sign-in.",
     };
   }, [locale]);
 
@@ -484,6 +506,14 @@ export function AccountPanel() {
         : syncStatus === "error"
           ? helperCopy.syncError
           : helperCopy.syncIdle;
+  const isOAuthPending =
+    pendingAction === "github" || pendingAction === "google";
+  const authModeDescription =
+    mode === "sign-in"
+      ? helperCopy.signInModeDescription
+      : mode === "create-account"
+        ? helperCopy.createAccountModeDescription
+        : helperCopy.emailLinkModeDescription;
 
   async function handleSubmit() {
     setPendingAction("auth");
@@ -515,12 +545,15 @@ export function AccountPanel() {
     }
   }
 
-  async function handleGoogleSignIn() {
-    setPendingAction("google");
+  async function handleOAuthSignIn(
+    provider: "github" | "google",
+    signInWithProvider: () => Promise<void>,
+  ) {
+    setPendingAction(provider);
     setStatusMessage(undefined);
 
     try {
-      await signInWithGoogle();
+      await signInWithProvider();
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Authentication failed.",
@@ -1085,10 +1118,10 @@ export function AccountPanel() {
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-8 text-(--text-muted)">
           {locale === "en"
-            ? "Sign in only if you want your documents, reading progress, bookmarks, and highlights to follow you across devices."
+            ? "Sign in only if you want your documents, reading progress, bookmarks, and highlights to follow you across devices. You can use GitHub, Google, email + password, or a one-time email link."
             : locale === "es"
-              ? "Inicia sesión solo si quieres que tus documentos, progreso, marcadores y destacados te acompañen entre dispositivos."
-              : "Entre apenas se quiser que seus documentos, progresso, marcadores e destaques acompanhem voce entre dispositivos."}
+              ? "Inicia sesión solo si quieres que tus documentos, progreso, marcadores y destacados te acompañen entre dispositivos. Puedes usar GitHub, Google, email con contraseña o un enlace de acceso por email."
+              : "Entre apenas se quiser que seus documentos, progresso, marcadores e destaques acompanhem voce entre dispositivos. Voce pode usar GitHub, Google, email com senha ou um link unico por email."}
         </p>
 
         <div className="mt-8 flex flex-wrap gap-2">
@@ -1115,22 +1148,46 @@ export function AccountPanel() {
           ))}
         </div>
 
+        <p className="mt-6 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
+          {authModeDescription}
+        </p>
+
         <div className="mt-8 grid gap-4">
-          <Button
-            variant="outline"
-            className="h-12 rounded-[1.25rem]"
-            disabled={pendingAction === "google"}
-            onClick={() => {
-              void handleGoogleSignIn();
-            }}
-          >
-            {pendingAction === "google" ? (
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-            ) : (
-              <span className="text-base font-semibold">G</span>
-            )}
-            {helperCopy.googleSignIn}
-          </Button>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              variant="outline"
+              className="h-12 rounded-[1.25rem]"
+              disabled={isOAuthPending}
+              onClick={() => {
+                void handleOAuthSignIn("github", signInWithGitHub);
+              }}
+            >
+              {pendingAction === "github" ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <span className="text-sm font-semibold tracking-[0.18em]">
+                  GH
+                </span>
+              )}
+              {helperCopy.githubSignIn}
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-12 rounded-[1.25rem]"
+              disabled={isOAuthPending}
+              onClick={() => {
+                void handleOAuthSignIn("google", signInWithGoogle);
+              }}
+            >
+              {pendingAction === "google" ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <span className="text-base font-semibold">G</span>
+              )}
+              {helperCopy.googleSignIn}
+            </Button>
+          </div>
 
           <div className="flex items-center gap-3 text-xs tracking-[0.24em] text-(--text-muted) uppercase">
             <span className="h-px flex-1 bg-(--border-soft)" />

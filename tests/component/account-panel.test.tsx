@@ -53,6 +53,7 @@ describe("AccountPanel", () => {
       refreshProfile: vi.fn(),
       session: null,
       signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
       signInWithMagicLink: vi.fn(),
       signOut: vi.fn(),
@@ -140,6 +141,7 @@ describe("AccountPanel", () => {
       refreshProfile: vi.fn(),
       session: null,
       signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
       signInWithMagicLink: vi.fn(),
       signOut: vi.fn(),
@@ -192,6 +194,7 @@ describe("AccountPanel", () => {
       refreshProfile: vi.fn(),
       session: null,
       signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
       signInWithMagicLink: vi.fn(),
       signOut: vi.fn(),
@@ -212,6 +215,57 @@ describe("AccountPanel", () => {
       screen.getByText(
         /bookmarks and highlights return without uploading the same file again/i,
       ),
+    ).toBeInTheDocument();
+  });
+
+  it("offers GitHub auth and explains the email link flow", async () => {
+    const signInWithGitHub = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: undefined,
+      lastSyncSummary: undefined,
+      profile: undefined,
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub,
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "idle",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: null,
+    });
+
+    render(<AccountPanel />);
+
+    await user.click(screen.getByRole("button", { name: /continue with github/i }));
+
+    await waitFor(() => {
+      expect(signInWithGitHub).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByRole("button", { name: /email link/i }));
+
+    expect(
+      screen.getByText(/we'll email you a one-time sign-in link\./i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /send email sign-in link/i }),
     ).toBeInTheDocument();
   });
 });

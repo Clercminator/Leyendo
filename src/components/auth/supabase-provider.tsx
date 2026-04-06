@@ -60,6 +60,7 @@ interface SupabaseAuthContextValue {
   refreshProfile: () => Promise<void>;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGitHub: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -88,6 +89,9 @@ const defaultSupabaseAuthContext: SupabaseAuthContextValue = {
   lastSyncSummary: undefined,
   refreshProfile: async () => {},
   signIn: async () => {
+    throw new Error("SupabaseProvider is not mounted.");
+  },
+  signInWithGitHub: async () => {
     throw new Error("SupabaseProvider is not mounted.");
   },
   signInWithGoogle: async () => {
@@ -448,7 +452,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}/account`,
         },
       });
 
@@ -459,13 +463,13 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     [supabase],
   );
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithOAuth = useCallback(async (provider: "github" | "google") => {
     if (!supabase) {
       throw new Error("Supabase is not configured.");
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
+      provider,
       options: {
         redirectTo: `${window.location.origin}/account`,
       },
@@ -476,6 +480,14 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     }
   }, [supabase]);
 
+  const signInWithGitHub = useCallback(async () => {
+    await signInWithOAuth("github");
+  }, [signInWithOAuth]);
+
+  const signInWithGoogle = useCallback(async () => {
+    await signInWithOAuth("google");
+  }, [signInWithOAuth]);
+
   const signInWithMagicLink = useCallback(
     async (email: string) => {
       if (!supabase) {
@@ -485,7 +497,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}/account`,
         },
       });
 
@@ -530,6 +542,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       refreshProfile,
       session,
       signIn,
+      signInWithGitHub,
       signInWithGoogle,
       signInWithMagicLink,
       signOut,
@@ -552,6 +565,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       refreshProfile,
       session,
       signIn,
+      signInWithGitHub,
       signInWithGoogle,
       signInWithMagicLink,
       signOut,
