@@ -47,11 +47,14 @@ vi.mock("@/lib/supabase/client", () => ({
   getSupabaseBrowserClient,
 }));
 
-const { hydrateRemoteDocumentToLocal } = vi.hoisted(() => ({
-  hydrateRemoteDocumentToLocal: vi.fn(),
-}));
+const { hydrateRemoteDocumentPayloadToLocal, hydrateRemoteDocumentToLocal } =
+  vi.hoisted(() => ({
+    hydrateRemoteDocumentPayloadToLocal: vi.fn(),
+    hydrateRemoteDocumentToLocal: vi.fn(),
+  }));
 
 vi.mock("@/lib/supabase/library-sync", () => ({
+  hydrateRemoteDocumentPayloadToLocal,
   hydrateRemoteDocumentToLocal,
 }));
 
@@ -113,5 +116,41 @@ describe("useReaderDocument", () => {
     );
     expect(setActiveDocument).toHaveBeenCalledWith(record.id);
     expect(result.current.error).toBeUndefined();
+  });
+
+  it("hydrates a missing payload directly from cloud storage when local metadata already exists", async () => {
+    const supabaseClient = { kind: "supabase" };
+    const setActiveDocument = vi.fn();
+    const metadataOnlyRecord = {
+      ...record,
+      ownerId: "user-1",
+      payload: undefined,
+      syncState: "synced" as const,
+    };
+
+    getDocumentById
+      .mockResolvedValueOnce(metadataOnlyRecord)
+      .mockResolvedValueOnce(record);
+    getSupabaseBrowserClient.mockReturnValue(supabaseClient);
+    hydrateRemoteDocumentPayloadToLocal.mockResolvedValue(true);
+
+    const { result } = renderHook(() =>
+      useReaderDocument({
+        documentId: record.id,
+        setActiveDocument,
+        userId: "user-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.document?.id).toBe(record.id);
+    });
+
+    expect(hydrateRemoteDocumentPayloadToLocal).toHaveBeenCalledWith(
+      supabaseClient,
+      "user-1",
+      metadataOnlyRecord,
+    );
+    expect(hydrateRemoteDocumentToLocal).not.toHaveBeenCalled();
   });
 });

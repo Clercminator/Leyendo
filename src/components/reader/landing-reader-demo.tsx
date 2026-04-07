@@ -15,6 +15,7 @@ import {
   clampChunkIndex,
   deriveReaderProgress,
   deriveRuntimeChunks,
+  findChunkIndexByToken,
   jumpChunkIndex,
   repeatChunkIndex,
   resolveSessionChunkIndex,
@@ -379,6 +380,10 @@ export function LandingReaderDemo() {
       return null;
     }
 
+    const handleJumpToToken = (tokenIndex: number) => {
+      setCurrentChunkIndex(findChunkIndexByToken(runtimeChunks, tokenIndex));
+    };
+
     switch (preferences.mode) {
       case "focus-word":
         return <FocusWordView document={document} chunk={activeChunk} />;
@@ -397,6 +402,7 @@ export function LandingReaderDemo() {
             chunk={activeChunk}
             chunks={runtimeChunks}
             focusWindow={preferences.focusWindow}
+            onJumpToToken={handleJumpToToken}
           />
         );
       default:
@@ -404,6 +410,7 @@ export function LandingReaderDemo() {
           <ClassicReaderView
             document={document}
             chunk={activeChunk}
+            onJumpToToken={handleJumpToToken}
             reduceMotion={preferences.reduceMotion}
           />
         );
@@ -421,7 +428,7 @@ export function LandingReaderDemo() {
     return null;
   }
 
-  const canvasClassName = "min-h-232 lg:min-h-248";
+  const canvasClassName = "min-h-176 md:min-h-232 lg:min-h-248";
 
   return (
     <section className="fade-rise-delayed grid gap-6 xl:grid-cols-[0.7fr_minmax(0,1fr)] xl:items-start">

@@ -24,6 +24,9 @@ const HIGHLIGHTS_TABLE = "user_highlights";
 const FEEDBACK_TABLE = "feedback";
 const PROFILES_TABLE = "profiles";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
+const DOCUMENT_PAYLOAD_BUCKET = "document-payloads";
+const DOCUMENT_METADATA_SELECT =
+  "created_at,document_id,excerpt,source_kind,title,total_chunks,total_sections,updated_at,user_id";
 
 const supportedImageExtensions = new Set([
   "avif",
@@ -46,7 +49,7 @@ interface RemoteDocumentRow {
   created_at: string;
   document_id: string;
   excerpt: string;
-  payload: DocumentModel;
+  payload?: DocumentModel | null;
   source_kind: DocumentSourceKind;
   title: string;
   total_chunks: number;
@@ -138,15 +141,11 @@ function toRemoteDocumentRow(
   userId: string,
   record: DocumentRecord,
 ): RemoteDocumentRow {
-  if (!record.payload) {
-    throw new Error("Cannot sync a document without its payload.");
-  }
-
   return {
     created_at: record.createdAt,
     document_id: record.id,
     excerpt: record.excerpt,
-    payload: record.payload,
+    payload: null,
     source_kind: record.sourceKind,
     title: record.title,
     total_chunks: record.totalChunks,
@@ -154,6 +153,63 @@ function toRemoteDocumentRow(
     updated_at: record.updatedAt,
     user_id: userId,
   };
+}
+
+function buildDocumentPayloadPath(userId: string, documentId: string) {
+  return `${userId}/${encodeURIComponent(documentId)}.json`;
+}
+
+async function uploadDocumentPayload(
+  supabase: SupabaseClient,
+  userId: string,
+  record: DocumentRecord,
+) {
+  if (!record.payload) {
+    throw new Error("Cannot sync a document without its payload.");
+  }
+
+  const { error } = await supabase.storage.from(DOCUMENT_PAYLOAD_BUCKET).upload(
+    buildDocumentPayloadPath(userId, record.id),
+    new Blob([JSON.stringify(record.payload)], {
+      type: "application/json",
+    }),
+    {
+      cacheControl: "3600",
+      contentType: "application/json",
+      upsert: true,
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function downloadDocumentPayload(
+  supabase: SupabaseClient,
+  userId: string,
+  documentId: string,
+) {
+  const { data, error } = await supabase.storage
+    .from(DOCUMENT_PAYLOAD_BUCKET)
+    .download(buildDocumentPayloadPath(userId, documentId));
+
+  if (error || !data) {
+    return undefined;
+  }
+
+  return JSON.parse(await data.text()) as DocumentModel;
+}
+
+async function resolveRemoteDocumentPayload(
+  supabase: SupabaseClient,
+  row: RemoteDocumentRow,
+) {
+  if (row.payload) {
+    return row.payload;
+  }
+
+  return downloadDocumentPayload(supabase, row.user_id, row.document_id);
 }
 
 function toRemoteSessionRow(
@@ -216,7 +272,7 @@ function toSyncedDocumentRecord(row: RemoteDocumentRow): DocumentRecord {
     excerpt: row.excerpt,
     id: row.document_id,
     ownerId: row.user_id,
-    payload: row.payload,
+    payload: row.payload ?? undefined,
     sourceKind: row.source_kind,
     syncState: "synced",
     title: row.title,
@@ -681,6 +737,43 @@ export async function getLocalOnlyLibrarySummary(): Promise<LocalLibrarySummary>
   };
 }
 
+async function getOwnedRows<RecordType extends { ownerId?: string }>(
+  table: {
+    where?: (key: string) => {
+      equals: (value: string) => {
+        toArray?: () => Promise<RecordType[]>;
+      };
+    };
+  },
+  userId: string,
+) {
+  const matches = table.where?.("ownerId")?.equals(userId);
+
+  if (typeof matches?.toArray === "function") {
+    return matches.toArray();
+  }
+
+  return [];
+}
+
+export async function getSyncedLibrarySummary(
+  userId: string,
+): Promise<LocalLibrarySummary> {
+  const [documents, sessions, bookmarks, highlights] = await Promise.all([
+    getOwnedRows<DocumentRecord>(db.documents, userId),
+    getOwnedRows<ReadingSession>(db.sessions, userId),
+    getOwnedRows<Bookmark>(db.bookmarks, userId),
+    getOwnedRows<Highlight>(db.highlights, userId),
+  ]);
+
+  return {
+    bookmarks: bookmarks.length,
+    documents: documents.length,
+    highlights: highlights.length,
+    sessions: sessions.length,
+  };
+}
+
 export async function clearSyncedLibraryForUser(userId: string) {
   await db.transaction(
     "rw",
@@ -844,11 +937,18 @@ export async function hydrateCloudLibraryToLocal(
   supabase: SupabaseClient,
   userId: string,
 ) {
+  const existingSyncedDocuments = await getOwnedRows<DocumentRecord>(
+    db.documents,
+    userId,
+  );
+  const existingDocumentById = new Map(
+    existingSyncedDocuments.map((document) => [document.id, document]),
+  );
   const [documentsResult, sessionsResult, bookmarksResult, highlightsResult] =
     await Promise.all([
       supabase
         .from(DOCUMENTS_TABLE)
-        .select("*")
+        .select(DOCUMENT_METADATA_SELECT)
         .eq("user_id", userId)
         .order("updated_at", { ascending: false }),
       supabase
@@ -881,9 +981,17 @@ export async function hydrateCloudLibraryToLocal(
     throw highlightsResult.error;
   }
 
-  const syncedDocuments = (documentsResult.data ?? []).map(
-    toSyncedDocumentRecord,
-  );
+  const syncedDocuments = (documentsResult.data ?? []).map((row) => {
+    const record = toSyncedDocumentRecord(row as RemoteDocumentRow);
+    const existingDocument = existingDocumentById.get(record.id);
+
+    return existingDocument?.payload && !record.payload
+      ? {
+          ...record,
+          payload: existingDocument.payload,
+        }
+      : record;
+  });
   const syncedSessions = (sessionsResult.data ?? []).map(toSyncedSessionRecord);
   const syncedBookmarks = (bookmarksResult.data ?? []).map(
     toSyncedBookmarkRecord,
@@ -975,7 +1083,17 @@ export async function hydrateRemoteDocumentToLocal(
     return false;
   }
 
-  const document = toSyncedDocumentRecord(documentResult.data);
+  const remoteDocument = documentResult.data as RemoteDocumentRow;
+  const payload = await resolveRemoteDocumentPayload(supabase, remoteDocument);
+
+  if (!payload) {
+    return false;
+  }
+
+  const document = {
+    ...toSyncedDocumentRecord(remoteDocument),
+    payload,
+  };
   const session = sessionResult.data
     ? toSyncedSessionRecord(sessionResult.data)
     : undefined;
@@ -1007,6 +1125,31 @@ export async function hydrateRemoteDocumentToLocal(
   return true;
 }
 
+export async function hydrateRemoteDocumentPayloadToLocal(
+  supabase: SupabaseClient,
+  userId: string,
+  document: DocumentRecord,
+) {
+  if (document.payload) {
+    return true;
+  }
+
+  const payload = await downloadDocumentPayload(supabase, userId, document.id);
+
+  if (!payload) {
+    return hydrateRemoteDocumentToLocal(supabase, userId, document.id);
+  }
+
+  await db.documents.put({
+    ...document,
+    ownerId: userId,
+    payload,
+    syncState: "synced",
+  });
+
+  return true;
+}
+
 export async function upsertCloudDocuments(
   supabase: SupabaseClient,
   userId: string,
@@ -1016,6 +1159,11 @@ export async function upsertCloudDocuments(
     return;
   }
 
+  await Promise.all(
+    documents.map((document) =>
+      uploadDocumentPayload(supabase, userId, document),
+    ),
+  );
   const rows = documents.map((document) =>
     toRemoteDocumentRow(userId, document),
   );
@@ -1142,29 +1290,37 @@ export async function deleteCloudDocumentBundle(
   userId: string,
   documentId: string,
 ) {
-  const [sessionResult, bookmarksResult, highlightsResult, documentResult] =
-    await Promise.all([
-      supabase
-        .from(SESSIONS_TABLE)
-        .delete()
-        .eq("user_id", userId)
-        .eq("document_id", documentId),
-      supabase
-        .from(BOOKMARKS_TABLE)
-        .delete()
-        .eq("user_id", userId)
-        .eq("document_id", documentId),
-      supabase
-        .from(HIGHLIGHTS_TABLE)
-        .delete()
-        .eq("user_id", userId)
-        .eq("document_id", documentId),
-      supabase
-        .from(DOCUMENTS_TABLE)
-        .delete()
-        .eq("user_id", userId)
-        .eq("document_id", documentId),
-    ]);
+  const [
+    sessionResult,
+    bookmarksResult,
+    highlightsResult,
+    documentResult,
+    payloadResult,
+  ] = await Promise.all([
+    supabase
+      .from(SESSIONS_TABLE)
+      .delete()
+      .eq("user_id", userId)
+      .eq("document_id", documentId),
+    supabase
+      .from(BOOKMARKS_TABLE)
+      .delete()
+      .eq("user_id", userId)
+      .eq("document_id", documentId),
+    supabase
+      .from(HIGHLIGHTS_TABLE)
+      .delete()
+      .eq("user_id", userId)
+      .eq("document_id", documentId),
+    supabase
+      .from(DOCUMENTS_TABLE)
+      .delete()
+      .eq("user_id", userId)
+      .eq("document_id", documentId),
+    supabase.storage
+      .from(DOCUMENT_PAYLOAD_BUCKET)
+      .remove([buildDocumentPayloadPath(userId, documentId)]),
+  ]);
 
   if (sessionResult.error) {
     throw sessionResult.error;
@@ -1177,6 +1333,9 @@ export async function deleteCloudDocumentBundle(
   }
   if (documentResult.error) {
     throw documentResult.error;
+  }
+  if (payloadResult.error) {
+    throw payloadResult.error;
   }
 }
 

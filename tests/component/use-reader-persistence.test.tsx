@@ -14,6 +14,22 @@ const { getStoredReaderPreferences, saveReaderPreferences, saveSession } =
     saveSession: vi.fn(),
   }));
 
+const { getSupabaseBrowserClient } = vi.hoisted(() => ({
+  getSupabaseBrowserClient: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/client", () => ({
+  getSupabaseBrowserClient,
+}));
+
+const { upsertCloudSessions } = vi.hoisted(() => ({
+  upsertCloudSessions: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/library-sync", () => ({
+  upsertCloudSessions,
+}));
+
 vi.mock("@/db/repositories", async () => {
   const actual =
     await vi.importActual<typeof import("@/db/repositories")>(
@@ -54,8 +70,10 @@ describe("useReaderPersistence", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     getStoredReaderPreferences.mockResolvedValue(defaultReaderPreferences);
+    getSupabaseBrowserClient.mockReturnValue(null);
     saveReaderPreferences.mockResolvedValue(defaultReaderPreferences);
     saveSession.mockResolvedValue(undefined);
+    upsertCloudSessions.mockResolvedValue(undefined);
   });
 
   it("avoids saving on every playback chunk inside the same boundary", async () => {
@@ -230,6 +248,62 @@ describe("useReaderPersistence", () => {
         syncState: "synced",
       }),
     );
+  });
+
+  it("defers cloud session writes until playback stops", async () => {
+    const supabaseClient = { kind: "supabase" };
+    const updatePreferences = vi.fn();
+
+    getSupabaseBrowserClient.mockReturnValue(supabaseClient);
+
+    const { rerender } = renderHook(
+      ({ currentChunkIndex, isPlaying }) =>
+        useReaderPersistence({
+          document: record,
+          activeChunk: runtimeChunks[currentChunkIndex],
+          currentChunkIndex,
+          isPlaying,
+          preferences: defaultReaderPreferences,
+          runtimeChunks,
+          updatePreferences,
+          userId: "user-1",
+        }),
+      {
+        initialProps: {
+          currentChunkIndex: 0,
+          isPlaying: true,
+        },
+      },
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      vi.advanceTimersByTime(250);
+    });
+
+    rerender({ currentChunkIndex: 6, isPlaying: true });
+
+    await act(async () => {
+      vi.advanceTimersByTime(250);
+      await Promise.resolve();
+      vi.advanceTimersByTime(5_000);
+    });
+
+    expect(upsertCloudSessions).not.toHaveBeenCalled();
+
+    rerender({ currentChunkIndex: 6, isPlaying: false });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(upsertCloudSessions).toHaveBeenCalledTimes(1);
+    expect(upsertCloudSessions).toHaveBeenCalledWith(supabaseClient, "user-1", [
+      expect.objectContaining({
+        currentChunkIndex: 6,
+        documentId: record.id,
+      }),
+    ]);
   });
 
   it("hydrates reader preferences from the signed-in profile and syncs later changes back to cloud", async () => {

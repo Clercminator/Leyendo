@@ -33,6 +33,7 @@ import {
   clampChunkIndex,
   deriveReaderProgress,
   deriveRuntimeChunks,
+  findChunkIndexByToken,
   jumpChunkIndex,
   repeatChunkIndex,
   resolveSessionChunkIndex,
@@ -768,6 +769,14 @@ export function ReaderWorkspace({
     [announce, jumpToAnchor],
   );
 
+  const jumpToToken = useCallback(
+    (tokenIndex: number) => {
+      const nextChunkIndex = findChunkIndexByToken(runtimeChunks, tokenIndex);
+      jumpToAnchor({ chunkIndex: nextChunkIndex, tokenIndex });
+    },
+    [jumpToAnchor, runtimeChunks],
+  );
+
   const renderModeView = () => {
     if (!payload || !activeChunk) {
       return null;
@@ -779,6 +788,7 @@ export function ReaderWorkspace({
           <ClassicReaderView
             document={payload}
             chunk={activeChunk}
+            onJumpToToken={jumpToToken}
             reduceMotion={preferences.reduceMotion}
           />
         );
@@ -797,6 +807,7 @@ export function ReaderWorkspace({
             chunk={activeChunk}
             chunks={runtimeChunks}
             focusWindow={preferences.focusWindow}
+            onJumpToToken={jumpToToken}
           />
         );
       default:

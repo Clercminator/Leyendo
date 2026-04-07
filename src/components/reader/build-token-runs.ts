@@ -4,6 +4,7 @@ interface TokenRun {
   active: boolean;
   key: string;
   text: string;
+  tokens: Token[];
 }
 
 export function buildTokenRuns(tokens: Token[], activeIndexes: Set<number>) {
@@ -16,6 +17,7 @@ export function buildTokenRuns(tokens: Token[], activeIndexes: Set<number>) {
     if (previousRun && previousRun.active === isActive) {
       previousRun.text = `${previousRun.text} ${token.value}`;
       previousRun.key = `${previousRun.key}:${token.index}`;
+      previousRun.tokens.push(token);
       continue;
     }
 
@@ -23,6 +25,7 @@ export function buildTokenRuns(tokens: Token[], activeIndexes: Set<number>) {
       active: isActive,
       key: `${token.index}`,
       text: token.value,
+      tokens: [token],
     });
   }
 

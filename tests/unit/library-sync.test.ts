@@ -71,6 +71,7 @@ vi.mock("@/db/app-db", () => ({
 import {
   getProfile,
   hydrateRemoteDocumentToLocal,
+  upsertCloudDocuments,
 } from "@/lib/supabase/library-sync";
 
 function createQueryResult<T>(result: T) {
@@ -261,5 +262,145 @@ describe("library sync hydration", () => {
       updatedAt: "2026-03-30T10:00:00.000Z",
       userId: "user-1",
     });
+  });
+
+  it("uploads document payloads to storage and clears the Postgres payload column", async () => {
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const supabase = {
+      from: vi.fn(() => ({
+        upsert,
+      })),
+      storage: {
+        from: vi.fn(() => ({
+          upload,
+        })),
+      },
+    };
+
+    await expect(
+      upsertCloudDocuments(supabase as never, "user-1", [
+        {
+          createdAt: "2026-03-30T10:00:00.000Z",
+          excerpt: "Remote excerpt",
+          id: "doc-1",
+          payload: {
+            blocks: [],
+            chunks: [],
+            createdAt: "2026-03-30T10:00:00.000Z",
+            excerpt: "Remote excerpt",
+            id: "doc-1",
+            pages: [],
+            sections: [],
+            sentences: [],
+            sourceKind: "plain-text",
+            text: "Remote text",
+            title: "Remote title",
+            tokens: [],
+            updatedAt: "2026-03-30T10:00:00.000Z",
+          },
+          sourceKind: "plain-text",
+          title: "Remote title",
+          totalChunks: 0,
+          totalSections: 0,
+          updatedAt: "2026-03-30T10:00:00.000Z",
+        },
+      ]),
+    ).resolves.toBeUndefined();
+
+    expect(upload).toHaveBeenCalledWith(
+      "user-1/doc-1.json",
+      expect.any(Blob),
+      expect.objectContaining({
+        contentType: "application/json",
+        upsert: true,
+      }),
+    );
+    expect(upsert).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          document_id: "doc-1",
+          payload: null,
+          user_id: "user-1",
+        }),
+      ],
+      {
+        onConflict: "user_id,document_id",
+      },
+    );
+  });
+
+  it("downloads a stored payload when the remote metadata row omits it", async () => {
+    const payloadBlob = new Blob(
+      [
+        JSON.stringify({
+          blocks: [],
+          chunks: [],
+          createdAt: "2026-03-30T10:00:00.000Z",
+          excerpt: "Remote excerpt",
+          id: "doc-1",
+          pages: [],
+          sections: [],
+          sentences: [],
+          sourceKind: "plain-text",
+          text: "Remote text",
+          title: "Remote title",
+          tokens: [],
+          updatedAt: "2026-03-30T10:00:00.000Z",
+        }),
+      ],
+      { type: "application/json" },
+    );
+    const supabase = {
+      from: vi.fn((table: string) => ({
+        select: vi.fn(() => {
+          if (table === "user_documents") {
+            return createQueryResult({
+              data: {
+                created_at: "2026-03-30T10:00:00.000Z",
+                document_id: "doc-1",
+                excerpt: "Remote excerpt",
+                payload: null,
+                source_kind: "plain-text",
+                title: "Remote title",
+                total_chunks: 0,
+                total_sections: 0,
+                updated_at: "2026-03-30T10:00:00.000Z",
+                user_id: "user-1",
+              },
+              error: null,
+            });
+          }
+
+          if (table === "user_sessions") {
+            return createQueryResult({ data: null, error: null });
+          }
+
+          return createQueryResult({ data: [], error: null });
+        }),
+      })),
+      storage: {
+        from: vi.fn(() => ({
+          download: vi.fn().mockResolvedValue({
+            data: payloadBlob,
+            error: null,
+          }),
+        })),
+      },
+    };
+
+    await expect(
+      hydrateRemoteDocumentToLocal(supabase as never, "user-1", "doc-1"),
+    ).resolves.toBe(true);
+
+    expect(documentsPut).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "doc-1",
+        payload: expect.objectContaining({
+          id: "doc-1",
+          text: "Remote text",
+        }),
+      }),
+    );
   });
 });

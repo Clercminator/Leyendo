@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -13,8 +13,8 @@ const {
   ensureProfile,
   getLocalOnlyLibrarySummary,
   getProfile,
+  getSyncedLibrarySummary,
   hydrateCloudLibraryToLocal,
-  isRemoteLibraryEmpty,
   uploadProfileAvatar,
   upsertProfile,
 } = vi.hoisted(() => ({
@@ -24,8 +24,8 @@ const {
   ensureProfile: vi.fn(),
   getLocalOnlyLibrarySummary: vi.fn(),
   getProfile: vi.fn(),
+  getSyncedLibrarySummary: vi.fn(),
   hydrateCloudLibraryToLocal: vi.fn(),
-  isRemoteLibraryEmpty: vi.fn(),
   uploadProfileAvatar: vi.fn(),
   upsertProfile: vi.fn(),
 }));
@@ -37,8 +37,8 @@ vi.mock("@/lib/supabase/library-sync", () => ({
   ensureProfile,
   getLocalOnlyLibrarySummary,
   getProfile,
+  getSyncedLibrarySummary,
   hydrateCloudLibraryToLocal,
-  isRemoteLibraryEmpty,
   uploadProfileAvatar,
   upsertProfile,
 }));
@@ -76,7 +76,12 @@ describe("SupabaseProvider", () => {
       highlights: 0,
       sessions: 0,
     });
-    isRemoteLibraryEmpty.mockResolvedValue(false);
+    getSyncedLibrarySummary.mockResolvedValue({
+      bookmarks: 0,
+      documents: 0,
+      highlights: 0,
+      sessions: 0,
+    });
     backUpLocalLibraryToCloud.mockResolvedValue({ backedUpDocuments: 2 });
     hydrateCloudLibraryToLocal.mockResolvedValue({
       bookmarks: 0,
@@ -181,5 +186,62 @@ describe("SupabaseProvider", () => {
     await waitFor(() => {
       expect(screen.getByText("4-3-2")).toBeInTheDocument();
     });
+  });
+
+  it("does not rerun cloud hydration when auth refreshes the same user session", async () => {
+    const unsubscribe = vi.fn();
+    let onAuthStateChange:
+      | ((
+          event: string,
+          session: { user: { email: string; id: string } },
+        ) => void)
+      | undefined;
+    const session = {
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    };
+    const supabaseClient = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: {
+            session,
+          },
+        }),
+        onAuthStateChange: vi.fn((callback) => {
+          onAuthStateChange = callback;
+          return {
+            data: {
+              subscription: {
+                unsubscribe,
+              },
+            },
+          };
+        }),
+      },
+    };
+
+    getSupabaseBrowserClient.mockReturnValue(supabaseClient);
+
+    render(
+      <SupabaseProvider>
+        <div>mounted</div>
+      </SupabaseProvider>,
+    );
+
+    await waitFor(() => {
+      expect(hydrateCloudLibraryToLocal).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      onAuthStateChange?.("TOKEN_REFRESHED", session);
+    });
+
+    await waitFor(() => {
+      expect(hydrateCloudLibraryToLocal).toHaveBeenCalledTimes(1);
+    });
+
+    expect(unsubscribe).not.toHaveBeenCalled();
   });
 });

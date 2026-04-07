@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ClassicReaderView } from "@/components/reader/classic-reader-view";
@@ -40,5 +41,38 @@ describe("ClassicReaderView", () => {
 
     expect(activeRuns).toHaveLength(1);
     expect(activeRuns[0]?.textContent?.trim()).toBe("Reading increases your");
+  });
+
+  it("jumps to a clicked paragraph token", async () => {
+    const user = userEvent.setup();
+    const onJumpToToken = vi.fn();
+    const documentModel = buildDocumentModel({
+      title: "Classic sample",
+      rawText: "Reading increases your knowledge and improves recall.",
+      sourceKind: "plain-text",
+      chunkSize: 1,
+    });
+    const chunk = deriveRuntimeChunks(documentModel, 3)[0];
+
+    const { container } = render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        onJumpToToken={onJumpToToken}
+        reduceMotion
+      />,
+    );
+
+    await user.click(
+      container.querySelector('[data-reader-token-index="3"]') as HTMLElement,
+    );
+    expect(onJumpToToken).toHaveBeenCalledWith(3);
+
+    await user.click(
+      container.querySelector(
+        '[data-reader-paragraph-index="0"]',
+      ) as HTMLElement,
+    );
+    expect(onJumpToToken).toHaveBeenCalledWith(0);
   });
 });

@@ -30,6 +30,13 @@ test("@mobile reader route stays usable at phone width for text modes", async ({
   ).toBeVisible();
 
   await page.getByRole("button", { name: /change reading mode/i }).click();
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        return document.documentElement.scrollWidth <= window.innerWidth;
+      });
+    })
+    .toBe(true);
   await page.getByRole("button", { name: /^classic reader$/i }).click();
   await expect(page.getByLabel(/classic reader document/i)).toBeVisible();
 });

@@ -647,7 +647,7 @@ export function ReaderCanvas({
       return;
     }
 
-    if (window.matchMedia?.("(min-width: 640px)").matches ?? false) {
+    if (window.matchMedia?.("(min-width: 1024px)").matches ?? false) {
       return;
     }
 
@@ -666,7 +666,7 @@ export function ReaderCanvas({
       aria-labelledby="reader-canvas-title"
       tabIndex={-1}
       className={cn(
-        "reader-canvas relative isolate flex h-[calc(100svh-6.75rem)] min-h-120 w-full flex-col gap-3 overflow-visible rounded-[1.5rem] border border-(--border-soft) bg-(--surface-strong) px-3 py-3 text-left sm:h-[calc(100svh-8.5rem)] sm:min-h-136 sm:gap-6 sm:rounded-[1.75rem] sm:px-6 sm:py-5 lg:h-[86vh] lg:min-h-176 lg:px-8 lg:py-6",
+        "reader-canvas relative isolate flex h-[calc(100svh-6.75rem)] min-h-120 w-full flex-col gap-3 overflow-visible rounded-[1.5rem] border border-(--border-soft) bg-(--surface-strong) px-3 py-3 text-left md:h-[calc(100svh-8rem)] md:min-h-136 md:gap-5 md:rounded-[1.65rem] md:px-5 md:py-4 lg:h-[86vh] lg:min-h-176 lg:gap-6 lg:rounded-[1.75rem] lg:px-8 lg:py-6",
         className,
       )}
     >
@@ -677,10 +677,10 @@ export function ReaderCanvas({
         <div
           className={cn(
             "space-y-3 sm:space-y-4",
-            !isMobileChromeVisible && "hidden sm:block",
+            !isMobileChromeVisible && "hidden lg:block",
           )}
         >
-          <div className="grid grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-3">
             <div ref={modeMenuRef} className="relative z-40">
               <button
                 type="button"
@@ -690,7 +690,7 @@ export function ReaderCanvas({
                     current === "mode" ? null : "mode",
                   );
                 }}
-                className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.16em] text-(--accent-sky) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:w-auto sm:justify-center sm:px-4 sm:py-2.5 sm:text-sm sm:tracking-[0.22em]"
+                className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.16em] text-(--accent-sky) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) md:min-h-11 md:px-4 md:py-2.5 md:text-sm md:tracking-[0.22em] lg:w-auto lg:justify-center"
               >
                 {modeLabel}
                 <ChevronDown
@@ -698,7 +698,7 @@ export function ReaderCanvas({
                 />
               </button>
               {openMenu === "mode" ? (
-                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-64 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-full min-w-0 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:min-w-[15rem] lg:w-64 lg:max-w-[calc(100vw-2.5rem)]">
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.readingMode}
                   </p>
@@ -733,7 +733,7 @@ export function ReaderCanvas({
                     current === "preset" ? null : "preset",
                   );
                 }}
-                className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-widest text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:w-auto sm:justify-center sm:px-4 sm:py-2.5 sm:text-sm sm:tracking-[0.14em]"
+                className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-widest text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) md:min-h-11 md:px-4 md:py-2.5 md:text-sm md:tracking-[0.14em] lg:w-auto lg:justify-center"
               >
                 {activePreset
                   ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
@@ -743,7 +743,7 @@ export function ReaderCanvas({
                 />
               </button>
               {openMenu === "preset" ? (
-                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-80 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-full min-w-0 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:min-w-[18rem] lg:w-80 lg:max-w-[calc(100vw-2.5rem)]">
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.presetMenu}
                   </p>
@@ -806,7 +806,7 @@ export function ReaderCanvas({
                     current === "theme" ? null : "theme",
                   );
                 }}
-                className={`hidden ${topControlButtonClass} sm:inline-flex`}
+                className={`hidden ${topControlButtonClass} lg:inline-flex`}
               >
                 {getLocalizedCopy(locale, themeLabels[preferences.theme])}
                 <ChevronDown
@@ -842,17 +842,17 @@ export function ReaderCanvas({
             </div>
             {isFullscreen ? (
               <>
-                <span className={`hidden ${statusChipClass} sm:inline-flex`}>
+                <span className={`hidden ${statusChipClass} lg:inline-flex`}>
                   {progress}% {copy.complete}
                 </span>
-                <span className={`hidden ${statusChipClass} sm:inline-flex`}>
+                <span className={`hidden ${statusChipClass} lg:inline-flex`}>
                   {sentenceCount} {copy.sentenceCount}
                 </span>
                 <button
                   type="button"
                   aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
                   onClick={onAnnounceRemainingTime}
-                  className={`hidden ${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:inline-flex`}
+                  className={`hidden ${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip) lg:inline-flex`}
                 >
                   <Clock3 className="h-4 w-4 text-(--accent-amber)" />
                   {remainingTimeLabel}
@@ -867,7 +867,7 @@ export function ReaderCanvas({
               onClick={() => {
                 void toggleFullscreen();
               }}
-              className={`hidden ${topControlButtonClass} sm:inline-flex`}
+              className={`hidden ${topControlButtonClass} lg:inline-flex`}
             >
               {isFullscreen ? (
                 <Minimize2 className="h-4 w-4" />
@@ -877,7 +877,7 @@ export function ReaderCanvas({
               {isFullscreen ? copy.collapse : copy.expand}
             </button>
           </div>
-          <div className="grid gap-2 text-sm sm:hidden">
+          <div className="grid gap-2 text-sm lg:hidden">
             <div className="flex flex-wrap gap-2">
               <span className={statusChipClass}>
                 {copy.paragraph} {currentParagraphNumber} · {progress}%
@@ -901,8 +901,8 @@ export function ReaderCanvas({
           </div>
           <div
             className={cn(
-              "hidden grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:gap-3",
-              isFullscreen && "sm:hidden",
+              "hidden grid-cols-2 gap-2 text-sm lg:flex lg:flex-wrap lg:items-center lg:gap-3",
+              isFullscreen && "lg:hidden",
             )}
           >
             <span className={statusChipClass}>
@@ -921,11 +921,11 @@ export function ReaderCanvas({
               {remainingTimeLabel}
             </button>
           </div>
-          <p className="hidden text-sm leading-6 text-(--text-muted) sm:block sm:leading-7">
+          <p className="hidden text-sm leading-6 text-(--text-muted) lg:block lg:leading-7">
             {copy.readingModeHelp}
           </p>
           {activePresetSummary ? (
-            <p className="hidden text-sm leading-6 text-(--text-muted) sm:block">
+            <p className="hidden text-sm leading-6 text-(--text-muted) lg:block">
               <span className="mr-2 inline-flex rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1 text-[11px] tracking-[0.18em] text-(--accent-amber) uppercase">
                 {activePreset
                   ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
@@ -941,7 +941,7 @@ export function ReaderCanvas({
             onClick={toggleMobileChrome}
           >
             {modeView}
-            <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center sm:hidden">
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center lg:hidden">
               {!isMobileChromeVisible ? (
                 <span className="rounded-full border border-(--border-soft) bg-slate-950/66 px-3 py-1.5 text-xs tracking-[0.16em] text-white/88 uppercase shadow-[0_10px_26px_rgba(12,18,36,0.28)] backdrop-blur-md">
                   {copy.showControlsHint}
@@ -955,11 +955,11 @@ export function ReaderCanvas({
       <div
         className={cn(
           "shrink-0 space-y-3 border-t border-(--border-soft) pt-4 sm:pt-5",
-          !isMobileChromeVisible && "hidden sm:block",
+          !isMobileChromeVisible && "hidden lg:block",
         )}
         aria-label="Reader transport and annotation controls"
       >
-        <div className="grid grid-cols-4 gap-2 sm:hidden">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:hidden">
           <button
             type="button"
             aria-label={copy.previous}
@@ -1005,7 +1005,7 @@ export function ReaderCanvas({
             {copy.tools}
           </button>
         </div>
-        <div className="hidden grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+        <div className="hidden grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:items-center lg:gap-3">
           <div ref={saveMenuRef} className="relative z-30">
             <button
               type="button"
@@ -1434,7 +1434,7 @@ export function ReaderCanvas({
       </div>
 
       {isMobileToolsOpen ? (
-        <div className="fixed inset-0 z-80 bg-slate-950/55 backdrop-blur-sm sm:hidden">
+        <div className="fixed inset-0 z-80 bg-slate-950/55 backdrop-blur-sm lg:hidden">
           <button
             type="button"
             aria-label={copy.closeTools}

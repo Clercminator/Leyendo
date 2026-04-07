@@ -12,7 +12,10 @@ import {
   getSessionForDocument,
 } from "@/db/repositories";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { hydrateRemoteDocumentToLocal } from "@/lib/supabase/library-sync";
+import {
+  hydrateRemoteDocumentPayloadToLocal,
+  hydrateRemoteDocumentToLocal,
+} from "@/lib/supabase/library-sync";
 import type { DocumentRecord } from "@/types/document";
 import type { Bookmark, Highlight, ReadingSession } from "@/types/reader";
 
@@ -77,11 +80,17 @@ export function useReaderDocument({
 
         if (supabase) {
           try {
-            const hydrated = await hydrateRemoteDocumentToLocal(
-              supabase,
-              userId,
-              documentId,
-            );
+            const hydrated = record
+              ? await hydrateRemoteDocumentPayloadToLocal(
+                  supabase,
+                  userId,
+                  record,
+                )
+              : await hydrateRemoteDocumentToLocal(
+                  supabase,
+                  userId,
+                  documentId,
+                );
 
             if (hydrated) {
               [record, session, targetBookmark, targetHighlight] =

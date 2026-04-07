@@ -28,6 +28,7 @@ interface UseReaderPersistenceOptions {
 }
 
 const SESSION_PROGRESS_BUCKET_SIZE = 5;
+const CLOUD_SESSION_SYNC_DELAY_MS = 15_000;
 
 function getSessionProgressBucket(percentComplete: number) {
   return Math.floor(percentComplete / SESSION_PROGRESS_BUCKET_SIZE);
@@ -49,17 +50,28 @@ export function useReaderPersistence({
   const pendingSessionRef = useRef<
     ReturnType<typeof buildInitialSession> | undefined
   >(undefined);
+  const pendingCloudSessionRef = useRef<
+    ReturnType<typeof buildInitialSession> | undefined
+  >(undefined);
+  const cloudSyncTimeoutRef = useRef<number | undefined>(undefined);
   const lastSavedSignatureRef = useRef<string | undefined>(undefined);
+  const lastCloudSignatureRef = useRef<string | undefined>(undefined);
   const lastSyncedPreferenceSignatureRef = useRef<string | undefined>(
     undefined,
   );
   const lastPlaybackBoundaryRef = useRef<string | undefined>(undefined);
   const lastPlaybackStateRef = useRef(isPlaying);
 
-  const flushPendingSession = useCallback(() => {
-    const pendingSession = pendingSessionRef.current;
+  const flushCloudSession = useCallback(() => {
+    const pendingSession = pendingCloudSessionRef.current;
 
     if (!pendingSession) {
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+
+    if (!supabase || !userId) {
       return;
     }
 
@@ -71,25 +83,73 @@ export function useReaderPersistence({
       pendingSession.percentComplete,
     ].join(":");
 
-    if (signature === lastSavedSignatureRef.current) {
+    if (signature === lastCloudSignatureRef.current) {
       return;
     }
 
-    lastSavedSignatureRef.current = signature;
-    void saveSession(pendingSession).then(() => {
-      const supabase = getSupabaseBrowserClient();
+    lastCloudSignatureRef.current = signature;
+    cloudSyncTimeoutRef.current = undefined;
+    void upsertCloudSessions(supabase, userId, [pendingSession]).catch(
+      (error) => {
+        console.warn("session sync failed", error);
+      },
+    );
+  }, [userId]);
 
-      if (!supabase || !userId) {
+  const flushPendingSession = useCallback(
+    (options?: { forceCloud?: boolean }) => {
+      const pendingSession = pendingSessionRef.current;
+
+      if (!pendingSession) {
         return;
       }
 
-      void upsertCloudSessions(supabase, userId, [pendingSession]).catch(
-        (error) => {
-          console.warn("session sync failed", error);
-        },
-      );
-    });
-  }, [userId]);
+      const signature = [
+        pendingSession.documentId,
+        pendingSession.currentChunkIndex,
+        pendingSession.currentParagraphIndex,
+        pendingSession.currentTokenIndex,
+        pendingSession.percentComplete,
+      ].join(":");
+
+      if (signature === lastSavedSignatureRef.current) {
+        if (options?.forceCloud) {
+          pendingCloudSessionRef.current = pendingSession;
+
+          if (cloudSyncTimeoutRef.current !== undefined) {
+            window.clearTimeout(cloudSyncTimeoutRef.current);
+          }
+
+          flushCloudSession();
+        }
+
+        return;
+      }
+
+      lastSavedSignatureRef.current = signature;
+      void saveSession(pendingSession).then(() => {
+        pendingCloudSessionRef.current = pendingSession;
+
+        if (!userId) {
+          return;
+        }
+
+        if (cloudSyncTimeoutRef.current !== undefined) {
+          window.clearTimeout(cloudSyncTimeoutRef.current);
+        }
+
+        if (options?.forceCloud) {
+          flushCloudSession();
+          return;
+        }
+
+        cloudSyncTimeoutRef.current = window.setTimeout(() => {
+          flushCloudSession();
+        }, CLOUD_SESSION_SYNC_DELAY_MS);
+      });
+    },
+    [flushCloudSession, userId],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -202,7 +262,7 @@ export function useReaderPersistence({
 
   useEffect(() => {
     if (lastPlaybackStateRef.current && !isPlaying) {
-      flushPendingSession();
+      flushPendingSession({ forceCloud: true });
     }
 
     lastPlaybackStateRef.current = isPlaying;
@@ -211,12 +271,12 @@ export function useReaderPersistence({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (globalThis.document.visibilityState === "hidden") {
-        flushPendingSession();
+        flushPendingSession({ forceCloud: true });
       }
     };
 
     const handlePageHide = () => {
-      flushPendingSession();
+      flushPendingSession({ forceCloud: true });
     };
 
     window.addEventListener("pagehide", handlePageHide);
@@ -231,7 +291,10 @@ export function useReaderPersistence({
         "visibilitychange",
         handleVisibilityChange,
       );
-      flushPendingSession();
+      if (cloudSyncTimeoutRef.current !== undefined) {
+        window.clearTimeout(cloudSyncTimeoutRef.current);
+      }
+      flushPendingSession({ forceCloud: true });
     };
   }, [flushPendingSession]);
 }

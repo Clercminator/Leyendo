@@ -20,8 +20,8 @@ import {
   ensureProfile,
   getProfile,
   getLocalOnlyLibrarySummary,
+  getSyncedLibrarySummary,
   hydrateCloudLibraryToLocal,
-  isRemoteLibraryEmpty,
   type LocalLibrarySummary,
   type UserProfile,
   type UserPersonalInfo,
@@ -155,69 +155,80 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     setProfile(nextProfile);
   }, [supabase]);
 
-  const syncWithCloud = useCallback(async () => {
-    if (!supabase) {
-      return;
-    }
-
-    const userId = currentUserIdRef.current;
-    if (!userId) {
-      await refreshGuestLibrarySummary();
-      return;
-    }
-
-    if (syncLockRef.current) {
-      return syncLockRef.current;
-    }
-
-    const syncPromise = (async () => {
-      setSyncStatus("syncing");
-      setErrorMessage(undefined);
-
-      try {
-        await ensureProfile(supabase, userId);
-        setProfile(await getProfile(supabase, userId));
-        const remoteEmpty = await isRemoteLibraryEmpty(supabase, userId);
-        const localSummary = await getLocalOnlyLibrarySummary();
-        let uploadedDocuments = 0;
-
-        if (remoteEmpty || localSummary.documents > 0) {
-          const backupResult = await backUpLocalLibraryToCloud(
-            supabase,
-            userId,
-          );
-          uploadedDocuments = backupResult.backedUpDocuments;
-        }
-
-        const hydratedSummary = await hydrateCloudLibraryToLocal(
-          supabase,
-          userId,
-        );
-        const finishedAt = new Date().toISOString();
-
-        setSyncStatus("synced");
-        setLastSyncedAt(finishedAt);
-        setLastSyncSummary({
-          ...hydratedSummary,
-          finishedAt,
-          uploadedDocuments,
-        });
-      } catch (error) {
-        setSyncStatus("error");
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Cloud sync could not finish.",
-        );
-      } finally {
-        await refreshGuestLibrarySummary();
-        syncLockRef.current = null;
+  const runCloudSync = useCallback(
+    async (options?: { forceHydrate?: boolean }) => {
+      if (!supabase) {
+        return;
       }
-    })();
 
-    syncLockRef.current = syncPromise;
-    return syncPromise;
-  }, [refreshGuestLibrarySummary, supabase]);
+      const userId = currentUserIdRef.current;
+      if (!userId) {
+        await refreshGuestLibrarySummary();
+        return;
+      }
+
+      if (syncLockRef.current) {
+        return syncLockRef.current;
+      }
+
+      const syncPromise = (async () => {
+        setSyncStatus("syncing");
+        setErrorMessage(undefined);
+
+        try {
+          await ensureProfile(supabase, userId);
+          setProfile(await getProfile(supabase, userId));
+          const localSummary = await getLocalOnlyLibrarySummary();
+          let uploadedDocuments = 0;
+
+          if (localSummary.documents > 0) {
+            const backupResult = await backUpLocalLibraryToCloud(
+              supabase,
+              userId,
+            );
+            uploadedDocuments = backupResult.backedUpDocuments;
+          }
+
+          const syncedSummaryBeforeHydrate =
+            await getSyncedLibrarySummary(userId);
+          const shouldHydrate =
+            options?.forceHydrate === true ||
+            uploadedDocuments > 0 ||
+            syncedSummaryBeforeHydrate.documents === 0;
+          const hydratedSummary = shouldHydrate
+            ? await hydrateCloudLibraryToLocal(supabase, userId)
+            : await getSyncedLibrarySummary(userId);
+          const finishedAt = new Date().toISOString();
+
+          setSyncStatus("synced");
+          setLastSyncedAt(finishedAt);
+          setLastSyncSummary({
+            ...hydratedSummary,
+            finishedAt,
+            uploadedDocuments,
+          });
+        } catch (error) {
+          setSyncStatus("error");
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Cloud sync could not finish.",
+          );
+        } finally {
+          await refreshGuestLibrarySummary();
+          syncLockRef.current = null;
+        }
+      })();
+
+      syncLockRef.current = syncPromise;
+      return syncPromise;
+    },
+    [refreshGuestLibrarySummary, supabase],
+  );
+
+  const syncWithCloud = useCallback(async () => {
+    await runCloudSync({ forceHydrate: true });
+  }, [runCloudSync]);
 
   const updateProfile = useCallback(
     async (input: ProfileUpdateInput) => {
@@ -386,7 +397,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
 
       if (nextSession?.user) {
-        await syncWithCloud();
+        await runCloudSync();
       } else {
         setProfile(undefined);
         setLastSyncSummary(undefined);
@@ -403,7 +414,9 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
 
       if (nextSession?.user) {
-        void syncWithCloud();
+        if (previousUserId !== nextSession.user.id) {
+          void runCloudSync();
+        }
         return;
       }
 
@@ -422,7 +435,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [refreshGuestLibrarySummary, supabase, syncWithCloud]);
+  }, [refreshGuestLibrarySummary, runCloudSync, supabase]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {

@@ -28,7 +28,7 @@ interface PdfFragment {
   right: number;
 }
 
-interface PdfLine {
+export interface PdfLine {
   center: number;
   entryKind: "text" | "image-placeholder";
   fontSize: number;
@@ -93,6 +93,15 @@ function normalizeExtractedText(text: string) {
 
 function normalizePdfFragmentText(text: string) {
   return text.replace(/\s+/g, " ").trim();
+}
+
+function normalizePdfBlockText(text: string) {
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/([\p{L}\p{N}])-\s+(?=[\p{Ll}\p{N}])/gu, "$1")
+    .replace(/\s+([,;:!?%)\]])/g, "$1")
+    .replace(/([(¿¡])\s+/g, "$1")
+    .trim();
 }
 
 function serializeSourceBlocks(blocks: DocumentBlockInput[]) {
@@ -469,7 +478,11 @@ function extractPdfImageLines(
         typeof scaleY === "number" &&
         Array.isArray(positions)
       ) {
-        for (let positionIndex = 0; positionIndex < positions.length; positionIndex += 2) {
+        for (
+          let positionIndex = 0;
+          positionIndex < positions.length;
+          positionIndex += 2
+        ) {
           const x = positions[positionIndex];
           const y = positions[positionIndex + 1];
 
@@ -478,7 +491,14 @@ function extractPdfImageLines(
           }
 
           appendImageLine(
-            multiplyPdfTransforms(currentTransform(), [scaleX, 0, 0, scaleY, x, y]),
+            multiplyPdfTransforms(currentTransform(), [
+              scaleX,
+              0,
+              0,
+              scaleY,
+              x,
+              y,
+            ]),
           );
         }
       }
@@ -526,7 +546,15 @@ function isHeadingLine(line: PdfLine, bodyFontSize: number) {
 }
 
 function isPdfContentsLine(text: string) {
-  return /\.{2,}\s*(?:\d+|[ivxlcdm]+)$/iu.test(text.trim());
+  return /(?:\.{2,}|\s{2,}|…+)\s*(?:\d+|[ivxlcdm]+)$/iu.test(text.trim());
+}
+
+function isPdfFrontMatterMetaLine(text: string) {
+  const normalized = text.trim().toLowerCase();
+
+  return /(?:translated by|published by|copyright|all rights reserved|isbn\b|www\.|https?:\/\/|@)/iu.test(
+    normalized,
+  );
 }
 
 function isStandalonePdfLine(line: PdfLine, bodyFontSize: number) {
@@ -538,7 +566,24 @@ function isStandalonePdfLine(line: PdfLine, bodyFontSize: number) {
     return true;
   }
 
-  return isCenteredLine(line) && line.text.length <= 100 && line.fontSize >= bodyFontSize * 0.92;
+  if (line.pageIndex <= 1 && isPdfFrontMatterMetaLine(line.text)) {
+    return true;
+  }
+
+  if (
+    line.pageIndex <= 1 &&
+    isCenteredLine(line) &&
+    line.text.length <= 90 &&
+    !/[.!?]["')\]]?$/u.test(line.text.trim())
+  ) {
+    return true;
+  }
+
+  return (
+    isCenteredLine(line) &&
+    line.text.length <= 100 &&
+    line.fontSize >= bodyFontSize * 0.92
+  );
 }
 
 function shouldMergePdfParagraphLine(
@@ -555,7 +600,10 @@ function shouldMergePdfParagraphLine(
   }
 
   const verticalGap = Math.abs(previousLine.y - currentLine.y);
-  const gapThreshold = Math.max(bodyFontSize * 2.2, previousLine.fontSize * 2.2);
+  const gapThreshold = Math.max(
+    bodyFontSize * 2.2,
+    previousLine.fontSize * 2.2,
+  );
 
   if (verticalGap > gapThreshold) {
     return false;
@@ -570,9 +618,92 @@ function shouldMergePdfParagraphLine(
   return previousEndsOpen && indentDelta <= Math.max(bodyFontSize * 6, 36);
 }
 
-function buildPdfBlocks(lines: PdfLine[]) {
+function shouldMergePdfParagraphBlocks(
+  previousBlock: DocumentBlockInput,
+  currentBlock: DocumentBlockInput,
+) {
+  if (previousBlock.kind !== "paragraph" || currentBlock.kind !== "paragraph") {
+    return false;
+  }
+
+  if (previousBlock.sourcePageIndex !== currentBlock.sourcePageIndex) {
+    return false;
+  }
+
+  const previousAlignment = previousBlock.alignment ?? "left";
+  const currentAlignment = currentBlock.alignment ?? "left";
+  if (previousAlignment !== currentAlignment || currentAlignment !== "left") {
+    return false;
+  }
+
+  if (
+    isPdfContentsLine(previousBlock.text) ||
+    isPdfContentsLine(currentBlock.text) ||
+    isPdfFrontMatterMetaLine(previousBlock.text) ||
+    isPdfFrontMatterMetaLine(currentBlock.text)
+  ) {
+    return false;
+  }
+
+  const previousText = previousBlock.text.trim();
+  const currentText = currentBlock.text.trim();
+
+  if (!previousText || !currentText) {
+    return false;
+  }
+
+  if (/\[Image omitted from PDF\]/u.test(previousText + currentText)) {
+    return false;
+  }
+
+  if (/-$/u.test(previousText)) {
+    return true;
+  }
+
+  if (/[.!?]["')\]]?$/u.test(previousText)) {
+    return false;
+  }
+
+  return /^[a-zà-ÿ(\["'0-9]/iu.test(currentText);
+}
+
+export function normalizePdfSourceBlocks(blocks: DocumentBlockInput[]) {
+  const normalizedBlocks: DocumentBlockInput[] = [];
+
+  blocks.forEach((block) => {
+    const normalizedBlock = {
+      ...block,
+      text: normalizePdfBlockText(block.text),
+    } satisfies DocumentBlockInput;
+
+    if (!normalizedBlock.text) {
+      return;
+    }
+
+    const previousBlock = normalizedBlocks.at(-1);
+    if (
+      !previousBlock ||
+      !shouldMergePdfParagraphBlocks(previousBlock, normalizedBlock)
+    ) {
+      normalizedBlocks.push(normalizedBlock);
+      return;
+    }
+
+    previousBlock.text = normalizePdfBlockText(
+      `${previousBlock.text} ${normalizedBlock.text}`,
+    );
+  });
+
+  return normalizedBlocks;
+}
+
+export function buildPdfBlocks(lines: PdfLine[]) {
   const bodyFontSize =
-    median(lines.filter((line) => line.text.length > 32).map((line) => line.fontSize)) ||
+    median(
+      lines
+        .filter((line) => line.text.length > 32)
+        .map((line) => line.fontSize),
+    ) ||
     median(lines.map((line) => line.fontSize)) ||
     12;
   const blocks: DocumentBlockInput[] = [];
@@ -658,7 +789,9 @@ function buildPdfBlocks(lines: PdfLine[]) {
     }
 
     if (currentBlock?.kind === "list-item" && !largeGap) {
-      currentBlock.text = `${currentBlock.text} ${line.text}`.replace(/\s+/g, " ").trim();
+      currentBlock.text = `${currentBlock.text} ${line.text}`
+        .replace(/\s+/g, " ")
+        .trim();
       previousLine = line;
       return;
     }
@@ -680,13 +813,15 @@ function buildPdfBlocks(lines: PdfLine[]) {
       return;
     }
 
-    currentBlock.text = `${currentBlock.text} ${line.text}`.replace(/\s+/g, " ").trim();
+    currentBlock.text = `${currentBlock.text} ${line.text}`
+      .replace(/\s+/g, " ")
+      .trim();
     previousLine = line;
   });
 
   flushCurrentBlock();
 
-  return blocks;
+  return normalizePdfSourceBlocks(blocks);
 }
 
 function decodeRtfByte(value: number) {
@@ -759,20 +894,24 @@ export async function extractPdfDocumentFromArrayBuffer(
     }
 
     lines.push(
-      ...[...buildPdfLines(textContent.items, pageNumber - 1, viewport.width), ...imageLines].sort(
-        (left, right) => {
-          if (left.pageIndex !== right.pageIndex) {
-            return left.pageIndex - right.pageIndex;
-          }
+      ...[
+        ...buildPdfLines(textContent.items, pageNumber - 1, viewport.width),
+        ...imageLines,
+      ].sort((left, right) => {
+        if (left.pageIndex !== right.pageIndex) {
+          return left.pageIndex - right.pageIndex;
+        }
 
-          const verticalDistance = Math.abs(left.y - right.y);
-          if (verticalDistance <= Math.max(left.fontSize, right.fontSize) * 0.35) {
-            return left.left - right.left;
-          }
+        const verticalDistance = Math.abs(left.y - right.y);
+        if (
+          verticalDistance <=
+          Math.max(left.fontSize, right.fontSize) * 0.35
+        ) {
+          return left.left - right.left;
+        }
 
-          return right.y - left.y;
-        },
-      ),
+        return right.y - left.y;
+      }),
     );
   }
 

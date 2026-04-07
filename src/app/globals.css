@@ -673,7 +673,19 @@
 
   .reader-panel {
     background: var(--reader-panel-bg);
-    min-height: max(50vh, 30rem);
+    min-height: max(22rem, 42vh);
+  }
+
+  @media (min-width: 48rem) {
+    .reader-panel {
+      min-height: max(24rem, 46vh);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .reader-panel {
+      min-height: max(50vh, 30rem);
+    }
   }
 
   .reader-accent {

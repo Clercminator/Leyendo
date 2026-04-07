@@ -46,10 +46,11 @@ describe("LandingReaderDemo", () => {
     expect(
       screen.getByLabelText(/classic reader document/i),
     ).toBeInTheDocument();
-    expect(readerCanvas.className).toContain("min-h-232");
+    expect(readerCanvas.className).toContain("min-h-176");
+    expect(readerCanvas.className).toContain("md:min-h-232");
     expect(readerCanvas.className).not.toContain("h-[58rem]");
-    expect(screen.getAllByText(/the practical payoff/i).length).toBeGreaterThan(
-      0,
+    expect(screen.getByLabelText(/classic reader document/i)).toHaveTextContent(
+      /the practical payoff/i,
     );
   });
 });

@@ -260,11 +260,8 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-90 border-b border-(--border-soft) bg-(--surface-overlay) shadow-[0_14px_40px_rgba(8,12,22,0.08)] backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
-        <Link
-          href="/"
-          className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-4"
-        >
+      <div className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+        <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-4">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.15rem] border border-(--border-soft) bg-[radial-gradient(circle_at_30%_20%,rgba(120,231,255,0.2),transparent_55%),linear-gradient(160deg,rgba(17,34,58,0.95),rgba(8,19,29,0.98))] shadow-[0_20px_48px_rgba(6,12,24,0.3)] sm:h-14 sm:w-14 sm:rounded-[1.35rem]">
             <Image
               src="/leyendo-logo.svg"
@@ -274,7 +271,7 @@ export function SiteHeader() {
               className="h-9 w-9 shrink-0 sm:h-11 sm:w-11"
             />
           </span>
-          <div className="min-w-0">
+          <div className="hidden min-w-0 sm:block">
             <p className="text-[0.72rem] tracking-[0.18em] text-(--text-muted) uppercase sm:text-[0.78rem] sm:tracking-[0.22em]">
               Leyendo
             </p>
@@ -307,7 +304,7 @@ export function SiteHeader() {
           </nav>
         ) : null}
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           {showsFullHeader ? (
             <div className="hidden items-center gap-2 2xl:flex">
               {desktopSyncStatusLabel ? (
@@ -457,7 +454,7 @@ export function SiteHeader() {
                 onClick={() => {
                   setIsLocaleMenuOpen((currentValue) => !currentValue);
                 }}
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-3.5"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:gap-2 sm:px-3.5"
               >
                 <Languages className="h-4 w-4 text-(--accent-sky)" />
                 <span className="rounded-full bg-(--surface-chip) px-2 py-0.5 text-xs font-semibold text-(--text-muted)">
@@ -528,7 +525,7 @@ export function SiteHeader() {
           ) : null}
 
           {!showsFullHeader ? (
-            <div className="flex items-center gap-1 rounded-full border border-(--border-soft) bg-(--surface-soft) p-1">
+            <div className="flex items-center gap-0.5 rounded-full border border-(--border-soft) bg-(--surface-soft) p-0.5 sm:gap-1 sm:p-1">
               <button
                 type="button"
                 title={getLocalizedCopy(locale, themeLabels.light)}
@@ -565,26 +562,32 @@ export function SiteHeader() {
                   type="button"
                   aria-expanded="true"
                   aria-haspopup="menu"
+                  aria-label={getLocalizedCopy(locale, menuLabel)}
                   onClick={() => {
                     setIsHeaderMenuOpen(false);
                   }}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3.5 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4"
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4"
                 >
                   <X className="h-4 w-4 text-(--accent-sky)" />
-                  <span>{getLocalizedCopy(locale, menuLabel)}</span>
+                  <span className="hidden sm:inline">
+                    {getLocalizedCopy(locale, menuLabel)}
+                  </span>
                 </button>
               ) : (
                 <button
                   type="button"
                   aria-expanded="false"
                   aria-haspopup="menu"
+                  aria-label={getLocalizedCopy(locale, menuLabel)}
                   onClick={() => {
                     setIsHeaderMenuOpen(true);
                   }}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3.5 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4"
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) shadow-[0_10px_24px_rgba(20,26,56,0.08)] transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4"
                 >
                   <Menu className="h-4 w-4 text-(--accent-sky)" />
-                  <span>{getLocalizedCopy(locale, menuLabel)}</span>
+                  <span className="hidden sm:inline">
+                    {getLocalizedCopy(locale, menuLabel)}
+                  </span>
                 </button>
               )}
 
