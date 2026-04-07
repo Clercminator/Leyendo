@@ -16,6 +16,7 @@ import {
   Languages,
   Menu,
   MoonStar,
+  Sparkles,
   ShieldCheck,
   SunMedium,
   X,
@@ -37,6 +38,11 @@ const links = [
     href: "/library",
     label: { en: "Library", es: "Biblioteca", pt: "Biblioteca" },
     icon: LibraryBig,
+  },
+  {
+    href: "/pricing",
+    label: { en: "Pricing", es: "Precios", pt: "Precos" },
+    icon: Sparkles,
   },
   {
     href: "/about",

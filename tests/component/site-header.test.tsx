@@ -91,6 +91,7 @@ describe("SiteHeader", () => {
       expect(screen.getByRole("link", { name: /reader/i })).toBeInTheDocument();
     });
 
+    expect(screen.getByRole("link", { name: /pricing/i })).toBeInTheDocument();
     expect(screen.queryByText(/guest mode/i)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /^menu$/i }),
@@ -121,6 +122,7 @@ describe("SiteHeader", () => {
     await user.click(screen.getByRole("button", { name: /^menu$/i }));
 
     expect(screen.getByRole("link", { name: /reader/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /pricing/i })).toBeInTheDocument();
     expect(screen.queryAllByTitle(/light/i)).toHaveLength(1);
     expect(screen.queryAllByTitle(/dark/i)).toHaveLength(1);
   });
