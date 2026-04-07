@@ -49,11 +49,19 @@ describe("PricingPageContent", () => {
   it("renders the three pricing plans and defaults to the global payment option in English", () => {
     render(<PricingPageContent />);
 
-    expect(screen.getByRole("heading", { name: /basic reader/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^focus$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /basic reader/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /^focus$/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^max$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /get focus/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /get max/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /get focus/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /get max/i }),
+    ).toBeInTheDocument();
   });
 
   it("uses the real MercadoPago subscription plans for LATAM card checkout", async () => {
@@ -62,7 +70,9 @@ describe("PricingPageContent", () => {
 
     render(<PricingPageContent />);
 
-    await user.click(screen.getByRole("button", { name: /paying from latam\? switch/i }));
+    await user.click(
+      screen.getByRole("button", { name: /paying from latam\? switch/i }),
+    );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
     expect(openSpy).toHaveBeenCalledWith(
@@ -87,7 +97,9 @@ describe("PricingPageContent", () => {
 
     render(<PricingPageContent />);
 
-    await user.click(screen.getByRole("button", { name: /paying from latam\? switch/i }));
+    await user.click(
+      screen.getByRole("button", { name: /paying from latam\? switch/i }),
+    );
 
     await waitFor(() => {
       expect(
@@ -95,9 +107,13 @@ describe("PricingPageContent", () => {
       ).toBeInTheDocument();
     });
 
-    await user.click(screen.getAllByRole("button", { name: /pay with binance/i })[0]);
+    await user.click(
+      screen.getAllByRole("button", { name: /pay with binance/i })[0],
+    );
 
-    expect(screen.getByRole("dialog", { name: /pay with binance pay/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: /pay with binance pay/i }),
+    ).toBeInTheDocument();
     expect(screen.getByAltText(/binance pay qr code/i)).toBeInTheDocument();
   });
 
@@ -105,7 +121,9 @@ describe("PricingPageContent", () => {
     render(<PricingPageContent initialPaymentStatus="success" />);
 
     expect(
-      screen.getByText(/payment approved\. if your plan does not unlock automatically/i),
+      screen.getByText(
+        /payment approved\. if your plan does not unlock automatically/i,
+      ),
     ).toBeInTheDocument();
   });
 });

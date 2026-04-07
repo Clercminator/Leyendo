@@ -4,13 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  Check,
-  Coins,
-  CreditCard,
-  Globe2,
-  X,
-} from "lucide-react";
+import { Check, Coins, CreditCard, Globe2, X } from "lucide-react";
 
 import { useLocale } from "@/components/layout/locale-provider";
 import { founderGitHubUrl, founderLinkedInUrl } from "@/lib/site";
@@ -46,8 +40,7 @@ const latamCountryCodes = new Set([
 const mercadopagoPlanUrls = {
   focus:
     "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
-  max:
-    "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=9f0352ccb88840e38f5241214e548df4",
+  max: "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=9f0352ccb88840e38f5241214e548df4",
 } satisfies Record<PaidPlanId, string>;
 
 const checkoutUrls = {
@@ -59,7 +52,10 @@ const checkoutUrls = {
     lemonsqueezy: process.env.NEXT_PUBLIC_LEMONSQUEEZY_MAX_URL,
     mercadopago: mercadopagoPlanUrls.max,
   },
-} satisfies Record<PaidPlanId, Partial<Record<Exclude<PaymentProvider, "binance">, string | undefined>>>;
+} satisfies Record<
+  PaidPlanId,
+  Partial<Record<Exclude<PaymentProvider, "binance">, string | undefined>>
+>;
 
 const binanceQrPath = "/payment/BinanceQR.png";
 
@@ -165,7 +161,9 @@ export function PricingPageContent({
   const [binancePlanId, setBinancePlanId] = useState<PaidPlanId | null>(null);
 
   useEffect(() => {
-    setPaymentRegion((currentRegion) => currentRegion ?? detectInitialRegion(locale));
+    setPaymentRegion(
+      (currentRegion) => currentRegion ?? detectInitialRegion(locale),
+    );
   }, [locale]);
 
   useEffect(() => {
@@ -220,8 +218,7 @@ export function PricingPageContent({
         globalSwitch: "Pagas desde LATAM? Cambiar",
         heroDescription:
           "Elige el nivel de sincronizacion, soporte de vocabulario y acceso a biblioteca que necesitas.",
-        heroTitle:
-          "Planes de lectura transparentes",
+        heroTitle: "Planes de lectura transparentes",
         latamState: "Mostrando pago LATAM (MercadoPago)",
         latamSwitch: "Pagas desde US/EU? Cambiar",
         maxCta: "Obtener Max",
@@ -258,8 +255,7 @@ export function PricingPageContent({
         globalSwitch: "Paga da LATAM? Trocar",
         heroDescription:
           "Escolha o nivel de sincronizacao, suporte de vocabulario e acesso a biblioteca que voce precisa.",
-        heroTitle:
-          "Planos de leitura transparentes",
+        heroTitle: "Planos de leitura transparentes",
         latamState: "Mostrando pagamento LATAM (MercadoPago)",
         latamSwitch: "Paga dos EUA/Europa? Trocar",
         maxCta: "Obter Max",
@@ -295,8 +291,7 @@ export function PricingPageContent({
       globalSwitch: "Paying from LATAM? Switch",
       heroDescription:
         "Choose the level of sync, vocabulary support, and private library access you need.",
-      heroTitle:
-        "Transparent Reading Plans",
+      heroTitle: "Transparent Reading Plans",
       latamState: "Showing LATAM payment (MercadoPago)",
       latamSwitch: "Paying from US/EU? Switch",
       maxCta: "Get Max",
@@ -405,9 +400,13 @@ export function PricingPageContent({
     [copy, locale],
   );
 
-  const primaryProvider = paymentRegion === "latam" ? "mercadopago" : "lemonsqueezy";
+  const primaryProvider =
+    paymentRegion === "latam" ? "mercadopago" : "lemonsqueezy";
 
-  function handleProviderClick(planId: PaidPlanId, provider: Exclude<PaymentProvider, "binance">) {
+  function handleProviderClick(
+    planId: PaidPlanId,
+    provider: Exclude<PaymentProvider, "binance">,
+  ) {
     const providerUrl = checkoutUrls[planId][provider];
 
     if (!providerUrl) {
@@ -483,12 +482,14 @@ export function PricingPageContent({
                 <h2 className="text-[2rem] font-bold tracking-tight text-white">
                   {plan.label}
                 </h2>
-                <div className="mt-2 flex items-baseline gap-1.5 flex-wrap">
+                <div className="mt-2 flex flex-wrap items-baseline gap-1.5">
                   <span className="text-5xl font-bold tracking-tight text-white">
                     {plan.price === 0 ? "$0" : `$${plan.price.toFixed(2)}`}
                   </span>
                   {plan.price > 0 ? (
-                    <span className="text-sm text-[#7d8598]">({copy.priceSuffix})</span>
+                    <span className="text-sm text-[#7d8598]">
+                      ({copy.priceSuffix})
+                    </span>
                   ) : null}
                 </div>
                 <p className="mt-5 text-sm leading-8 text-[#94a3b8]">
@@ -507,7 +508,10 @@ export function PricingPageContent({
 
               <div className="mt-auto space-y-3">
                 {plan.id === "basic" ? (
-                  <Link href={plan.href} className={primaryButtonClass(plan.id)}>
+                  <Link
+                    href={plan.href}
+                    className={primaryButtonClass(plan.id)}
+                  >
                     {plan.cta}
                   </Link>
                 ) : (

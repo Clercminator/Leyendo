@@ -6,7 +6,9 @@ interface DashboardPageProps {
   }>;
 }
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const destination = new URLSearchParams();
 
