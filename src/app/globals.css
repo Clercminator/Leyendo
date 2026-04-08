@@ -761,6 +761,20 @@
       color 260ms ease;
   }
 
+  .reader-classic-active-run-compact {
+    display: inline;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    margin-inline: 0;
+    box-shadow: none;
+    text-decoration-line: underline;
+    text-decoration-thickness: 0.18em;
+    text-decoration-color: var(--reader-classic-emphasis-border);
+    text-underline-offset: 0.18em;
+    text-decoration-skip-ink: none;
+  }
+
   .reader-active-paragraph {
     border: 1px solid var(--reader-paragraph-active-border);
     background: var(--reader-paragraph-active-bg);
@@ -831,6 +845,35 @@
 
   .reader-classic-active-run {
     transition: none;
+  }
+
+  .reader-active-paragraph-breathe {
+    animation: none;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (max-width: 70rem) {
+  .reader-classic-active-run {
+    display: inline;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    margin-inline: 0;
+    box-shadow: none;
+    text-decoration-line: underline;
+    text-decoration-thickness: 0.18em;
+    text-decoration-color: var(--reader-classic-emphasis-border);
+    text-underline-offset: 0.18em;
+    text-decoration-skip-ink: none;
+  }
+
+  .reader-classic-active-run-compact {
+    text-decoration-thickness: 0.18em;
+  }
+
+  .reader-active-paragraph {
+    background: transparent;
+    box-shadow: none;
   }
 
   .reader-active-paragraph-breathe {

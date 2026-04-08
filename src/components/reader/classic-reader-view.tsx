@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useLocale } from "@/components/layout/locale-provider";
 import { getLocalizedCopy } from "@/lib/locale";
@@ -17,10 +17,11 @@ const inactiveTokenIndexes = new Set<number>();
 
 function renderTokens(args: {
   activeIndexes: Set<number>;
+  isCompactEmphasis: boolean;
   onJumpToToken?: (tokenIndex: number) => void;
   tokens: Token[];
 }) {
-  const { activeIndexes, onJumpToToken, tokens } = args;
+  const { activeIndexes, isCompactEmphasis, onJumpToToken, tokens } = args;
 
   return tokens.map((token, tokenIndex) => {
     const isActive = activeIndexes.has(token.index);
@@ -34,6 +35,9 @@ function renderTokens(args: {
           className={
             [
               isActive ? "reader-classic-active-run" : null,
+              isActive && isCompactEmphasis
+                ? "reader-classic-active-run-compact"
+                : null,
               onJumpToToken
                 ? "cursor-pointer rounded-md px-[0.04em] transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-sky)"
                 : null,
@@ -79,6 +83,7 @@ export function ClassicReaderView({
 }: ClassicReaderViewProps) {
   const { locale } = useLocale();
   const activeParagraphRef = useRef<HTMLElement | null>(null);
+  const [isCompactEmphasis, setIsCompactEmphasis] = useState(false);
   const activeIndexes = useMemo(() => new Set(chunk.tokenIndexes), [chunk]);
   const renderedBlocks = useMemo(
     () =>
@@ -110,6 +115,31 @@ export function ClassicReaderView({
       inline: "nearest",
     });
   }, [chunk.paragraphIndex, reduceMotion]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const resolveCompactEmphasis = () => {
+      const coarsePointer =
+        window.matchMedia?.("(hover: none), (pointer: coarse)").matches ??
+        false;
+      const touchCapable =
+        coarsePointer ||
+        navigator.maxTouchPoints > 0 ||
+        "ontouchstart" in window;
+
+      setIsCompactEmphasis(touchCapable && window.innerWidth <= 1100);
+    };
+
+    resolveCompactEmphasis();
+    window.addEventListener("resize", resolveCompactEmphasis);
+
+    return () => {
+      window.removeEventListener("resize", resolveCompactEmphasis);
+    };
+  }, []);
 
   const classicReaderLabel = getLocalizedCopy(locale, {
     en: "Classic Reader",
@@ -146,6 +176,7 @@ export function ClassicReaderView({
             ({ activeTokenIndexes, block, isActive, tokens }) => {
               const body = renderTokens({
                 activeIndexes: activeTokenIndexes,
+                isCompactEmphasis,
                 onJumpToToken: handleJumpToToken,
                 tokens,
               });
@@ -166,7 +197,13 @@ export function ClassicReaderView({
                   data-reader-paragraph-index={block.index}
                   className={`scroll-mt-4 rounded-[1.15rem] transition md:scroll-mt-6 md:rounded-[1.35rem] ${
                     isActive
-                      ? `${reduceMotion ? "reader-active-paragraph" : "reader-active-paragraph reader-active-paragraph-breathe"} px-4 py-3 md:px-5 md:py-4`
+                      ? `${
+                          isCompactEmphasis
+                            ? ""
+                            : reduceMotion
+                              ? "reader-active-paragraph"
+                              : "reader-active-paragraph reader-active-paragraph-breathe"
+                        } px-4 py-3 md:px-5 md:py-4`
                       : block.kind === "heading"
                         ? "px-1 py-1.5 md:px-2 md:py-2"
                         : "px-1 py-2 md:px-2 md:py-3"

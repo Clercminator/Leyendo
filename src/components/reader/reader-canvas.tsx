@@ -79,6 +79,14 @@ const themeLabels: Record<
   },
 };
 
+const themePreviewSwatchClassNames: Record<ReaderPreferences["theme"], string> =
+  {
+    midnight: "bg-[#8eb5ff]",
+    ember: "bg-[#ffb36a]",
+    indigo: "bg-[#b8c0ff]",
+    "high-contrast": "bg-white",
+  };
+
 const modeLabels: Record<
   (typeof readerModes)[number],
   Record<"en" | "es" | "pt", string>
@@ -220,7 +228,7 @@ export function ReaderCanvas({
   const topControlButtonClass =
     "min-h-10 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm";
   const statusChipClass =
-    "inline-flex min-h-9 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1.5 text-center text-[11px] text-(--text-strong) sm:min-h-auto sm:px-3 sm:text-sm";
+    "inline-flex min-h-9 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-2 py-1.5 text-center text-[11px] leading-tight text-(--text-strong) sm:min-h-auto sm:px-3 sm:text-sm";
   const mobileStatCardClass =
     "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-left";
   const mobilePrimaryButtonClass =
@@ -880,7 +888,7 @@ export function ReaderCanvas({
             </button>
           </div>
           <div className="grid gap-2 text-sm lg:hidden">
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <span className={statusChipClass}>
                 {copy.paragraph} {currentParagraphNumber} · {progress}%
               </span>
@@ -1512,71 +1520,73 @@ export function ReaderCanvas({
                   {copy.appearance}
                 </p>
                 <div className="mt-3 grid gap-2">
-                  <div className={settingsRowClass}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                          {copy.fontScale}
-                        </p>
-                        <p className="mt-1 text-sm text-(--text-strong)">
-                          {preferences.fontScale.toFixed(1)}x
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          aria-label={copy.decreaseFontScale}
-                          onClick={() => {
-                            onChangeFontScale(-0.1);
-                          }}
-                          className={compactStepButtonClass}
-                        >
-                          -0.1
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={copy.increaseFontScale}
-                          onClick={() => {
-                            onChangeFontScale(0.1);
-                          }}
-                          className={compactStepButtonClass}
-                        >
-                          +0.1
-                        </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className={settingsRowClass}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                            {copy.fontScale}
+                          </p>
+                          <p className="mt-1 text-sm text-(--text-strong)">
+                            {preferences.fontScale.toFixed(1)}x
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label={copy.decreaseFontScale}
+                            onClick={() => {
+                              onChangeFontScale(-0.1);
+                            }}
+                            className={compactStepButtonClass}
+                          >
+                            -0.1
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={copy.increaseFontScale}
+                            onClick={() => {
+                              onChangeFontScale(0.1);
+                            }}
+                            className={compactStepButtonClass}
+                          >
+                            +0.1
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className={settingsRowClass}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                          {copy.lineHeight}
-                        </p>
-                        <p className="mt-1 text-sm text-(--text-strong)">
-                          {preferences.lineHeight.toFixed(1)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          aria-label={copy.decreaseLineHeight}
-                          onClick={() => {
-                            onChangeLineHeight(-0.1);
-                          }}
-                          className={compactStepButtonClass}
-                        >
-                          -0.1
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={copy.increaseLineHeight}
-                          onClick={() => {
-                            onChangeLineHeight(0.1);
-                          }}
-                          className={compactStepButtonClass}
-                        >
-                          +0.1
-                        </button>
+                    <div className={settingsRowClass}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                            {copy.lineHeight}
+                          </p>
+                          <p className="mt-1 text-sm text-(--text-strong)">
+                            {preferences.lineHeight.toFixed(1)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label={copy.decreaseLineHeight}
+                            onClick={() => {
+                              onChangeLineHeight(-0.1);
+                            }}
+                            className={compactStepButtonClass}
+                          >
+                            -0.1
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={copy.increaseLineHeight}
+                            onClick={() => {
+                              onChangeLineHeight(0.1);
+                            }}
+                            className={compactStepButtonClass}
+                          >
+                            +0.1
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1603,7 +1613,7 @@ export function ReaderCanvas({
                       {isFullscreen ? copy.collapse : copy.expand}
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {Object.entries(themeLabels).map(([value, labels]) => (
                       <button
                         key={value}
@@ -1611,12 +1621,16 @@ export function ReaderCanvas({
                         onClick={() => {
                           onSelectTheme(value as ReaderPreferences["theme"]);
                         }}
-                        className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
+                        className={`flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[1rem] border px-2 py-2 text-center text-[11px] leading-tight transition sm:text-xs ${
                           preferences.theme === value
                             ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
                             : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
                         }`}
                       >
+                        <span
+                          aria-hidden="true"
+                          className={`h-3 w-7 rounded-full border border-white/15 ${themePreviewSwatchClassNames[value as ReaderPreferences["theme"]]}`}
+                        />
                         {getLocalizedCopy(locale, labels)}
                       </button>
                     ))}
@@ -1629,71 +1643,74 @@ export function ReaderCanvas({
                   {copy.playback}
                 </p>
                 <div className="mt-3 grid gap-2">
-                  <div className={settingsRowClass}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                          {copy.speed}
-                        </p>
-                        <p className="mt-1 text-sm text-(--text-strong)">
-                          {preferences.wordsPerMinute} WPM
-                        </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className={settingsRowClass}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                            {copy.speed}
+                          </p>
+                          <p className="mt-1 text-sm text-(--text-strong)">
+                            {preferences.wordsPerMinute} WPM
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onChangeWordsPerMinute(-20);
+                            }}
+                            aria-label={copy.decreaseReadingSpeed}
+                            className={compactStepButtonClass}
+                          >
+                            -20
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onChangeWordsPerMinute(20);
+                            }}
+                            aria-label={copy.increaseReadingSpeed}
+                            className={compactStepButtonClass}
+                          >
+                            +20
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onChangeWordsPerMinute(-20);
-                          }}
-                          aria-label={copy.decreaseReadingSpeed}
-                          className={compactStepButtonClass}
-                        >
-                          -20
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onChangeWordsPerMinute(20);
-                          }}
-                          aria-label={copy.increaseReadingSpeed}
-                          className={compactStepButtonClass}
-                        >
-                          +20
-                        </button>
+                    </div>
+                    <div className={settingsRowClass}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                            {copy.chunkSize}
+                          </p>
+                          <p className="mt-1 text-sm text-(--text-strong)">
+                            {chunkSize}{" "}
+                            {chunkSize === 1 ? copy.word : copy.words}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={onDecreaseChunkSize}
+                            aria-label={copy.decreaseChunkSize}
+                            className={compactStepButtonClass}
+                          >
+                            -1
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onIncreaseChunkSize}
+                            aria-label={copy.increaseChunkSize}
+                            className={compactStepButtonClass}
+                          >
+                            +1
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className={settingsRowClass}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                          {copy.chunkSize}
-                        </p>
-                        <p className="mt-1 text-sm text-(--text-strong)">
-                          {chunkSize} {chunkSize === 1 ? copy.word : copy.words}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={onDecreaseChunkSize}
-                          aria-label={copy.decreaseChunkSize}
-                          className={compactStepButtonClass}
-                        >
-                          -1
-                        </button>
-                        <button
-                          type="button"
-                          onClick={onIncreaseChunkSize}
-                          aria-label={copy.increaseChunkSize}
-                          className={compactStepButtonClass}
-                        >
-                          +1
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={onToggleNaturalPauses}
