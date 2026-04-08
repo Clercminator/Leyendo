@@ -26,6 +26,7 @@ import { PdfReaderWorkspace } from "@/components/reader/pdf-reader-workspace";
 import { PhraseChunkView } from "@/components/reader/phrase-chunk-view";
 import { ReaderCanvas } from "@/components/reader/reader-canvas";
 import { ReaderSidebar } from "@/components/reader/reader-sidebar";
+import { useCloudAnchorSync } from "@/components/reader/use-cloud-anchor-sync";
 import { useReaderDocument } from "@/components/reader/use-reader-document";
 import { useReaderPersistence } from "@/components/reader/use-reader-persistence";
 import { useReaderPlayback } from "@/components/reader/use-reader-playback";
@@ -46,13 +47,6 @@ import {
   resolveSourcePageIndexForAnchor,
 } from "@/features/reader/pdf/navigation";
 import { getLocalizedCopy } from "@/lib/locale";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import {
-  deleteCloudBookmark,
-  deleteCloudHighlight,
-  upsertCloudBookmarks,
-  upsertCloudHighlights,
-} from "@/lib/supabase/library-sync";
 import { useReaderStore } from "@/state/reader-store";
 import type { Bookmark, ReaderMode, ReaderPreferences } from "@/types/reader";
 import { readerModes, readerPresets } from "@/types/reader";
@@ -132,6 +126,12 @@ export function ReaderWorkspace({
   const { locale } = useLocale();
   const { profile, syncReaderPreferences, user } = useSupabaseAuth();
   const userId = user?.id;
+  const {
+    queueBookmarkDelete,
+    queueBookmarkUpsert,
+    queueHighlightDelete,
+    queueHighlightUpsert,
+  } = useCloudAnchorSync({ userId });
   const {
     currentChunkIndex,
     isPlaying,
@@ -481,14 +481,7 @@ export function ReaderWorkspace({
 
     prependBookmark(bookmark);
     if (userId) {
-      const supabase = getSupabaseBrowserClient();
-      if (supabase) {
-        void upsertCloudBookmarks(supabase, userId, [bookmark]).catch(
-          (error) => {
-            console.warn("bookmark sync failed", error);
-          },
-        );
-      }
+      queueBookmarkUpsert(bookmark);
     }
     announce(`${bookmark.label} saved.`);
   }, [
@@ -497,6 +490,7 @@ export function ReaderWorkspace({
     bookmarks.length,
     document,
     prependBookmark,
+    queueBookmarkUpsert,
     resolvedChunkIndex,
     userId,
   ]);
@@ -529,14 +523,7 @@ export function ReaderWorkspace({
 
       prependBookmark(bookmark);
       if (userId) {
-        const supabase = getSupabaseBrowserClient();
-        if (supabase) {
-          void upsertCloudBookmarks(supabase, userId, [bookmark]).catch(
-            (error) => {
-              console.warn("bookmark sync failed", error);
-            },
-          );
-        }
+        queueBookmarkUpsert(bookmark);
       }
 
       announce(
@@ -551,6 +538,7 @@ export function ReaderWorkspace({
       document,
       payload,
       prependBookmark,
+      queueBookmarkUpsert,
       resolvedChunkIndex,
       runtimeChunks,
       userId,
@@ -577,14 +565,7 @@ export function ReaderWorkspace({
 
     prependHighlight(highlight);
     if (userId) {
-      const supabase = getSupabaseBrowserClient();
-      if (supabase) {
-        void upsertCloudHighlights(supabase, userId, [highlight]).catch(
-          (error) => {
-            console.warn("highlight sync failed", error);
-          },
-        );
-      }
+      queueHighlightUpsert(highlight);
     }
     setHighlightNote("");
     announce(`${highlight.label} saved.`);
@@ -595,6 +576,7 @@ export function ReaderWorkspace({
     highlightNote,
     highlights.length,
     prependHighlight,
+    queueHighlightUpsert,
     resolvedChunkIndex,
     userId,
   ]);
@@ -647,14 +629,7 @@ export function ReaderWorkspace({
 
       prependHighlight(highlight);
       if (userId) {
-        const supabase = getSupabaseBrowserClient();
-        if (supabase) {
-          void upsertCloudHighlights(supabase, userId, [highlight]).catch(
-            (error) => {
-              console.warn("highlight sync failed", error);
-            },
-          );
-        }
+        queueHighlightUpsert(highlight);
       }
       setHighlightNote("");
       announce(`${highlight.label} saved.`);
@@ -666,6 +641,7 @@ export function ReaderWorkspace({
       highlights.length,
       payload,
       prependHighlight,
+      queueHighlightUpsert,
       resolvedChunkIndex,
       runtimeChunks,
       userId,
@@ -675,41 +651,27 @@ export function ReaderWorkspace({
   const handleDeleteBookmark = useCallback(
     async (bookmarkIdToDelete: string) => {
       if (userId) {
-        const supabase = getSupabaseBrowserClient();
-        if (supabase) {
-          try {
-            await deleteCloudBookmark(supabase, userId, bookmarkIdToDelete);
-          } catch (error) {
-            console.warn("cloud bookmark delete failed", error);
-          }
-        }
+        queueBookmarkDelete(bookmarkIdToDelete);
       }
 
       await deleteBookmark(bookmarkIdToDelete);
       removeBookmark(bookmarkIdToDelete);
       announce("Bookmark deleted.");
     },
-    [announce, removeBookmark, userId],
+    [announce, queueBookmarkDelete, removeBookmark, userId],
   );
 
   const handleDeleteHighlight = useCallback(
     async (highlightIdToDelete: string) => {
       if (userId) {
-        const supabase = getSupabaseBrowserClient();
-        if (supabase) {
-          try {
-            await deleteCloudHighlight(supabase, userId, highlightIdToDelete);
-          } catch (error) {
-            console.warn("cloud highlight delete failed", error);
-          }
-        }
+        queueHighlightDelete(highlightIdToDelete);
       }
 
       await deleteHighlight(highlightIdToDelete);
       removeHighlight(highlightIdToDelete);
       announce("Highlight deleted.");
     },
-    [announce, removeHighlight, userId],
+    [announce, queueHighlightDelete, removeHighlight, userId],
   );
 
   const jumpToAnchor = useCallback(

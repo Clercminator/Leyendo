@@ -11,7 +11,7 @@ import type {
 
 export interface PreferenceRecord {
   key: string;
-  value: ReaderPreferences | PdfViewerState;
+  value: unknown;
 }
 
 export class LeeDatabase extends Dexie {

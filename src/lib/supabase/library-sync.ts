@@ -27,6 +27,15 @@ const PROFILE_AVATAR_BUCKET = "profile-avatars";
 const DOCUMENT_PAYLOAD_BUCKET = "document-payloads";
 const DOCUMENT_METADATA_SELECT =
   "created_at,document_id,excerpt,source_kind,title,total_chunks,total_sections,updated_at,user_id";
+const DOCUMENT_ID_SELECT = "document_id";
+const SYNC_CURSOR_PREFERENCE_KEY_PREFIX = "cloud-sync-cursors:";
+
+interface CloudSyncCursors {
+  bookmarksCreatedAt?: string;
+  documentsUpdatedAt?: string;
+  highlightsCreatedAt?: string;
+  sessionsUpdatedAt?: string;
+}
 
 const supportedImageExtensions = new Set([
   "avif",
@@ -135,6 +144,171 @@ export interface LocalLibrarySummary {
   documents: number;
   highlights: number;
   sessions: number;
+}
+
+function getCloudSyncCursorPreferenceKey(userId: string) {
+  return `${SYNC_CURSOR_PREFERENCE_KEY_PREFIX}${userId}`;
+}
+
+async function getCloudSyncCursors(userId: string) {
+  const record = await db.preferences.get(
+    getCloudSyncCursorPreferenceKey(userId),
+  );
+  return (record?.value as CloudSyncCursors | undefined) ?? {};
+}
+
+async function saveCloudSyncCursors(userId: string, cursors: CloudSyncCursors) {
+  await db.preferences.put({
+    key: getCloudSyncCursorPreferenceKey(userId),
+    value: cursors,
+  });
+}
+
+async function clearCloudSyncCursors(userId: string) {
+  await db.preferences.delete(getCloudSyncCursorPreferenceKey(userId));
+}
+
+function maxIsoTimestamp(left: string | undefined, right: string | undefined) {
+  if (!left) {
+    return right;
+  }
+
+  if (!right) {
+    return left;
+  }
+
+  return left > right ? left : right;
+}
+
+function buildCloudSyncCursors(args: {
+  bookmarks: RemoteBookmarkRow[];
+  documents: RemoteDocumentRow[];
+  existing?: CloudSyncCursors;
+  highlights: RemoteHighlightRow[];
+  sessions: RemoteSessionRow[];
+}) {
+  const { bookmarks, documents, existing, highlights, sessions } = args;
+
+  return {
+    bookmarksCreatedAt: bookmarks.reduce<string | undefined>(
+      (latest, bookmark) => maxIsoTimestamp(latest, bookmark.created_at),
+      existing?.bookmarksCreatedAt,
+    ),
+    documentsUpdatedAt: documents.reduce<string | undefined>(
+      (latest, document) => maxIsoTimestamp(latest, document.updated_at),
+      existing?.documentsUpdatedAt,
+    ),
+    highlightsCreatedAt: highlights.reduce<string | undefined>(
+      (latest, highlight) => maxIsoTimestamp(latest, highlight.created_at),
+      existing?.highlightsCreatedAt,
+    ),
+    sessionsUpdatedAt: sessions.reduce<string | undefined>(
+      (latest, session) => maxIsoTimestamp(latest, session.updated_at),
+      existing?.sessionsUpdatedAt,
+    ),
+  } satisfies CloudSyncCursors;
+}
+
+function applyIsoCursor<
+  QueryType extends { gte: (column: string, value: string) => QueryType },
+>(query: QueryType, column: string, value: string | undefined) {
+  if (!value) {
+    return query;
+  }
+
+  return query.gte(column, value);
+}
+
+function mapRemoteDocumentsWithExistingPayload(args: {
+  existingDocumentById: Map<string, DocumentRecord>;
+  rows: RemoteDocumentRow[];
+}) {
+  const { existingDocumentById, rows } = args;
+
+  return rows.map((row) => {
+    const record = toSyncedDocumentRecord(row);
+    const existingDocument = existingDocumentById.get(record.id);
+
+    return existingDocument?.payload && !record.payload
+      ? {
+          ...record,
+          payload: existingDocument.payload,
+        }
+      : record;
+  });
+}
+
+async function reconcileDeletedSyncedRows(args: {
+  localBookmarks: Bookmark[];
+  localDocuments: DocumentRecord[];
+  localHighlights: Highlight[];
+  localSessions: ReadingSession[];
+  remoteBookmarkIds: string[];
+  remoteDocumentIds: string[];
+  remoteHighlightIds: string[];
+  remoteSessionDocumentIds: string[];
+  userId: string;
+}) {
+  const {
+    localBookmarks,
+    localDocuments,
+    localHighlights,
+    localSessions,
+    remoteBookmarkIds,
+    remoteDocumentIds,
+    remoteHighlightIds,
+    remoteSessionDocumentIds,
+    userId,
+  } = args;
+
+  const remoteDocumentIdSet = new Set(remoteDocumentIds);
+  const remoteSessionDocumentIdSet = new Set(remoteSessionDocumentIds);
+  const remoteBookmarkIdSet = new Set(remoteBookmarkIds);
+  const remoteHighlightIdSet = new Set(remoteHighlightIds);
+  const missingDocumentIds = localDocuments
+    .filter((document) => !remoteDocumentIdSet.has(document.id))
+    .map((document) => document.id);
+  const missingSessionIds = localSessions
+    .filter((session) => !remoteSessionDocumentIdSet.has(session.documentId))
+    .map((session) => session.id);
+  const missingBookmarkIds = localBookmarks
+    .filter((bookmark) => !remoteBookmarkIdSet.has(bookmark.id))
+    .map((bookmark) => bookmark.id);
+  const missingHighlightIds = localHighlights
+    .filter((highlight) => !remoteHighlightIdSet.has(highlight.id))
+    .map((highlight) => highlight.id);
+
+  if (
+    missingDocumentIds.length === 0 &&
+    missingSessionIds.length === 0 &&
+    missingBookmarkIds.length === 0 &&
+    missingHighlightIds.length === 0
+  ) {
+    return;
+  }
+
+  await db.transaction(
+    "rw",
+    db.documents,
+    db.sessions,
+    db.bookmarks,
+    db.highlights,
+    async () => {
+      for (const documentId of missingDocumentIds) {
+        await clearSyncedDocumentBundleForUser(userId, documentId);
+      }
+
+      if (missingSessionIds.length > 0) {
+        await db.sessions.bulkDelete(missingSessionIds);
+      }
+      if (missingBookmarkIds.length > 0) {
+        await db.bookmarks.bulkDelete(missingBookmarkIds);
+      }
+      if (missingHighlightIds.length > 0) {
+        await db.highlights.bulkDelete(missingHighlightIds);
+      }
+    },
+  );
 }
 
 function toRemoteDocumentRow(
@@ -788,6 +962,8 @@ export async function clearSyncedLibraryForUser(userId: string) {
       await db.documents.where("ownerId").equals(userId).delete();
     },
   );
+
+  await clearCloudSyncCursors(userId);
 }
 
 async function clearSyncedDocumentBundleForUser(
@@ -981,24 +1157,18 @@ export async function hydrateCloudLibraryToLocal(
     throw highlightsResult.error;
   }
 
-  const syncedDocuments = (documentsResult.data ?? []).map((row) => {
-    const record = toSyncedDocumentRecord(row as RemoteDocumentRow);
-    const existingDocument = existingDocumentById.get(record.id);
-
-    return existingDocument?.payload && !record.payload
-      ? {
-          ...record,
-          payload: existingDocument.payload,
-        }
-      : record;
+  const remoteDocuments = (documentsResult.data ?? []) as RemoteDocumentRow[];
+  const remoteSessions = (sessionsResult.data ?? []) as RemoteSessionRow[];
+  const remoteBookmarks = (bookmarksResult.data ?? []) as RemoteBookmarkRow[];
+  const remoteHighlights = (highlightsResult.data ??
+    []) as RemoteHighlightRow[];
+  const syncedDocuments = mapRemoteDocumentsWithExistingPayload({
+    existingDocumentById,
+    rows: remoteDocuments,
   });
-  const syncedSessions = (sessionsResult.data ?? []).map(toSyncedSessionRecord);
-  const syncedBookmarks = (bookmarksResult.data ?? []).map(
-    toSyncedBookmarkRecord,
-  );
-  const syncedHighlights = (highlightsResult.data ?? []).map(
-    toSyncedHighlightRecord,
-  );
+  const syncedSessions = remoteSessions.map(toSyncedSessionRecord);
+  const syncedBookmarks = remoteBookmarks.map(toSyncedBookmarkRecord);
+  const syncedHighlights = remoteHighlights.map(toSyncedHighlightRecord);
 
   await db.transaction(
     "rw",
@@ -1027,12 +1197,179 @@ export async function hydrateCloudLibraryToLocal(
     },
   );
 
+  await saveCloudSyncCursors(
+    userId,
+    buildCloudSyncCursors({
+      bookmarks: remoteBookmarks,
+      documents: remoteDocuments,
+      highlights: remoteHighlights,
+      sessions: remoteSessions,
+    }),
+  );
+
   return {
     bookmarks: syncedBookmarks.length,
     documents: syncedDocuments.length,
     highlights: syncedHighlights.length,
     sessions: syncedSessions.length,
   };
+}
+
+export async function syncCloudLibraryToLocalIncremental(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const [
+    existingCursors,
+    existingSyncedDocuments,
+    localDocuments,
+    localSessions,
+    localBookmarks,
+    localHighlights,
+  ] = await Promise.all([
+    getCloudSyncCursors(userId),
+    getOwnedRows<DocumentRecord>(db.documents, userId),
+    getOwnedRows<DocumentRecord>(db.documents, userId),
+    getOwnedRows<ReadingSession>(db.sessions, userId),
+    getOwnedRows<Bookmark>(db.bookmarks, userId),
+    getOwnedRows<Highlight>(db.highlights, userId),
+  ]);
+  const existingDocumentById = new Map(
+    existingSyncedDocuments.map((document) => [document.id, document]),
+  );
+  const [
+    documentsResult,
+    sessionsResult,
+    bookmarksResult,
+    highlightsResult,
+    documentIdsResult,
+    sessionIdsResult,
+    bookmarkIdsResult,
+    highlightIdsResult,
+  ] = await Promise.all([
+    applyIsoCursor(
+      supabase
+        .from(DOCUMENTS_TABLE)
+        .select(DOCUMENT_METADATA_SELECT)
+        .eq("user_id", userId),
+      "updated_at",
+      existingCursors.documentsUpdatedAt,
+    ).order("updated_at", { ascending: true }),
+    applyIsoCursor(
+      supabase.from(SESSIONS_TABLE).select("*").eq("user_id", userId),
+      "updated_at",
+      existingCursors.sessionsUpdatedAt,
+    ).order("updated_at", { ascending: true }),
+    applyIsoCursor(
+      supabase.from(BOOKMARKS_TABLE).select("*").eq("user_id", userId),
+      "created_at",
+      existingCursors.bookmarksCreatedAt,
+    ).order("created_at", { ascending: true }),
+    applyIsoCursor(
+      supabase.from(HIGHLIGHTS_TABLE).select("*").eq("user_id", userId),
+      "created_at",
+      existingCursors.highlightsCreatedAt,
+    ).order("created_at", { ascending: true }),
+    supabase
+      .from(DOCUMENTS_TABLE)
+      .select(DOCUMENT_ID_SELECT)
+      .eq("user_id", userId),
+    supabase
+      .from(SESSIONS_TABLE)
+      .select(DOCUMENT_ID_SELECT)
+      .eq("user_id", userId),
+    supabase.from(BOOKMARKS_TABLE).select("id").eq("user_id", userId),
+    supabase.from(HIGHLIGHTS_TABLE).select("id").eq("user_id", userId),
+  ]);
+
+  if (documentsResult.error) {
+    throw documentsResult.error;
+  }
+  if (sessionsResult.error) {
+    throw sessionsResult.error;
+  }
+  if (bookmarksResult.error) {
+    throw bookmarksResult.error;
+  }
+  if (highlightsResult.error) {
+    throw highlightsResult.error;
+  }
+  if (documentIdsResult.error) {
+    throw documentIdsResult.error;
+  }
+  if (sessionIdsResult.error) {
+    throw sessionIdsResult.error;
+  }
+  if (bookmarkIdsResult.error) {
+    throw bookmarkIdsResult.error;
+  }
+  if (highlightIdsResult.error) {
+    throw highlightIdsResult.error;
+  }
+
+  const remoteDocuments = (documentsResult.data ?? []) as RemoteDocumentRow[];
+  const remoteSessions = (sessionsResult.data ?? []) as RemoteSessionRow[];
+  const remoteBookmarks = (bookmarksResult.data ?? []) as RemoteBookmarkRow[];
+  const remoteHighlights = (highlightsResult.data ??
+    []) as RemoteHighlightRow[];
+  const syncedDocuments = mapRemoteDocumentsWithExistingPayload({
+    existingDocumentById,
+    rows: remoteDocuments,
+  });
+  const syncedSessions = remoteSessions.map(toSyncedSessionRecord);
+  const syncedBookmarks = remoteBookmarks.map(toSyncedBookmarkRecord);
+  const syncedHighlights = remoteHighlights.map(toSyncedHighlightRecord);
+
+  await reconcileDeletedSyncedRows({
+    localBookmarks,
+    localDocuments,
+    localHighlights,
+    localSessions,
+    remoteBookmarkIds: (bookmarkIdsResult.data ?? []).map(({ id }) => id),
+    remoteDocumentIds: (documentIdsResult.data ?? []).map(
+      ({ document_id }) => document_id,
+    ),
+    remoteHighlightIds: (highlightIdsResult.data ?? []).map(({ id }) => id),
+    remoteSessionDocumentIds: (sessionIdsResult.data ?? []).map(
+      ({ document_id }) => document_id,
+    ),
+    userId,
+  });
+
+  await db.transaction(
+    "rw",
+    db.documents,
+    db.sessions,
+    db.bookmarks,
+    db.highlights,
+    async () => {
+      if (syncedDocuments.length > 0) {
+        await db.documents.bulkPut(syncedDocuments);
+      }
+      if (syncedSessions.length > 0) {
+        await db.sessions.bulkPut(syncedSessions);
+      }
+      if (syncedBookmarks.length > 0) {
+        await db.bookmarks.bulkPut(syncedBookmarks);
+      }
+      if (syncedHighlights.length > 0) {
+        await db.highlights.bulkPut(syncedHighlights);
+      }
+    },
+  );
+
+  await saveCloudSyncCursors(
+    userId,
+    buildCloudSyncCursors({
+      bookmarks: remoteBookmarks,
+      documents: remoteDocuments,
+      existing: existingCursors,
+      highlights: remoteHighlights,
+      sessions: remoteSessions,
+    }),
+  );
+
+  return getSyncedLibrarySummary(userId);
 }
 
 export async function hydrateRemoteDocumentToLocal(
@@ -1258,11 +1595,23 @@ export async function deleteCloudBookmark(
   userId: string,
   bookmarkId: string,
 ) {
+  await deleteCloudBookmarks(supabase, userId, [bookmarkId]);
+}
+
+export async function deleteCloudBookmarks(
+  supabase: SupabaseClient,
+  userId: string,
+  bookmarkIds: string[],
+) {
+  if (bookmarkIds.length === 0) {
+    return;
+  }
+
   const { error } = await supabase
     .from(BOOKMARKS_TABLE)
     .delete()
     .eq("user_id", userId)
-    .eq("id", bookmarkId);
+    .in("id", bookmarkIds);
 
   if (error) {
     throw error;
@@ -1274,11 +1623,23 @@ export async function deleteCloudHighlight(
   userId: string,
   highlightId: string,
 ) {
+  await deleteCloudHighlights(supabase, userId, [highlightId]);
+}
+
+export async function deleteCloudHighlights(
+  supabase: SupabaseClient,
+  userId: string,
+  highlightIds: string[],
+) {
+  if (highlightIds.length === 0) {
+    return;
+  }
+
   const { error } = await supabase
     .from(HIGHLIGHTS_TABLE)
     .delete()
     .eq("user_id", userId)
-    .eq("id", highlightId);
+    .in("id", highlightIds);
 
   if (error) {
     throw error;

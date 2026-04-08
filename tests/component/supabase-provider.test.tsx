@@ -15,6 +15,7 @@ const {
   getProfile,
   getSyncedLibrarySummary,
   hydrateCloudLibraryToLocal,
+  syncCloudLibraryToLocalIncremental,
   uploadProfileAvatar,
   upsertProfile,
 } = vi.hoisted(() => ({
@@ -26,6 +27,7 @@ const {
   getProfile: vi.fn(),
   getSyncedLibrarySummary: vi.fn(),
   hydrateCloudLibraryToLocal: vi.fn(),
+  syncCloudLibraryToLocalIncremental: vi.fn(),
   uploadProfileAvatar: vi.fn(),
   upsertProfile: vi.fn(),
 }));
@@ -39,6 +41,7 @@ vi.mock("@/lib/supabase/library-sync", () => ({
   getProfile,
   getSyncedLibrarySummary,
   hydrateCloudLibraryToLocal,
+  syncCloudLibraryToLocalIncremental,
   uploadProfileAvatar,
   upsertProfile,
 }));
@@ -84,6 +87,12 @@ describe("SupabaseProvider", () => {
     });
     backUpLocalLibraryToCloud.mockResolvedValue({ backedUpDocuments: 2 });
     hydrateCloudLibraryToLocal.mockResolvedValue({
+      bookmarks: 0,
+      documents: 3,
+      highlights: 0,
+      sessions: 0,
+    });
+    syncCloudLibraryToLocalIncremental.mockResolvedValue({
       bookmarks: 0,
       documents: 3,
       highlights: 0,
@@ -243,5 +252,53 @@ describe("SupabaseProvider", () => {
     });
 
     expect(unsubscribe).not.toHaveBeenCalled();
+  });
+
+  it("uses incremental cloud hydration when synced local documents already exist", async () => {
+    const unsubscribe = vi.fn();
+    const supabaseClient = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: {
+            session: {
+              user: {
+                email: "reader@example.com",
+                id: "user-1",
+              },
+            },
+          },
+        }),
+        onAuthStateChange: vi.fn().mockReturnValue({
+          data: {
+            subscription: {
+              unsubscribe,
+            },
+          },
+        }),
+      },
+    };
+
+    getSyncedLibrarySummary.mockResolvedValue({
+      bookmarks: 2,
+      documents: 1,
+      highlights: 4,
+      sessions: 1,
+    });
+    getSupabaseBrowserClient.mockReturnValue(supabaseClient);
+
+    render(
+      <SupabaseProvider>
+        <div>mounted</div>
+      </SupabaseProvider>,
+    );
+
+    await waitFor(() => {
+      expect(syncCloudLibraryToLocalIncremental).toHaveBeenCalledWith(
+        supabaseClient,
+        "user-1",
+      );
+    });
+
+    expect(hydrateCloudLibraryToLocal).not.toHaveBeenCalled();
   });
 });

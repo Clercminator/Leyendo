@@ -22,6 +22,7 @@ import {
   getLocalOnlyLibrarySummary,
   getSyncedLibrarySummary,
   hydrateCloudLibraryToLocal,
+  syncCloudLibraryToLocalIncremental,
   type LocalLibrarySummary,
   type UserProfile,
   type UserPersonalInfo,
@@ -191,13 +192,12 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
           const syncedSummaryBeforeHydrate =
             await getSyncedLibrarySummary(userId);
-          const shouldHydrate =
+          const shouldFullHydrate =
             options?.forceHydrate === true ||
-            uploadedDocuments > 0 ||
             syncedSummaryBeforeHydrate.documents === 0;
-          const hydratedSummary = shouldHydrate
+          const hydratedSummary = shouldFullHydrate
             ? await hydrateCloudLibraryToLocal(supabase, userId)
-            : await getSyncedLibrarySummary(userId);
+            : await syncCloudLibraryToLocalIncremental(supabase, userId);
           const finishedAt = new Date().toISOString();
 
           setSyncStatus("synced");
@@ -348,10 +348,16 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         supabase,
         currentUserIdRef.current,
       );
-      const hydratedSummary = await hydrateCloudLibraryToLocal(
-        supabase,
+      const syncedSummaryBeforeHydrate = await getSyncedLibrarySummary(
         currentUserIdRef.current,
       );
+      const hydratedSummary =
+        syncedSummaryBeforeHydrate.documents === 0
+          ? await hydrateCloudLibraryToLocal(supabase, currentUserIdRef.current)
+          : await syncCloudLibraryToLocalIncremental(
+              supabase,
+              currentUserIdRef.current,
+            );
       const finishedAt = new Date().toISOString();
 
       setSyncStatus("synced");
