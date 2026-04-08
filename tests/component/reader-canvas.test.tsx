@@ -12,6 +12,28 @@ vi.mock("@/components/layout/locale-provider", () => ({
   }),
 }));
 
+let mockViewportWidth = 1280;
+
+function installMatchMedia() {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches:
+        (query === "(min-width: 1024px)" && mockViewportWidth >= 1024) ||
+        (query === "(max-width: 1023px)" && mockViewportWidth <= 1023) ||
+        false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 function renderReaderCanvas() {
   const handlers = {
     onChangeFontScale: vi.fn(),
@@ -78,6 +100,8 @@ function renderReaderCanvas() {
 
 describe("ReaderCanvas", () => {
   beforeEach(() => {
+    mockViewportWidth = 1280;
+    installMatchMedia();
     Object.defineProperty(document, "fullscreenEnabled", {
       configurable: true,
       value: true,
@@ -163,29 +187,33 @@ describe("ReaderCanvas", () => {
 
   it("opens the mobile tools sheet and keeps save actions available", async () => {
     const user = userEvent.setup();
+    mockViewportWidth = 390;
+    installMatchMedia();
     const { onSaveBookmark, onSaveHighlight, onMoveForward } =
       renderReaderCanvas();
 
     expect(
-      screen.getByText(/tap the text to show controls/i),
+      screen.getByRole("button", { name: /controls/i }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByText("Mode view"));
+    await user.click(screen.getByRole("button", { name: /controls/i }));
 
+    expect(screen.queryByText("42% complete")).not.toBeInTheDocument();
+    expect(screen.getAllByText("8 sentences")).toHaveLength(1);
     expect(
-      screen.queryByText(/tap the text to show controls/i),
+      screen.queryByRole("button", { name: /change theme/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /change theme/i })).toHaveClass(
-      "hidden",
-    );
     expect(
-      screen.getByRole("button", { name: /enter fullscreen/i }),
-    ).toHaveClass("hidden");
+      screen.queryByRole("button", { name: /enter fullscreen/i }),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /reading tools/i }));
 
     const dialog = screen.getByRole("dialog", { name: /reading tools/i });
 
+    expect(
+      within(dialog).getByRole("button", { name: /enter fullscreen/i }),
+    ).toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", { name: /save bookmark/i }),
     ).toBeInTheDocument();
@@ -214,5 +242,12 @@ describe("ReaderCanvas", () => {
     await user.click(screen.getAllByRole("button", { name: /next/i })[0]);
 
     expect(onMoveForward).toHaveBeenCalledTimes(1);
+
+    expect(
+      screen.getByRole("button", { name: /controls/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: /reading tools/i }),
+    ).not.toBeInTheDocument();
   });
 });

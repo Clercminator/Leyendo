@@ -200,6 +200,7 @@ export function ReaderCanvas({
     | null
   >(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isCompactReaderChrome, setIsCompactReaderChrome] = useState(false);
   const [isMobileChromeVisible, setIsMobileChromeVisible] = useState(false);
   const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
   const modeMenuRef = useRef<HTMLDivElement>(null);
@@ -224,9 +225,9 @@ export function ReaderCanvas({
     desktopBottomMenuPositionClass,
   );
   const settingsRowClass =
-    "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5";
+    "min-w-0 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5";
   const topControlButtonClass =
-    "min-h-10 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm";
+    "inline-flex min-h-10 w-full shrink-0 items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.14em] text-(--text-strong) uppercase whitespace-nowrap transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm lg:w-auto lg:justify-center";
   const statusChipClass =
     "inline-flex min-h-9 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-2 py-1.5 text-center text-[11px] leading-tight text-(--text-strong) sm:min-h-auto sm:px-3 sm:text-sm";
   const mobileStatCardClass =
@@ -239,6 +240,34 @@ export function ReaderCanvas({
     "inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.95rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
   const sheetUtilityButtonClass =
     "inline-flex min-h-10 w-fit items-center justify-center gap-2 justify-self-start rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+  const sheetHeaderButtonClass =
+    "inline-flex h-9 min-w-9 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+  const compactAdjustmentGroupClass = "grid shrink-0 grid-cols-2 gap-1.5";
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const resolveCompactReaderChrome = () => {
+      const compactViewport =
+        window.matchMedia?.("(max-width: 1023px)").matches ??
+        window.innerWidth <= 1023;
+      const touchViewport =
+        (window.matchMedia?.("(hover: none), (pointer: coarse)").matches ??
+          false) &&
+        window.innerWidth <= 1100;
+
+      setIsCompactReaderChrome(compactViewport || touchViewport);
+    };
+
+    resolveCompactReaderChrome();
+    window.addEventListener("resize", resolveCompactReaderChrome);
+
+    return () => {
+      window.removeEventListener("resize", resolveCompactReaderChrome);
+    };
+  }, []);
 
   useEffect(() => {
     if (!openMenu) {
@@ -581,15 +610,15 @@ export function ReaderCanvas({
       es: "Cerrar herramientas",
       pt: "Fechar ferramentas",
     }),
-    showControlsHint: getLocalizedCopy(locale, {
-      en: "Tap the text to show controls",
-      es: "Toca el texto para mostrar controles",
-      pt: "Toque o texto para mostrar os controles",
+    controls: getLocalizedCopy(locale, {
+      en: "Controls",
+      es: "Controles",
+      pt: "Controles",
     }),
-    hideControlsHint: getLocalizedCopy(locale, {
-      en: "Tap the text again to hide controls",
-      es: "Toca el texto otra vez para ocultar controles",
-      pt: "Toque o texto novamente para ocultar os controles",
+    hideControls: getLocalizedCopy(locale, {
+      en: "Hide controls",
+      es: "Ocultar controles",
+      pt: "Ocultar controles",
     }),
     moreActions: getLocalizedCopy(locale, {
       en: "More actions",
@@ -652,22 +681,17 @@ export function ReaderCanvas({
     await canvasRef.current?.requestFullscreen();
   };
 
-  const toggleMobileChrome = useCallback(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (window.matchMedia?.("(min-width: 1024px)").matches ?? false) {
-      return;
-    }
-
-    if (isMobileToolsOpen) {
+  const toggleCompactControls = useCallback(() => {
+    if (!isCompactReaderChrome) {
       return;
     }
 
     setOpenMenu(null);
+    if (isMobileToolsOpen) {
+      setIsMobileToolsOpen(false);
+    }
     setIsMobileChromeVisible((current) => !current);
-  }, [isMobileToolsOpen]);
+  }, [isCompactReaderChrome, isMobileToolsOpen]);
 
   return (
     <section
@@ -687,7 +711,7 @@ export function ReaderCanvas({
         <div
           className={cn(
             "space-y-3 sm:space-y-4",
-            !isMobileChromeVisible && "hidden lg:block",
+            !isMobileChromeVisible && isCompactReaderChrome && "hidden",
           )}
         >
           <div className="grid gap-2 text-sm sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-3">
@@ -708,7 +732,7 @@ export function ReaderCanvas({
                 />
               </button>
               {openMenu === "mode" ? (
-                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-full min-w-0 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:min-w-[15rem] lg:w-64 lg:max-w-[calc(100vw-2.5rem)]">
+                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-full min-w-0 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:min-w-60 lg:w-64 lg:max-w-[calc(100vw-2.5rem)]">
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.readingMode}
                   </p>
@@ -807,90 +831,114 @@ export function ReaderCanvas({
                 </div>
               ) : null}
             </div>
-            <div ref={themeMenuRef} className="relative z-40">
-              <button
-                type="button"
-                aria-label={copy.changeTheme}
-                onClick={() => {
-                  setOpenMenu((current) =>
-                    current === "theme" ? null : "theme",
-                  );
-                }}
-                className={`hidden ${topControlButtonClass} lg:inline-flex`}
-              >
-                {getLocalizedCopy(locale, themeLabels[preferences.theme])}
-                <ChevronDown
-                  className={`h-4 w-4 transition ${openMenu === "theme" ? "rotate-180" : ""}`}
-                />
-              </button>
-              {openMenu === "theme" ? (
-                <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
-                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                    {copy.themeMenu}
-                  </p>
-                  <div className="mt-3 grid gap-2">
-                    {Object.entries(themeLabels).map(([value, labels]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                          onSelectTheme(value as ReaderPreferences["theme"]);
-                          setOpenMenu(null);
-                        }}
-                        className={`rounded-full border px-3 py-2 text-left text-sm transition ${
-                          preferences.theme === value
-                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                            : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                        }`}
-                      >
-                        {getLocalizedCopy(locale, labels)}
-                      </button>
-                    ))}
+            {!isCompactReaderChrome ? (
+              <div ref={themeMenuRef} className="relative z-40">
+                <button
+                  type="button"
+                  aria-label={copy.changeTheme}
+                  onClick={() => {
+                    setOpenMenu((current) =>
+                      current === "theme" ? null : "theme",
+                    );
+                  }}
+                  className={topControlButtonClass}
+                >
+                  {getLocalizedCopy(locale, themeLabels[preferences.theme])}
+                  <ChevronDown
+                    className={`h-4 w-4 transition ${openMenu === "theme" ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {openMenu === "theme" ? (
+                  <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                    <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                      {copy.themeMenu}
+                    </p>
+                    <div className="mt-3 grid gap-2">
+                      {Object.entries(themeLabels).map(([value, labels]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            onSelectTheme(value as ReaderPreferences["theme"]);
+                            setOpenMenu(null);
+                          }}
+                          className={`rounded-full border px-3 py-2 text-left text-sm transition ${
+                            preferences.theme === value
+                              ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                              : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                          }`}
+                        >
+                          {getLocalizedCopy(locale, labels)}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : null}
-            </div>
-            {isFullscreen ? (
+                ) : null}
+              </div>
+            ) : null}
+            {!isCompactReaderChrome && isFullscreen ? (
               <>
-                <span className={`hidden ${statusChipClass} lg:inline-flex`}>
+                <span className={statusChipClass}>
                   {progress}% {copy.complete}
                 </span>
-                <span className={`hidden ${statusChipClass} lg:inline-flex`}>
+                <span className={statusChipClass}>
                   {sentenceCount} {copy.sentenceCount}
                 </span>
                 <button
                   type="button"
                   aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
                   onClick={onAnnounceRemainingTime}
-                  className={`hidden ${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip) lg:inline-flex`}
+                  className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
                 >
                   <Clock3 className="h-4 w-4 text-(--accent-amber)" />
                   {remainingTimeLabel}
                 </button>
               </>
             ) : null}
-            <button
-              type="button"
-              aria-label={
-                isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
-              }
-              onClick={() => {
-                void toggleFullscreen();
-              }}
-              className={`hidden ${topControlButtonClass} lg:inline-flex`}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="h-4 w-4" />
-              ) : (
-                <Maximize2 className="h-4 w-4" />
-              )}
-              {isFullscreen ? copy.collapse : copy.expand}
-            </button>
+            {!isCompactReaderChrome ? (
+              <button
+                type="button"
+                aria-label={
+                  isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
+                }
+                onClick={() => {
+                  void toggleFullscreen();
+                }}
+                className={topControlButtonClass}
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="h-4 w-4" />
+                ) : (
+                  <Maximize2 className="h-4 w-4" />
+                )}
+                {isFullscreen ? copy.collapse : copy.expand}
+              </button>
+            ) : null}
           </div>
-          <div className="grid gap-2 text-sm lg:hidden">
-            <div className="grid grid-cols-3 gap-2">
+          {isCompactReaderChrome && isMobileChromeVisible ? (
+            <div className="grid gap-2 text-sm">
+              <div className="grid grid-cols-3 gap-2">
+                <span className={statusChipClass}>
+                  {copy.paragraph} {currentParagraphNumber} · {progress}%
+                </span>
+                <span className={statusChipClass}>
+                  {sentenceCount} {copy.sentenceCount}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
+                  onClick={onAnnounceRemainingTime}
+                  className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
+                >
+                  <Clock3 className="h-4 w-4 text-(--accent-amber)" />
+                  {remainingTimeLabel}
+                </button>
+              </div>
+            </div>
+          ) : isFullscreen ? null : (
+            <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className={statusChipClass}>
-                {copy.paragraph} {currentParagraphNumber} · {progress}%
+                {progress}% {copy.complete}
               </span>
               <span className={statusChipClass}>
                 {sentenceCount} {copy.sentenceCount}
@@ -905,32 +953,7 @@ export function ReaderCanvas({
                 {remainingTimeLabel}
               </button>
             </div>
-            <p className="text-xs leading-6 text-(--text-muted)">
-              {copy.hideControlsHint}
-            </p>
-          </div>
-          <div
-            className={cn(
-              "hidden grid-cols-2 gap-2 text-sm lg:flex lg:flex-wrap lg:items-center lg:gap-3",
-              isFullscreen && "lg:hidden",
-            )}
-          >
-            <span className={statusChipClass}>
-              {progress}% {copy.complete}
-            </span>
-            <span className={statusChipClass}>
-              {sentenceCount} {copy.sentenceCount}
-            </span>
-            <button
-              type="button"
-              aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
-              onClick={onAnnounceRemainingTime}
-              className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
-            >
-              <Clock3 className="h-4 w-4 text-(--accent-amber)" />
-              {remainingTimeLabel}
-            </button>
-          </div>
+          )}
           <p className="hidden text-sm leading-6 text-(--text-muted) lg:block lg:leading-7">
             {copy.readingModeHelp}
           </p>
@@ -946,704 +969,326 @@ export function ReaderCanvas({
           ) : null}
         </div>
         <div className="mt-3 flex min-h-0 flex-1 sm:mt-6">
-          <div
-            className="relative flex min-h-0 flex-1 items-stretch *:h-full"
-            onClick={toggleMobileChrome}
-          >
+          <div className="relative flex min-h-0 min-w-0 flex-1 items-stretch overflow-hidden *:h-full">
             {modeView}
-            <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center lg:hidden">
-              {!isMobileChromeVisible ? (
-                <span className="rounded-full border border-(--border-soft) bg-slate-950/66 px-3 py-1.5 text-xs tracking-[0.16em] text-white/88 uppercase shadow-[0_10px_26px_rgba(12,18,36,0.28)] backdrop-blur-md">
-                  {copy.showControlsHint}
-                </span>
-              ) : null}
-            </div>
           </div>
         </div>
+        {isCompactReaderChrome ? (
+          <div className="mt-3 flex justify-end lg:hidden">
+            <button
+              type="button"
+              aria-label={
+                isMobileChromeVisible ? copy.hideControls : copy.controls
+              }
+              onClick={toggleCompactControls}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.16em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {isMobileChromeVisible ? copy.hideControls : copy.controls}
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div
         className={cn(
           "shrink-0 space-y-3 border-t border-(--border-soft) pt-4 sm:pt-5",
-          !isMobileChromeVisible && "hidden lg:block",
+          isCompactReaderChrome ? !isMobileChromeVisible && "hidden" : "",
         )}
         aria-label="Reader transport and annotation controls"
       >
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:hidden">
-          <button
-            type="button"
-            aria-label={copy.previous}
-            onClick={onMoveBackward}
-            className={mobilePrimaryButtonClass}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {copy.previous}
-          </button>
-          <button
-            type="button"
-            aria-label={isPlaying ? copy.pause : copy.play}
-            onClick={onTogglePlayback}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--accent-sky)/35 bg-(--accent-sky)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-sky)/55 hover:bg-(--accent-sky)/24"
-          >
-            {isPlaying ? (
-              <Pause className="h-4 w-4" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            {isPlaying ? copy.pause : copy.play}
-          </button>
-          <button
-            type="button"
-            aria-label={copy.next}
-            onClick={onMoveForward}
-            className={mobilePrimaryButtonClass}
-          >
-            {copy.next}
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-label={copy.readingTools}
-            onClick={() => {
-              setOpenMenu(null);
-              setIsMobileToolsOpen(true);
-            }}
-            className={mobilePrimaryButtonClass}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            {copy.tools}
-          </button>
-        </div>
-        <div className="hidden grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:items-center lg:gap-3">
-          <div ref={saveMenuRef} className="relative z-30">
+        {isCompactReaderChrome ? (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <button
               type="button"
-              aria-label={copy.save}
-              onClick={() => {
-                setOpenMenu((current) => (current === "save" ? null : "save"));
-              }}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--accent-amber)/35 bg-(--accent-amber)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-amber)/55 hover:bg-(--accent-amber)/24 sm:w-auto sm:rounded-full sm:px-3.5"
+              aria-label={copy.previous}
+              onClick={onMoveBackward}
+              className={mobilePrimaryButtonClass}
             >
-              <BookmarkPlus className="h-4 w-4" />
-              {copy.save}
-              <ChevronDown
-                className={`h-4 w-4 transition ${openMenu === "save" ? "rotate-180" : ""}`}
-              />
+              <ChevronLeft className="h-4 w-4" />
+              {copy.previous}
             </button>
-            {openMenu === "save" ? (
-              <div
-                className={cn(
-                  "reader-dropdown-panel absolute left-0 z-60 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
-                  desktopBottomMenuPositionClass,
-                )}
-              >
-                <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                  {copy.saveMenu}
-                </p>
-                <div className="mt-3 grid gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSaveBookmark();
-                      setOpenMenu(null);
-                    }}
-                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    {copy.saveBookmark}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSaveHighlight();
-                      setOpenMenu(null);
-                    }}
-                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    {copy.saveHighlight}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            aria-label={isPlaying ? copy.pause : copy.play}
-            onClick={onTogglePlayback}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--accent-sky)/35 bg-(--accent-sky)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-sky)/55 hover:bg-(--accent-sky)/24 sm:w-auto sm:rounded-full sm:px-3.5"
-          >
-            {isPlaying ? (
-              <Pause className="h-4 w-4" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            {isPlaying ? copy.pause : copy.play}
-          </button>
-          <button
-            type="button"
-            aria-label={copy.previous}
-            onClick={onMoveBackward}
-            className={transportButtonClass}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {copy.previous}
-          </button>
-          <button
-            type="button"
-            aria-label={copy.next}
-            onClick={onMoveForward}
-            className={transportButtonClass}
-          >
-            {copy.next}
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          <div ref={fontScaleMenuRef} className="relative z-30">
             <button
               type="button"
-              aria-label={copy.fontScaleSettings}
-              onClick={() => {
-                setOpenMenu((current) =>
-                  current === "font-scale" ? null : "font-scale",
-                );
-              }}
-              className={settingsTriggerClass}
+              aria-label={isPlaying ? copy.pause : copy.play}
+              onClick={onTogglePlayback}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--accent-sky)/35 bg-(--accent-sky)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-sky)/55 hover:bg-(--accent-sky)/24"
             >
-              {copy.fontScale}
-              <span className="text-(--text-muted)">
-                {preferences.fontScale.toFixed(1)}x
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 transition ${openMenu === "font-scale" ? "rotate-180" : ""}`}
-              />
+              {isPlaying ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {isPlaying ? copy.pause : copy.play}
             </button>
-            {openMenu === "font-scale" ? (
-              <div className={settingsPanelClass}>
-                <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                  {copy.fontScale}
-                </p>
-                <div className={`${settingsRowClass} mt-3`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                        {copy.currentValue}
-                      </p>
-                      <p className="mt-1 text-sm text-(--text-strong)">
-                        {preferences.fontScale.toFixed(1)}x
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        aria-label={copy.decreaseFontScale}
-                        onClick={() => {
-                          onChangeFontScale(-0.1);
-                        }}
-                        className={compactStepButtonClass}
-                      >
-                        -0.1
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={copy.increaseFontScale}
-                        onClick={() => {
-                          onChangeFontScale(0.1);
-                        }}
-                        className={compactStepButtonClass}
-                      >
-                        +0.1
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </div>
-          <div ref={lineHeightMenuRef} className="relative z-30">
             <button
               type="button"
-              aria-label={copy.lineHeightSettings}
-              onClick={() => {
-                setOpenMenu((current) =>
-                  current === "line-height" ? null : "line-height",
-                );
-              }}
-              className={settingsTriggerClass}
+              aria-label={copy.next}
+              onClick={onMoveForward}
+              className={mobilePrimaryButtonClass}
             >
-              {copy.lineHeight}
-              <span className="text-(--text-muted)">
-                {preferences.lineHeight.toFixed(1)}
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 transition ${openMenu === "line-height" ? "rotate-180" : ""}`}
-              />
+              {copy.next}
+              <ChevronRight className="h-4 w-4" />
             </button>
-            {openMenu === "line-height" ? (
-              <div className={settingsPanelClass}>
-                <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                  {copy.lineHeight}
-                </p>
-                <div className={`${settingsRowClass} mt-3`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                        {copy.currentValue}
-                      </p>
-                      <p className="mt-1 text-sm text-(--text-strong)">
-                        {preferences.lineHeight.toFixed(1)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        aria-label={copy.decreaseLineHeight}
-                        onClick={() => {
-                          onChangeLineHeight(-0.1);
-                        }}
-                        className={compactStepButtonClass}
-                      >
-                        -0.1
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={copy.increaseLineHeight}
-                        onClick={() => {
-                          onChangeLineHeight(0.1);
-                        }}
-                        className={compactStepButtonClass}
-                      >
-                        +0.1
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </div>
-          <div ref={playbackMenuRef} className="relative z-30">
             <button
               type="button"
-              aria-label={copy.playbackSettings}
+              aria-haspopup="dialog"
+              aria-label={copy.readingTools}
               onClick={() => {
-                setOpenMenu((current) =>
-                  current === "playback" ? null : "playback",
-                );
+                setOpenMenu(null);
+                setIsMobileToolsOpen(true);
               }}
-              className={`${settingsTriggerClass} justify-between text-left sm:justify-center`}
+              className={mobilePrimaryButtonClass}
             >
-              <span className="flex flex-col items-start sm:contents">
-                <span>{copy.playback}</span>
-                <span className="text-xs text-(--text-muted) sm:hidden">
-                  {preferences.wordsPerMinute} WPM · {chunkSize}{" "}
-                  {chunkSize === 1 ? copy.word : copy.words}
-                </span>
-              </span>
-              <span className="hidden text-(--text-muted) sm:inline">
-                {preferences.wordsPerMinute} WPM
-              </span>
-              <span className="hidden text-(--text-muted)/60 sm:inline">•</span>
-              <span className="hidden text-(--text-muted) sm:inline">
-                {chunkSize} {chunkSize === 1 ? copy.word : copy.words}
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 transition ${openMenu === "playback" ? "rotate-180" : ""}`}
-              />
+              <SlidersHorizontal className="h-4 w-4" />
+              {copy.tools}
             </button>
-            {openMenu === "playback" ? (
-              <div className={settingsPanelClass}>
-                <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                  {copy.playback}
-                </p>
-                <div className="mt-3 grid gap-2">
-                  <div className={settingsRowClass}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                          {copy.speed}
-                        </p>
-                        <p className="mt-1 text-sm text-(--text-strong)">
-                          {preferences.wordsPerMinute} WPM
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onChangeWordsPerMinute(-20);
-                          }}
-                          aria-label={copy.decreaseReadingSpeed}
-                          className={compactStepButtonClass}
-                        >
-                          -20
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onChangeWordsPerMinute(20);
-                          }}
-                          aria-label={copy.increaseReadingSpeed}
-                          className={compactStepButtonClass}
-                        >
-                          +20
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className={settingsRowClass}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                          {copy.chunkSize}
-                        </p>
-                        <p className="mt-1 text-sm text-(--text-strong)">
-                          {chunkSize} {chunkSize === 1 ? copy.word : copy.words}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={onDecreaseChunkSize}
-                          aria-label={copy.decreaseChunkSize}
-                          className={compactStepButtonClass}
-                        >
-                          -1
-                        </button>
-                        <button
-                          type="button"
-                          onClick={onIncreaseChunkSize}
-                          aria-label={copy.increaseChunkSize}
-                          className={compactStepButtonClass}
-                        >
-                          +1
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={onToggleNaturalPauses}
-                      className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
-                        preferences.naturalPauses
-                          ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                          : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                      }`}
-                    >
-                      {copy.naturalPauses}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onToggleReduceMotion}
-                      className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
-                        preferences.reduceMotion
-                          ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                          : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                      }`}
-                    >
-                      {copy.reduceMotion}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
-          <div ref={moreMenuRef} className="relative z-30">
-            <button
-              type="button"
-              aria-label={copy.moreActions}
-              onClick={() => {
-                setOpenMenu((current) => (current === "more" ? null : "more"));
-              }}
-              className={settingsTriggerClass}
-            >
-              {copy.more}
-              <ChevronDown
-                className={`h-4 w-4 transition ${openMenu === "more" ? "rotate-180" : ""}`}
-              />
-            </button>
-            {openMenu === "more" ? (
-              <div
-                className={cn(
-                  "reader-dropdown-panel absolute right-0 z-60 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
-                  desktopBottomMenuPositionClass,
-                )}
-              >
-                <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                  {copy.moreActions}
-                </p>
-                <div className="mt-3 grid gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onMoveBackwardFive();
-                      setOpenMenu(null);
-                    }}
-                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <SkipBack className="h-4 w-4" />
-                      {copy.backFive}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onRestart();
-                      setOpenMenu(null);
-                    }}
-                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <RotateCcw className="h-4 w-4" />
-                      {copy.restart}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onRestartParagraph();
-                      setOpenMenu(null);
-                    }}
-                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <Undo2 className="h-4 w-4" />
-                      {copy.restartParagraph}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onRepeatChunk();
-                      setOpenMenu(null);
-                    }}
-                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <RotateCcw className="h-4 w-4" />
-                      {copy.repeatChunk}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onMoveForwardFive();
-                      setOpenMenu(null);
-                    }}
-                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <SkipForward className="h-4 w-4" />
-                      {copy.forwardFive}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      {isMobileToolsOpen ? (
-        <div className="fixed inset-0 z-80 bg-slate-950/55 backdrop-blur-sm lg:hidden">
-          <button
-            type="button"
-            aria-label={copy.closeTools}
-            onClick={() => {
-              setIsMobileChromeVisible(false);
-              setIsMobileToolsOpen(false);
-            }}
-            className="absolute inset-0"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={copy.readingTools}
-            className="absolute inset-x-0 bottom-0 max-h-[82svh] overflow-y-auto rounded-t-[1.6rem] border border-(--border-strong) bg-(--surface-card) p-3.5 shadow-[0_-20px_80px_rgba(20,26,56,0.28)] sm:p-4"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                  {copy.tools}
-                </p>
-                <h3 className="mt-1 text-lg font-semibold text-(--text-strong)">
-                  {copy.readingTools}
-                </h3>
-              </div>
+        ) : null}
+        {!isCompactReaderChrome ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <div ref={saveMenuRef} className="relative z-30">
               <button
                 type="button"
-                aria-label={copy.closeTools}
+                aria-label={copy.save}
                 onClick={() => {
-                  setIsMobileChromeVisible(false);
-                  setIsMobileToolsOpen(false);
+                  setOpenMenu((current) =>
+                    current === "save" ? null : "save",
+                  );
                 }}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--accent-amber)/35 bg-(--accent-amber)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-amber)/55 hover:bg-(--accent-amber)/24 sm:w-auto sm:rounded-full sm:px-3.5"
               >
-                <X className="h-4 w-4" />
+                <BookmarkPlus className="h-4 w-4" />
+                {copy.save}
+                <ChevronDown
+                  className={`h-4 w-4 transition ${openMenu === "save" ? "rotate-180" : ""}`}
+                />
               </button>
-            </div>
-
-            <div className="mt-4 space-y-2.5">
-              <section className={mobileToolsSectionClass}>
-                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
-                  {copy.saveMenu}
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSaveBookmark();
-                      setIsMobileChromeVisible(false);
-                      setIsMobileToolsOpen(false);
-                    }}
-                    className={sheetUtilityButtonClass}
-                  >
-                    <BookmarkPlus className="h-4 w-4" />
-                    {copy.saveBookmark}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSaveHighlight();
-                      setIsMobileChromeVisible(false);
-                      setIsMobileToolsOpen(false);
-                    }}
-                    className={sheetActionButtonClass}
-                  >
-                    <BookmarkPlus className="h-4 w-4" />
-                    {copy.saveHighlight}
-                  </button>
-                </div>
-              </section>
-
-              <section className={mobileToolsSectionClass}>
-                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
-                  {copy.appearance}
-                </p>
-                <div className="mt-3 grid gap-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className={settingsRowClass}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                            {copy.fontScale}
-                          </p>
-                          <p className="mt-1 text-sm text-(--text-strong)">
-                            {preferences.fontScale.toFixed(1)}x
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            aria-label={copy.decreaseFontScale}
-                            onClick={() => {
-                              onChangeFontScale(-0.1);
-                            }}
-                            className={compactStepButtonClass}
-                          >
-                            -0.1
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={copy.increaseFontScale}
-                            onClick={() => {
-                              onChangeFontScale(0.1);
-                            }}
-                            className={compactStepButtonClass}
-                          >
-                            +0.1
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className={settingsRowClass}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
-                            {copy.lineHeight}
-                          </p>
-                          <p className="mt-1 text-sm text-(--text-strong)">
-                            {preferences.lineHeight.toFixed(1)}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            aria-label={copy.decreaseLineHeight}
-                            onClick={() => {
-                              onChangeLineHeight(-0.1);
-                            }}
-                            className={compactStepButtonClass}
-                          >
-                            -0.1
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={copy.increaseLineHeight}
-                            onClick={() => {
-                              onChangeLineHeight(0.1);
-                            }}
-                            className={compactStepButtonClass}
-                          >
-                            +0.1
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-start">
+              {openMenu === "save" ? (
+                <div
+                  className={cn(
+                    "reader-dropdown-panel absolute left-0 z-60 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
+                    desktopBottomMenuPositionClass,
+                  )}
+                >
+                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                    {copy.saveMenu}
+                  </p>
+                  <div className="mt-3 grid gap-2">
                     <button
                       type="button"
-                      aria-label={
-                        isFullscreen
-                          ? copy.exitFullscreen
-                          : copy.enterFullscreen
-                      }
                       onClick={() => {
-                        void toggleFullscreen();
-                        setIsMobileChromeVisible(false);
-                        setIsMobileToolsOpen(false);
+                        onSaveBookmark();
+                        setOpenMenu(null);
                       }}
-                      className={sheetUtilityButtonClass}
+                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
                     >
-                      {isFullscreen ? (
-                        <Minimize2 className="h-4 w-4" />
-                      ) : (
-                        <Maximize2 className="h-4 w-4" />
-                      )}
-                      {isFullscreen ? copy.collapse : copy.expand}
+                      {copy.saveBookmark}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSaveHighlight();
+                        setOpenMenu(null);
+                      }}
+                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      {copy.saveHighlight}
                     </button>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {Object.entries(themeLabels).map(([value, labels]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                          onSelectTheme(value as ReaderPreferences["theme"]);
-                        }}
-                        className={`flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[1rem] border px-2 py-2 text-center text-[11px] leading-tight transition sm:text-xs ${
-                          preferences.theme === value
-                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                            : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                        }`}
-                      >
-                        <span
-                          aria-hidden="true"
-                          className={`h-3 w-7 rounded-full border border-white/15 ${themePreviewSwatchClassNames[value as ReaderPreferences["theme"]]}`}
-                        />
-                        {getLocalizedCopy(locale, labels)}
-                      </button>
-                    ))}
+                </div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              aria-label={isPlaying ? copy.pause : copy.play}
+              onClick={onTogglePlayback}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--accent-sky)/35 bg-(--accent-sky)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-sky)/55 hover:bg-(--accent-sky)/24 sm:w-auto sm:rounded-full sm:px-3.5"
+            >
+              {isPlaying ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {isPlaying ? copy.pause : copy.play}
+            </button>
+            <button
+              type="button"
+              aria-label={copy.previous}
+              onClick={onMoveBackward}
+              className={transportButtonClass}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              {copy.previous}
+            </button>
+            <button
+              type="button"
+              aria-label={copy.next}
+              onClick={onMoveForward}
+              className={transportButtonClass}
+            >
+              {copy.next}
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <div ref={fontScaleMenuRef} className="relative z-30">
+              <button
+                type="button"
+                aria-label={copy.fontScaleSettings}
+                onClick={() => {
+                  setOpenMenu((current) =>
+                    current === "font-scale" ? null : "font-scale",
+                  );
+                }}
+                className={settingsTriggerClass}
+              >
+                {copy.fontScale}
+                <span className="text-(--text-muted)">
+                  {preferences.fontScale.toFixed(1)}x
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 transition ${openMenu === "font-scale" ? "rotate-180" : ""}`}
+                />
+              </button>
+              {openMenu === "font-scale" ? (
+                <div className={settingsPanelClass}>
+                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                    {copy.fontScale}
+                  </p>
+                  <div className={`${settingsRowClass} mt-3`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                          {copy.currentValue}
+                        </p>
+                        <p className="mt-1 text-sm text-(--text-strong)">
+                          {preferences.fontScale.toFixed(1)}x
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          aria-label={copy.decreaseFontScale}
+                          onClick={() => {
+                            onChangeFontScale(-0.1);
+                          }}
+                          className={compactStepButtonClass}
+                        >
+                          -0.1
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={copy.increaseFontScale}
+                          onClick={() => {
+                            onChangeFontScale(0.1);
+                          }}
+                          className={compactStepButtonClass}
+                        >
+                          +0.1
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </section>
-
-              <section className={mobileToolsSectionClass}>
-                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
-                  {copy.playback}
-                </p>
-                <div className="mt-3 grid gap-2">
-                  <div className="grid grid-cols-2 gap-2">
+              ) : null}
+            </div>
+            <div ref={lineHeightMenuRef} className="relative z-30">
+              <button
+                type="button"
+                aria-label={copy.lineHeightSettings}
+                onClick={() => {
+                  setOpenMenu((current) =>
+                    current === "line-height" ? null : "line-height",
+                  );
+                }}
+                className={settingsTriggerClass}
+              >
+                {copy.lineHeight}
+                <span className="text-(--text-muted)">
+                  {preferences.lineHeight.toFixed(1)}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 transition ${openMenu === "line-height" ? "rotate-180" : ""}`}
+                />
+              </button>
+              {openMenu === "line-height" ? (
+                <div className={settingsPanelClass}>
+                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                    {copy.lineHeight}
+                  </p>
+                  <div className={`${settingsRowClass} mt-3`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                          {copy.currentValue}
+                        </p>
+                        <p className="mt-1 text-sm text-(--text-strong)">
+                          {preferences.lineHeight.toFixed(1)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          aria-label={copy.decreaseLineHeight}
+                          onClick={() => {
+                            onChangeLineHeight(-0.1);
+                          }}
+                          className={compactStepButtonClass}
+                        >
+                          -0.1
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={copy.increaseLineHeight}
+                          onClick={() => {
+                            onChangeLineHeight(0.1);
+                          }}
+                          className={compactStepButtonClass}
+                        >
+                          +0.1
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div ref={playbackMenuRef} className="relative z-30">
+              <button
+                type="button"
+                aria-label={copy.playbackSettings}
+                onClick={() => {
+                  setOpenMenu((current) =>
+                    current === "playback" ? null : "playback",
+                  );
+                }}
+                className={`${settingsTriggerClass} justify-between text-left sm:justify-center`}
+              >
+                <span className="flex flex-col items-start sm:contents">
+                  <span>{copy.playback}</span>
+                  <span className="text-xs text-(--text-muted) sm:hidden">
+                    {preferences.wordsPerMinute} WPM · {chunkSize}{" "}
+                    {chunkSize === 1 ? copy.word : copy.words}
+                  </span>
+                </span>
+                <span className="hidden text-(--text-muted) sm:inline">
+                  {preferences.wordsPerMinute} WPM
+                </span>
+                <span className="hidden text-(--text-muted)/60 sm:inline">
+                  •
+                </span>
+                <span className="hidden text-(--text-muted) sm:inline">
+                  {chunkSize} {chunkSize === 1 ? copy.word : copy.words}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 transition ${openMenu === "playback" ? "rotate-180" : ""}`}
+                />
+              </button>
+              {openMenu === "playback" ? (
+                <div className={settingsPanelClass}>
+                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                    {copy.playback}
+                  </p>
+                  <div className="mt-3 grid gap-2">
                     <div className={settingsRowClass}>
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -1690,6 +1335,400 @@ export function ReaderCanvas({
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={onDecreaseChunkSize}
+                            aria-label={copy.decreaseChunkSize}
+                            className={compactStepButtonClass}
+                          >
+                            -1
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onIncreaseChunkSize}
+                            aria-label={copy.increaseChunkSize}
+                            className={compactStepButtonClass}
+                          >
+                            +1
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={onToggleNaturalPauses}
+                        className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
+                          preferences.naturalPauses
+                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                            : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                        }`}
+                      >
+                        {copy.naturalPauses}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onToggleReduceMotion}
+                        className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
+                          preferences.reduceMotion
+                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                            : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                        }`}
+                      >
+                        {copy.reduceMotion}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div ref={moreMenuRef} className="relative z-30">
+              <button
+                type="button"
+                aria-label={copy.moreActions}
+                onClick={() => {
+                  setOpenMenu((current) =>
+                    current === "more" ? null : "more",
+                  );
+                }}
+                className={settingsTriggerClass}
+              >
+                {copy.more}
+                <ChevronDown
+                  className={`h-4 w-4 transition ${openMenu === "more" ? "rotate-180" : ""}`}
+                />
+              </button>
+              {openMenu === "more" ? (
+                <div
+                  className={cn(
+                    "reader-dropdown-panel absolute right-0 z-60 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
+                    desktopBottomMenuPositionClass,
+                  )}
+                >
+                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                    {copy.moreActions}
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onMoveBackwardFive();
+                        setOpenMenu(null);
+                      }}
+                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <SkipBack className="h-4 w-4" />
+                        {copy.backFive}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onRestart();
+                        setOpenMenu(null);
+                      }}
+                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <RotateCcw className="h-4 w-4" />
+                        {copy.restart}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onRestartParagraph();
+                        setOpenMenu(null);
+                      }}
+                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <Undo2 className="h-4 w-4" />
+                        {copy.restartParagraph}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onRepeatChunk();
+                        setOpenMenu(null);
+                      }}
+                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <RotateCcw className="h-4 w-4" />
+                        {copy.repeatChunk}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onMoveForwardFive();
+                        setOpenMenu(null);
+                      }}
+                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <SkipForward className="h-4 w-4" />
+                        {copy.forwardFive}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {isCompactReaderChrome && isMobileToolsOpen ? (
+        <div className="fixed inset-0 z-80 bg-slate-950/55 backdrop-blur-sm lg:hidden">
+          <button
+            type="button"
+            aria-label={copy.closeTools}
+            onClick={() => {
+              setIsMobileChromeVisible(false);
+              setIsMobileToolsOpen(false);
+            }}
+            className="absolute inset-0"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={copy.readingTools}
+            className="absolute inset-x-0 bottom-0 max-h-[82svh] overflow-y-auto rounded-t-[1.6rem] border border-(--border-strong) bg-(--surface-card) p-3.5 shadow-[0_-20px_80px_rgba(20,26,56,0.28)] sm:p-4"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                  {copy.tools}
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-(--text-strong)">
+                  {copy.readingTools}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label={
+                    isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
+                  }
+                  onClick={() => {
+                    void toggleFullscreen();
+                    setIsMobileChromeVisible(false);
+                    setIsMobileToolsOpen(false);
+                  }}
+                  className={sheetHeaderButtonClass}
+                >
+                  {isFullscreen ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
+                  <span className="sr-only">
+                    {isFullscreen ? copy.collapse : copy.expand}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={copy.closeTools}
+                  onClick={() => {
+                    setIsMobileChromeVisible(false);
+                    setIsMobileToolsOpen(false);
+                  }}
+                  className={sheetHeaderButtonClass}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2.5">
+              <section className={mobileToolsSectionClass}>
+                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
+                  {copy.saveMenu}
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSaveBookmark();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className={sheetUtilityButtonClass}
+                  >
+                    <BookmarkPlus className="h-4 w-4" />
+                    {copy.saveBookmark}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSaveHighlight();
+                      setIsMobileChromeVisible(false);
+                      setIsMobileToolsOpen(false);
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    <BookmarkPlus className="h-4 w-4" />
+                    {copy.saveHighlight}
+                  </button>
+                </div>
+              </section>
+
+              <section className={mobileToolsSectionClass}>
+                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
+                  {copy.appearance}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className={settingsRowClass}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                            {copy.fontScale}
+                          </p>
+                          <p className="mt-1 text-sm text-(--text-strong)">
+                            {preferences.fontScale.toFixed(1)}x
+                          </p>
+                        </div>
+                        <div className={compactAdjustmentGroupClass}>
+                          <button
+                            type="button"
+                            aria-label={copy.decreaseFontScale}
+                            onClick={() => {
+                              onChangeFontScale(-0.1);
+                            }}
+                            className={compactStepButtonClass}
+                          >
+                            -0.1
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={copy.increaseFontScale}
+                            onClick={() => {
+                              onChangeFontScale(0.1);
+                            }}
+                            className={compactStepButtonClass}
+                          >
+                            +0.1
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={settingsRowClass}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                            {copy.lineHeight}
+                          </p>
+                          <p className="mt-1 text-sm text-(--text-strong)">
+                            {preferences.lineHeight.toFixed(1)}
+                          </p>
+                        </div>
+                        <div className={compactAdjustmentGroupClass}>
+                          <button
+                            type="button"
+                            aria-label={copy.decreaseLineHeight}
+                            onClick={() => {
+                              onChangeLineHeight(-0.1);
+                            }}
+                            className={compactStepButtonClass}
+                          >
+                            -0.1
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={copy.increaseLineHeight}
+                            onClick={() => {
+                              onChangeLineHeight(0.1);
+                            }}
+                            className={compactStepButtonClass}
+                          >
+                            +0.1
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {Object.entries(themeLabels).map(([value, labels]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          onSelectTheme(value as ReaderPreferences["theme"]);
+                        }}
+                        className={`flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[1rem] border px-2 py-2 text-center text-[11px] leading-tight transition sm:text-xs ${
+                          preferences.theme === value
+                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                            : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`h-3 w-7 rounded-full border border-white/15 ${themePreviewSwatchClassNames[value as ReaderPreferences["theme"]]}`}
+                        />
+                        {getLocalizedCopy(locale, labels)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <section className={mobileToolsSectionClass}>
+                <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
+                  {copy.playback}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className={settingsRowClass}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                            {copy.speed}
+                          </p>
+                          <p className="mt-1 text-sm text-(--text-strong)">
+                            {preferences.wordsPerMinute} WPM
+                          </p>
+                        </div>
+                        <div className={compactAdjustmentGroupClass}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onChangeWordsPerMinute(-20);
+                            }}
+                            aria-label={copy.decreaseReadingSpeed}
+                            className={compactStepButtonClass}
+                          >
+                            -20
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onChangeWordsPerMinute(20);
+                            }}
+                            aria-label={copy.increaseReadingSpeed}
+                            className={compactStepButtonClass}
+                          >
+                            +20
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={settingsRowClass}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                            {copy.chunkSize}
+                          </p>
+                          <p className="mt-1 text-sm text-(--text-strong)">
+                            {chunkSize}{" "}
+                            {chunkSize === 1 ? copy.word : copy.words}
+                          </p>
+                        </div>
+                        <div className={compactAdjustmentGroupClass}>
                           <button
                             type="button"
                             onClick={onDecreaseChunkSize}

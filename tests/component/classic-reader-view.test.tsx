@@ -18,7 +18,7 @@ describe("ClassicReaderView", () => {
     HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 
-  it("renders individual active token highlights instead of one wrapped phrase span", () => {
+  it("renders contiguous active tokens as one highlighted chunk", () => {
     const documentModel = buildDocumentModel({
       title: "Classic sample",
       rawText: "Reading increases your knowledge and improves recall.",
@@ -39,10 +39,13 @@ describe("ClassicReaderView", () => {
 
     const activeRuns = container.querySelectorAll(".reader-classic-active-run");
 
-    expect(activeRuns).toHaveLength(3);
+    expect(activeRuns).toHaveLength(1);
     expect(
       Array.from(activeRuns).map((run) => run.textContent?.trim()),
-    ).toEqual(["Reading", "increases", "your"]);
+    ).toEqual(["Reading increases your"]);
+    expect(
+      container.querySelector('[data-reader-classic-active="true"]'),
+    ).not.toHaveClass("reader-active-paragraph");
   });
 
   it("jumps to a clicked paragraph token", async () => {

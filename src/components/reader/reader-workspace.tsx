@@ -738,7 +738,6 @@ export function ReaderWorkspace({
     },
     [jumpToAnchor, runtimeChunks],
   );
-
   const renderModeView = () => {
     if (!payload || !activeChunk) {
       return null;

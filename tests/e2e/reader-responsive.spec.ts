@@ -17,9 +17,14 @@ test("tablet-width reader keeps compact chrome without horizontal overflow", asy
 
   await expect(page).toHaveURL(/\/reader\?document=/);
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
-  await expect(page.getByText(/tap the text to show controls/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: /controls/i })).toBeVisible();
 
-  await page.getByLabel(/reader canvas/i).click();
+  await page.getByRole("button", { name: /controls/i }).click();
+  await page.getByRole("button", { name: /reading tools/i }).click();
+  const toolsDialog = page.getByRole("dialog", { name: /reading tools/i });
+  await expect(toolsDialog).toBeVisible();
+  await toolsDialog.getByLabel(/close tools/i).click();
+  await page.getByRole("button", { name: /controls/i }).click();
   await page.getByRole("button", { name: /change reading mode/i }).click();
 
   await expect

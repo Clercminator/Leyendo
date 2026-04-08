@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
+import { buildTokenRuns } from "@/components/reader/build-token-runs";
 import { useLocale } from "@/components/layout/locale-provider";
 import { getLocalizedCopy } from "@/lib/locale";
 import type { Chunk, DocumentModel, Token } from "@/types/document";
@@ -15,61 +16,76 @@ interface ClassicReaderViewProps {
 
 const inactiveTokenIndexes = new Set<number>();
 
+function renderToken(args: {
+  isActive: boolean;
+  onJumpToToken?: (tokenIndex: number) => void;
+  token: Token;
+}) {
+  const { isActive, onJumpToToken, token } = args;
+
+  return (
+    <span
+      key={token.index}
+      {...(onJumpToToken ? ({ role: "button", tabIndex: 0 } as const) : {})}
+      data-active={isActive ? "true" : undefined}
+      data-reader-token-index={token.index}
+      className={
+        onJumpToToken
+          ? "cursor-pointer rounded-md px-[0.04em] transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-sky)"
+          : undefined
+      }
+      onClick={
+        onJumpToToken
+          ? (event) => {
+              event.stopPropagation();
+              onJumpToToken(token.index);
+            }
+          : undefined
+      }
+      onKeyDown={
+        onJumpToToken
+          ? (event) => {
+              if (event.key !== "Enter" && event.key !== " ") {
+                return;
+              }
+
+              event.preventDefault();
+              event.stopPropagation();
+              onJumpToToken(token.index);
+            }
+          : undefined
+      }
+    >
+      {token.value}
+    </span>
+  );
+}
+
 function renderTokens(args: {
   activeIndexes: Set<number>;
-  isCompactEmphasis: boolean;
   onJumpToToken?: (tokenIndex: number) => void;
   tokens: Token[];
 }) {
-  const { activeIndexes, isCompactEmphasis, onJumpToToken, tokens } = args;
+  const { activeIndexes, onJumpToToken, tokens } = args;
 
-  return tokens.map((token, tokenIndex) => {
-    const isActive = activeIndexes.has(token.index);
+  return buildTokenRuns(tokens, activeIndexes).map((run) => {
+    if (!run.active) {
+      return run.tokens.map((token, tokenIndex) => (
+        <span key={token.index}>
+          {renderToken({ isActive: false, onJumpToToken, token })}
+          {tokenIndex < run.tokens.length - 1 ? " " : null}
+        </span>
+      ));
+    }
 
     return (
-      <span key={token.index}>
-        <span
-          {...(onJumpToToken ? ({ role: "button", tabIndex: 0 } as const) : {})}
-          data-active={isActive ? "true" : undefined}
-          data-reader-token-index={token.index}
-          className={
-            [
-              isActive ? "reader-classic-active-run" : null,
-              isActive && isCompactEmphasis
-                ? "reader-classic-active-run-compact"
-                : null,
-              onJumpToToken
-                ? "cursor-pointer rounded-md px-[0.04em] transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-sky)"
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" ") || undefined
-          }
-          onClick={
-            onJumpToToken
-              ? (event) => {
-                  event.stopPropagation();
-                  onJumpToToken(token.index);
-                }
-              : undefined
-          }
-          onKeyDown={
-            onJumpToToken
-              ? (event) => {
-                  if (event.key !== "Enter" && event.key !== " ") {
-                    return;
-                  }
-
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onJumpToToken(token.index);
-                }
-              : undefined
-          }
-        >
-          {token.value}
-        </span>
-        {tokenIndex < tokens.length - 1 ? " " : null}
+      <span key={run.key} className="reader-classic-active-run">
+        {run.tokens.map((token, tokenIndex) => (
+          <span key={token.index}>
+            {renderToken({ isActive: true, onJumpToToken, token })}
+            {tokenIndex < run.tokens.length - 1 ? " " : null}
+          </span>
+        ))}
       </span>
     );
   });
@@ -83,7 +99,6 @@ export function ClassicReaderView({
 }: ClassicReaderViewProps) {
   const { locale } = useLocale();
   const activeParagraphRef = useRef<HTMLElement | null>(null);
-  const [isCompactEmphasis, setIsCompactEmphasis] = useState(false);
   const activeIndexes = useMemo(() => new Set(chunk.tokenIndexes), [chunk]);
   const renderedBlocks = useMemo(
     () =>
@@ -116,31 +131,6 @@ export function ClassicReaderView({
     });
   }, [chunk.paragraphIndex, reduceMotion]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const resolveCompactEmphasis = () => {
-      const coarsePointer =
-        window.matchMedia?.("(hover: none), (pointer: coarse)").matches ??
-        false;
-      const touchCapable =
-        coarsePointer ||
-        navigator.maxTouchPoints > 0 ||
-        "ontouchstart" in window;
-
-      setIsCompactEmphasis(touchCapable && window.innerWidth <= 1100);
-    };
-
-    resolveCompactEmphasis();
-    window.addEventListener("resize", resolveCompactEmphasis);
-
-    return () => {
-      window.removeEventListener("resize", resolveCompactEmphasis);
-    };
-  }, []);
-
   const classicReaderLabel = getLocalizedCopy(locale, {
     en: "Classic Reader",
     es: "Lector clasico",
@@ -161,7 +151,7 @@ export function ClassicReaderView({
   );
 
   return (
-    <div className="reader-panel flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/10 px-4 py-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:rounded-[1.65rem] md:px-7 md:py-7 lg:rounded-[1.75rem] lg:px-10 lg:py-10">
+    <div className="reader-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/10 px-4 py-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:rounded-[1.65rem] md:px-7 md:py-7 lg:rounded-[1.75rem] lg:px-10 lg:py-10">
       <div className="shrink-0">
         <p className="reader-accent text-xs tracking-[0.24em] uppercase md:text-sm md:tracking-[0.28em]">
           {classicReaderLabel}
@@ -176,7 +166,6 @@ export function ClassicReaderView({
             ({ activeTokenIndexes, block, isActive, tokens }) => {
               const body = renderTokens({
                 activeIndexes: activeTokenIndexes,
-                isCompactEmphasis,
                 onJumpToToken: handleJumpToToken,
                 tokens,
               });
@@ -197,13 +186,7 @@ export function ClassicReaderView({
                   data-reader-paragraph-index={block.index}
                   className={`scroll-mt-4 rounded-[1.15rem] transition md:scroll-mt-6 md:rounded-[1.35rem] ${
                     isActive
-                      ? `${
-                          isCompactEmphasis
-                            ? ""
-                            : reduceMotion
-                              ? "reader-active-paragraph"
-                              : "reader-active-paragraph reader-active-paragraph-breathe"
-                        } px-4 py-3 md:px-5 md:py-4`
+                      ? "px-4 py-3 md:px-5 md:py-4"
                       : block.kind === "heading"
                         ? "px-1 py-1.5 md:px-2 md:py-2"
                         : "px-1 py-2 md:px-2 md:py-3"

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ReaderWorkspace } from "@/components/reader/reader-workspace";
+import { buildDocumentModel } from "@/features/ingest/build/document-model";
 import { defaultReaderPreferences } from "@/types/reader";
 
 vi.mock("next/link", () => ({
@@ -57,8 +58,15 @@ vi.mock("@/components/reader/pdf-reader-workspace", () => ({
   ),
 }));
 
+const { ClassicReaderViewMock, GuidedLineViewMock } = vi.hoisted(() => ({
+  ClassicReaderViewMock: vi.fn(() => <div data-testid="classic-reader-view" />),
+  GuidedLineViewMock: vi.fn(() => <div data-testid="guided-line-view" />),
+}));
+
 vi.mock("@/components/reader/reader-canvas", () => ({
-  ReaderCanvas: () => <div data-testid="reader-canvas" />,
+  ReaderCanvas: ({ modeView }: { modeView: React.ReactNode }) => (
+    <div data-testid="reader-canvas">{modeView}</div>
+  ),
 }));
 
 vi.mock("@/components/reader/reader-sidebar", () => ({
@@ -66,7 +74,7 @@ vi.mock("@/components/reader/reader-sidebar", () => ({
 }));
 
 vi.mock("@/components/reader/classic-reader-view", () => ({
-  ClassicReaderView: () => <div />,
+  ClassicReaderView: ClassicReaderViewMock,
 }));
 
 vi.mock("@/components/reader/focus-word-view", () => ({
@@ -74,7 +82,7 @@ vi.mock("@/components/reader/focus-word-view", () => ({
 }));
 
 vi.mock("@/components/reader/guided-line-view", () => ({
-  GuidedLineView: () => <div />,
+  GuidedLineView: GuidedLineViewMock,
 }));
 
 vi.mock("@/components/reader/phrase-chunk-view", () => ({
@@ -121,6 +129,30 @@ vi.mock("@/state/reader-store", () => ({
 describe("ReaderWorkspace PDF gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+    Object.defineProperty(window.navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
 
     useReaderStore.mockReturnValue({
       currentChunkIndex: 0,
@@ -222,5 +254,87 @@ describe("ReaderWorkspace PDF gating", () => {
         }),
       );
     });
+  });
+
+  it("keeps classic reader text jump targets on compact touch screens", async () => {
+    const documentModel = buildDocumentModel({
+      title: "Touch sample",
+      rawText:
+        "Compact touch readers should still let users jump by tapping a word.",
+      sourceKind: "plain-text",
+      chunkSize: 1,
+    });
+
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 900,
+    });
+    Object.defineProperty(window.navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 5,
+    });
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === "(hover: none), (pointer: coarse)",
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+
+    useReaderStore.mockReturnValue({
+      currentChunkIndex: 0,
+      isPlaying: false,
+      preferences: {
+        ...defaultReaderPreferences,
+        mode: "classic-reader",
+      },
+      setActiveDocument: vi.fn(),
+      setChunkIndex: vi.fn(),
+      setMode: vi.fn(),
+      setPlaying: vi.fn(),
+      updatePreferences: vi.fn(),
+    });
+
+    useReaderDocument.mockReturnValue({
+      bookmarks: [],
+      document: {
+        createdAt: "2026-03-30T10:00:00.000Z",
+        excerpt: documentModel.text.slice(0, 40),
+        id: "text-doc",
+        payload: documentModel,
+        sourceKind: "plain-text",
+        title: documentModel.title,
+        totalChunks: documentModel.chunks.length,
+        totalSections: documentModel.sections.length,
+        updatedAt: "2026-03-30T10:00:00.000Z",
+      },
+      error: undefined,
+      highlights: [],
+      isLoading: false,
+      prependBookmark: vi.fn(),
+      prependHighlight: vi.fn(),
+      removeBookmark: vi.fn(),
+      removeHighlight: vi.fn(),
+      savedSession: undefined,
+    });
+
+    render(<ReaderWorkspace documentId="text-doc" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("classic-reader-view")).toBeInTheDocument();
+    });
+
+    const classicReaderProps =
+      ClassicReaderViewMock.mock.calls.at(-1)?.[0] ?? {};
+
+    expect(classicReaderProps.onJumpToToken).toEqual(expect.any(Function));
   });
 });
