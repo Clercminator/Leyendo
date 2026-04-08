@@ -68,11 +68,19 @@ function emitLocaleChange() {
   }
 }
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
+export function LocaleProvider({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale?: AppLocale;
+}) {
+  const getSnapshot = () => initialLocale ?? getCurrentLocale();
+
   const locale = useSyncExternalStore(
     subscribeToLocale,
-    getCurrentLocale,
-    () => defaultLocale,
+    getSnapshot,
+    () => initialLocale ?? defaultLocale,
   );
 
   useEffect(() => {

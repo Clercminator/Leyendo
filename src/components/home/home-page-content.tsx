@@ -11,6 +11,7 @@ import { ModeGallery } from "@/components/reader/mode-gallery";
 import { UploadPanel } from "@/components/upload/upload-panel";
 import { getFeaturedGuidesForLocale } from "@/lib/guides";
 import { getLocalizedCopy } from "@/lib/locale";
+import { getLocalizedPublicPath } from "@/lib/public-paths";
 import { absoluteUrl, siteDescription, siteName, siteUrl } from "@/lib/site";
 
 const heroBadge = {
@@ -168,6 +169,7 @@ const openLibraryLabel = {
 export function HomePageContent() {
   const { locale } = useLocale();
   const featuredGuides = getFeaturedGuidesForLocale(locale);
+  const localizedGuidesPath = getLocalizedPublicPath("/guides", locale);
 
   const homeJsonLd = {
     "@context": "https://schema.org",
@@ -388,7 +390,7 @@ export function HomePageContent() {
                 </div>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
-                    href={`/guides/${guide.slug}`}
+                    href={getLocalizedPublicPath(`/guides/${guide.slug}`, locale)}
                     className="inline-flex items-center gap-2 rounded-full bg-(--text-strong) px-5 py-3 text-sm font-semibold text-(--text-on-accent) transition hover:opacity-92"
                   >
                     <ArrowRight className="h-4 w-4" />
@@ -401,7 +403,7 @@ export function HomePageContent() {
 
           <div>
             <Link
-              href="/guides"
+              href={localizedGuidesPath}
               className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 py-3 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
             >
               <FileStack className="h-4 w-4 text-(--accent-sky)" />

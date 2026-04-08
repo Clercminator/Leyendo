@@ -1,25 +1,20 @@
 import type { Metadata } from "next";
 
+import { LocaleProvider } from "@/components/layout/locale-provider";
 import { HomePageContent } from "@/components/home/home-page-content";
-import { createPageMetadata } from "@/lib/site";
+import { publicPageMetadataCopy } from "@/lib/public-metadata";
+import { createPublicPageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = createPageMetadata({
-  title: "Reading speed for real documents",
-  description:
-    "Leyendo helps readers searching for reading speed, fast reading, lectura rapida, and leer mas rapido. Read PDFs and dense documents faster with better focus, calmer pacing, and more control.",
-  keywords: [
-    "reading speed",
-    "fast reading",
-    "speed reading app",
-    "read faster",
-    "lectura rapida",
-    "leer mas rapido",
-    "velocidad de lectura",
-    "comprension lectora",
-  ],
+export const metadata: Metadata = createPublicPageMetadata({
+  ...publicPageMetadataCopy.home.en,
   path: "/",
+  locale: "en",
 });
 
 export default function HomePage() {
-  return <HomePageContent />;
+  return (
+    <LocaleProvider initialLocale="en">
+      <HomePageContent />
+    </LocaleProvider>
+  );
 }

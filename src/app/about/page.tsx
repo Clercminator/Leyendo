@@ -1,23 +1,20 @@
 import type { Metadata } from "next";
 
+import { LocaleProvider } from "@/components/layout/locale-provider";
 import { AboutPageContent } from "@/components/about/about-page-content";
-import { createPageMetadata } from "@/lib/site";
+import { publicPageMetadataCopy } from "@/lib/public-metadata";
+import { createPublicPageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = createPageMetadata({
-  title: "About",
-  description:
-    "Learn what Leyendo is, why it exists, and how David Clerc is building a calmer reading speed tool for English and Spanish readers looking for fast reading and lectura rapida that still respects comprehension.",
-  keywords: [
-    "about Leyendo",
-    "David Clerc",
-    "reading speed tool",
-    "fast reading",
-    "lectura rapida",
-    "leer mas rapido",
-  ],
+export const metadata: Metadata = createPublicPageMetadata({
+  ...publicPageMetadataCopy.about.en,
   path: "/about",
+  locale: "en",
 });
 
 export default function AboutPage() {
-  return <AboutPageContent />;
+  return (
+    <LocaleProvider initialLocale="en">
+      <AboutPageContent />
+    </LocaleProvider>
+  );
 }

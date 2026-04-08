@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import type { AppLocale } from "@/lib/locale";
+import { getPublicLanguageAlternates, getLocalizedPublicPath } from "@/lib/public-paths";
+
 const configuredSiteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL;
 
@@ -43,8 +46,18 @@ export const founderGitHubUrl = "https://github.com/Clercminator";
 export const founderBio =
   "David Clerc is an entrepreneur and commercial engineer with a master's in finance, broad experience in AI and data science, and a long-standing interest in reading, training, and practical learning systems.";
 
+const openGraphLocaleByAppLocale: Record<AppLocale, string> = {
+  en: "en_US",
+  es: "es_ES",
+  pt: "pt_BR",
+};
+
 export function absoluteUrl(path = "/") {
   return new URL(path, `${siteUrl}/`).toString();
+}
+
+export function getOpenGraphLocale(locale: AppLocale) {
+  return openGraphLocaleByAppLocale[locale];
 }
 
 export function createPageMetadata({
@@ -53,12 +66,14 @@ export function createPageMetadata({
   keywords,
   path,
   index = true,
+  locale = "en",
 }: {
   title: string;
   description: string;
   keywords?: string[];
   path: string;
   index?: boolean;
+  locale?: AppLocale;
 }): Metadata {
   const fullTitle = `${title} | ${siteName}`;
 
@@ -75,7 +90,7 @@ export function createPageMetadata({
       title: fullTitle,
       description,
       siteName,
-      locale: "en_US",
+      locale: getOpenGraphLocale(locale),
     },
     twitter: {
       card: "summary_large_image",
@@ -95,5 +110,36 @@ export function createPageMetadata({
             "max-video-preview": -1,
           },
         },
+  };
+}
+
+export function createPublicPageMetadata({
+  title,
+  description,
+  keywords,
+  path,
+  locale,
+}: {
+  title: string;
+  description: string;
+  keywords?: string[];
+  path: string;
+  locale: AppLocale;
+}): Metadata {
+  const localizedPath = getLocalizedPublicPath(path, locale);
+  const metadata = createPageMetadata({
+    title,
+    description,
+    keywords,
+    path: localizedPath,
+    locale,
+  });
+
+  return {
+    ...metadata,
+    alternates: {
+      canonical: localizedPath,
+      languages: getPublicLanguageAlternates(path),
+    },
   };
 }

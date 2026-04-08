@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 interface DashboardPageProps {
   searchParams?: Promise<{
@@ -18,5 +18,5 @@ export default async function DashboardPage({
 
   const query = destination.toString();
 
-  redirect(query ? `/pricing?${query}` : "/pricing");
+  permanentRedirect(query ? `/pricing?${query}` : "/pricing");
 }

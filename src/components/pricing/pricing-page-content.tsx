@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Coins, CreditCard, Globe2, X } from "lucide-react";
 
 import { useLocale } from "@/components/layout/locale-provider";
+import { getLocalizedPublicPath } from "@/lib/public-paths";
 import { founderGitHubUrl, founderLinkedInUrl } from "@/lib/site";
 
 type PaymentRegion = "global" | "latam";
@@ -623,7 +624,7 @@ export function PricingPageContent({
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <Link
-                href="/about"
+                href={getLocalizedPublicPath("/about", locale)}
                 className={primaryButtonClass("focus")}
                 onClick={() => {
                   setBinancePlanId(null);

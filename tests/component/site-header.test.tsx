@@ -7,6 +7,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SiteHeader } from "@/components/layout/site-header";
 
+const { navigationMocks } = vi.hoisted(() => ({
+  navigationMocks: {
+    push: vi.fn(),
+    usePathname: vi.fn(),
+    useRouter: vi.fn(),
+  },
+}));
+
 vi.mock("next/image", () => ({
   default: ({
     alt,
@@ -30,7 +38,8 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/reader",
+  usePathname: navigationMocks.usePathname,
+  useRouter: navigationMocks.useRouter,
 }));
 
 vi.mock("next-themes", () => ({
@@ -72,6 +81,10 @@ describe("SiteHeader", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockMatchMedia(true);
+    navigationMocks.usePathname.mockReturnValue("/reader");
+    navigationMocks.useRouter.mockReturnValue({
+      push: navigationMocks.push,
+    });
     useLocale.mockReturnValue({
       locale: "en",
       setLocale: vi.fn(),

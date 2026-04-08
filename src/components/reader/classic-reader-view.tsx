@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useLocale } from "@/components/layout/locale-provider";
-import { buildTokenRuns } from "@/components/reader/build-token-runs";
 import { getLocalizedCopy } from "@/lib/locale";
 import type { Chunk, DocumentModel, Token } from "@/types/document";
 
@@ -22,23 +21,25 @@ function renderTokens(args: {
   tokens: Token[];
 }) {
   const { activeIndexes, onJumpToToken, tokens } = args;
-  const runs = buildTokenRuns(tokens, activeIndexes);
 
-  return runs.map((run, index) => (
-    <span
-      key={run.key}
-      className={run.active ? "reader-classic-active-run" : undefined}
-      data-active={run.active ? "true" : undefined}
-    >
-      {run.tokens.map((token, tokenIndex) => (
+  return tokens.map((token, tokenIndex) => {
+    const isActive = activeIndexes.has(token.index);
+
+    return (
+      <span key={token.index}>
         <span
-          key={token.index}
           {...(onJumpToToken ? ({ role: "button", tabIndex: 0 } as const) : {})}
+          data-active={isActive ? "true" : undefined}
           data-reader-token-index={token.index}
           className={
-            onJumpToToken
-              ? "cursor-pointer rounded-md px-[0.04em] transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-sky)"
-              : undefined
+            [
+              isActive ? "reader-classic-active-run" : null,
+              onJumpToToken
+                ? "cursor-pointer rounded-md px-[0.04em] transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-sky)"
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined
           }
           onClick={
             onJumpToToken
@@ -63,12 +64,11 @@ function renderTokens(args: {
           }
         >
           {token.value}
-          {tokenIndex < run.tokens.length - 1 ? " " : null}
         </span>
-      ))}
-      {index < runs.length - 1 ? " " : null}
-    </span>
-  ));
+        {tokenIndex < tokens.length - 1 ? " " : null}
+      </span>
+    );
+  });
 }
 
 export function ClassicReaderView({

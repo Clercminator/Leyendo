@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -27,40 +27,53 @@ import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/layout/locale-provider";
 import { getLocalizedCopy, type LocalizedCopy } from "@/lib/locale";
+import {
+  getLocaleSwitchPath,
+  getLocalizedPublicPath,
+  isPublicMarketingPath,
+  stripPublicLocalePrefix,
+} from "@/lib/public-paths";
 
 const links = [
   {
     href: "/reader",
+    isPublic: false,
     label: { en: "Reader", es: "Lector", pt: "Leitor" },
     icon: BookOpenText,
   },
   {
     href: "/library",
+    isPublic: false,
     label: { en: "Library", es: "Biblioteca", pt: "Biblioteca" },
     icon: LibraryBig,
   },
   {
     href: "/pricing",
+    isPublic: true,
     label: { en: "Pricing", es: "Precios", pt: "Precos" },
     icon: Sparkles,
   },
   {
     href: "/about",
+    isPublic: true,
     label: { en: "About", es: "Sobre", pt: "Sobre" },
     icon: Info,
   },
   {
     href: "/guides",
+    isPublic: true,
     label: { en: "Guides", es: "Guias", pt: "Guias" },
     icon: FileText,
   },
   {
     href: "/privacy",
+    isPublic: true,
     label: { en: "Privacy", es: "Privacidad", pt: "Privacidade" },
     icon: ShieldCheck,
   },
   {
     href: "/account",
+    isPublic: false,
     label: { en: "Account", es: "Cuenta", pt: "Conta" },
     icon: Cloud,
   },
@@ -149,6 +162,7 @@ function controlButtonClass(isActive: boolean) {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const { locale, setLocale } = useLocale();
   const { resolvedTheme, setTheme } = useTheme();
   const { signOut, syncStatus, user } = useSupabaseAuth();
@@ -230,14 +244,40 @@ export function SiteHeader() {
 
   const activeTheme = resolvedTheme === "light" ? "light" : "dark";
 
+  const publicLocaleContext = useMemo(() => {
+    const resolvedPathname = pathname ?? "/";
+    const strippedPath = stripPublicLocalePrefix(resolvedPathname);
+
+    return {
+      locale: strippedPath.locale,
+      isPublicRoute: isPublicMarketingPath(strippedPath.pathname),
+    };
+  }, [pathname]);
+
   const localizedLinks = useMemo(
     () =>
       links.map((link) => ({
         ...link,
+        href:
+          link.isPublic && publicLocaleContext.isPublicRoute
+            ? getLocalizedPublicPath(link.href, publicLocaleContext.locale)
+            : link.href,
         label: getLocalizedCopy(locale, link.label),
       })),
-    [locale],
+    [locale, publicLocaleContext.isPublicRoute, publicLocaleContext.locale],
   );
+
+  function handleLocaleChange(nextLocale: typeof locale) {
+    const nextPath = getLocaleSwitchPath(pathname ?? "/", nextLocale);
+
+    setLocale(nextLocale);
+
+    if (nextPath) {
+      router.push(nextPath);
+    }
+
+    setIsLocaleMenuOpen(false);
+  }
 
   const syncStatusLabel = user?.email
     ? syncStatus === "synced"
@@ -371,8 +411,7 @@ export function SiteHeader() {
                         role="menuitemradio"
                         aria-checked="true"
                         onClick={() => {
-                          setLocale(option);
-                          setIsLocaleMenuOpen(false);
+                          handleLocaleChange(option);
                         }}
                         className="flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm text-(--text-strong) transition hover:bg-(--surface-soft)"
                       >
@@ -393,8 +432,7 @@ export function SiteHeader() {
                         role="menuitemradio"
                         aria-checked="false"
                         onClick={() => {
-                          setLocale(option);
-                          setIsLocaleMenuOpen(false);
+                          handleLocaleChange(option);
                         }}
                         className="flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm text-(--text-strong) transition hover:bg-(--surface-soft)"
                       >
@@ -481,8 +519,7 @@ export function SiteHeader() {
                         role="menuitemradio"
                         aria-checked="true"
                         onClick={() => {
-                          setLocale(option);
-                          setIsLocaleMenuOpen(false);
+                          handleLocaleChange(option);
                         }}
                         className="flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm text-(--text-strong) transition hover:bg-(--surface-soft)"
                       >
@@ -503,8 +540,7 @@ export function SiteHeader() {
                         role="menuitemradio"
                         aria-checked="false"
                         onClick={() => {
-                          setLocale(option);
-                          setIsLocaleMenuOpen(false);
+                          handleLocaleChange(option);
                         }}
                         className="flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm text-(--text-strong) transition hover:bg-(--surface-soft)"
                       >

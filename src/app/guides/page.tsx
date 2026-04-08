@@ -1,22 +1,20 @@
 import type { Metadata } from "next";
 
+import { LocaleProvider } from "@/components/layout/locale-provider";
 import { GuidesPageContent } from "@/components/guides/guides-page-content";
-import { createPageMetadata } from "@/lib/site";
+import { publicPageMetadataCopy } from "@/lib/public-metadata";
+import { createPublicPageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = createPageMetadata({
-  title: "Guides",
-  description:
-    "Browse Leyendo guides for reading real documents with better pace, comprehension, and control.",
-  keywords: [
-    "reading speed guides",
-    "fast reading guides",
-    "read real documents faster",
-    "reading comprehension guides",
-    "document reading workflow",
-  ],
+export const metadata: Metadata = createPublicPageMetadata({
+  ...publicPageMetadataCopy.guides.en,
   path: "/guides",
+  locale: "en",
 });
 
 export default function GuidesPage() {
-  return <GuidesPageContent />;
+  return (
+    <LocaleProvider initialLocale="en">
+      <GuidesPageContent />
+    </LocaleProvider>
+  );
 }

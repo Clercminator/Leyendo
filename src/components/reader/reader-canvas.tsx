@@ -216,19 +216,21 @@ export function ReaderCanvas({
     desktopBottomMenuPositionClass,
   );
   const settingsRowClass =
-    "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-3";
+    "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5";
   const topControlButtonClass =
     "min-h-10 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm";
   const statusChipClass =
-    "inline-flex min-h-10 items-center justify-center rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-center text-xs text-(--text-strong) sm:min-h-auto sm:rounded-full sm:px-3 sm:py-1.5 sm:text-sm";
+    "inline-flex min-h-9 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1.5 text-center text-[11px] text-(--text-strong) sm:min-h-auto sm:px-3 sm:text-sm";
   const mobileStatCardClass =
     "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-left";
   const mobilePrimaryButtonClass =
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+    "inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.95rem] border border-(--border-soft) bg-(--surface-soft) px-2.5 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
   const mobileToolsSectionClass =
-    "rounded-[1.2rem] border border-(--border-soft) bg-(--surface-strong) p-3";
+    "rounded-[1.05rem] border border-(--border-soft) bg-(--surface-strong) p-2.5 sm:p-3";
   const sheetActionButtonClass =
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+    "inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.95rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+  const sheetUtilityButtonClass =
+    "inline-flex min-h-10 w-fit items-center justify-center gap-2 justify-self-start rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
 
   useEffect(() => {
     if (!openMenu) {
@@ -959,7 +961,7 @@ export function ReaderCanvas({
         )}
         aria-label="Reader transport and annotation controls"
       >
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:hidden">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:hidden">
           <button
             type="button"
             aria-label={copy.previous}
@@ -1448,7 +1450,7 @@ export function ReaderCanvas({
             role="dialog"
             aria-modal="true"
             aria-label={copy.readingTools}
-            className="absolute inset-x-0 bottom-0 max-h-[82svh] overflow-y-auto rounded-t-[1.6rem] border border-(--border-strong) bg-(--surface-card) p-4 shadow-[0_-20px_80px_rgba(20,26,56,0.28)]"
+            className="absolute inset-x-0 bottom-0 max-h-[82svh] overflow-y-auto rounded-t-[1.6rem] border border-(--border-strong) bg-(--surface-card) p-3.5 shadow-[0_-20px_80px_rgba(20,26,56,0.28)] sm:p-4"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1466,18 +1468,18 @@ export function ReaderCanvas({
                   setIsMobileChromeVisible(false);
                   setIsMobileToolsOpen(false);
                 }}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-2.5">
               <section className={mobileToolsSectionClass}>
                 <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
                   {copy.saveMenu}
                 </p>
-                <div className="mt-3 grid gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -1485,7 +1487,7 @@ export function ReaderCanvas({
                       setIsMobileChromeVisible(false);
                       setIsMobileToolsOpen(false);
                     }}
-                    className={sheetActionButtonClass}
+                    className={sheetUtilityButtonClass}
                   >
                     <BookmarkPlus className="h-4 w-4" />
                     {copy.saveBookmark}
@@ -1578,25 +1580,29 @@ export function ReaderCanvas({
                       </div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    aria-label={
-                      isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
-                    }
-                    onClick={() => {
-                      void toggleFullscreen();
-                      setIsMobileChromeVisible(false);
-                      setIsMobileToolsOpen(false);
-                    }}
-                    className={sheetActionButtonClass}
-                  >
-                    {isFullscreen ? (
-                      <Minimize2 className="h-4 w-4" />
-                    ) : (
-                      <Maximize2 className="h-4 w-4" />
-                    )}
-                    {isFullscreen ? copy.collapse : copy.expand}
-                  </button>
+                  <div className="flex justify-start">
+                    <button
+                      type="button"
+                      aria-label={
+                        isFullscreen
+                          ? copy.exitFullscreen
+                          : copy.enterFullscreen
+                      }
+                      onClick={() => {
+                        void toggleFullscreen();
+                        setIsMobileChromeVisible(false);
+                        setIsMobileToolsOpen(false);
+                      }}
+                      className={sheetUtilityButtonClass}
+                    >
+                      {isFullscreen ? (
+                        <Minimize2 className="h-4 w-4" />
+                      ) : (
+                        <Maximize2 className="h-4 w-4" />
+                      )}
+                      {isFullscreen ? copy.collapse : copy.expand}
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(themeLabels).map(([value, labels]) => (
                       <button

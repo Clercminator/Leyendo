@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { useLocale } from "@/components/layout/locale-provider";
 import { getGuidesForLocale, resolveGuideLanguage } from "@/lib/guides";
 import { getLocalizedCopy } from "@/lib/locale";
+import { getLocalizedPublicPath } from "@/lib/public-paths";
 import { absoluteUrl, siteName, siteUrl } from "@/lib/site";
 
 const guidesEyebrow = {
@@ -63,6 +64,8 @@ export function GuidesPageContent() {
   const visibleGuides = getGuidesForLocale(locale);
   const guideLanguage = resolveGuideLanguage(locale);
   const showsFallbackGuides = guideLanguage !== locale;
+  const localizedGuidesPath = getLocalizedPublicPath("/guides", locale);
+  const localizedHomePath = getLocalizedPublicPath("/", locale);
 
   const guidesJsonLd = {
     "@context": "https://schema.org",
@@ -70,7 +73,7 @@ export function GuidesPageContent() {
       {
         "@type": "CollectionPage",
         name: `${siteName} guides`,
-        url: absoluteUrl("/guides"),
+        url: absoluteUrl(localizedGuidesPath),
         description: getLocalizedCopy(locale, guidesDescription),
       },
       {
@@ -78,7 +81,7 @@ export function GuidesPageContent() {
         itemListElement: visibleGuides.map((guide, index) => ({
           "@type": "ListItem",
           position: index + 1,
-          url: absoluteUrl(`/guides/${guide.slug}`),
+          url: absoluteUrl(getLocalizedPublicPath(`/guides/${guide.slug}`, locale)),
           name: guide.title,
         })),
       },
@@ -153,14 +156,14 @@ export function GuidesPageContent() {
                 </div>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
-                    href={`/guides/${guide.slug}`}
+                    href={getLocalizedPublicPath(`/guides/${guide.slug}`, locale)}
                     className="inline-flex items-center gap-2 rounded-full bg-(--text-strong) px-5 py-3 text-sm font-semibold text-(--text-on-accent) transition hover:opacity-92"
                   >
                     <BookOpenText className="h-4 w-4" />
                     {getLocalizedCopy(locale, readGuideLabel)}
                   </Link>
                   <Link
-                    href="/#upload-panel"
+                    href={`${localizedHomePath}#upload-panel`}
                     className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 py-3 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
                   >
                     <ArrowRight className="h-4 w-4 text-(--accent-sky)" />

@@ -10,6 +10,7 @@ import { useLocale } from "@/components/layout/locale-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { getFeaturedGuidesForLocale } from "@/lib/guides";
 import { getLocalizedCopy } from "@/lib/locale";
+import { getLocalizedPublicPath } from "@/lib/public-paths";
 import {
   absoluteUrl,
   founderBio,
@@ -125,6 +126,8 @@ export function AboutPageContent() {
   const { locale } = useLocale();
   const featuredGuides = getFeaturedGuidesForLocale(locale);
   const [founderImgError, setFounderImgError] = useState(false);
+  const localizedAboutPath = getLocalizedPublicPath("/about", locale);
+  const localizedGuidesPath = getLocalizedPublicPath("/guides", locale);
 
   const aboutJsonLd = {
     "@context": "https://schema.org",
@@ -140,7 +143,7 @@ export function AboutPageContent() {
         name: founderName,
         jobTitle: founderRole,
         description: founderBio,
-        url: absoluteUrl("/about"),
+        url: absoluteUrl(localizedAboutPath),
         sameAs: [founderLinkedInUrl, founderGitHubUrl],
         worksFor: {
           "@type": "Organization",
@@ -213,7 +216,7 @@ export function AboutPageContent() {
             {featuredGuides.map((guide) => (
               <Link
                 key={guide.slug}
-                href={`/guides/${guide.slug}`}
+                href={getLocalizedPublicPath(`/guides/${guide.slug}`, locale)}
                 className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-5 transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
               >
                 <p className="text-sm text-(--text-muted)">
@@ -233,7 +236,7 @@ export function AboutPageContent() {
           </div>
           <div className="mt-6">
             <Link
-              href="/guides"
+              href={localizedGuidesPath}
               className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 py-3 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
             >
               {getLocalizedCopy(locale, publicGuidesCopy.browseAll)}

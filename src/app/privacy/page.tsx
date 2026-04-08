@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
 
+import { LocaleProvider } from "@/components/layout/locale-provider";
 import { PrivacyPageContent } from "@/components/privacy/privacy-page-content";
-import { createPageMetadata } from "@/lib/site";
+import { publicPageMetadataCopy } from "@/lib/public-metadata";
+import { createPublicPageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = createPageMetadata({
-  title: "Privacy",
-  description:
-    "See how Leyendo keeps reading local-first, avoids hidden guest uploads, and only syncs when you choose a cloud account.",
+export const metadata: Metadata = createPublicPageMetadata({
+  ...publicPageMetadataCopy.privacy.en,
   path: "/privacy",
+  locale: "en",
 });
 
 export default function PrivacyPage() {
-  return <PrivacyPageContent />;
+  return (
+    <LocaleProvider initialLocale="en">
+      <PrivacyPageContent />
+    </LocaleProvider>
+  );
 }

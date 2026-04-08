@@ -1,39 +1,32 @@
 import type { MetadataRoute } from "next";
 
 import { guides } from "@/lib/guides";
+import { getLocalizedPublicPath } from "@/lib/public-paths";
 import { absoluteUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date();
+  const publicPagePaths = ["/", "/about", "/guides", "/pricing", "/privacy"];
+  const publicLocales = ["en", "es", "pt"] as const;
 
   return [
-    {
-      url: absoluteUrl("/"),
-      lastModified,
-      changeFrequency: "weekly",
-      priority: 1,
-    },
-    {
-      url: absoluteUrl("/about"),
-      lastModified,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: absoluteUrl("/guides"),
-      lastModified,
-      changeFrequency: "weekly",
-      priority: 0.85,
-    },
-    {
-      url: absoluteUrl("/privacy"),
-      lastModified,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
+    ...publicLocales.flatMap((locale) =>
+      publicPagePaths.map((path) => ({
+        url: absoluteUrl(getLocalizedPublicPath(path, locale)),
+        changeFrequency: path === "/guides" || path === "/" ? "weekly" as const : "monthly" as const,
+        priority:
+          path === "/"
+            ? 1
+            : path === "/guides"
+              ? 0.85
+              : path === "/pricing"
+                ? 0.8
+                : path === "/about"
+                  ? 0.8
+                  : 0.7,
+      })),
+    ),
     ...guides.map((guide) => ({
-      url: absoluteUrl(`/guides/${guide.slug}`),
-      lastModified,
+      url: absoluteUrl(getLocalizedPublicPath(`/guides/${guide.slug}`, guide.language)),
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),
