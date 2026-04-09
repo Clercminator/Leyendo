@@ -10,6 +10,7 @@
     "build": "next build",
     "prestart": "pnpm sync:pdf-assets",
     "start": "next start",
+    "catalog:scan": "node ./scripts/validate-pdf-library.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",

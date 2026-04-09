@@ -1,0 +1,539 @@
+{
+  "appUrl": "http://127.0.0.1:3000",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T18:27:50.966Z",
+  "mode": "scan-and-publish",
+  "totals": {
+    "pdfCount": 14,
+    "processed": 14,
+    "remaining": 0,
+    "catalogReady": 0,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 14,
+    "publishFailed": 0,
+    "passed": 14,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "published",
+      "fileName": "Behave - The Biology of Humans at Our Best and Worst.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBehave - The Biology of Humans at Our Best and Worst.pdf is readyPDF at 18 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1888081,
+        "imagePlaceholderCount": 91,
+        "sample": "[Image omitted from PDF]\n\nALSO BY ROBERT M. SAPOLSKY\n\nMonkeyluv and Other Essays on Our Lives as Animals\n\nA Primate’s Memoir\n\nThe Trouble with Testosterone and Other Essays on the Biology of the Human\n\nPredicament\n\nWhy Z..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=JisGkwPqFK8uR-qPKOG9-"
+      },
+      "durationMs": 28454,
+      "testedAt": "2026-04-09T18:19:51.070Z",
+      "document": {
+        "documentId": "JisGkwPqFK8uR-qPKOG9-",
+        "estimatedReadingMinutes": 1297,
+        "excerpt": "[Image omitted from PDF]\n\nALSO BY ROBERT M. SAPOLSKY\n\nMonkeyluv and Other Essays on Our Lives as Animals\n\nA Primate’s Memoir\n\nThe Trouble with Testosterone and Other Essays on the ",
+        "payloadBytes": 88859150,
+        "title": "Behave - The Biology of Humans at Our Best and Worst",
+        "tokenCount": 285212,
+        "totalChunks": 152579,
+        "totalSections": 367
+      },
+      "publish": {
+        "catalogBookId": "c4e661d7-e143-4f0d-b924-fa3d29adf587",
+        "slug": "behave-the-biology-of-humans-at-our-best-and-worst",
+        "title": "Behave - The Biology of Humans at Our Best and Worst",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Crime_and_Punishment_T.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyCrime_and_Punishment_T.pdf is readyPDF at 3.3 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1164529,
+        "imagePlaceholderCount": 0,
+        "sample": "Crime and Punishment\n\nFyodor Dostoevsky\n\nTranslated By Constance Garnett\n\nThis eBook is designed and published by Planet PDF. For more free\n\neBooks visit our Web site athttp://www.planetpdf.com\n\nCrime and Punishment\n\nTRA..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=WcLm1FfdAcXi10zMYjca8"
+      },
+      "durationMs": 14631,
+      "testedAt": "2026-04-09T18:21:29.093Z",
+      "document": {
+        "documentId": "WcLm1FfdAcXi10zMYjca8",
+        "estimatedReadingMinutes": 953,
+        "excerpt": "Crime and Punishment\n\nFyodor Dostoevsky\n\nTranslated By Constance Garnett\n\nThis eBook is designed and published by Planet PDF. For more free\n\neBooks visit our Web site athttp://www.",
+        "payloadBytes": 59653616,
+        "title": "Crime_and_Punishment_T",
+        "tokenCount": 209532,
+        "totalChunks": 109336,
+        "totalSections": 10
+      },
+      "publish": {
+        "catalogBookId": "a18a704c-2e45-4af8-9422-0dcc4e0fe67a",
+        "slug": "crime-and-punishment-t",
+        "title": "Crime_and_Punishment_T",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "David_Overcomes_Goliath.pdf.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDavid_Overcomes_Goliath.pdf.pdf is readyPDF at 412 KB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 117399,
+        "imagePlaceholderCount": 0,
+        "sample": "66 Articles / Articoli\n\nArticles /Articoli\n\nDaviDOvercOmes GOliatH(1samuel 17)\n\nGenre, Text, Origin and Message of the Story\n\n*\n\nAlexAnderrofé,Hebrew University, Jerusalem\n\n1.The literary genre\n\nthe story of David’s batt..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=tJ1KXLfo33sGngk5k6qDq"
+      },
+      "durationMs": 4415,
+      "testedAt": "2026-04-09T18:22:19.415Z",
+      "document": {
+        "documentId": "tJ1KXLfo33sGngk5k6qDq",
+        "estimatedReadingMinutes": 85,
+        "excerpt": "66 Articles / Articoli\n\nArticles /Articoli\n\nDaviDOvercOmes GOliatH(1samuel 17)\n\nGenre, Text, Origin and Message of the Story\n\n*\n\nAlexAnderrofé,Hebrew University, Jerusalem\n\n1.The l",
+        "payloadBytes": 5540700,
+        "title": "David_Overcomes_Goliath.pdf",
+        "tokenCount": 18684,
+        "totalChunks": 9988,
+        "totalSections": 13
+      },
+      "publish": {
+        "catalogBookId": "b906f71e-0259-4b07-981c-9b57bfe2b827",
+        "slug": "david-overcomes-goliath-pdf",
+        "title": "David_Overcomes_Goliath.pdf",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Dune - Frank Herbert.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDune - Frank Herbert.pdf is readyPDF at 2.4 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1311391,
+        "imagePlaceholderCount": 4,
+        "sample": "Arrakis: un planeta desértico donde el agua es el bien más preciado,\n\ndonde llorar a los muertos es el símbolo de máxima prodigalidad. Paul\n\nAtreides: un adolescente marcado por un destino singular, dotado de\n\nextraños p..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=YC3ivouMkt39yYiP94gQa"
+      },
+      "durationMs": 13081,
+      "testedAt": "2026-04-09T18:22:33.571Z",
+      "document": {
+        "documentId": "YC3ivouMkt39yYiP94gQa",
+        "estimatedReadingMinutes": 984,
+        "excerpt": "Arrakis: un planeta desértico donde el agua es el bien más preciado,\n\ndonde llorar a los muertos es el símbolo de máxima prodigalidad. Paul\n\nAtreides: un adolescente marcado por un",
+        "payloadBytes": 67960292,
+        "title": "Dune - Frank Herbert",
+        "tokenCount": 216439,
+        "totalChunks": 117003,
+        "totalSections": 2
+      },
+      "publish": {
+        "catalogBookId": "cceaec8c-102e-4e99-90af-b6415624d967",
+        "slug": "dune-frank-herbert",
+        "title": "Dune - Frank Herbert",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Evolve Your Brain_ The Science of Changing Your Mind ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyEvolve Your Brain_ The Science of Changing Your Mind ( PDFDrive ).pdf is readyPDF at 3.8 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1069750,
+        "imagePlaceholderCount": 44,
+        "sample": "[Image omitted from PDF]\n\nPraise for Evolve Your Brain\n\n“Dr. Joe Dispenza delves deep into the extraordinary potential of the\n\nmind. Read this book and be inspired to change your life forever.”\n\n—Lynne McTaggart, author ..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=EpMdzWIEpg6euPCN2QSCu"
+      },
+      "durationMs": 11746,
+      "testedAt": "2026-04-09T18:23:34.974Z",
+      "document": {
+        "documentId": "EpMdzWIEpg6euPCN2QSCu",
+        "estimatedReadingMinutes": 800,
+        "excerpt": "[Image omitted from PDF]\n\nPraise for Evolve Your Brain\n\n“Dr. Joe Dispenza delves deep into the extraordinary potential of the\n\nmind. Read this book and be inspired to change your l",
+        "payloadBytes": 53604443,
+        "title": "Evolve Your Brain_ The Science of Changing Your Mind ( PDFDrive )",
+        "tokenCount": 175887,
+        "totalChunks": 93741,
+        "totalSections": 75
+      },
+      "publish": {
+        "catalogBookId": "02e34b76-059a-4234-b668-c7f7712ddc4e",
+        "slug": "evolve-your-brain-the-science-of-changing-your-mind-pdfdrive",
+        "title": "Evolve Your Brain_ The Science of Changing Your Mind ( PDFDrive )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Finite and Infinite Games_ A Vision of Life as Play and Possibility.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyFinite and Infinite Games_ A Vision of Life as Play and Possibility.pdf is readyPDF at 8.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 222479,
+        "imagePlaceholderCount": 32,
+        "sample": "· . FINITE\n\nand\n\nINFINITE\n\nGAMES\n\nAVision of Life as Play and Possibility\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nJAM ESP. C .A <:R'.' S E\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nFINITE AND\n\nINF..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=O92Cb8jNyxrk-COLBhQUq"
+      },
+      "durationMs": 20380,
+      "testedAt": "2026-04-09T18:24:32.664Z",
+      "document": {
+        "documentId": "O92Cb8jNyxrk-COLBhQUq",
+        "estimatedReadingMinutes": 174,
+        "excerpt": "· . FINITE\n\nand\n\nINFINITE\n\nGAMES\n\nAVision of Life as Play and Possibility\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nJAM ESP. C .A <:R'.' S E\n\n[Image omitted from PDF]\n\n[",
+        "payloadBytes": 11549072,
+        "title": "Finite and Infinite Games_ A Vision of Life as Play and Possibility",
+        "tokenCount": 38142,
+        "totalChunks": 20505,
+        "totalSections": 124
+      },
+      "publish": {
+        "catalogBookId": "9862d485-ecb1-4896-92fb-6f15f99784b3",
+        "slug": "finite-and-infinite-games-a-vision-of-life-as-play-and-possibility",
+        "title": "Finite and Infinite Games_ A Vision of Life as Play and Possibility",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Good_to_Great_by_Jim_Collins.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyGood_to_Great_by_Jim_Collins.pdf is readyPDF at 8.7 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 568100,
+        "imagePlaceholderCount": 345,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nW h y S o m e C o m p a n i e s\n\nM a k e t h e L e a p...\n\na n d O t h e r s D o n ' t\n\nRANDOMHOUSE BUSINESS BOOKS\n\n[Image omitted from PDF]\n\nAcknowledgments ix Preface..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=h8U3hDFIzbVCOSh9out-B"
+      },
+      "durationMs": 7375,
+      "testedAt": "2026-04-09T18:24:47.334Z",
+      "document": {
+        "documentId": "h8U3hDFIzbVCOSh9out-B",
+        "estimatedReadingMinutes": 427,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nW h y S o m e C o m p a n i e s\n\nM a k e t h e L e a p...\n\na n d O t h e r s D o n ' t\n\nRANDOMHOUSE BUSINESS BOOKS\n\n[Image omitt",
+        "payloadBytes": 27874139,
+        "title": "Good_to_Great_by_Jim_Collins",
+        "tokenCount": 93795,
+        "totalChunks": 49575,
+        "totalSections": 120
+      },
+      "publish": {
+        "catalogBookId": "a6b33d4e-9b7f-4b9b-a360-16ddd8700d1e",
+        "slug": "good-to-great-by-jim-collins",
+        "title": "Good_to_Great_by_Jim_Collins",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "How to change your mind - Michael Pollan.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyHow to change your mind - Michael Pollan.pdf is readyPDF at 3.6 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 908401,
+        "imagePlaceholderCount": 5,
+        "sample": "[Image omitted from PDF]\n\nALSO BY Michael Pollan\n\nCooked\n\nFood Rules\n\nIn Defense of Food\n\nThe Omnivore’s Dilemma\n\nThe Botany of Desire\n\nA Place of My Own\n\nSecond Nature\n\n[Image omitted from PDF]\n\nPENGUIN PRESS An imprint..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=ipmLhfcfb_DwqqBKXd8Ay"
+      },
+      "durationMs": 10220,
+      "testedAt": "2026-04-09T18:25:16.570Z",
+      "document": {
+        "documentId": "ipmLhfcfb_DwqqBKXd8Ay",
+        "estimatedReadingMinutes": 665,
+        "excerpt": "[Image omitted from PDF]\n\nALSO BY Michael Pollan\n\nCooked\n\nFood Rules\n\nIn Defense of Food\n\nThe Omnivore’s Dilemma\n\nThe Botany of Desire\n\nA Place of My Own\n\nSecond Nature\n\n[Image omi",
+        "payloadBytes": 44196441,
+        "title": "How to change your mind - Michael Pollan",
+        "tokenCount": 146253,
+        "totalChunks": 77533,
+        "totalSections": 39
+      },
+      "publish": {
+        "catalogBookId": "7af3b200-f58e-45ad-912a-986bc48da8ca",
+        "slug": "how-to-change-your-mind-michael-pollan",
+        "title": "How to change your mind - Michael Pollan",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "How to Talk to Anyone 92 Little Tricks for Big Success in Relationships by Leil Lowndes (z-lib.org).epub.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyHow to Talk to Anyone 92 Little Tricks for Big Success in Relationships by Leil Lowndes (z-lib.org).epub.pdf is readyPDF at 1.1 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 448180,
+        "imagePlaceholderCount": 1,
+        "sample": "[Image omitted from PDF]\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nHow to Talk to Anyone - 92 Little Tricks...\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nIntroductio..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=j-_2YXcR9XLxw8hre0smz"
+      },
+      "durationMs": 4561,
+      "testedAt": "2026-04-09T18:25:50.070Z",
+      "document": {
+        "documentId": "j-_2YXcR9XLxw8hre0smz",
+        "estimatedReadingMinutes": 354,
+        "excerpt": "[Image omitted from PDF]\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nHow to Talk to Anyone - 92 Little Tricks...\n\nHow to Talk to An",
+        "payloadBytes": 23425870,
+        "title": "How to Talk to Anyone 92 Little Tricks for Big Success in Relationships by Leil Lowndes (z-lib.org).epub",
+        "tokenCount": 77805,
+        "totalChunks": 41885,
+        "totalSections": 35
+      },
+      "publish": {
+        "catalogBookId": "34647bc1-7666-4252-b288-efe3676799a0",
+        "slug": "how-to-talk-to-anyone-92-little-tricks-for-big-success-in-relationships-by-leil-",
+        "title": "How to Talk to Anyone 92 Little Tricks for Big Success in Relationships by Leil Lowndes (z-lib.org).epub",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Inadequate Equilibria_ Where and How Civilizations Get Stuck ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyInadequate Equilibria_ Where and How Civilizations Get Stuck ( PDFDrive ).pdf is readyPDF at 1.2 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 330761,
+        "imagePlaceholderCount": 0,
+        "sample": "Inadequate Equilibria\n\nWhere and How Civilizations Get Stuck\n\nELIEZER YUDKOWSKY\n\nWritten by Eliezer Yudkowsky\n\nPublished in 2017 by the\n\nMachine Intelligence Research Institute\n\nBerkeley 94704\n\nUnited States of America\n\n..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=Cx1wlWqk7jp6wwDirqRl2"
+      },
+      "durationMs": 5237,
+      "testedAt": "2026-04-09T18:26:09.527Z",
+      "document": {
+        "documentId": "Cx1wlWqk7jp6wwDirqRl2",
+        "estimatedReadingMinutes": 243,
+        "excerpt": "Inadequate Equilibria\n\nWhere and How Civilizations Get Stuck\n\nELIEZER YUDKOWSKY\n\nWritten by Eliezer Yudkowsky\n\nPublished in 2017 by the\n\nMachine Intelligence Research Institute\n\nBe",
+        "payloadBytes": 15999227,
+        "title": "Inadequate Equilibria_ Where and How Civilizations Get Stuck ( PDFDrive )",
+        "tokenCount": 53321,
+        "totalChunks": 28278,
+        "totalSections": 223
+      },
+      "publish": {
+        "catalogBookId": "6796ab86-faec-4882-a0d9-e5551552b05b",
+        "slug": "inadequate-equilibria-where-and-how-civilizations-get-stuck-pdfdrive",
+        "title": "Inadequate Equilibria_ Where and How Civilizations Get Stuck ( PDFDrive )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Let Your Life Speak_ Listening for the Voice of Vocation ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyLet Your Life Speak_ Listening for the Voice of Vocation ( PDFDrive.com ).pdf is readyPDF at 2.2 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 168495,
+        "imagePlaceholderCount": 51,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nOTHER BOOKS BY PARKER J. PALMER\n\n[Image omitted from PDF]\n\nThe Courage to Teach\n\nThe Courage to Teach: A Guide for Reflection and Renewal\n\n(wi..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=QRO5bq3Hmj5fqo4PSKlOK"
+      },
+      "durationMs": 4782,
+      "testedAt": "2026-04-09T18:26:26.685Z",
+      "document": {
+        "documentId": "QRO5bq3Hmj5fqo4PSKlOK",
+        "estimatedReadingMinutes": 136,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nOTHER BOOKS BY PARKER J. PALMER\n\n[Image omitted from PDF]\n\nThe Courage to Teach\n\nThe Courage to Teach:",
+        "payloadBytes": 8831880,
+        "title": "Let Your Life Speak_ Listening for the Voice of Vocation ( PDFDrive.com )",
+        "tokenCount": 29705,
+        "totalChunks": 15851,
+        "totalSections": 4
+      },
+      "publish": {
+        "catalogBookId": "547a6aac-dd8f-4332-8fb3-6a0d646a2347",
+        "slug": "let-your-life-speak-listening-for-the-voice-of-vocation-pdfdrive-com",
+        "title": "Let Your Life Speak_ Listening for the Voice of Vocation ( PDFDrive.com )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Man's Search For Meaning.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyMan's Search For Meaning.pdf is readyPDF at 6.5 MB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 4860,
+        "imagePlaceholderCount": 187,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitt..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=cL9YL5DWjazGnOhYUc-3J"
+      },
+      "durationMs": 8135,
+      "testedAt": "2026-04-09T18:26:42.054Z",
+      "document": {
+        "documentId": "cL9YL5DWjazGnOhYUc-3J",
+        "estimatedReadingMinutes": 4,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]",
+        "payloadBytes": 237755,
+        "title": "Man's Search For Meaning",
+        "tokenCount": 748,
+        "totalChunks": 374,
+        "totalSections": 1
+      },
+      "publish": {
+        "catalogBookId": "9c665c1c-2761-42cb-a801-e10cfe568018",
+        "slug": "man-s-search-for-meaning",
+        "title": "Man's Search For Meaning",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Nikola_Tesla Biography - Prodigal_Genius.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyNikola_Tesla Biography - Prodigal_Genius.pdf is readyPDF at 647 KB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 643669,
+        "imagePlaceholderCount": 0,
+        "sample": "Prodigal Genius\n\nBIOGRAPHY OF NIKOLA TESLA\n\n1994 Brotherhood of Life, Inc.,\n\n110 Dartmouth, SE, Albuquerque,\n\nNew Mexico 87106 USA\n\n\"SPECTACULAR\" is a mild word for describing the strange\n\nexperiment with life that compr..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=-6NI1gaceGkXuirXaOGBW"
+      },
+      "durationMs": 4858,
+      "testedAt": "2026-04-09T18:26:46.672Z",
+      "document": {
+        "documentId": "-6NI1gaceGkXuirXaOGBW",
+        "estimatedReadingMinutes": 485,
+        "excerpt": "Prodigal Genius\n\nBIOGRAPHY OF NIKOLA TESLA\n\n1994 Brotherhood of Life, Inc.,\n\n110 Dartmouth, SE, Albuquerque,\n\nNew Mexico 87106 USA\n\n\"SPECTACULAR\" is a mild word for describing the ",
+        "payloadBytes": 32743061,
+        "title": "Nikola_Tesla Biography - Prodigal_Genius",
+        "tokenCount": 106575,
+        "totalChunks": 57299,
+        "totalSections": 5
+      },
+      "publish": {
+        "catalogBookId": "f65e2155-c0b4-4a10-bfdd-b9ebaaf9e4de",
+        "slug": "nikola-tesla-biography-prodigal-genius",
+        "title": "Nikola_Tesla Biography - Prodigal_Genius",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Thinking, Fast and Slow.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyThinking, Fast and Slow.pdf is readyPDF at 3.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1174265,
+        "imagePlaceholderCount": 26,
+        "sample": "[Image omitted from PDF]\n\nP\n\n[Image omitted from PDF]\n\nIn memory of Amos Tversky\n\nP\n\nContents\n\nIntroduction\n\nPart I. Two Systems\n\n1. The Characters of the Story\n\n2. Attention and Effort\n\n3. The Lazy Controller\n\n4. The As..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=19VAYjLIXw1NVpPFFUcaO"
+      },
+      "durationMs": 11161,
+      "testedAt": "2026-04-09T18:27:15.683Z",
+      "document": {
+        "documentId": "19VAYjLIXw1NVpPFFUcaO",
+        "estimatedReadingMinutes": 864,
+        "excerpt": "[Image omitted from PDF]\n\nP\n\n[Image omitted from PDF]\n\nIn memory of Amos Tversky\n\nP\n\nContents\n\nIntroduction\n\nPart I. Two Systems\n\nThe Characters of the Story\n\nAttention and Effort\n",
+        "payloadBytes": 57123862,
+        "title": "Thinking, Fast and Slow",
+        "tokenCount": 189873,
+        "totalChunks": 100487,
+        "totalSections": 64
+      },
+      "publish": {
+        "catalogBookId": "1ed175c1-a3f8-4932-92c3-f6e3f6656597",
+        "slug": "thinking-fast-and-slow",
+        "title": "Thinking, Fast and Slow",
+        "updatedExisting": false
+      }
+    }
+  ]
+}

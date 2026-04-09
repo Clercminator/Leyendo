@@ -69,6 +69,17 @@ function normalizeCatalogBook(row: RemoteCatalogBookRow): CatalogBook {
   };
 }
 
+async function decodeCatalogPayloadBlob(blob: Blob, payloadPath: string) {
+  if (!payloadPath.endsWith(".gz")) {
+    return blob.text();
+  }
+
+  const decompressionStream = new DecompressionStream("gzip");
+  const decompressed = blob.stream().pipeThrough(decompressionStream);
+
+  return new Response(decompressed).text();
+}
+
 async function downloadCatalogPayload(
   supabase: SupabaseClient,
   payloadPath: string,
@@ -81,7 +92,9 @@ async function downloadCatalogPayload(
     throw error ?? new Error("Catalog payload could not be downloaded.");
   }
 
-  return JSON.parse(await data.text()) as DocumentModel;
+  return JSON.parse(
+    await decodeCatalogPayloadBlob(data, payloadPath),
+  ) as DocumentModel;
 }
 
 async function getCatalogBookRecord(

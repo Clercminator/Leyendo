@@ -1,0 +1,207 @@
+{
+  "appUrl": "http://127.0.0.1:3001",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T16:34:51.152Z",
+  "mode": "scan-only",
+  "totals": {
+    "pdfCount": 21,
+    "processed": 6,
+    "remaining": 15,
+    "catalogReady": 6,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 0,
+    "publishFailed": 0,
+    "passed": 6,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Attract Women_ Inside Her (Mind)_ Secrets of the Female Psyche to Attract Women, Keep Them Seduced, and Bulletproof Your Relationship (Dating Advice for Men to Attract Women) ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyAttract Women_ Inside Her (Mind)_ Secrets of the Female Psyche to Attract Women, Keep Them Seduced, and Bulletproof Your Relationship (Dating Advice for Men to Attract Women) ( PDFDrive ).pdf is readyPDF at 434 KB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 63175,
+        "imagePlaceholderCount": 1,
+        "sample": "[Image omitted from PDF]\n\nInside Her (Mind): Secrets of the Female Psyche to\n\nAttract Women, Keep Them Seduced, and Bulletproof\n\nYour Relationship\n\nBy Patrick King\n\nDating and Social Skills Coach at\n\nwww.PatrickKingConsu..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=z8mmA_InS7opxjq9r8MIo"
+      },
+      "durationMs": 3510,
+      "testedAt": "2026-04-09T16:25:21.897Z",
+      "document": {
+        "documentId": "z8mmA_InS7opxjq9r8MIo",
+        "estimatedReadingMinutes": 50,
+        "excerpt": "[Image omitted from PDF]\n\nInside Her (Mind): Secrets of the Female Psyche to\n\nAttract Women, Keep Them Seduced, and Bulletproof\n\nYour Relationship\n\nBy Patrick King\n\nDating and Soci",
+        "payloadBytes": 3140774,
+        "title": "Attract Women_ Inside Her (Mind)_ Secrets of the Female Psyche to Attract Women, Keep Them Seduced, and Bulletproof Your Relationship (Dating Advice for Men to Attract Women) ( PDFDrive )",
+        "tokenCount": 10858,
+        "totalChunks": 5778,
+        "totalSections": 38
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Behave - The Biology of Humans at Our Best and Worst.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBehave - The Biology of Humans at Our Best and Worst.pdf is readyPDF at 18 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1888081,
+        "imagePlaceholderCount": 91,
+        "sample": "[Image omitted from PDF]\n\nALSO BY ROBERT M. SAPOLSKY\n\nMonkeyluv and Other Essays on Our Lives as Animals\n\nA Primate’s Memoir\n\nThe Trouble with Testosterone and Other Essays on the Biology of the Human\n\nPredicament\n\nWhy Z..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=g6pVkwA4C5yYx94cjSKfn"
+      },
+      "durationMs": 33803,
+      "testedAt": "2026-04-09T16:25:45.065Z",
+      "document": {
+        "documentId": "g6pVkwA4C5yYx94cjSKfn",
+        "estimatedReadingMinutes": 1297,
+        "excerpt": "[Image omitted from PDF]\n\nALSO BY ROBERT M. SAPOLSKY\n\nMonkeyluv and Other Essays on Our Lives as Animals\n\nA Primate’s Memoir\n\nThe Trouble with Testosterone and Other Essays on the ",
+        "payloadBytes": 88859150,
+        "title": "Behave - The Biology of Humans at Our Best and Worst",
+        "tokenCount": 285212,
+        "totalChunks": 152579,
+        "totalSections": 367
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Bogus by Mark Manson, Gary John Bishop, Jen Sincero (z-lib.org).epub.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBogus by Mark Manson, Gary John Bishop, Jen Sincero (z-lib.org).epub.pdf is readyPDF at 1.3 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 317814,
+        "imagePlaceholderCount": 4,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nCONTENTS\n\nCHAPTER 1: Don’t Try The Feedback Loop from Hell The Subtle Art of Not Giving a Fuck\n\nSo Mark, What the Fuck Is the Point of This Book Anyway?\n\nCHAPTER 2: Hap..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=3sby_eoNadid5IuN-y1te"
+      },
+      "durationMs": 4090,
+      "testedAt": "2026-04-09T16:32:22.974Z",
+      "document": {
+        "documentId": "3sby_eoNadid5IuN-y1te",
+        "estimatedReadingMinutes": 247,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nCONTENTS\n\nCHAPTER 1: Don’t Try The Feedback Loop from Hell The Subtle Art of Not Giving a Fuck\n\nSo Mark, What the Fuck Is the Po",
+        "payloadBytes": 16196209,
+        "title": "Bogus by Mark Manson, Gary John Bishop, Jen Sincero (z-lib.org).epub",
+        "tokenCount": 54332,
+        "totalChunks": 29002,
+        "totalSections": 34
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Covid 19 - the great reset.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyCovid 19 - the great reset.pdf is readyPDF at 1.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 423067,
+        "imagePlaceholderCount": 5,
+        "sample": "[Image omitted from PDF]\n\nCOVID-19:\n\nTHE GREAT RESET\n\nKLAUS SCHWAB\n\nTHIERRY MALLERET\n\nFORUM PUBLISHING\n\n2020\n\nAbout Covid-19: The Great Reset\n\nSince it made its entry on the world stage, COVID-19 has dramatically torn up..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=wMBMwnkgi5yTsy_UVoOux"
+      },
+      "durationMs": 5946,
+      "testedAt": "2026-04-09T16:32:37.624Z",
+      "document": {
+        "documentId": "wMBMwnkgi5yTsy_UVoOux",
+        "estimatedReadingMinutes": 293,
+        "excerpt": "[Image omitted from PDF]\n\nCOVID-19:\n\nTHE GREAT RESET\n\nKLAUS SCHWAB\n\nTHIERRY MALLERET\n\nFORUM PUBLISHING\n\n2020\n\nAbout Covid-19: The Great Reset\n\nSince it made its entry on the world ",
+        "payloadBytes": 18959182,
+        "title": "Covid 19 - the great reset",
+        "tokenCount": 64440,
+        "totalChunks": 33894,
+        "totalSections": 27
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "David_and_Goliath_-_Malcolm_Gladwell.pdf.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDavid_and_Goliath_-_Malcolm_Gladwell.pdf.pdf is readyPDF at 3.7 MB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 24,
+        "imagePlaceholderCount": 1,
+        "sample": "[Image omitted from PDF]"
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=bVcyv1SyL5v9C9456Yhsv"
+      },
+      "durationMs": 3566,
+      "testedAt": "2026-04-09T16:32:53.454Z",
+      "document": {
+        "documentId": "bVcyv1SyL5v9C9456Yhsv",
+        "estimatedReadingMinutes": 1,
+        "excerpt": "[Image omitted from PDF]",
+        "payloadBytes": 1578,
+        "title": "David_and_Goliath_-_Malcolm_Gladwell.pdf",
+        "tokenCount": 4,
+        "totalChunks": 2,
+        "totalSections": 1
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Dune - Frank Herbert.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDune - Frank Herbert.pdf is readyPDF at 2.4 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1311391,
+        "imagePlaceholderCount": 4,
+        "sample": "Arrakis: un planeta desértico donde el agua es el bien más preciado,\n\ndonde llorar a los muertos es el símbolo de máxima prodigalidad. Paul\n\nAtreides: un adolescente marcado por un destino singular, dotado de\n\nextraños p..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=nBJ7hCDgsR3GWtt44ETd1"
+      },
+      "durationMs": 16810,
+      "testedAt": "2026-04-09T16:33:04.461Z",
+      "document": {
+        "documentId": "nBJ7hCDgsR3GWtt44ETd1",
+        "estimatedReadingMinutes": 984,
+        "excerpt": "Arrakis: un planeta desértico donde el agua es el bien más preciado,\n\ndonde llorar a los muertos es el símbolo de máxima prodigalidad. Paul\n\nAtreides: un adolescente marcado por un",
+        "payloadBytes": 67960292,
+        "title": "Dune - Frank Herbert",
+        "tokenCount": 216439,
+        "totalChunks": 117003,
+        "totalSections": 2
+      }
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "appUrl": "http://127.0.0.1:3000",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T17:10:41.061Z",
+  "mode": "scan-only",
+  "totals": {
+    "pdfCount": 1,
+    "processed": 1,
+    "remaining": 0,
+    "catalogReady": 1,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 0,
+    "publishFailed": 0,
+    "passed": 1,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "How to change your mind - Michael Pollan.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyHow to change your mind - Michael Pollan.pdf is readyPDF at 3.6 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 908401,
+        "imagePlaceholderCount": 5,
+        "sample": "[Image omitted from PDF]\n\nALSO BY Michael Pollan\n\nCooked\n\nFood Rules\n\nIn Defense of Food\n\nThe Omnivore’s Dilemma\n\nThe Botany of Desire\n\nA Place of My Own\n\nSecond Nature\n\n[Image omitted from PDF]\n\nPENGUIN PRESS An imprint..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=W9ecVnJjFuLl5MkW1BfRd"
+      },
+      "durationMs": 27581,
+      "testedAt": "2026-04-09T17:09:46.508Z",
+      "document": {
+        "documentId": "W9ecVnJjFuLl5MkW1BfRd",
+        "estimatedReadingMinutes": 665,
+        "excerpt": "[Image omitted from PDF]\n\nALSO BY Michael Pollan\n\nCooked\n\nFood Rules\n\nIn Defense of Food\n\nThe Omnivore’s Dilemma\n\nThe Botany of Desire\n\nA Place of My Own\n\nSecond Nature\n\n[Image omi",
+        "payloadBytes": 44196441,
+        "title": "How to change your mind - Michael Pollan",
+        "tokenCount": 146253,
+        "totalChunks": 77533,
+        "totalSections": 39
+      }
+    }
+  ]
+}

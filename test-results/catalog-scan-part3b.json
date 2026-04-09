@@ -1,0 +1,79 @@
+{
+  "appUrl": "http://127.0.0.1:3001",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T16:31:17.748Z",
+  "mode": "scan-only",
+  "totals": {
+    "pdfCount": 20,
+    "processed": 2,
+    "remaining": 18,
+    "catalogReady": 1,
+    "excluded": 1,
+    "openFailed": 0,
+    "published": 0,
+    "publishFailed": 0,
+    "passed": 1,
+    "selectionFailed": 0,
+    "scriptError": 1
+  },
+  "results": [
+    {
+      "catalogDecision": "excluded",
+      "fileName": "Awareness-Anthony-de-Mello.pdf",
+      "status": "script-error",
+      "extraction": null,
+      "preview": null,
+      "open": null,
+      "durationMs": 244276,
+      "testedAt": "2026-04-09T16:30:30.838Z",
+      "stage": "attach-file",
+      "error": "locator.setInputFiles: Timeout 240000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/choose a pdf, docx, rtf, markdown, or text file/i)\u001b[22m\n",
+      "consoleErrors": [
+        "warning: Supabase is not configured. Missing variables:",
+        "warning: - NEXT_PUBLIC_SUPABASE_URL",
+        "warning: - NEXT_PUBLIC_SUPABASE_ANON_KEY"
+      ],
+      "pageErrors": [],
+      "uiState": {
+        "alertText": null,
+        "bodyText": "Skip to content\n\nLEYENDO\n\nEN\nLight\nDark\nMenu\n\nREADER FOR REAL DOCUMENTS\n\nPaste text or upload the document you want to read faster.\n\nLeyendo accepts PDFs, DOCX, RTF, Markdown, TXT, and pasted text, then gives you guided, focused, phrase, and classic reading views with local progress by default and optional cloud sync when you sign in.\n\nUpload a document\n\nBring in a PDF, DOCX, RTF, or Markdown file and keep everything on-device.\n\nPaste text instantly\n\nDrop in article text, notes, or a draft and start reading without any setup.\n\nDocument title\nPaste text\nClear\nOpen in reader\nPDF with selectable text\nDOCX\nRTF\nMarkdown\nPasted text\n\nTRY THE READER FIRST\n\nUse a live sample before you import your own document.\n\nThis built-in demo opens immediately, so you can compare Focus Word, Phrase Chunk, Gui",
+        "statusTexts": [
+          "Demo reader ready."
+        ],
+        "title": "Reading speed for real documents",
+        "url": "http://127.0.0.1:3001/"
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Biography by Nikhilananda.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBiography by Nikhilananda.pdf is readyPDF at 490 KB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 598807,
+        "imagePlaceholderCount": 3,
+        "sample": "Swami Vivekananda - A\n\nBiography by Swami\n\nNikhilananda\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nPREFACE\n\nSwami Vivekananda's inspiring personality was well known both in India and i..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=RhvaWS460Y0xOZ3zeOcHb"
+      },
+      "durationMs": 9463,
+      "testedAt": "2026-04-09T16:30:37.237Z",
+      "document": {
+        "documentId": "RhvaWS460Y0xOZ3zeOcHb",
+        "estimatedReadingMinutes": 469,
+        "excerpt": "Swami Vivekananda - A\n\nBiography by Swami\n\nNikhilananda\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nPREFACE\n\nSwami Vivekananda's inspiring person",
+        "payloadBytes": 30257673,
+        "title": "Biography by Nikhilananda",
+        "tokenCount": 103073,
+        "totalChunks": 54501,
+        "totalSections": 16
+      }
+    }
+  ]
+}

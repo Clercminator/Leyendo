@@ -1,0 +1,114 @@
+{
+  "appUrl": "http://127.0.0.1:3000",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T17:08:03.176Z",
+  "mode": "scan-only",
+  "totals": {
+    "pdfCount": 1,
+    "processed": 3,
+    "remaining": 0,
+    "catalogReady": 3,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 0,
+    "publishFailed": 0,
+    "passed": 3,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Bruce Lipton - The Biology of Belief - 10th Anniversary edition.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBruce Lipton - The Biology of Belief - 10th Anniversary edition.pdf is readyPDF at 6.9 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 647517,
+        "imagePlaceholderCount": 47,
+        "sample": "Praise forThe Biology of Belief\n\n“I readThe Biology of Beliefwhen it first came out. It was a pioneer-\n\ning book and gave a much needed scientific framework for the\n\nmind/body/spirit connection. Bruce’s insights and rese..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=k7fZIp8b4TYOrqvSkAHuF"
+      },
+      "durationMs": 8554,
+      "testedAt": "2026-04-09T17:06:21.147Z",
+      "document": {
+        "documentId": "k7fZIp8b4TYOrqvSkAHuF",
+        "estimatedReadingMinutes": 458,
+        "excerpt": "Praise forThe Biology of Belief\n\n“I readThe Biology of Beliefwhen it first came out. It was a pioneer-\n\ning book and gave a much needed scientific framework for the\n\nmind/body/spir",
+        "payloadBytes": 31104646,
+        "title": "Bruce Lipton - The Biology of Belief - 10th Anniversary edition",
+        "tokenCount": 100601,
+        "totalChunks": 54077,
+        "totalSections": 63
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "El hombre en busca de sentido.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyEl hombre en busca de sentido.pdf is readyPDF at 1.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 288867,
+        "imagePlaceholderCount": 6,
+        "sample": "[Image omitted from PDF]\n\nVIKTOR FRANKL\n\nEL HOMBRE\n\nEN BUSCA DE SENTIDO\n\nTraducción y edición\n\nCOMITÉ DE TRADUCCIÓN AL ESPAÑOL\n\nPrefacio\n\nJOSÉBENIGNOFREIRE\n\nHerder\n\n2\n\nTítulos originales: Ein Psychologe erlebt das Konzen..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=pEdjn6pwMHrasClBFwcxP"
+      },
+      "durationMs": 4317,
+      "testedAt": "2026-04-09T17:06:43.472Z",
+      "document": {
+        "documentId": "pEdjn6pwMHrasClBFwcxP",
+        "estimatedReadingMinutes": 212,
+        "excerpt": "[Image omitted from PDF]\n\nVIKTOR FRANKL\n\nEL HOMBRE\n\nEN BUSCA DE SENTIDO\n\nTraducción y edición\n\nCOMITÉ DE TRADUCCIÓN AL ESPAÑOL\n\nPrefacio\n\nJOSÉBENIGNOFREIRE\n\nHerder\n\n2\n\nTítulos orig",
+        "payloadBytes": 13842098,
+        "title": "El hombre en busca de sentido",
+        "tokenCount": 46502,
+        "totalChunks": 24737,
+        "totalSections": 52
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Harari-Yuval-Noah-Sapiens-De-animales-a-dioses.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyHarari-Yuval-Noah-Sapiens-De-animales-a-dioses.pdf is readyPDF at 7.7 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 996702,
+        "imagePlaceholderCount": 48,
+        "sample": "[Image omitted from PDF]\n\nDe animales a dioses\n\nBreve historia de la humanidad\n\nYUVAL NOAH HARARI\n\nTraducción de\n\nJoandomènec Ros\n\nwww.megustaleerebooks.com\n\n[Image omitted from PDF]\n\nEn recuerdo cariñoso de mi padre, Sh..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=mESrrMiEl4JtYNleeIihF"
+      },
+      "durationMs": 16211,
+      "testedAt": "2026-04-09T17:07:07.583Z",
+      "document": {
+        "documentId": "mESrrMiEl4JtYNleeIihF",
+        "estimatedReadingMinutes": 718,
+        "excerpt": "[Image omitted from PDF]\n\nDe animales a dioses\n\nBreve historia de la humanidad\n\nYUVAL NOAH HARARI\n\nTraducción de\n\nJoandomènec Ros\n\nwww.megustaleerebooks.com\n\n[Image omitted from PD",
+        "payloadBytes": 47430929,
+        "title": "Harari-Yuval-Noah-Sapiens-De-animales-a-dioses",
+        "tokenCount": 157852,
+        "totalChunks": 83520,
+        "totalSections": 152
+      }
+    }
+  ]
+}

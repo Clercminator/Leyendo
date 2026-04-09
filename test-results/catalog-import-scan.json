@@ -1,0 +1,81 @@
+{
+  "appUrl": "http://127.0.0.1:3001",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T15:28:13.141Z",
+  "mode": "scan-only",
+  "totals": {
+    "pdfCount": 2,
+    "catalogReady": 2,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 0,
+    "publishFailed": 0,
+    "passed": 2,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Blink_ The Power of Thinking Without Thinking ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBlink_ The Power of Thinking Without Thinking ( PDFDrive ).pdf is readyPDF at 1.2 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 457783,
+        "imagePlaceholderCount": 6,
+        "sample": "[Image omitted from PDF]\n\nPENGUIN BOOKS BLINK\n\nAuthor, journalist, cultural commentator and intellectual\n\nadventurer, Malcolm Gladwell was born in 1963 in England to a\n\nJamaican mother and an English mathematician father..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=USSrDdmyYSEd0XDLzHTxb"
+      },
+      "durationMs": 5900,
+      "testedAt": "2026-04-09T15:27:23.264Z",
+      "document": {
+        "documentId": "USSrDdmyYSEd0XDLzHTxb",
+        "estimatedReadingMinutes": 355,
+        "excerpt": "[Image omitted from PDF]\n\nPENGUIN BOOKS BLINK\n\nAuthor, journalist, cultural commentator and intellectual\n\nadventurer, Malcolm Gladwell was born in 1963 in England to a\n\nJamaican mo",
+        "payloadBytes": 23603246,
+        "title": "Blink_ The Power of Thinking Without Thinking ( PDFDrive )",
+        "tokenCount": 77950,
+        "totalChunks": 41881,
+        "totalSections": 10
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Thinking, Fast and Slow.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyThinking, Fast and Slow.pdf is readyPDF at 3.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1174265,
+        "imagePlaceholderCount": 26,
+        "sample": "[Image omitted from PDF]\n\nP\n\n[Image omitted from PDF]\n\nIn memory of Amos Tversky\n\nP\n\nContents\n\nIntroduction\n\nPart I. Two Systems\n\n1. The Characters of the Story\n\n2. Attention and Effort\n\n3. The Lazy Controller\n\n4. The As..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=_w7byNAp_fcRgzY28Ci13"
+      },
+      "durationMs": 10532,
+      "testedAt": "2026-04-09T15:27:43.272Z",
+      "document": {
+        "documentId": "_w7byNAp_fcRgzY28Ci13",
+        "estimatedReadingMinutes": 864,
+        "excerpt": "[Image omitted from PDF]\n\nP\n\n[Image omitted from PDF]\n\nIn memory of Amos Tversky\n\nP\n\nContents\n\nIntroduction\n\nPart I. Two Systems\n\nThe Characters of the Story\n\nAttention and Effort\n",
+        "payloadBytes": 57123862,
+        "title": "Thinking, Fast and Slow",
+        "tokenCount": 189873,
+        "totalChunks": 100487,
+        "totalSections": 64
+      }
+    }
+  ]
+}

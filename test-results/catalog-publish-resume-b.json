@@ -1,0 +1,502 @@
+{
+  "appUrl": "http://127.0.0.1:3000",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T18:27:52.287Z",
+  "mode": "scan-and-publish",
+  "totals": {
+    "pdfCount": 13,
+    "processed": 13,
+    "remaining": 0,
+    "catalogReady": 0,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 13,
+    "publishFailed": 0,
+    "passed": 13,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "published",
+      "fileName": "covey_stephen_-_the_seven_habits_of_highly_effective_people.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readycovey_stephen_-_the_seven_habits_of_highly_effective_people.pdf is readyPDF at 1.4 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 645629,
+        "imagePlaceholderCount": 2,
+        "sample": "THE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE Brought to you by FlyHeart\n\nTHE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE\n\nStephen R. Covey\n\n[Image omitted from PDF]\n\nTHE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE Brought to you ..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=KPjq1h3u6tQ1N85MqxWni"
+      },
+      "durationMs": 6632,
+      "testedAt": "2026-04-09T18:19:57.018Z",
+      "document": {
+        "documentId": "KPjq1h3u6tQ1N85MqxWni",
+        "estimatedReadingMinutes": 494,
+        "excerpt": "THE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE Brought to you by FlyHeart\n\nTHE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE\n\nStephen R. Covey\n\n[Image omitted from PDF]\n\nTHE SEVEN HABITS OF",
+        "payloadBytes": 31834980,
+        "title": "covey_stephen_-_the_seven_habits_of_highly_effective_people",
+        "tokenCount": 108478,
+        "totalChunks": 57233,
+        "totalSections": 24
+      },
+      "publish": {
+        "catalogBookId": "c5c99f8b-aea4-4eb3-b971-2e7b6263d2b4",
+        "slug": "covey-stephen-the-seven-habits-of-highly-effective-people",
+        "title": "covey_stephen_-_the_seven_habits_of_highly_effective_people",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "CRITICAL THINKING_ Consider the Verdict Sixth Edition ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyCRITICAL THINKING_ Consider the Verdict Sixth Edition ( PDFDrive ).pdf is readyPDF at 4.3 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1721576,
+        "imagePlaceholderCount": 33,
+        "sample": "[Image omitted from PDF]\n\nCRITICAL THINKING\n\nThis page intentionally left blank\n\nCRITICAL THINKING\n\nConsider the Verdict\n\nSixth Edition\n\nBruce N. Waller\n\nYoungstown State University\n\nBoston Columbus Indianapolis New York..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=F4ZObk1A_QqkuNMkhPu_F"
+      },
+      "durationMs": 19595,
+      "testedAt": "2026-04-09T18:20:36.393Z",
+      "document": {
+        "documentId": "F4ZObk1A_QqkuNMkhPu_F",
+        "estimatedReadingMinutes": 1286,
+        "excerpt": "[Image omitted from PDF]\n\nCRITICAL THINKING\n\nThis page intentionally left blank\n\nCRITICAL THINKING\n\nConsider the Verdict\n\nSixth Edition\n\nBruce N. Waller\n\nYoungstown State Universit",
+        "payloadBytes": 85381386,
+        "title": "CRITICAL THINKING_ Consider the Verdict Sixth Edition ( PDFDrive )",
+        "tokenCount": 282762,
+        "totalChunks": 149532,
+        "totalSections": 829
+      },
+      "publish": {
+        "catalogBookId": "7722a05b-4624-42c7-a119-7b0aa9ecc34d",
+        "slug": "critical-thinking-consider-the-verdict-sixth-edition-pdfdrive",
+        "title": "CRITICAL THINKING_ Consider the Verdict Sixth Edition ( PDFDrive )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Descartes_ An Intellectual Biography ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDescartes_ An Intellectual Biography ( PDFDrive.com ).pdf is readyPDF at 37 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1619411,
+        "imagePlaceholderCount": 523,
+        "sample": "[Image omitted from PDF]\n\nDescartes\n\n[Image omitted from PDF]\n\nThis page intentionally left blank\n\nDescartes\n\nAn Intellectua l Biograph y\n\nSTEPHEN GAUKROGE R\n\nCLARENDON PRES S • OXFOR D\n\n1995\n\n[Image omitted from PDF]\n\nT..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=QhV2QBHT5iy49AywrrPW3"
+      },
+      "durationMs": 39635,
+      "testedAt": "2026-04-09T18:22:25.533Z",
+      "document": {
+        "documentId": "QhV2QBHT5iy49AywrrPW3",
+        "estimatedReadingMinutes": 1770,
+        "excerpt": "[Image omitted from PDF]\n\nDescartes\n\n[Image omitted from PDF]\n\nThis page intentionally left blank\n\nDescartes\n\nAn Intellectua l Biograph y\n\nSTEPHEN GAUKROGE R\n\nCLARENDON PRES S • OX",
+        "payloadBytes": 110283495,
+        "title": "Descartes_ An Intellectual Biography ( PDFDrive.com )",
+        "tokenCount": 389347,
+        "totalChunks": 202913,
+        "totalSections": 71
+      },
+      "publish": {
+        "catalogBookId": "9ad0ce63-6469-4bb4-a36d-7cf9f64071c6",
+        "slug": "descartes-an-intellectual-biography-pdfdrive-com",
+        "title": "Descartes_ An Intellectual Biography ( PDFDrive.com )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "El hombre que estaba rodeado de idiotas.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyEl hombre que estaba rodeado de idiotas.pdf is readyPDF at 4.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 480973,
+        "imagePlaceholderCount": 52,
+        "sample": "[Image omitted from PDF]\n\n2\n\n[Image omitted from PDF]\n\n3\n\nSÍGUENOS EN\n\n[Image omitted from PDF]\n\n@Ebooks\n\n[Image omitted from PDF]\n\n@megustaleer\n\n[Image omitted from PDF]\n\n@megustaleer\n\n[Image omitted from PDF]\n\n[Image o..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=U1wTcTxc7NRu_1k6kThMc"
+      },
+      "durationMs": 5811,
+      "testedAt": "2026-04-09T18:23:59.750Z",
+      "document": {
+        "documentId": "U1wTcTxc7NRu_1k6kThMc",
+        "estimatedReadingMinutes": 369,
+        "excerpt": "[Image omitted from PDF]\n\n2\n\n[Image omitted from PDF]\n\n3\n\nSÍGUENOS EN\n\n[Image omitted from PDF]\n\n@Ebooks\n\n[Image omitted from PDF]\n\n@megustaleer\n\n[Image omitted from PDF]\n\n@megusta",
+        "payloadBytes": 24307131,
+        "title": "El hombre que estaba rodeado de idiotas",
+        "tokenCount": 81130,
+        "totalChunks": 43385,
+        "totalSections": 125
+      },
+      "publish": {
+        "catalogBookId": "694d6bfb-2c39-4f76-954d-0505973a0e28",
+        "slug": "el-hombre-que-estaba-rodeado-de-idiotas",
+        "title": "El hombre que estaba rodeado de idiotas",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Feynman, Richard - Six Easy Pieces (Basic, 2011).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyFeynman, Richard - Six Easy Pieces (Basic, 2011).pdf is readyPDF at 1.5 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 293573,
+        "imagePlaceholderCount": 15,
+        "sample": "[Image omitted from PDF]\n\nS I X E A S Y P I E C E S\n\nA l s o b y R i c h a r d P. F e y n m a n The Character of Physical Law Elementary Particles and the Laws of Physics: The 1986 Dirac Memorial Lectures(with Steven Wei..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=4Cd7Gfw6gs7vK4YQMszDK"
+      },
+      "durationMs": 5720,
+      "testedAt": "2026-04-09T18:24:20.140Z",
+      "document": {
+        "documentId": "4Cd7Gfw6gs7vK4YQMszDK",
+        "estimatedReadingMinutes": 232,
+        "excerpt": "[Image omitted from PDF]\n\nS I X E A S Y P I E C E S\n\nA l s o b y R i c h a r d P. F e y n m a n The Character of Physical Law Elementary Particles and the Laws of Physics: The 1986",
+        "payloadBytes": 13915186,
+        "title": "Feynman, Richard - Six Easy Pieces (Basic, 2011)",
+        "tokenCount": 50911,
+        "totalChunks": 26192,
+        "totalSections": 63
+      },
+      "publish": {
+        "catalogBookId": "d5ff1a7e-909c-4757-986c-49d62e98438d",
+        "slug": "feynman-richard-six-easy-pieces-basic-2011",
+        "title": "Feynman, Richard - Six Easy Pieces (Basic, 2011)",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Getting Things Done (book).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyGetting Things Done (book).pdf is readyPDF at 2.7 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 484161,
+        "imagePlaceholderCount": 16,
+        "sample": "Getting\n\nThings\n\nDone\n\nThe Art of\n\nStress-Free Productivity\n\nDavid Allen\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nPraise forGetting Things Done \"The Season's Best Reads for Work-Life Advice .. . my favorite o..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=ljksS9Kr5wErEMG6212eD"
+      },
+      "durationMs": 6057,
+      "testedAt": "2026-04-09T18:24:39.157Z",
+      "document": {
+        "documentId": "ljksS9Kr5wErEMG6212eD",
+        "estimatedReadingMinutes": 371,
+        "excerpt": "Getting\n\nThings\n\nDone\n\nThe Art of\n\nStress-Free Productivity\n\nDavid Allen\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nPraise forGetting Things Done \"The Season's Best Reads",
+        "payloadBytes": 23191887,
+        "title": "Getting Things Done (book)",
+        "tokenCount": 81587,
+        "totalChunks": 42398,
+        "totalSections": 202
+      },
+      "publish": {
+        "catalogBookId": "21904218-c924-422e-9ba2-8129c339206d",
+        "slug": "getting-things-done-book",
+        "title": "Getting Things Done (book)",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Harari-Yuval-Noah-Sapiens-De-animales-a-dioses.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyHarari-Yuval-Noah-Sapiens-De-animales-a-dioses.pdf is readyPDF at 7.7 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 996702,
+        "imagePlaceholderCount": 48,
+        "sample": "[Image omitted from PDF]\n\nDe animales a dioses\n\nBreve historia de la humanidad\n\nYUVAL NOAH HARARI\n\nTraducción de\n\nJoandomènec Ros\n\nwww.megustaleerebooks.com\n\n[Image omitted from PDF]\n\nEn recuerdo cariñoso de mi padre, Sh..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=hPOfbBM0XTgWxynljHnmO"
+      },
+      "durationMs": 12293,
+      "testedAt": "2026-04-09T18:25:05.005Z",
+      "document": {
+        "documentId": "hPOfbBM0XTgWxynljHnmO",
+        "estimatedReadingMinutes": 718,
+        "excerpt": "[Image omitted from PDF]\n\nDe animales a dioses\n\nBreve historia de la humanidad\n\nYUVAL NOAH HARARI\n\nTraducción de\n\nJoandomènec Ros\n\nwww.megustaleerebooks.com\n\n[Image omitted from PD",
+        "payloadBytes": 47430929,
+        "title": "Harari-Yuval-Noah-Sapiens-De-animales-a-dioses",
+        "tokenCount": 157852,
+        "totalChunks": 83520,
+        "totalSections": 152
+      },
+      "publish": {
+        "catalogBookId": "02b20b35-8224-45d6-bf4a-ef5689e2c41b",
+        "slug": "harari-yuval-noah-sapiens-de-animales-a-dioses",
+        "title": "Harari-Yuval-Noah-Sapiens-De-animales-a-dioses",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "How To Make Girls Chase ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyHow To Make Girls Chase ( PDFDrive.com ).pdf is readyPDF at 3.3 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 623874,
+        "imagePlaceholderCount": 9,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nHHOWOW TTOOMMAKAKEE\n\nGGIRIRLLSSCCHAHASSEE\n\nCCHAHASSEEAAMAMANNTTEE\n\nGGIRIRLLSSCCHAHASSEEBBOOOOKKSS\n\n[Image omitted fr..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=Uaj19c8ycynKEQJvzdvao"
+      },
+      "durationMs": 7244,
+      "testedAt": "2026-04-09T18:25:44.715Z",
+      "document": {
+        "documentId": "Uaj19c8ycynKEQJvzdvao",
+        "estimatedReadingMinutes": 476,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nHHOWOW TTOOMMAKAKEE\n\nGGIRIRLLSSCCHAHASSEE\n\nCCHAHASSEEAAMAMANNTTEE\n\nGGIRIRLLS",
+        "payloadBytes": 31979361,
+        "title": "How To Make Girls Chase ( PDFDrive.com )",
+        "tokenCount": 104594,
+        "totalChunks": 56065,
+        "totalSections": 949
+      },
+      "publish": {
+        "catalogBookId": "360c1c21-57da-48b2-87fb-bb6ecfee0501",
+        "slug": "how-to-make-girls-chase-pdfdrive-com",
+        "title": "How To Make Girls Chase ( PDFDrive.com )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "How to Win Every Argument ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyHow to Win Every Argument ( PDFDrive ).pdf is readyPDF at 2.5 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 306871,
+        "imagePlaceholderCount": 196,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nHow to Win Every\n\nArgument\n\nThe Use and Abuse of Logic\n\n[Image omitted from PDF]\n\nAlso available from Continuum\n\nWha..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=YCT9YgXbEagLIuWh9MGW5"
+      },
+      "durationMs": 22289,
+      "testedAt": "2026-04-09T18:26:26.906Z",
+      "document": {
+        "documentId": "YCT9YgXbEagLIuWh9MGW5",
+        "estimatedReadingMinutes": 236,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nHow to Win Every\n\nArgument\n\nThe Use and Abuse of Logic\n\n[Image omitted from ",
+        "payloadBytes": 15632441,
+        "title": "How to Win Every Argument ( PDFDrive )",
+        "tokenCount": 51748,
+        "totalChunks": 27648,
+        "totalSections": 14
+      },
+      "publish": {
+        "catalogBookId": "bb7aca6c-7845-4d7d-b544-9adafff923af",
+        "slug": "how-to-win-every-argument-pdfdrive",
+        "title": "How to Win Every Argument ( PDFDrive )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Influence_ The Psychology of Persuasion ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyInfluence_ The Psychology of Persuasion ( PDFDrive.com ).pdf is readyPDF at 2.2 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 672648,
+        "imagePlaceholderCount": 3,
+        "sample": "[Image omitted from PDF]\n\nINFLUENCE\n\nThe Psychology\n\nof\n\nPersuasion\n\nROBERT B. CIALDINI PH.D.\n\n[Image omitted from PDF]\n\nThis book is dedicated to Chris,\n\nwho glows in his father’s eye\n\nContents\n\nIntroduction v\n\n1\n\nWeapo..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=XsSxVOPqwlh5WBGTPgqYM"
+      },
+      "durationMs": 5617,
+      "testedAt": "2026-04-09T18:26:42.009Z",
+      "document": {
+        "documentId": "XsSxVOPqwlh5WBGTPgqYM",
+        "estimatedReadingMinutes": 497,
+        "excerpt": "[Image omitted from PDF]\n\nINFLUENCE\n\nThe Psychology\n\nof\n\nPersuasion\n\nROBERT B. CIALDINI PH.D.\n\n[Image omitted from PDF]\n\nThis book is dedicated to Chris,\n\nwho glows in his father’s",
+        "payloadBytes": 33173353,
+        "title": "Influence_ The Psychology of Persuasion ( PDFDrive.com )",
+        "tokenCount": 109297,
+        "totalChunks": 58311,
+        "totalSections": 87
+      },
+      "publish": {
+        "catalogBookId": "e7c920ba-4718-4ddb-8bf6-07077cdb50bd",
+        "slug": "influence-the-psychology-of-persuasion-pdfdrive-com",
+        "title": "Influence_ The Psychology of Persuasion ( PDFDrive.com )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "letters-from-a-stoic_lucius-annaeus-seneca.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyletters-from-a-stoic_lucius-annaeus-seneca.pdf is readyPDF at 951 KB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 461724,
+        "imagePlaceholderCount": 1,
+        "sample": "LETTERS FROM A STOIC\n\n[Image omitted from PDF]\n\nADVISORY EDITOR: BETTY RADICE\n\nLUCIUS ANNAEUS SENECA, statesman, philosopher, advocate and man of letters, was\n\nborn at Cordoba in Spain around 4 B.C. Despite his relativel..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=1vnJGAf8qBLdJzSw0VOaf"
+      },
+      "durationMs": 3894,
+      "testedAt": "2026-04-09T18:27:05.748Z",
+      "document": {
+        "documentId": "1vnJGAf8qBLdJzSw0VOaf",
+        "estimatedReadingMinutes": 371,
+        "excerpt": "LETTERS FROM A STOIC\n\n[Image omitted from PDF]\n\nADVISORY EDITOR: BETTY RADICE\n\nLUCIUS ANNAEUS SENECA, statesman, philosopher, advocate and man of letters, was\n\nborn at Cordoba in S",
+        "payloadBytes": 23446314,
+        "title": "letters-from-a-stoic_lucius-annaeus-seneca",
+        "tokenCount": 81540,
+        "totalChunks": 42790,
+        "totalSections": 7
+      },
+      "publish": {
+        "catalogBookId": "c662e11d-6871-47af-ae8f-bc33e6917cee",
+        "slug": "letters-from-a-stoic-lucius-annaeus-seneca",
+        "title": "letters-from-a-stoic_lucius-annaeus-seneca",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Mind to Matter_ The Astonishing Science of How Your Brain Creates Material Reality ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyMind to Matter_ The Astonishing Science of How Your Brain Creates Material Reality ( PDFDrive ).pdf is readyPDF at 28 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 555634,
+        "imagePlaceholderCount": 140,
+        "sample": "[Image omitted from PDF]\n\nPraise forMind to Matter\n\n“If you’ve been wondering whether your thoughts really do affect your life, this\n\nmarvelous book will make you a believer. From the level of the atom to the level\n\nof o..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=BO7pC6Q0J69cdqpWsTr5N"
+      },
+      "durationMs": 6564,
+      "testedAt": "2026-04-09T18:27:25.550Z",
+      "document": {
+        "documentId": "BO7pC6Q0J69cdqpWsTr5N",
+        "estimatedReadingMinutes": 402,
+        "excerpt": "[Image omitted from PDF]\n\nPraise forMind to Matter\n\n“If you’ve been wondering whether your thoughts really do affect your life, this\n\nmarvelous book will make you a believer. From ",
+        "payloadBytes": 26928959,
+        "title": "Mind to Matter_ The Astonishing Science of How Your Brain Creates Material Reality ( PDFDrive )",
+        "tokenCount": 88280,
+        "totalChunks": 47348,
+        "totalSections": 203
+      },
+      "publish": {
+        "catalogBookId": "d1a56f38-cefc-4abf-bbe0-8113da4ed3d1",
+        "slug": "mind-to-matter-the-astonishing-science-of-how-your-brain-creates-material-realit",
+        "title": "Mind to Matter_ The Astonishing Science of How Your Brain Creates Material Reality ( PDFDrive )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Peter Drucker's Five Most Important Questions_ Enduring Wisdom for Today's Leaders ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyPeter Drucker's Five Most Important Questions_ Enduring Wisdom for Today's Leaders ( PDFDrive ).pdf is readyPDF at 1.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 184547,
+        "imagePlaceholderCount": 2,
+        "sample": "[Image omitted from PDF]\n\nPraise forPeter Drucker’s Five Most Important Questions\n\n“As a marketer and a business leader I have found guidance in\n\nDrucker’s simple wisdom. My favorite: ‘Without a customer,\n\nthere is no bu..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=lj5wFlaZwWXxliq3cj7K9"
+      },
+      "durationMs": 3614,
+      "testedAt": "2026-04-09T18:27:46.028Z",
+      "document": {
+        "documentId": "lj5wFlaZwWXxliq3cj7K9",
+        "estimatedReadingMinutes": 132,
+        "excerpt": "[Image omitted from PDF]\n\nPraise forPeter Drucker’s Five Most Important Questions\n\n“As a marketer and a business leader I have found guidance in\n\nDrucker’s simple wisdom. My favori",
+        "payloadBytes": 8957800,
+        "title": "Peter Drucker's Five Most Important Questions_ Enduring Wisdom for Today's Leaders ( PDFDrive )",
+        "tokenCount": 28982,
+        "totalChunks": 15701,
+        "totalSections": 158
+      },
+      "publish": {
+        "catalogBookId": "aa75c9a3-de00-4622-b5c5-a5a8b3e68d20",
+        "slug": "peter-drucker-s-five-most-important-questions-enduring-wisdom-for-today-s-leader",
+        "title": "Peter Drucker's Five Most Important Questions_ Enduring Wisdom for Today's Leaders ( PDFDrive )",
+        "updatedExisting": false
+      }
+    }
+  ]
+}

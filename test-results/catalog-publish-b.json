@@ -1,0 +1,423 @@
+{
+  "appUrl": "http://127.0.0.1:3000",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T18:17:43.750Z",
+  "mode": "scan-and-publish",
+  "totals": {
+    "pdfCount": 21,
+    "processed": 11,
+    "remaining": 10,
+    "catalogReady": 0,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 10,
+    "publishFailed": 1,
+    "passed": 11,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "published",
+      "fileName": "17-Questions-That-Changed-My-Life.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review ready17-Questions-That-Changed-My-Life.pdf is readyPDF at 865 KB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 20884,
+        "imagePlaceholderCount": 0,
+        "sample": "A B\n\nTesting The “Impossible”\n\n1717 QUESTIONSTHAT CHANGED MY LIFE\n\nTIM FERRISS\n\n“Whenever you find yourself on the side of the majority, it is time to pause and reflect.”\n\n— Mark Twain Reality is largely negotiable.\n\nIf ..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=BO2uzShOKb9dcZAz35NsG"
+      },
+      "durationMs": 2622,
+      "testedAt": "2026-04-09T18:10:33.618Z",
+      "document": {
+        "documentId": "BO2uzShOKb9dcZAz35NsG",
+        "estimatedReadingMinutes": 17,
+        "excerpt": "A B\n\nTesting The “Impossible”\n\n1717 QUESTIONSTHAT CHANGED MY LIFE\n\nTIM FERRISS\n\n“Whenever you find yourself on the side of the majority, it is time to pause and reflect.”\n\n— Mark T",
+        "payloadBytes": 1020843,
+        "title": "17-Questions-That-Changed-My-Life",
+        "tokenCount": 3563,
+        "totalChunks": 1903,
+        "totalSections": 49
+      },
+      "publish": {
+        "catalogBookId": "a523b75b-3211-48e1-acd7-8eeea5c63c51",
+        "slug": "17-questions-that-changed-my-life",
+        "title": "17-Questions-That-Changed-My-Life",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Awakening the Third Eye ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyAwakening the Third Eye ( PDFDrive.com ).pdf is readyPDF at 1.5 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 585386,
+        "imagePlaceholderCount": 41,
+        "sample": "[Image omitted from PDF]\n\nAwakening the Third Eye\n\nThird Edition\n\nSamuel Sagan, M.D.\n\n[Image omitted from PDF]\n\nwww.clairvision.org\n\nCopyright © Samuel Sagan 1992, 1997, 2007.\n\nApart from any fair dealing for the purpose..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=zQoPCb3XvPSGa4VJCjs4p"
+      },
+      "durationMs": 5994,
+      "testedAt": "2026-04-09T18:10:41.381Z",
+      "document": {
+        "documentId": "zQoPCb3XvPSGa4VJCjs4p",
+        "estimatedReadingMinutes": 464,
+        "excerpt": "[Image omitted from PDF]\n\nAwakening the Third Eye\n\nThird Edition\n\nSamuel Sagan, M.D.\n\n[Image omitted from PDF]\n\nwww.clairvision.org\n\nCopyright © Samuel Sagan 1992, 1997, 2007.\n\nApa",
+        "payloadBytes": 30986908,
+        "title": "Awakening the Third Eye ( PDFDrive.com )",
+        "tokenCount": 101938,
+        "totalChunks": 54638,
+        "totalSections": 306
+      },
+      "publish": {
+        "catalogBookId": "ec5cd444-1a42-40b1-bd03-2f82b2235ea4",
+        "slug": "awakening-the-third-eye-pdfdrive-com",
+        "title": "Awakening the Third Eye ( PDFDrive.com )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Be Here Now_ Open Your Mind to Spirituality ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBe Here Now_ Open Your Mind to Spirituality ( PDFDrive.com ).pdf is readyPDF at 41 MB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 5744,
+        "imagePlaceholderCount": 221,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitt..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=Bu-RyDlDoaMORZ-A6MUQq"
+      },
+      "durationMs": 3231,
+      "testedAt": "2026-04-09T18:11:29.872Z",
+      "document": {
+        "documentId": "Bu-RyDlDoaMORZ-A6MUQq",
+        "estimatedReadingMinutes": 5,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]",
+        "payloadBytes": 281583,
+        "title": "Be Here Now_ Open Your Mind to Spirituality ( PDFDrive.com )",
+        "tokenCount": 884,
+        "totalChunks": 442,
+        "totalSections": 1
+      },
+      "publish": {
+        "catalogBookId": "a1837b8d-794e-42fd-8919-d6c67327456a",
+        "slug": "be-here-now-open-your-mind-to-spirituality-pdfdrive-com",
+        "title": "Be Here Now_ Open Your Mind to Spirituality ( PDFDrive.com )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "biography of Martin Luther King jr.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readybiography of Martin Luther King jr.pdf is readyPDF at 809 KB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 51315,
+        "imagePlaceholderCount": 7,
+        "sample": "1\n\n[Image omitted from PDF]\n\nBiography of Martin Luther King, Jr.\n\nMartin Luther King, Jr. was born on January 15, 1929. Dr. King grew up as the son of a leading\n\nminister in Atlanta, Georgia, the Rev. Martin Luther King..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=QFzFA_8PceV57tKuI4tk5"
+      },
+      "durationMs": 4114,
+      "testedAt": "2026-04-09T18:11:35.818Z",
+      "document": {
+        "documentId": "QFzFA_8PceV57tKuI4tk5",
+        "estimatedReadingMinutes": 35,
+        "excerpt": "1\n\n[Image omitted from PDF]\n\nBiography of Martin Luther King, Jr.\n\nMartin Luther King, Jr. was born on January 15, 1929. Dr. King grew up as the son of a leading\n\nminister in Atlan",
+        "payloadBytes": 2189236,
+        "title": "biography of Martin Luther King jr",
+        "tokenCount": 7512,
+        "totalChunks": 3994,
+        "totalSections": 9
+      },
+      "publish": {
+        "catalogBookId": "dd22ed4b-e28e-4c65-8f41-17f4c5be6596",
+        "slug": "biography-of-martin-luther-king-jr",
+        "title": "biography of Martin Luther King jr",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Bogus by Mark Manson, Gary John Bishop, Jen Sincero (z-lib.org).epub.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBogus by Mark Manson, Gary John Bishop, Jen Sincero (z-lib.org).epub.pdf is readyPDF at 1.3 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 317814,
+        "imagePlaceholderCount": 4,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nCONTENTS\n\nCHAPTER 1: Don’t Try The Feedback Loop from Hell The Subtle Art of Not Giving a Fuck\n\nSo Mark, What the Fuck Is the Point of This Book Anyway?\n\nCHAPTER 2: Hap..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=itDRgZ9_yC5ez5D9n9t42"
+      },
+      "durationMs": 4788,
+      "testedAt": "2026-04-09T18:11:44.052Z",
+      "document": {
+        "documentId": "itDRgZ9_yC5ez5D9n9t42",
+        "estimatedReadingMinutes": 247,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nCONTENTS\n\nCHAPTER 1: Don’t Try The Feedback Loop from Hell The Subtle Art of Not Giving a Fuck\n\nSo Mark, What the Fuck Is the Po",
+        "payloadBytes": 16196209,
+        "title": "Bogus by Mark Manson, Gary John Bishop, Jen Sincero (z-lib.org).epub",
+        "tokenCount": 54332,
+        "totalChunks": 29002,
+        "totalSections": 34
+      },
+      "publish": {
+        "catalogBookId": "3c7bd309-8ff7-4020-b803-0733d4ddc178",
+        "slug": "bogus-by-mark-manson-gary-john-bishop-jen-sincero-z-lib-org-epub",
+        "title": "Bogus by Mark Manson, Gary John Bishop, Jen Sincero (z-lib.org).epub",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "bulgakov-master-and-margarita.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readybulgakov-master-and-margarita.pdf is readyPDF at 1.6 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 948289,
+        "imagePlaceholderCount": 17,
+        "sample": "MIKHAIL BULGAKOV\n\nMASTER AND MARGARITA\n\nRICHARD PEVEAR AND LARISSA VOLOKHONSKY\n\nENGLISH TRANSLATION AND NOTES\n\nCHARLIE STONE\n\nILLUSTRATIONS\n\n[Image omitted from PDF]\n\nJOSEF NYGRIN\n\nPDF PREPARATION AND TYPESETTING\n\nMIKHAI..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=Qv4o5vaoVzHf9SYyP-9uC"
+      },
+      "durationMs": 7850,
+      "testedAt": "2026-04-09T18:12:23.687Z",
+      "document": {
+        "documentId": "Qv4o5vaoVzHf9SYyP-9uC",
+        "estimatedReadingMinutes": 735,
+        "excerpt": "MIKHAIL BULGAKOV\n\nMASTER AND MARGARITA\n\nRICHARD PEVEAR AND LARISSA VOLOKHONSKY\n\nENGLISH TRANSLATION AND NOTES\n\nCHARLIE STONE\n\nILLUSTRATIONS\n\n[Image omitted from PDF]\n\nJOSEF NYGRIN\n",
+        "payloadBytes": 49116956,
+        "title": "bulgakov-master-and-margarita",
+        "tokenCount": 161604,
+        "totalChunks": 86028,
+        "totalSections": 100
+      },
+      "publish": {
+        "catalogBookId": "14868f3d-d642-4a00-9404-6beac9c26d8e",
+        "slug": "bulgakov-master-and-margarita",
+        "title": "bulgakov-master-and-margarita",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Covid 19 - the great reset.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyCovid 19 - the great reset.pdf is readyPDF at 1.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 423067,
+        "imagePlaceholderCount": 5,
+        "sample": "[Image omitted from PDF]\n\nCOVID-19:\n\nTHE GREAT RESET\n\nKLAUS SCHWAB\n\nTHIERRY MALLERET\n\nFORUM PUBLISHING\n\n2020\n\nAbout Covid-19: The Great Reset\n\nSince it made its entry on the world stage, COVID-19 has dramatically torn up..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=KzKG4yh54uiHK1zcu__cX"
+      },
+      "durationMs": 6133,
+      "testedAt": "2026-04-09T18:13:11.758Z",
+      "document": {
+        "documentId": "KzKG4yh54uiHK1zcu__cX",
+        "estimatedReadingMinutes": 293,
+        "excerpt": "[Image omitted from PDF]\n\nCOVID-19:\n\nTHE GREAT RESET\n\nKLAUS SCHWAB\n\nTHIERRY MALLERET\n\nFORUM PUBLISHING\n\n2020\n\nAbout Covid-19: The Great Reset\n\nSince it made its entry on the world ",
+        "payloadBytes": 18959182,
+        "title": "Covid 19 - the great reset",
+        "tokenCount": 64440,
+        "totalChunks": 33894,
+        "totalSections": 27
+      },
+      "publish": {
+        "catalogBookId": "b837fcbe-3f78-48cd-b74a-afa0213fed1d",
+        "slug": "covid-19-the-great-reset",
+        "title": "Covid 19 - the great reset",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "publish-failed",
+      "fileName": "CRITICAL THINKING_ Consider the Verdict Sixth Edition ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyCRITICAL THINKING_ Consider the Verdict Sixth Edition ( PDFDrive ).pdf is readyPDF at 4.3 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1721576,
+        "imagePlaceholderCount": 33,
+        "sample": "[Image omitted from PDF]\n\nCRITICAL THINKING\n\nThis page intentionally left blank\n\nCRITICAL THINKING\n\nConsider the Verdict\n\nSixth Edition\n\nBruce N. Waller\n\nYoungstown State University\n\nBoston Columbus Indianapolis New York..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=SowPIRlW7_tWg6mggkcna"
+      },
+      "durationMs": 14445,
+      "testedAt": "2026-04-09T18:13:39.810Z",
+      "document": {
+        "documentId": "SowPIRlW7_tWg6mggkcna",
+        "estimatedReadingMinutes": 1286,
+        "excerpt": "[Image omitted from PDF]\n\nCRITICAL THINKING\n\nThis page intentionally left blank\n\nCRITICAL THINKING\n\nConsider the Verdict\n\nSixth Edition\n\nBruce N. Waller\n\nYoungstown State Universit",
+        "payloadBytes": 85381386,
+        "title": "CRITICAL THINKING_ Consider the Verdict Sixth Edition ( PDFDrive )",
+        "tokenCount": 282762,
+        "totalChunks": 149532,
+        "totalSections": 829
+      },
+      "publishError": "The object exceeded the maximum allowed size"
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "David_and_Goliath_-_Malcolm_Gladwell.pdf.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDavid_and_Goliath_-_Malcolm_Gladwell.pdf.pdf is readyPDF at 3.7 MB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 24,
+        "imagePlaceholderCount": 1,
+        "sample": "[Image omitted from PDF]"
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=ygHh3N8CLn6Zv5jWkmQag"
+      },
+      "durationMs": 3390,
+      "testedAt": "2026-04-09T18:16:24.276Z",
+      "document": {
+        "documentId": "ygHh3N8CLn6Zv5jWkmQag",
+        "estimatedReadingMinutes": 1,
+        "excerpt": "[Image omitted from PDF]",
+        "payloadBytes": 1578,
+        "title": "David_and_Goliath_-_Malcolm_Gladwell.pdf",
+        "tokenCount": 4,
+        "totalChunks": 2,
+        "totalSections": 1
+      },
+      "publish": {
+        "catalogBookId": "8650383a-1736-447e-aa41-aeb3d11a93e9",
+        "slug": "david-and-goliath-malcolm-gladwell-pdf",
+        "title": "David_and_Goliath_-_Malcolm_Gladwell.pdf",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Dream Big (Sonho Grande)_ How the Brazilian Trio behind 3G Capital - Jorge Paulo Lemann, Marcel Telles and Beto Sicupira Acquired Anheuser-Busch, Burger King and Heinz ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDream Big (Sonho Grande)_ How the Brazilian Trio behind 3G Capital - Jorge Paulo Lemann, Marcel Telles and Beto Sicupira Acquired Anheuser-Busch, Burger King and Heinz ( PDFDrive ).pdf is readyPDF at 4.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 409954,
+        "imagePlaceholderCount": 71,
+        "sample": "[Image omitted from PDF]\n\nDREAM\n\nBIG\n\n[Image omitted from PDF]\n\nPublished originally asSonho Grande Copyright © 2013 by Cristiane Correa\n\nAll rights reserved. No part in this book may be used or reproduced through any ex..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=4XL9Ycm4_ol1vnEl7QNsc"
+      },
+      "durationMs": 10331,
+      "testedAt": "2026-04-09T18:16:33.745Z",
+      "document": {
+        "documentId": "4XL9Ycm4_ol1vnEl7QNsc",
+        "estimatedReadingMinutes": 316,
+        "excerpt": "[Image omitted from PDF]\n\nDREAM\n\nBIG\n\n[Image omitted from PDF]\n\nPublished originally asSonho Grande Copyright © 2013 by Cristiane Correa\n\nAll rights reserved. No part in this book ",
+        "payloadBytes": 20577920,
+        "title": "Dream Big (Sonho Grande)_ How the Brazilian Trio behind 3G Capital - Jorge Paulo Lemann, Marcel Telles and Beto Sicupira Acquired Anheuser-Busch, Burger King and Heinz ( PDFDrive )",
+        "tokenCount": 69321,
+        "totalChunks": 36789,
+        "totalSections": 106
+      },
+      "publish": {
+        "catalogBookId": "721a32d0-fcf5-48ee-ac75-d5da27973b84",
+        "slug": "dream-big-sonho-grande-how-the-brazilian-trio-behind-3g-capital-jorge-paulo-lema",
+        "title": "Dream Big (Sonho Grande)_ How the Brazilian Trio behind 3G Capital - Jorge Paulo Lemann, Marcel Telles and Beto Sicupira Acquired Anheuser-Busch, Burger King and Heinz ( PDFDrive )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "El hombre en busca de sentido.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyEl hombre en busca de sentido.pdf is readyPDF at 1.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 288867,
+        "imagePlaceholderCount": 6,
+        "sample": "[Image omitted from PDF]\n\nVIKTOR FRANKL\n\nEL HOMBRE\n\nEN BUSCA DE SENTIDO\n\nTraducción y edición\n\nCOMITÉ DE TRADUCCIÓN AL ESPAÑOL\n\nPrefacio\n\nJOSÉBENIGNOFREIRE\n\nHerder\n\n2\n\nTítulos originales: Ein Psychologe erlebt das Konzen..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=5PUbMBynFNVNZsgqZGhSX"
+      },
+      "durationMs": 6797,
+      "testedAt": "2026-04-09T18:17:23.867Z",
+      "document": {
+        "documentId": "5PUbMBynFNVNZsgqZGhSX",
+        "estimatedReadingMinutes": 212,
+        "excerpt": "[Image omitted from PDF]\n\nVIKTOR FRANKL\n\nEL HOMBRE\n\nEN BUSCA DE SENTIDO\n\nTraducción y edición\n\nCOMITÉ DE TRADUCCIÓN AL ESPAÑOL\n\nPrefacio\n\nJOSÉBENIGNOFREIRE\n\nHerder\n\n2\n\nTítulos orig",
+        "payloadBytes": 13842098,
+        "title": "El hombre en busca de sentido",
+        "tokenCount": 46502,
+        "totalChunks": 24737,
+        "totalSections": 52
+      },
+      "publish": {
+        "catalogBookId": "6d6bff38-626d-4664-91af-9b5eeac300b0",
+        "slug": "el-hombre-en-busca-de-sentido",
+        "title": "El hombre en busca de sentido",
+        "updatedExisting": false
+      }
+    }
+  ]
+}

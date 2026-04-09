@@ -105,6 +105,29 @@ One detail matters a lot for understanding current performance behavior:
 
 - PDF extraction worker offload is also currently set to `150_000_000` bytes.
 
+## Local Catalog Folder Scan
+
+The Max catalog import workflow is local-only. It is not exposed as an in-app admin screen.
+
+To screen a folder of PDFs against Leyendo's real browser import path:
+
+1. Put the candidate PDFs in `data/`, or pass a custom folder with `--data-dir=...`.
+2. Run the app locally.
+3. Run `pnpm catalog:scan`.
+
+The scanner uses Playwright to import each PDF through the normal upload flow, open it in the reader, and record whether the file is catalog-ready.
+
+By default it writes a report to `test-results/catalog-import-scan.json`.
+
+Useful variants:
+
+- `pnpm catalog:scan` scans `data/` and reports which PDFs are compatible.
+- `pnpm catalog:scan -- --data-dir=tmp/my-books` scans a different folder.
+- `pnpm catalog:scan -- keyword` scans only files whose names contain `keyword`.
+- `pnpm catalog:scan -- --publish` scans and then publishes catalog-ready PDFs directly to Supabase. This requires `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the environment.
+
+The scanner excludes files that fail selection, fail reader open, expose too little usable text, or never produce a stable document payload in IndexedDB.
+
 That means the worker threshold is effectively the same as the browser PDF size cap. In practice, most accepted PDFs extract on the main thread. That is intentional in the current codebase because the dedicated PDF worker path caused reliability problems for some real-world large files.
 
 ## Why Large PDFs Can Take A While On First Open

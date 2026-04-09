@@ -1,0 +1,300 @@
+{
+  "appUrl": "http://127.0.0.1:3001",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T16:34:16.758Z",
+  "mode": "scan-only",
+  "totals": {
+    "pdfCount": 21,
+    "processed": 9,
+    "remaining": 12,
+    "catalogReady": 9,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 0,
+    "publishFailed": 0,
+    "passed": 9,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Art_of_Love_and_others.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyArt_of_Love_and_others.pdf is readyPDF at 10 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 603911,
+        "imagePlaceholderCount": 204,
+        "sample": "THE LOEB CLASSICAL LIBRARY\n\nFOUNDED BY JAMES LOEB, LL.D.\n\nEDITED BY tT. E. PAGE, C.H., LITT.D.\n\ntE. CAPPS, PH.D., LL.D. t W. H. D. ROUSE, LITT.D. L. A. POST, M.A. E. H. WARMINGTON, M.A., F.R.HIST.SOC.\n\nOVID\n\nTHE ART OF L..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=-WzgK_4UcrHf78Y9yOKKC"
+      },
+      "durationMs": 65109,
+      "testedAt": "2026-04-09T16:26:44.831Z",
+      "document": {
+        "documentId": "-WzgK_4UcrHf78Y9yOKKC",
+        "estimatedReadingMinutes": 465,
+        "excerpt": "THE LOEB CLASSICAL LIBRARY\n\nFOUNDED BY JAMES LOEB, LL.D.\n\nEDITED BY tT. E. PAGE, C.H., LITT.D.\n\ntE. CAPPS, PH.D., LL.D. t W. H. D. ROUSE, LITT.D. L. A. POST, M.A. E. H. WARMINGTON,",
+        "payloadBytes": 30503239,
+        "title": "Art_of_Love_and_others",
+        "tokenCount": 102134,
+        "totalChunks": 54800,
+        "totalSections": 295
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Be Here Now_ Open Your Mind to Spirituality ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBe Here Now_ Open Your Mind to Spirituality ( PDFDrive.com ).pdf is readyPDF at 41 MB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 5744,
+        "imagePlaceholderCount": 221,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitt..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=BmgDJ1wpJ7MKVW2rDyglE"
+      },
+      "durationMs": 4723,
+      "testedAt": "2026-04-09T16:27:18.617Z",
+      "document": {
+        "documentId": "BmgDJ1wpJ7MKVW2rDyglE",
+        "estimatedReadingMinutes": 5,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]",
+        "payloadBytes": 281583,
+        "title": "Be Here Now_ Open Your Mind to Spirituality ( PDFDrive.com )",
+        "tokenCount": 884,
+        "totalChunks": 442,
+        "totalSections": 1
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Body Language Secrets A Guide During Courtship & Dating ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBody Language Secrets A Guide During Courtship & Dating ( PDFDrive.com ).pdf is readyPDF at 7.7 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 272152,
+        "imagePlaceholderCount": 55,
+        "sample": "file:///C|/OCR/1.htm file:///C|/OCR/1.htm (1 of 3) [5/7/2003 1:54:17 AM]\n\n[Image omitted from PDF]\n\nfile:///C|/OCR/1.htm file:///C|/OCR/1.htm (2 of 3) [5/7/2003 1:54:17 AM]\n\n[Image omitted from PDF]\n\nTELEVISION SHOWS\n\nDo..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=a5BfxEeHaqCcn7uxIrPRj"
+      },
+      "durationMs": 8975,
+      "testedAt": "2026-04-09T16:27:26.749Z",
+      "document": {
+        "documentId": "a5BfxEeHaqCcn7uxIrPRj",
+        "estimatedReadingMinutes": 213,
+        "excerpt": "file:///C|/OCR/1.htm file:///C|/OCR/1.htm (1 of 3) [5/7/2003 1:54:17 AM]\n\n[Image omitted from PDF]\n\nfile:///C|/OCR/1.htm file:///C|/OCR/1.htm (2 of 3) [5/7/2003 1:54:17 AM]\n\n[Image",
+        "payloadBytes": 13636418,
+        "title": "Body Language Secrets A Guide During Courtship & Dating ( PDFDrive.com )",
+        "tokenCount": 46810,
+        "totalChunks": 24857,
+        "totalSections": 88
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "covey_stephen_-_the_seven_habits_of_highly_effective_people.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readycovey_stephen_-_the_seven_habits_of_highly_effective_people.pdf is readyPDF at 1.4 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 645629,
+        "imagePlaceholderCount": 2,
+        "sample": "THE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE Brought to you by FlyHeart\n\nTHE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE\n\nStephen R. Covey\n\n[Image omitted from PDF]\n\nTHE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE Brought to you ..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=PZniBR52vMAjP0v6YfN8F"
+      },
+      "durationMs": 8360,
+      "testedAt": "2026-04-09T16:27:47.025Z",
+      "document": {
+        "documentId": "PZniBR52vMAjP0v6YfN8F",
+        "estimatedReadingMinutes": 494,
+        "excerpt": "THE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE Brought to you by FlyHeart\n\nTHE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE\n\nStephen R. Covey\n\n[Image omitted from PDF]\n\nTHE SEVEN HABITS OF",
+        "payloadBytes": 31834980,
+        "title": "covey_stephen_-_the_seven_habits_of_highly_effective_people",
+        "tokenCount": 108478,
+        "totalChunks": 57233,
+        "totalSections": 24
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "David y Goliat.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDavid y Goliat.pdf is readyPDF at 886 KB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 25786,
+        "imagePlaceholderCount": 11,
+        "sample": "David and Goliath\n\nOctober\n\nBible Verse\n\nI will live in theLord’shouse as long as I live. (Psalm 23:6, CEB)\n\nBible Story\n\n1 Samuel 17:1-50\n\nLeap of Faith\n\nGod loves me all my life.\n\nBefore You Begin\n\nGoliath was a giant,..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=kfLMIyhvsZXerVBUOKLD7"
+      },
+      "durationMs": 6168,
+      "testedAt": "2026-04-09T16:28:28.339Z",
+      "document": {
+        "documentId": "kfLMIyhvsZXerVBUOKLD7",
+        "estimatedReadingMinutes": 17,
+        "excerpt": "David and Goliath\n\nOctober\n\nBible Verse\n\nI will live in theLord’shouse as long as I live. (Psalm 23:6, CEB)\n\nBible Story\n\nSamuel 17:1-50\n\nLeap of Faith\n\nGod loves me all my life.\n\n",
+        "payloadBytes": 1119620,
+        "title": "David y Goliat",
+        "tokenCount": 3725,
+        "totalChunks": 2009,
+        "totalSections": 37
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Drucker-2006-The-Effective-Executive-The-Definitive-Guide-to-Getting-the-Right-Things-Done.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDrucker-2006-The-Effective-Executive-The-Definitive-Guide-to-Getting-the-Right-Things-Done.pdf is readyPDF at 4.2 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 385922,
+        "imagePlaceholderCount": 202,
+        "sample": "PETER F.\n\nDRUCKER\n\n\"His writings are landmarks of the managerial profession.\"\n\n—HarvardBusiness Review\n\nTHE\n\nEffective\n\nExecutive\n\nThe Definitive Guide to\n\nGetting the Right Things Done\n\n[Image omitted from PDF]\n\nThe\n\nEf..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=yrvfWfA3DIUq1CX1SivrI"
+      },
+      "durationMs": 28755,
+      "testedAt": "2026-04-09T16:28:57.524Z",
+      "document": {
+        "documentId": "yrvfWfA3DIUq1CX1SivrI",
+        "estimatedReadingMinutes": 285,
+        "excerpt": "PETER F.\n\nDRUCKER\n\n\"His writings are landmarks of the managerial profession.\"\n\n—HarvardBusiness Review\n\nTHE\n\nEffective\n\nExecutive\n\nThe Definitive Guide to\n\nGetting the Right Things",
+        "payloadBytes": 19254185,
+        "title": "Drucker-2006-The-Effective-Executive-The-Definitive-Guide-to-Getting-the-Right-Things-Done",
+        "tokenCount": 62539,
+        "totalChunks": 33559,
+        "totalSections": 389
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Evolve Your Brain_ The Science of Changing Your Mind ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyEvolve Your Brain_ The Science of Changing Your Mind ( PDFDrive ).pdf is readyPDF at 3.8 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1069750,
+        "imagePlaceholderCount": 44,
+        "sample": "[Image omitted from PDF]\n\nPraise for Evolve Your Brain\n\n“Dr. Joe Dispenza delves deep into the extraordinary potential of the\n\nmind. Read this book and be inspired to change your life forever.”\n\n—Lynne McTaggart, author ..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=A3ajcEZkmy0x5RJymT6ri"
+      },
+      "durationMs": 27305,
+      "testedAt": "2026-04-09T16:29:32.386Z",
+      "document": {
+        "documentId": "A3ajcEZkmy0x5RJymT6ri",
+        "estimatedReadingMinutes": 800,
+        "excerpt": "[Image omitted from PDF]\n\nPraise for Evolve Your Brain\n\n“Dr. Joe Dispenza delves deep into the extraordinary potential of the\n\nmind. Read this book and be inspired to change your l",
+        "payloadBytes": 53604443,
+        "title": "Evolve Your Brain_ The Science of Changing Your Mind ( PDFDrive )",
+        "tokenCount": 175887,
+        "totalChunks": 93741,
+        "totalSections": 75
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Good_to_Great_by_Jim_Collins.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyGood_to_Great_by_Jim_Collins.pdf is readyPDF at 8.7 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 568100,
+        "imagePlaceholderCount": 345,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nW h y S o m e C o m p a n i e s\n\nM a k e t h e L e a p...\n\na n d O t h e r s D o n ' t\n\nRANDOMHOUSE BUSINESS BOOKS\n\n[Image omitted from PDF]\n\nAcknowledgments ix Preface..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=jWBm5OCta8snAJg8KK3PG"
+      },
+      "durationMs": 17551,
+      "testedAt": "2026-04-09T16:31:03.206Z",
+      "document": {
+        "documentId": "jWBm5OCta8snAJg8KK3PG",
+        "estimatedReadingMinutes": 427,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nW h y S o m e C o m p a n i e s\n\nM a k e t h e L e a p...\n\na n d O t h e r s D o n ' t\n\nRANDOMHOUSE BUSINESS BOOKS\n\n[Image omitt",
+        "payloadBytes": 27874139,
+        "title": "Good_to_Great_by_Jim_Collins",
+        "tokenCount": 93795,
+        "totalChunks": 49575,
+        "totalSections": 120
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "How to Talk to Anyone 92 Little Tricks for Big Success in Relationships by Leil Lowndes (z-lib.org).epub.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyHow to Talk to Anyone 92 Little Tricks for Big Success in Relationships by Leil Lowndes (z-lib.org).epub.pdf is readyPDF at 1.1 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 448180,
+        "imagePlaceholderCount": 1,
+        "sample": "[Image omitted from PDF]\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nHow to Talk to Anyone - 92 Little Tricks...\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nIntroductio..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3001/reader?document=Gv0TukIWabR0cZSeWo2Im"
+      },
+      "durationMs": 13961,
+      "testedAt": "2026-04-09T16:33:43.369Z",
+      "document": {
+        "documentId": "Gv0TukIWabR0cZSeWo2Im",
+        "estimatedReadingMinutes": 354,
+        "excerpt": "[Image omitted from PDF]\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nHow to Talk to Anyone - 92 Little\n\nTricks...\n\nHow to Talk to Anyone - 92 Little Tricks...\n\nHow to Talk to An",
+        "payloadBytes": 23425870,
+        "title": "How to Talk to Anyone 92 Little Tricks for Big Success in Relationships by Leil Lowndes (z-lib.org).epub",
+        "tokenCount": 77805,
+        "totalChunks": 41885,
+        "totalSections": 35
+      }
+    }
+  ]
+}

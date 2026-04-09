@@ -1,0 +1,83 @@
+{
+  "appUrl": "http://127.0.0.1:3000",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T17:10:35.528Z",
+  "mode": "scan-only",
+  "totals": {
+    "pdfCount": 1,
+    "processed": 2,
+    "remaining": 0,
+    "catalogReady": 2,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 0,
+    "publishFailed": 0,
+    "passed": 2,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Find Your Why_ A Practical Guide for Discovering Purpose for You and Your Team.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyFind Your Why_ A Practical Guide for Discovering Purpose for You and Your Team.pdf is readyPDF at 3.7 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 264817,
+        "imagePlaceholderCount": 68,
+        "sample": "[Image omitted from PDF]\n\nWhy do you do what you do? Why do you get out of bed in the morning? And why should anyone care?\n\nIt is one of life’s greatest joys to wake up in the morning Every morning\n\nwith a clear sense of..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=FD6vANwERN6h3nli5DoKC"
+      },
+      "durationMs": 5297,
+      "testedAt": "2026-04-09T17:09:18.523Z",
+      "document": {
+        "documentId": "FD6vANwERN6h3nli5DoKC",
+        "estimatedReadingMinutes": 209,
+        "excerpt": "[Image omitted from PDF]\n\nWhy do you do what you do? Why do you get out of bed in the morning? And why should anyone care?\n\nIt is one of life’s greatest joys to wake up in the morn",
+        "payloadBytes": 13486348,
+        "title": "Find Your Why_ A Practical Guide for Discovering Purpose for You and Your Team",
+        "tokenCount": 45770,
+        "totalChunks": 24301,
+        "totalSections": 131
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "How to change your mind - Michael Pollan.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyHow to change your mind - Michael Pollan.pdf is readyPDF at 3.6 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 908401,
+        "imagePlaceholderCount": 5,
+        "sample": "[Image omitted from PDF]\n\nALSO BY Michael Pollan\n\nCooked\n\nFood Rules\n\nIn Defense of Food\n\nThe Omnivore’s Dilemma\n\nThe Botany of Desire\n\nA Place of My Own\n\nSecond Nature\n\n[Image omitted from PDF]\n\nPENGUIN PRESS An imprint..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=MlxlAy-YuMruqgyWwtFG-"
+      },
+      "durationMs": 11946,
+      "testedAt": "2026-04-09T17:09:37.403Z",
+      "document": {
+        "documentId": "MlxlAy-YuMruqgyWwtFG-",
+        "estimatedReadingMinutes": 665,
+        "excerpt": "[Image omitted from PDF]\n\nALSO BY Michael Pollan\n\nCooked\n\nFood Rules\n\nIn Defense of Food\n\nThe Omnivore’s Dilemma\n\nThe Botany of Desire\n\nA Place of My Own\n\nSecond Nature\n\n[Image omi",
+        "payloadBytes": 44196441,
+        "title": "How to change your mind - Michael Pollan",
+        "tokenCount": 146253,
+        "totalChunks": 77533,
+        "totalSections": 39
+      }
+    }
+  ]
+}

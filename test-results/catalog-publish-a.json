@@ -1,0 +1,344 @@
+{
+  "appUrl": "http://127.0.0.1:3000",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T18:16:21.966Z",
+  "mode": "scan-and-publish",
+  "totals": {
+    "pdfCount": 21,
+    "processed": 9,
+    "remaining": 12,
+    "catalogReady": 0,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 7,
+    "publishFailed": 2,
+    "passed": 9,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "published",
+      "fileName": "12 Rules for Life_ An Antidote to Chaos.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review ready12 Rules for Life_ An Antidote to Chaos.pdf is readyPDF at 4.9 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 891214,
+        "imagePlaceholderCount": 36,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nJordan B. Peterson\n\n12 RULES FOR LIFE\n\nAn Antidote for Chaos\n\nForeword by Norman Doidge\n\nIllustrations by Ethan Van Scriver\n\n[Image omitted from PDF]\n\nTable of Contents..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=bHQbPboIloR4T2UWOgK2T"
+      },
+      "durationMs": 8588,
+      "testedAt": "2026-04-09T18:10:18.470Z",
+      "document": {
+        "documentId": "bHQbPboIloR4T2UWOgK2T",
+        "estimatedReadingMinutes": 662,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nJordan B. Peterson\n\n12 RULES FOR LIFE\n\nAn Antidote for Chaos\n\nForeword by Norman Doidge\n\nIllustrations by Ethan Van Scriver\n\n[Im",
+        "payloadBytes": 44535221,
+        "title": "12 Rules for Life_ An Antidote to Chaos",
+        "tokenCount": 145561,
+        "totalChunks": 78332,
+        "totalSections": 47
+      },
+      "publish": {
+        "catalogBookId": "8e93448b-a70f-4820-8009-a3fd215a583c",
+        "slug": "12-rules-for-life-an-antidote-to-chaos",
+        "title": "12 Rules for Life_ An Antidote to Chaos",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Attract Women_ Inside Her (Mind)_ Secrets of the Female Psyche to Attract Women, Keep Them Seduced, and Bulletproof Your Relationship (Dating Advice for Men to Attract Women) ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyAttract Women_ Inside Her (Mind)_ Secrets of the Female Psyche to Attract Women, Keep Them Seduced, and Bulletproof Your Relationship (Dating Advice for Men to Attract Women) ( PDFDrive ).pdf is readyPDF at 434 KB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 63175,
+        "imagePlaceholderCount": 1,
+        "sample": "[Image omitted from PDF]\n\nInside Her (Mind): Secrets of the Female Psyche to\n\nAttract Women, Keep Them Seduced, and Bulletproof\n\nYour Relationship\n\nBy Patrick King\n\nDating and Social Skills Coach at\n\nwww.PatrickKingConsu..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=U6SlpXd2son6YJvdikdF9"
+      },
+      "durationMs": 3048,
+      "testedAt": "2026-04-09T18:11:22.472Z",
+      "document": {
+        "documentId": "U6SlpXd2son6YJvdikdF9",
+        "estimatedReadingMinutes": 50,
+        "excerpt": "[Image omitted from PDF]\n\nInside Her (Mind): Secrets of the Female Psyche to\n\nAttract Women, Keep Them Seduced, and Bulletproof\n\nYour Relationship\n\nBy Patrick King\n\nDating and Soci",
+        "payloadBytes": 3140774,
+        "title": "Attract Women_ Inside Her (Mind)_ Secrets of the Female Psyche to Attract Women, Keep Them Seduced, and Bulletproof Your Relationship (Dating Advice for Men to Attract Women) ( PDFDrive )",
+        "tokenCount": 10858,
+        "totalChunks": 5778,
+        "totalSections": 38
+      },
+      "publish": {
+        "catalogBookId": "7216d77f-33e7-4c81-83a8-109635c7b358",
+        "slug": "attract-women-inside-her-mind-secrets-of-the-female-psyche-to-attract-women-keep",
+        "title": "Attract Women_ Inside Her (Mind)_ Secrets of the Female Psyche to Attract Women, Keep Them Seduced, and Bulletproof Your Relationship (Dating Advice for Men to Attract Women) ( PDFDrive )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Banned Mind Control Techniques Unleashed_ Learn The Dark Secrets Of Hypnosis, Manipulation, Deception, Persuasion, Brainwashing And Human Psychology ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBanned Mind Control Techniques Unleashed_ Learn The Dark Secrets Of Hypnosis, Manipulation, Deception, Persuasion, Brainwashing And Human Psychology ( PDFDrive ).pdf is readyPDF at 810 KB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 205142,
+        "imagePlaceholderCount": 1,
+        "sample": "[Image omitted from PDF]\n\nBanned Mind Control\n\nTechniques Unleashed\n\nLearn the Dark Secrets of\n\nHypnosis, Manipulation,\n\nDeception, Persuasion,\n\nBrainwashing and Human\n\nPsychology\n\nBy Daniel Smith\n\nCopyright 2014 by Make..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=PDv1oG19I6snHHkO_A9dJ"
+      },
+      "durationMs": 7198,
+      "testedAt": "2026-04-09T18:11:34.796Z",
+      "document": {
+        "documentId": "PDv1oG19I6snHHkO_A9dJ",
+        "estimatedReadingMinutes": 160,
+        "excerpt": "[Image omitted from PDF]\n\nBanned Mind Control\n\nTechniques Unleashed\n\nLearn the Dark Secrets of\n\nHypnosis, Manipulation,\n\nDeception, Persuasion,\n\nBrainwashing and Human\n\nPsychology\n",
+        "payloadBytes": 11180199,
+        "title": "Banned Mind Control Techniques Unleashed_ Learn The Dark Secrets Of Hypnosis, Manipulation, Deception, Persuasion, Brainwashing And Human Psychology ( PDFDrive )",
+        "tokenCount": 34991,
+        "totalChunks": 19246,
+        "totalSections": 62
+      },
+      "publish": {
+        "catalogBookId": "eb55bebf-0ca4-4026-9a95-6eb7f521c1a3",
+        "slug": "banned-mind-control-techniques-unleashed-learn-the-dark-secrets-of-hypnosis-mani",
+        "title": "Banned Mind Control Techniques Unleashed_ Learn The Dark Secrets Of Hypnosis, Manipulation, Deception, Persuasion, Brainwashing And Human Psychology ( PDFDrive )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Biography by Nikhilananda.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBiography by Nikhilananda.pdf is readyPDF at 490 KB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 598807,
+        "imagePlaceholderCount": 3,
+        "sample": "Swami Vivekananda - A\n\nBiography by Swami\n\nNikhilananda\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nPREFACE\n\nSwami Vivekananda's inspiring personality was well known both in India and i..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=4c2_LhFWJ1dLz4n8toAvL"
+      },
+      "durationMs": 3993,
+      "testedAt": "2026-04-09T18:12:07.085Z",
+      "document": {
+        "documentId": "4c2_LhFWJ1dLz4n8toAvL",
+        "estimatedReadingMinutes": 469,
+        "excerpt": "Swami Vivekananda - A\n\nBiography by Swami\n\nNikhilananda\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nPREFACE\n\nSwami Vivekananda's inspiring person",
+        "payloadBytes": 30257673,
+        "title": "Biography by Nikhilananda",
+        "tokenCount": 103073,
+        "totalChunks": 54501,
+        "totalSections": 16
+      },
+      "publish": {
+        "catalogBookId": "a753b467-d543-4561-85d9-28b4569b51fb",
+        "slug": "biography-by-nikhilananda",
+        "title": "Biography by Nikhilananda",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Body Language Secrets A Guide During Courtship & Dating ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBody Language Secrets A Guide During Courtship & Dating ( PDFDrive.com ).pdf is readyPDF at 7.7 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 272152,
+        "imagePlaceholderCount": 55,
+        "sample": "file:///C|/OCR/1.htm file:///C|/OCR/1.htm (1 of 3) [5/7/2003 1:54:17 AM]\n\n[Image omitted from PDF]\n\nfile:///C|/OCR/1.htm file:///C|/OCR/1.htm (2 of 3) [5/7/2003 1:54:17 AM]\n\n[Image omitted from PDF]\n\nTELEVISION SHOWS\n\nDo..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=2HznCCOhRpfBhThnpADmz"
+      },
+      "durationMs": 5511,
+      "testedAt": "2026-04-09T18:12:47.481Z",
+      "document": {
+        "documentId": "2HznCCOhRpfBhThnpADmz",
+        "estimatedReadingMinutes": 213,
+        "excerpt": "file:///C|/OCR/1.htm file:///C|/OCR/1.htm (1 of 3) [5/7/2003 1:54:17 AM]\n\n[Image omitted from PDF]\n\nfile:///C|/OCR/1.htm file:///C|/OCR/1.htm (2 of 3) [5/7/2003 1:54:17 AM]\n\n[Image",
+        "payloadBytes": 13636418,
+        "title": "Body Language Secrets A Guide During Courtship & Dating ( PDFDrive.com )",
+        "tokenCount": 46810,
+        "totalChunks": 24857,
+        "totalSections": 88
+      },
+      "publish": {
+        "catalogBookId": "eecf4ef9-7f60-4b57-a379-760be0e0c466",
+        "slug": "body-language-secrets-a-guide-during-courtship-dating-pdfdrive-com",
+        "title": "Body Language Secrets A Guide During Courtship & Dating ( PDFDrive.com )",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "Bruce Lipton - The Biology of Belief - 10th Anniversary edition.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyBruce Lipton - The Biology of Belief - 10th Anniversary edition.pdf is readyPDF at 6.9 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 647517,
+        "imagePlaceholderCount": 47,
+        "sample": "Praise forThe Biology of Belief\n\n“I readThe Biology of Beliefwhen it first came out. It was a pioneer-\n\ning book and gave a much needed scientific framework for the\n\nmind/body/spirit connection. Bruce’s insights and rese..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=sS34bxSIx-dcxLdtMBZTy"
+      },
+      "durationMs": 9803,
+      "testedAt": "2026-04-09T18:13:15.652Z",
+      "document": {
+        "documentId": "sS34bxSIx-dcxLdtMBZTy",
+        "estimatedReadingMinutes": 458,
+        "excerpt": "Praise forThe Biology of Belief\n\n“I readThe Biology of Beliefwhen it first came out. It was a pioneer-\n\ning book and gave a much needed scientific framework for the\n\nmind/body/spir",
+        "payloadBytes": 31104646,
+        "title": "Bruce Lipton - The Biology of Belief - 10th Anniversary edition",
+        "tokenCount": 100601,
+        "totalChunks": 54077,
+        "totalSections": 63
+      },
+      "publish": {
+        "catalogBookId": "3893f2a3-4901-4b31-a603-26b409bf76c4",
+        "slug": "bruce-lipton-the-biology-of-belief-10th-anniversary-edition",
+        "title": "Bruce Lipton - The Biology of Belief - 10th Anniversary edition",
+        "updatedExisting": false
+      }
+    },
+    {
+      "catalogDecision": "publish-failed",
+      "fileName": "covey_stephen_-_the_seven_habits_of_highly_effective_people.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readycovey_stephen_-_the_seven_habits_of_highly_effective_people.pdf is readyPDF at 1.4 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 645629,
+        "imagePlaceholderCount": 2,
+        "sample": "THE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE Brought to you by FlyHeart\n\nTHE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE\n\nStephen R. Covey\n\n[Image omitted from PDF]\n\nTHE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE Brought to you ..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=XmKSRYCJ9khzZWNDpNvrk"
+      },
+      "durationMs": 6738,
+      "testedAt": "2026-04-09T18:13:55.851Z",
+      "document": {
+        "documentId": "XmKSRYCJ9khzZWNDpNvrk",
+        "estimatedReadingMinutes": 494,
+        "excerpt": "THE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE Brought to you by FlyHeart\n\nTHE SEVEN HABITS OF HIGHLY EFFECTIVE PEOPLE\n\nStephen R. Covey\n\n[Image omitted from PDF]\n\nTHE SEVEN HABITS OF",
+        "payloadBytes": 31834980,
+        "title": "covey_stephen_-_the_seven_habits_of_highly_effective_people",
+        "tokenCount": 108478,
+        "totalChunks": 57233,
+        "totalSections": 24
+      },
+      "publishError": "[object Object]"
+    },
+    {
+      "catalogDecision": "publish-failed",
+      "fileName": "Crime_and_Punishment_T.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyCrime_and_Punishment_T.pdf is readyPDF at 3.3 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 1164529,
+        "imagePlaceholderCount": 0,
+        "sample": "Crime and Punishment\n\nFyodor Dostoevsky\n\nTranslated By Constance Garnett\n\nThis eBook is designed and published by Planet PDF. For more free\n\neBooks visit our Web site athttp://www.planetpdf.com\n\nCrime and Punishment\n\nTRA..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=aPgjwzxDqz6-GXcC7Xk79"
+      },
+      "durationMs": 8680,
+      "testedAt": "2026-04-09T18:14:30.746Z",
+      "document": {
+        "documentId": "aPgjwzxDqz6-GXcC7Xk79",
+        "estimatedReadingMinutes": 953,
+        "excerpt": "Crime and Punishment\n\nFyodor Dostoevsky\n\nTranslated By Constance Garnett\n\nThis eBook is designed and published by Planet PDF. For more free\n\neBooks visit our Web site athttp://www.",
+        "payloadBytes": 59653616,
+        "title": "Crime_and_Punishment_T",
+        "tokenCount": 209532,
+        "totalChunks": 109336,
+        "totalSections": 10
+      },
+      "publishError": "The object exceeded the maximum allowed size"
+    },
+    {
+      "catalogDecision": "published",
+      "fileName": "David y Goliat.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyDavid y Goliat.pdf is readyPDF at 886 KB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 25786,
+        "imagePlaceholderCount": 11,
+        "sample": "David and Goliath\n\nOctober\n\nBible Verse\n\nI will live in theLord’shouse as long as I live. (Psalm 23:6, CEB)\n\nBible Story\n\n1 Samuel 17:1-50\n\nLeap of Faith\n\nGod loves me all my life.\n\nBefore You Begin\n\nGoliath was a giant,..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=ZHblEjiKBQ6kdzlQ3pDCN"
+      },
+      "durationMs": 2551,
+      "testedAt": "2026-04-09T18:15:49.012Z",
+      "document": {
+        "documentId": "ZHblEjiKBQ6kdzlQ3pDCN",
+        "estimatedReadingMinutes": 17,
+        "excerpt": "David and Goliath\n\nOctober\n\nBible Verse\n\nI will live in theLord’shouse as long as I live. (Psalm 23:6, CEB)\n\nBible Story\n\nSamuel 17:1-50\n\nLeap of Faith\n\nGod loves me all my life.\n\n",
+        "payloadBytes": 1119620,
+        "title": "David y Goliat",
+        "tokenCount": 3725,
+        "totalChunks": 2009,
+        "totalSections": 37
+      },
+      "publish": {
+        "catalogBookId": "07811a88-989d-4017-aa1c-0bf6a33ed752",
+        "slug": "david-y-goliat",
+        "title": "David y Goliat",
+        "updatedExisting": false
+      }
+    }
+  ]
+}

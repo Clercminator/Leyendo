@@ -1,0 +1,362 @@
+{
+  "appUrl": "http://127.0.0.1:3000",
+  "dataDir": "C:\\Users\\clerc\\Documents\\Lee Project\\data",
+  "generatedAt": "2026-04-09T18:09:43.404Z",
+  "mode": "scan-only",
+  "totals": {
+    "pdfCount": 24,
+    "processed": 11,
+    "remaining": 13,
+    "catalogReady": 11,
+    "excluded": 0,
+    "openFailed": 0,
+    "published": 0,
+    "publishFailed": 0,
+    "passed": 11,
+    "selectionFailed": 0,
+    "scriptError": 0
+  },
+  "results": [
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Finite and Infinite Games_ A Vision of Life as Play and Possibility.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyFinite and Infinite Games_ A Vision of Life as Play and Possibility.pdf is readyPDF at 8.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 222479,
+        "imagePlaceholderCount": 32,
+        "sample": "· . FINITE\n\nand\n\nINFINITE\n\nGAMES\n\nAVision of Life as Play and Possibility\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nJAM ESP. C .A <:R'.' S E\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nFINITE AND\n\nINF..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=J5nO9snjcNL5xU0Nvp_25"
+      },
+      "durationMs": 35103,
+      "testedAt": "2026-04-09T18:06:00.392Z",
+      "document": {
+        "documentId": "J5nO9snjcNL5xU0Nvp_25",
+        "estimatedReadingMinutes": 174,
+        "excerpt": "· . FINITE\n\nand\n\nINFINITE\n\nGAMES\n\nAVision of Life as Play and Possibility\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nJAM ESP. C .A <:R'.' S E\n\n[Image omitted from PDF]\n\n[",
+        "payloadBytes": 11549072,
+        "title": "Finite and Infinite Games_ A Vision of Life as Play and Possibility",
+        "tokenCount": 38142,
+        "totalChunks": 20505,
+        "totalSections": 124
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Inadequate Equilibria_ Where and How Civilizations Get Stuck ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyInadequate Equilibria_ Where and How Civilizations Get Stuck ( PDFDrive ).pdf is readyPDF at 1.2 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 330761,
+        "imagePlaceholderCount": 0,
+        "sample": "Inadequate Equilibria\n\nWhere and How Civilizations Get Stuck\n\nELIEZER YUDKOWSKY\n\nWritten by Eliezer Yudkowsky\n\nPublished in 2017 by the\n\nMachine Intelligence Research Institute\n\nBerkeley 94704\n\nUnited States of America\n\n..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=aTa07uqsBtWMCs36XJb1V"
+      },
+      "durationMs": 7240,
+      "testedAt": "2026-04-09T18:06:26.205Z",
+      "document": {
+        "documentId": "aTa07uqsBtWMCs36XJb1V",
+        "estimatedReadingMinutes": 243,
+        "excerpt": "Inadequate Equilibria\n\nWhere and How Civilizations Get Stuck\n\nELIEZER YUDKOWSKY\n\nWritten by Eliezer Yudkowsky\n\nPublished in 2017 by the\n\nMachine Intelligence Research Institute\n\nBe",
+        "payloadBytes": 15999227,
+        "title": "Inadequate Equilibria_ Where and How Civilizations Get Stuck ( PDFDrive )",
+        "tokenCount": 53321,
+        "totalChunks": 28278,
+        "totalSections": 223
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Jaws_ The Story of a Hidden Epidemic ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyJaws_ The Story of a Hidden Epidemic ( PDFDrive ).pdf is readyPDF at 15 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 426095,
+        "imagePlaceholderCount": 107,
+        "sample": "[Image omitted from PDF]\n\nJAWS\n\nThis page intentionally left blank\n\nJAWS\n\nT H E S T O R Y O F A H I D D E N E P I D E M I C\n\nSANDRA KAHN and PAUL R. EHRLICH\n\nForeword by ROBERT SAPOLSKY\n\nA N E N V I R O N M E N T A L H E..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=y9Dwmh7MeYzVM5NqhEOe9"
+      },
+      "durationMs": 12921,
+      "testedAt": "2026-04-09T18:06:56.028Z",
+      "document": {
+        "documentId": "y9Dwmh7MeYzVM5NqhEOe9",
+        "estimatedReadingMinutes": 299,
+        "excerpt": "[Image omitted from PDF]\n\nJAWS\n\nThis page intentionally left blank\n\nJAWS\n\nT H E S T O R Y O F A H I D D E N E P I D E M I C\n\nSANDRA KAHN and PAUL R. EHRLICH\n\nForeword by ROBERT SAP",
+        "payloadBytes": 20530600,
+        "title": "Jaws_ The Story of a Hidden Epidemic ( PDFDrive )",
+        "tokenCount": 65691,
+        "totalChunks": 36230,
+        "totalSections": 45
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "letters-from-a-stoic_lucius-annaeus-seneca.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyletters-from-a-stoic_lucius-annaeus-seneca.pdf is readyPDF at 951 KB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 461724,
+        "imagePlaceholderCount": 1,
+        "sample": "LETTERS FROM A STOIC\n\n[Image omitted from PDF]\n\nADVISORY EDITOR: BETTY RADICE\n\nLUCIUS ANNAEUS SENECA, statesman, philosopher, advocate and man of letters, was\n\nborn at Cordoba in Spain around 4 B.C. Despite his relativel..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=2368CgFstlaBlbl-V5POX"
+      },
+      "durationMs": 4658,
+      "testedAt": "2026-04-09T18:07:11.769Z",
+      "document": {
+        "documentId": "2368CgFstlaBlbl-V5POX",
+        "estimatedReadingMinutes": 371,
+        "excerpt": "LETTERS FROM A STOIC\n\n[Image omitted from PDF]\n\nADVISORY EDITOR: BETTY RADICE\n\nLUCIUS ANNAEUS SENECA, statesman, philosopher, advocate and man of letters, was\n\nborn at Cordoba in S",
+        "payloadBytes": 23446314,
+        "title": "letters-from-a-stoic_lucius-annaeus-seneca",
+        "tokenCount": 81540,
+        "totalChunks": 42790,
+        "totalSections": 7
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Limitless_Chapter_4.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyLimitless_Chapter_4.pdf is readyPDF at 2.0 MB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 26908,
+        "imagePlaceholderCount": 5,
+        "sample": "4\n\nHOW TO READ AND\n\nREMEMBER THIS\n\n(AND ANY) BOOK\n\nYour time is one of your greatest assets. It’s the one thing you can’t\n\nget back.\n\nAs your brain coach, I want you to get the greatest results and\n\nreturn on your attent..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=GmwouFcRkFTWKvZqvJj2Q"
+      },
+      "durationMs": 2571,
+      "testedAt": "2026-04-09T18:07:28.550Z",
+      "document": {
+        "documentId": "GmwouFcRkFTWKvZqvJj2Q",
+        "estimatedReadingMinutes": 23,
+        "excerpt": "4\n\nHOW TO READ AND\n\nREMEMBER THIS\n\n(AND ANY) BOOK\n\nYour time is one of your greatest assets. It’s the one thing you can’t\n\nget back.\n\nAs your brain coach, I want you to get the gre",
+        "payloadBytes": 1422859,
+        "title": "Limitless_Chapter_4",
+        "tokenCount": 4899,
+        "totalChunks": 2611,
+        "totalSections": 64
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Man's Search For Meaning.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyMan's Search For Meaning.pdf is readyPDF at 6.5 MB imported. Review or edit the text below, then open it in the reader. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 4860,
+        "imagePlaceholderCount": 187,
+        "sample": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitt..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=c2TIlQuWpnJHIG3R4Levf"
+      },
+      "durationMs": 12814,
+      "testedAt": "2026-04-09T18:07:42.162Z",
+      "document": {
+        "documentId": "c2TIlQuWpnJHIG3R4Levf",
+        "estimatedReadingMinutes": 4,
+        "excerpt": "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]\n\n[Image omitted from PDF]",
+        "payloadBytes": 237755,
+        "title": "Man's Search For Meaning",
+        "tokenCount": 748,
+        "totalChunks": 374,
+        "totalSections": 1
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Mind to Matter_ The Astonishing Science of How Your Brain Creates Material Reality ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyMind to Matter_ The Astonishing Science of How Your Brain Creates Material Reality ( PDFDrive ).pdf is readyPDF at 28 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 555634,
+        "imagePlaceholderCount": 140,
+        "sample": "[Image omitted from PDF]\n\nPraise forMind to Matter\n\n“If you’ve been wondering whether your thoughts really do affect your life, this\n\nmarvelous book will make you a believer. From the level of the atom to the level\n\nof o..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=RKS-djP6l_u_PpvFRYdMC"
+      },
+      "durationMs": 10031,
+      "testedAt": "2026-04-09T18:07:51.390Z",
+      "document": {
+        "documentId": "RKS-djP6l_u_PpvFRYdMC",
+        "estimatedReadingMinutes": 402,
+        "excerpt": "[Image omitted from PDF]\n\nPraise forMind to Matter\n\n“If you’ve been wondering whether your thoughts really do affect your life, this\n\nmarvelous book will make you a believer. From ",
+        "payloadBytes": 26928959,
+        "title": "Mind to Matter_ The Astonishing Science of How Your Brain Creates Material Reality ( PDFDrive )",
+        "tokenCount": 88280,
+        "totalChunks": 47348,
+        "totalSections": 203
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Mother Teresa - A Biography ( PDFDrive.com ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyMother Teresa - A Biography ( PDFDrive.com ).pdf is readyPDF at 1.1 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 373147,
+        "imagePlaceholderCount": 2,
+        "sample": "[Image omitted from PDF]\n\nMOTHER TERESA\n\nRecent Titles in Greenwood Biographies Margaret Mead: A Biography Mary Bowman-Kruhm J.R.R. Tolkien: A Biography Leslie Ellen Jones Colin Powell: A Biography Richard Steins Pope Jo..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=pxXtBDuw6yTLgwILNZVdj"
+      },
+      "durationMs": 6107,
+      "testedAt": "2026-04-09T18:08:15.966Z",
+      "document": {
+        "documentId": "pxXtBDuw6yTLgwILNZVdj",
+        "estimatedReadingMinutes": 283,
+        "excerpt": "[Image omitted from PDF]\n\nMOTHER TERESA\n\nRecent Titles in Greenwood Biographies Margaret Mead: A Biography Mary Bowman-Kruhm J.R.R. Tolkien: A Biography Leslie Ellen Jones Colin Po",
+        "payloadBytes": 18726952,
+        "title": "Mother Teresa - A Biography ( PDFDrive.com )",
+        "tokenCount": 62196,
+        "totalChunks": 33243,
+        "totalSections": 192
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Nikola_Tesla Biography - Prodigal_Genius.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyNikola_Tesla Biography - Prodigal_Genius.pdf is readyPDF at 647 KB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 643669,
+        "imagePlaceholderCount": 0,
+        "sample": "Prodigal Genius\n\nBIOGRAPHY OF NIKOLA TESLA\n\n1994 Brotherhood of Life, Inc.,\n\n110 Dartmouth, SE, Albuquerque,\n\nNew Mexico 87106 USA\n\n\"SPECTACULAR\" is a mild word for describing the strange\n\nexperiment with life that compr..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=fNUPYDJg9CtqxK9nGojzR"
+      },
+      "durationMs": 8089,
+      "testedAt": "2026-04-09T18:08:36.520Z",
+      "document": {
+        "documentId": "fNUPYDJg9CtqxK9nGojzR",
+        "estimatedReadingMinutes": 485,
+        "excerpt": "Prodigal Genius\n\nBIOGRAPHY OF NIKOLA TESLA\n\n1994 Brotherhood of Life, Inc.,\n\n110 Dartmouth, SE, Albuquerque,\n\nNew Mexico 87106 USA\n\n\"SPECTACULAR\" is a mild word for describing the ",
+        "payloadBytes": 32743061,
+        "title": "Nikola_Tesla Biography - Prodigal_Genius",
+        "tokenCount": 106575,
+        "totalChunks": 57299,
+        "totalSections": 5
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "Peter Drucker's Five Most Important Questions_ Enduring Wisdom for Today's Leaders ( PDFDrive ).pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyPeter Drucker's Five Most Important Questions_ Enduring Wisdom for Today's Leaders ( PDFDrive ).pdf is readyPDF at 1.0 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 184547,
+        "imagePlaceholderCount": 2,
+        "sample": "[Image omitted from PDF]\n\nPraise forPeter Drucker’s Five Most Important Questions\n\n“As a marketer and a business leader I have found guidance in\n\nDrucker’s simple wisdom. My favorite: ‘Without a customer,\n\nthere is no bu..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=lJg--TCL06C8gcJ4cPPkF"
+      },
+      "durationMs": 3425,
+      "testedAt": "2026-04-09T18:09:00.468Z",
+      "document": {
+        "documentId": "lJg--TCL06C8gcJ4cPPkF",
+        "estimatedReadingMinutes": 132,
+        "excerpt": "[Image omitted from PDF]\n\nPraise forPeter Drucker’s Five Most Important Questions\n\n“As a marketer and a business leader I have found guidance in\n\nDrucker’s simple wisdom. My favori",
+        "payloadBytes": 8957800,
+        "title": "Peter Drucker's Five Most Important Questions_ Enduring Wisdom for Today's Leaders ( PDFDrive )",
+        "tokenCount": 28982,
+        "totalChunks": 15701,
+        "totalSections": 158
+      }
+    },
+    {
+      "catalogDecision": "catalog-ready",
+      "fileName": "robert-greene-mastery.pdf",
+      "status": "passed",
+      "extraction": {
+        "outcome": "ready",
+        "message": "Review readyrobert-greene-mastery.pdf is readyPDF at 2.4 MB imported. Review the text below, then Leyendo will finish structuring the document off the main thread when you open it. PDF layout is simplified in the preview, so review the extracted text before opening the reader.Next: edit the extracted text if needed, or open it in the reader."
+      },
+      "preview": {
+        "charCount": 929345,
+        "imagePlaceholderCount": 3,
+        "sample": "[Image omitted from PDF]\n\nMASTERY\n\n[Image omitted from PDF]\n\nALSO BY ROBERT\n\nGREENE\n\nThe 50th Law (with 50 Cent)\n\nThe 33 Strategies of War\n\n(A Joost Elfers Production)\n\nThe Art of Seduction\n\n(A Joost Elfers Production)\n\n..."
+      },
+      "open": {
+        "outcome": "reader",
+        "message": "Reader canvas",
+        "url": "http://127.0.0.1:3000/reader?document=g9zH6tyOnNGmRt4nz1UCH"
+      },
+      "durationMs": 11360,
+      "testedAt": "2026-04-09T18:09:13.959Z",
+      "document": {
+        "documentId": "g9zH6tyOnNGmRt4nz1UCH",
+        "estimatedReadingMinutes": 697,
+        "excerpt": "[Image omitted from PDF]\n\nMASTERY\n\n[Image omitted from PDF]\n\nALSO BY ROBERT\n\nGREENE\n\nThe 50th Law (with 50 Cent)\n\nThe 33 Strategies of War\n\n(A Joost Elfers Production)\n\nThe Art of ",
+        "payloadBytes": 50396420,
+        "title": "robert-greene-mastery",
+        "tokenCount": 153283,
+        "totalChunks": 84615,
+        "totalSections": 125
+      }
+    }
+  ]
+}
