@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  BookMarked,
   BookOpenText,
   Check,
   ChevronDown,
@@ -27,6 +28,7 @@ import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/layout/locale-provider";
 import { getLocalizedCopy, type LocalizedCopy } from "@/lib/locale";
+import { hasPlanAccess } from "@/lib/plans";
 import {
   getLocaleSwitchPath,
   getLocalizedPublicPath,
@@ -78,6 +80,13 @@ const links = [
     icon: Cloud,
   },
 ] as const;
+
+const catalogLink = {
+  href: "/catalog",
+  isPublic: false,
+  label: { en: "Catalog", es: "Catalogo", pt: "Catalogo" },
+  icon: BookMarked,
+} as const;
 
 const brandLabel: LocalizedCopy = {
   en: "Read faster, stay in control.",
@@ -165,7 +174,7 @@ export function SiteHeader() {
   const router = useRouter();
   const { locale, setLocale } = useLocale();
   const { resolvedTheme, setTheme } = useTheme();
-  const { signOut, syncStatus, user } = useSupabaseAuth();
+  const { profile, signOut, syncStatus, user } = useSupabaseAuth();
   const [showsFullHeader, setShowsFullHeader] = useState(() => {
     if (
       typeof window === "undefined" ||
@@ -256,15 +265,22 @@ export function SiteHeader() {
 
   const localizedLinks = useMemo(
     () =>
-      links.map((link) => ({
-        ...link,
-        href:
-          link.isPublic && publicLocaleContext.isPublicRoute
-            ? getLocalizedPublicPath(link.href, publicLocaleContext.locale)
-            : link.href,
-        label: getLocalizedCopy(locale, link.label),
-      })),
-    [locale, publicLocaleContext.isPublicRoute, publicLocaleContext.locale],
+      [...links, ...(hasPlanAccess(profile, "max") ? [catalogLink] : [])].map(
+        (link) => ({
+          ...link,
+          href:
+            link.isPublic && publicLocaleContext.isPublicRoute
+              ? getLocalizedPublicPath(link.href, publicLocaleContext.locale)
+              : link.href,
+          label: getLocalizedCopy(locale, link.label),
+        }),
+      ),
+    [
+      locale,
+      profile,
+      publicLocaleContext.isPublicRoute,
+      publicLocaleContext.locale,
+    ],
   );
 
   function handleLocaleChange(nextLocale: typeof locale) {

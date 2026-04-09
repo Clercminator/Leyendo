@@ -46,7 +46,9 @@ import {
   resolvePdfSelectionAnchor,
   resolveSourcePageIndexForAnchor,
 } from "@/features/reader/pdf/navigation";
+import { isCatalogDocumentId, toCatalogOwnerId } from "@/lib/catalog";
 import { getLocalizedCopy } from "@/lib/locale";
+import { hasPlanAccess } from "@/lib/plans";
 import { useReaderStore } from "@/state/reader-store";
 import type { Bookmark, ReaderMode, ReaderPreferences } from "@/types/reader";
 import { readerModes, readerPresets } from "@/types/reader";
@@ -126,12 +128,22 @@ export function ReaderWorkspace({
   const { locale } = useLocale();
   const { profile, syncReaderPreferences, user } = useSupabaseAuth();
   const userId = user?.id;
+  const isRequestedCatalogDocument = isCatalogDocumentId(documentId);
+  const canAccessCatalog = hasPlanAccess(profile, "max");
+  const canSyncDocumentState = Boolean(userId && !isRequestedCatalogDocument);
+  const localDocumentOwnerId = userId
+    ? isRequestedCatalogDocument
+      ? toCatalogOwnerId(userId)
+      : userId
+    : undefined;
   const {
     queueBookmarkDelete,
     queueBookmarkUpsert,
     queueHighlightDelete,
     queueHighlightUpsert,
-  } = useCloudAnchorSync({ userId });
+  } = useCloudAnchorSync({
+    userId: canSyncDocumentState ? userId : undefined,
+  });
   const {
     currentChunkIndex,
     isPlaying,
@@ -165,6 +177,7 @@ export function ReaderWorkspace({
     prependHighlight,
     removeHighlight,
   } = useReaderDocument({
+    canAccessCatalog,
     documentId,
     bookmarkId,
     highlightId,
@@ -272,7 +285,7 @@ export function ReaderWorkspace({
     profileReaderPreferences: profile?.readerPreferences,
     runtimeChunks,
     syncReaderPreferences,
-    userId,
+    userId: canSyncDocumentState ? userId : undefined,
     updatePreferences,
   });
 
@@ -471,16 +484,16 @@ export function ReaderWorkspace({
     const bookmark = await saveBookmark({
       documentId: document.id,
       label: `Bookmark ${bookmarks.length + 1}`,
-      ownerId: userId,
+      ownerId: localDocumentOwnerId,
       chunkIndex: resolvedChunkIndex,
       tokenIndex: activeChunk.anchorTokenIndex,
       paragraphIndex: activeChunk.paragraphIndex,
       sectionIndex: activeChunk.sectionIndex,
-      syncState: userId ? "synced" : undefined,
+      syncState: canSyncDocumentState ? "synced" : undefined,
     });
 
     prependBookmark(bookmark);
-    if (userId) {
+    if (canSyncDocumentState) {
       queueBookmarkUpsert(bookmark);
     }
     announce(`${bookmark.label} saved.`);
@@ -492,7 +505,8 @@ export function ReaderWorkspace({
     prependBookmark,
     queueBookmarkUpsert,
     resolvedChunkIndex,
-    userId,
+    canSyncDocumentState,
+    localDocumentOwnerId,
   ]);
 
   const handleSavePdfBookmark = useCallback(
@@ -512,17 +526,17 @@ export function ReaderWorkspace({
       const bookmark = await saveBookmark({
         documentId: document.id,
         label: `Bookmark ${bookmarks.length + 1}`,
-        ownerId: userId,
+        ownerId: localDocumentOwnerId,
         chunkIndex: isPageOnlyBookmark ? -1 : resolvedIndex,
         tokenIndex: isPageOnlyBookmark ? -1 : anchorChunk.anchorTokenIndex,
         paragraphIndex: isPageOnlyBookmark ? -1 : anchorChunk.paragraphIndex,
         sectionIndex: isPageOnlyBookmark ? -1 : anchorChunk.sectionIndex,
         sourcePageIndex: pageIndex,
-        syncState: userId ? "synced" : undefined,
+        syncState: canSyncDocumentState ? "synced" : undefined,
       });
 
       prependBookmark(bookmark);
-      if (userId) {
+      if (canSyncDocumentState) {
         queueBookmarkUpsert(bookmark);
       }
 
@@ -541,7 +555,8 @@ export function ReaderWorkspace({
       queueBookmarkUpsert,
       resolvedChunkIndex,
       runtimeChunks,
-      userId,
+      canSyncDocumentState,
+      localDocumentOwnerId,
     ],
   );
 
@@ -553,18 +568,18 @@ export function ReaderWorkspace({
     const highlight = await saveHighlight({
       documentId: document.id,
       label: `Highlight ${highlights.length + 1}`,
-      ownerId: userId,
+      ownerId: localDocumentOwnerId,
       quote: activeChunk.text,
       note: highlightNote.trim() || undefined,
       chunkIndex: resolvedChunkIndex,
       tokenIndex: activeChunk.anchorTokenIndex,
       paragraphIndex: activeChunk.paragraphIndex,
       sectionIndex: activeChunk.sectionIndex,
-      syncState: userId ? "synced" : undefined,
+      syncState: canSyncDocumentState ? "synced" : undefined,
     });
 
     prependHighlight(highlight);
-    if (userId) {
+    if (canSyncDocumentState) {
       queueHighlightUpsert(highlight);
     }
     setHighlightNote("");
@@ -578,7 +593,8 @@ export function ReaderWorkspace({
     prependHighlight,
     queueHighlightUpsert,
     resolvedChunkIndex,
-    userId,
+    canSyncDocumentState,
+    localDocumentOwnerId,
   ]);
 
   const handleSavePdfHighlight = useCallback(
@@ -616,7 +632,7 @@ export function ReaderWorkspace({
       const highlight = await saveHighlight({
         documentId: document.id,
         label: `Highlight ${highlights.length + 1}`,
-        ownerId: userId,
+        ownerId: localDocumentOwnerId,
         quote: selectionText || anchorChunk.text,
         note: highlightNote.trim() || undefined,
         chunkIndex: resolvedIndex,
@@ -624,11 +640,11 @@ export function ReaderWorkspace({
         paragraphIndex:
           resolvedAnchor?.paragraphIndex ?? anchorChunk.paragraphIndex,
         sectionIndex: resolvedAnchor?.sectionIndex ?? anchorChunk.sectionIndex,
-        syncState: userId ? "synced" : undefined,
+        syncState: canSyncDocumentState ? "synced" : undefined,
       });
 
       prependHighlight(highlight);
-      if (userId) {
+      if (canSyncDocumentState) {
         queueHighlightUpsert(highlight);
       }
       setHighlightNote("");
@@ -644,13 +660,14 @@ export function ReaderWorkspace({
       queueHighlightUpsert,
       resolvedChunkIndex,
       runtimeChunks,
-      userId,
+      canSyncDocumentState,
+      localDocumentOwnerId,
     ],
   );
 
   const handleDeleteBookmark = useCallback(
     async (bookmarkIdToDelete: string) => {
-      if (userId) {
+      if (canSyncDocumentState) {
         queueBookmarkDelete(bookmarkIdToDelete);
       }
 
@@ -658,12 +675,12 @@ export function ReaderWorkspace({
       removeBookmark(bookmarkIdToDelete);
       announce("Bookmark deleted.");
     },
-    [announce, queueBookmarkDelete, removeBookmark, userId],
+    [announce, canSyncDocumentState, queueBookmarkDelete, removeBookmark],
   );
 
   const handleDeleteHighlight = useCallback(
     async (highlightIdToDelete: string) => {
-      if (userId) {
+      if (canSyncDocumentState) {
         queueHighlightDelete(highlightIdToDelete);
       }
 
@@ -671,7 +688,7 @@ export function ReaderWorkspace({
       removeHighlight(highlightIdToDelete);
       announce("Highlight deleted.");
     },
-    [announce, queueHighlightDelete, removeHighlight, userId],
+    [announce, canSyncDocumentState, queueHighlightDelete, removeHighlight],
   );
 
   const jumpToAnchor = useCallback(

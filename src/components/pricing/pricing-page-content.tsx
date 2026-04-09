@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Coins, CreditCard, Globe2, X } from "lucide-react";
 
 import { useLocale } from "@/components/layout/locale-provider";
+import { focusFileUploadLimit, freeFileUploadLimit } from "@/lib/plans";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
 import { founderGitHubUrl, founderLinkedInUrl } from "@/lib/site";
 
@@ -16,6 +17,7 @@ type PlanId = "basic" | "focus" | "max";
 type PaidPlanId = Exclude<PlanId, "basic">;
 
 const paymentRegionStorageKey = "leyendo_payment_region";
+const paidSignupPlanStorageKey = "leyendo_paid_signup_plan";
 const latamCountryCodes = new Set([
   "AR",
   "BO",
@@ -70,6 +72,8 @@ interface Copy {
   binanceDialogTitle: string;
   close: string;
   comparisonEyebrow: string;
+  continueToAccount: string;
+  continueToAccountHint: string;
   contactDavid: string;
   focusCta: string;
   focusDescription: string;
@@ -147,10 +151,16 @@ function topBadgeClass(planId: PlanId) {
 }
 
 interface PricingPageContentProps {
+  initialPlanId?: string;
   initialPaymentStatus?: string;
 }
 
+function isPaidPlanId(value: unknown): value is PaidPlanId {
+  return value === "focus" || value === "max";
+}
+
 export function PricingPageContent({
+  initialPlanId,
   initialPaymentStatus,
 }: PricingPageContentProps) {
   const { locale } = useLocale();
@@ -159,6 +169,9 @@ export function PricingPageContent({
   );
   const [statusMessage, setStatusMessage] = useState<string>();
   const [successMessage, setSuccessMessage] = useState<string>();
+  const [readySignupPlan, setReadySignupPlan] = useState<PaidPlanId | null>(
+    null,
+  );
   const [binancePlanId, setBinancePlanId] = useState<PaidPlanId | null>(null);
 
   useEffect(() => {
@@ -202,7 +215,7 @@ export function PricingPageContent({
       return {
         basicCta: "Empezar gratis",
         basicDescription:
-          "Lectura local en un dispositivo con tu progreso y notas guardadas en este equipo.",
+          "Lectura local en un dispositivo con hasta 3 cargas de archivos y tu progreso guardado en este equipo.",
         basicTag: "Empieza aqui",
         bestValue: "Mas elegido",
         binanceCta: "Pagar con Binance",
@@ -211,10 +224,13 @@ export function PricingPageContent({
         binanceDialogTitle: "Pago con Binance Pay",
         close: "Cerrar",
         comparisonEyebrow: "Planes",
+        continueToAccount: "Continuar con la cuenta pagada",
+        continueToAccountHint:
+          "Tu pago ya esta aprobado. Termina la cuenta para activar sincronizacion y palabras guardadas.",
         contactDavid: "Abrir pagina de contacto",
         focusCta: "Obtener Focus",
         focusDescription:
-          "Para lectores que quieren sincronizacion, vocabulario guardado y tres libros PDF incluidos.",
+          "Para lectores que quieren hasta 15 cargas de archivos, sincronizacion, vocabulario guardado y tres libros PDF incluidos.",
         globalState: "Mostrando pago US/EU (LemonSqueezy)",
         globalSwitch: "Pagas desde LATAM? Cambiar",
         heroDescription:
@@ -224,7 +240,7 @@ export function PricingPageContent({
         latamSwitch: "Pagas desde US/EU? Cambiar",
         maxCta: "Obtener Max",
         maxDescription:
-          "Todo Focus mas 100+ libros en la nube y acceso incluido a Vector Max.",
+          "Todo Focus mas cargas ilimitadas, 100+ libros en la nube y acceso incluido a Vector Max.",
         missingProvider:
           "Este checkout todavia no esta conectado. Puedes usar Binance mientras configuramos este proveedor.",
         paymentSuccess:
@@ -239,7 +255,7 @@ export function PricingPageContent({
       return {
         basicCta: "Comecar gratis",
         basicDescription:
-          "Leitura local em um unico dispositivo com progresso e notas guardados neste aparelho.",
+          "Leitura local em um unico dispositivo com ate 3 uploads de arquivo e seu progresso guardado neste aparelho.",
         basicTag: "Comece aqui",
         bestValue: "Mais escolhido",
         binanceCta: "Pagar com Binance",
@@ -248,10 +264,13 @@ export function PricingPageContent({
         binanceDialogTitle: "Pagamento com Binance Pay",
         close: "Fechar",
         comparisonEyebrow: "Planos",
+        continueToAccount: "Continuar com a conta paga",
+        continueToAccountHint:
+          "Seu pagamento ja foi aprovado. Conclua a conta para ativar sincronizacao e palavras salvas.",
         contactDavid: "Abrir pagina de contato",
         focusCta: "Obter Focus",
         focusDescription:
-          "Para leitores que querem sincronizacao, vocabulario salvo e tres livros PDF incluidos.",
+          "Para leitores que querem ate 15 uploads de arquivo, sincronizacao, vocabulario salvo e tres livros PDF incluidos.",
         globalState: "Mostrando pagamento US/EU (LemonSqueezy)",
         globalSwitch: "Paga da LATAM? Trocar",
         heroDescription:
@@ -261,7 +280,7 @@ export function PricingPageContent({
         latamSwitch: "Paga dos EUA/Europa? Trocar",
         maxCta: "Obter Max",
         maxDescription:
-          "Tudo do Focus mais 100+ livros na nuvem e acesso incluido ao Vector Max.",
+          "Tudo do Focus mais uploads ilimitados, 100+ livros na nuvem e acesso incluido ao Vector Max.",
         missingProvider:
           "Este checkout ainda nao esta conectado. Voce pode usar Binance enquanto este provedor e configurado.",
         paymentSuccess:
@@ -275,7 +294,7 @@ export function PricingPageContent({
     return {
       basicCta: "Start free",
       basicDescription:
-        "Local reading on one device with your progress, highlights, and notes stored on this device.",
+        "Local reading on one device with up to 3 file uploads and your progress stored on this device.",
       basicTag: "Start here",
       bestValue: "Most chosen",
       binanceCta: "Pay with Binance",
@@ -284,10 +303,13 @@ export function PricingPageContent({
       binanceDialogTitle: "Pay with Binance Pay",
       close: "Close",
       comparisonEyebrow: "Plans",
+      continueToAccount: "Continue to paid account setup",
+      continueToAccountHint:
+        "Your payment is approved. Finish the account to unlock sync and the saved-word dictionary.",
       contactDavid: "Open contact page",
       focusCta: "Get Focus",
       focusDescription:
-        "For readers who want synced reading, saved vocabulary, and 3 included PDF books.",
+        "For readers who want up to 15 file uploads, synced reading, saved vocabulary, and 3 included PDF books.",
       globalState: "Showing US/EU payment (LemonSqueezy)",
       globalSwitch: "Paying from LATAM? Switch",
       heroDescription:
@@ -297,7 +319,7 @@ export function PricingPageContent({
       latamSwitch: "Paying from US/EU? Switch",
       maxCta: "Get Max",
       maxDescription:
-        "Everything in Focus plus 100+ cloud books and bundled Vector Max access.",
+        "Everything in Focus plus unlimited file uploads, 100+ cloud books, and bundled Vector Max access.",
       missingProvider:
         "This checkout is not connected yet. You can use Binance while this provider is being configured.",
       paymentSuccess:
@@ -307,6 +329,20 @@ export function PricingPageContent({
       priceSuffix: "/month",
     };
   }, [locale]);
+
+  useEffect(() => {
+    if (isPaidPlanId(initialPlanId)) {
+      setReadySignupPlan(initialPlanId);
+      return;
+    }
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedPlan = window.localStorage.getItem(paidSignupPlanStorageKey);
+    setReadySignupPlan(isPaidPlanId(storedPlan) ? storedPlan : null);
+  }, [initialPlanId]);
 
   useEffect(() => {
     if (initialPaymentStatus === "success") {
@@ -326,25 +362,31 @@ export function PricingPageContent({
         features:
           locale === "en"
             ? [
-                "Local-first reader for PDF, DOCX, RTF, Markdown, TXT, and pasted text",
+                `Up to ${freeFileUploadLimit} file uploads on this device for PDF, DOCX, RTF, Markdown, and TXT`,
                 "Reader modes, bookmarks, highlights, and progress on this device",
-                "Import your own documents without an account requirement",
+                "Paste text instantly without creating an account",
               ]
             : locale === "es"
               ? [
-                  "Lector local para PDF, DOCX, RTF, Markdown, TXT y texto pegado",
+                  `Hasta ${freeFileUploadLimit} cargas de archivos en este dispositivo para PDF, DOCX, RTF, Markdown y TXT`,
                   "Modos de lectura, marcadores, destacados y progreso en este dispositivo",
-                  "Importa tus propios documentos sin obligarte a crear cuenta",
+                  "Pega texto al instante sin obligarte a crear cuenta",
                 ]
               : [
-                  "Leitor local para PDF, DOCX, RTF, Markdown, TXT e texto colado",
+                  `Ate ${freeFileUploadLimit} uploads de arquivo neste dispositivo para PDF, DOCX, RTF, Markdown e TXT`,
                   "Modos de leitura, marcadores, destaques e progresso neste dispositivo",
-                  "Importe seus proprios documentos sem exigir conta",
+                  "Cole texto na hora sem exigir conta",
                 ],
         href: "/reader",
         label: "Basic Reader",
         price: 0,
         tag: copy.basicTag,
+        uploadCapLabel:
+          locale === "en"
+            ? `${freeFileUploadLimit} file uploads`
+            : locale === "es"
+              ? `${freeFileUploadLimit} cargas de archivos`
+              : `${freeFileUploadLimit} uploads de arquivo`,
       },
       {
         id: "focus" as const,
@@ -353,23 +395,32 @@ export function PricingPageContent({
         features:
           locale === "en"
             ? [
+                `${focusFileUploadLimit} file uploads for your personal library`,
                 "3 included PDF books to start reading immediately",
                 "Cross-device sync for progress, highlights, and bookmarks",
                 "Saved-word dictionary for collecting new words and meanings",
               ]
             : locale === "es"
               ? [
+                  `${focusFileUploadLimit} cargas de archivos para tu biblioteca personal`,
                   "3 libros PDF incluidos para empezar a leer de inmediato",
                   "Sincronizacion entre dispositivos para progreso, destacados y marcadores",
                   "Diccionario de palabras guardadas para reunir palabras nuevas y su significado",
                 ]
               : [
+                  `${focusFileUploadLimit} uploads de arquivo para sua biblioteca pessoal`,
                   "3 livros PDF incluidos para comecar a ler imediatamente",
                   "Sincronizacao entre dispositivos para progresso, destaques e marcadores",
                   "Dicionario de palavras salvas para reunir palavras novas e seus significados",
                 ],
         label: "Focus",
         price: 6.9,
+        uploadCapLabel:
+          locale === "en"
+            ? `${focusFileUploadLimit} file uploads`
+            : locale === "es"
+              ? `${focusFileUploadLimit} cargas de archivos`
+              : `${focusFileUploadLimit} uploads de arquivo`,
       },
       {
         id: "max" as const,
@@ -378,17 +429,20 @@ export function PricingPageContent({
         features:
           locale === "en"
             ? [
+                "Unlimited file uploads across your reading workflow",
                 "Everything in Focus plus 100+ cloud books from David's collection",
                 "View the private cloud library inside Leyendo without download access",
                 "Bundled access to Vector Max for planning and execution work",
               ]
             : locale === "es"
               ? [
+                  "Cargas ilimitadas para todo tu flujo de lectura",
                   "Todo lo de Focus mas 100+ libros en la nube de la coleccion personal de David",
                   "Lee la biblioteca privada en la nube dentro de Leyendo sin descargar archivos",
                   "Acceso incluido a Vector Max para planificacion y ejecucion",
                 ]
               : [
+                  "Uploads ilimitados para todo o seu fluxo de leitura",
                   "Tudo do Focus mais 100+ livros na nuvem da colecao pessoal de David",
                   "Leia a biblioteca privada na nuvem dentro do Leyendo sem baixar arquivos",
                   "Acesso incluido ao Vector Max para planejamento e execucao",
@@ -396,6 +450,12 @@ export function PricingPageContent({
         label: "Max",
         price: 15.9,
         tag: copy.bestValue,
+        uploadCapLabel:
+          locale === "en"
+            ? "Unlimited uploads"
+            : locale === "es"
+              ? "Cargas ilimitadas"
+              : "Uploads ilimitados",
       },
     ],
     [copy, locale],
@@ -416,6 +476,8 @@ export function PricingPageContent({
     }
 
     setStatusMessage(undefined);
+    window.localStorage.setItem(paidSignupPlanStorageKey, planId);
+    setReadySignupPlan(planId);
     window.open(providerUrl, "_blank", "noopener,noreferrer");
   }
 
@@ -457,9 +519,22 @@ export function PricingPageContent({
             {copy.paymentNote}
           </p>
           {successMessage ? (
-            <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 text-sm leading-7 text-emerald-100">
-              {successMessage}
-            </p>
+            <div className="mx-auto mt-5 max-w-2xl rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 text-sm leading-7 text-emerald-100">
+              <p>{successMessage}</p>
+              {readySignupPlan ? (
+                <div className="mt-4">
+                  <p className="text-sm text-emerald-50/90">
+                    {copy.continueToAccountHint}
+                  </p>
+                  <Link
+                    href={`/account?payment=success&plan=${readySignupPlan}`}
+                    className="mt-3 inline-flex min-h-11 items-center rounded-full border border-emerald-200/30 bg-emerald-50/10 px-5 py-2.5 font-semibold text-emerald-50 transition hover:bg-emerald-50/16"
+                  >
+                    {copy.continueToAccount}
+                  </Link>
+                </div>
+              ) : null}
+            </div>
           ) : null}
           {statusMessage ? (
             <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-[#553b20] bg-[#22160a] px-4 py-3 text-sm leading-7 text-[#f7d8a7]">
@@ -492,6 +567,9 @@ export function PricingPageContent({
                       ({copy.priceSuffix})
                     </span>
                   ) : null}
+                </div>
+                <div className="mt-5 inline-flex rounded-full border border-[#d49a61]/35 bg-[#26170f] px-4 py-2 text-sm font-semibold text-[#ffd7ab] shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+                  {plan.uploadCapLabel}
                 </div>
                 <p className="mt-5 text-sm leading-8 text-[#94a3b8]">
                   {plan.description}

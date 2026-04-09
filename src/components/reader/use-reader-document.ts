@@ -11,7 +11,12 @@ import {
   getHighlightsForDocument,
   getSessionForDocument,
 } from "@/db/repositories";
+import {
+  getCatalogBookIdFromDocumentId,
+  isCatalogDocumentId,
+} from "@/lib/catalog";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { hydrateCatalogBookToLocal } from "@/lib/supabase/catalog";
 import {
   hydrateRemoteDocumentPayloadToLocal,
   hydrateRemoteDocumentToLocal,
@@ -20,6 +25,7 @@ import type { DocumentRecord } from "@/types/document";
 import type { Bookmark, Highlight, ReadingSession } from "@/types/reader";
 
 interface UseReaderDocumentOptions {
+  canAccessCatalog?: boolean;
   documentId?: string;
   bookmarkId?: string;
   highlightId?: string;
@@ -28,6 +34,7 @@ interface UseReaderDocumentOptions {
 }
 
 export function useReaderDocument({
+  canAccessCatalog,
   documentId,
   bookmarkId,
   highlightId,
@@ -65,6 +72,18 @@ export function useReaderDocument({
       setIsLoading(true);
       setError(undefined);
 
+      const isCatalogDocument = isCatalogDocumentId(documentId);
+      if (isCatalogDocument && !canAccessCatalog) {
+        setDocument(undefined);
+        setSavedSession(undefined);
+        setBookmarks([]);
+        setHighlights([]);
+        setError("This catalog title needs an active Max subscription.");
+        setIsLoading(false);
+        setActiveDocument(undefined);
+        return;
+      }
+
       let [record, session, targetBookmark, targetHighlight] =
         await Promise.all([
           getDocumentById(documentId),
@@ -80,17 +99,23 @@ export function useReaderDocument({
 
         if (supabase) {
           try {
-            const hydrated = record
-              ? await hydrateRemoteDocumentPayloadToLocal(
-                  supabase,
+            const hydrated = isCatalogDocument
+              ? await hydrateCatalogBookToLocal(supabase, {
+                  catalogBookId:
+                    getCatalogBookIdFromDocumentId(documentId) ?? documentId,
                   userId,
-                  record,
-                )
-              : await hydrateRemoteDocumentToLocal(
-                  supabase,
-                  userId,
-                  documentId,
-                );
+                })
+              : record
+                ? await hydrateRemoteDocumentPayloadToLocal(
+                    supabase,
+                    userId,
+                    record,
+                  )
+                : await hydrateRemoteDocumentToLocal(
+                    supabase,
+                    userId,
+                    documentId,
+                  );
 
             if (hydrated) {
               [record, session, targetBookmark, targetHighlight] =
@@ -168,7 +193,14 @@ export function useReaderDocument({
     return () => {
       cancelled = true;
     };
-  }, [bookmarkId, documentId, highlightId, setActiveDocument, userId]);
+  }, [
+    bookmarkId,
+    canAccessCatalog,
+    documentId,
+    highlightId,
+    setActiveDocument,
+    userId,
+  ]);
 
   return {
     document,

@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { db } from "@/db/app-db";
+import { isCatalogDocumentId } from "@/lib/catalog";
 import type {
   DocumentAssetRecord,
   DocumentModel,
@@ -48,7 +49,15 @@ export async function getDocumentAsset(documentId: string) {
 }
 
 export async function getRecentDocuments(limit = 8) {
-  return db.documents.orderBy("updatedAt").reverse().limit(limit).toArray();
+  const documents = await db.documents
+    .orderBy("updatedAt")
+    .reverse()
+    .limit(limit * 4)
+    .toArray();
+
+  return documents
+    .filter((document) => !isCatalogDocumentId(document.id))
+    .slice(0, limit);
 }
 
 export async function saveSession(session: ReadingSession) {
@@ -92,7 +101,9 @@ export async function getRecentSessions(
   return sessions
     .map((session, index) => {
       const document = documents[index];
-      return document ? { session, document } : null;
+      return document && !isCatalogDocumentId(document.id)
+        ? { session, document }
+        : null;
     })
     .filter((entry): entry is RecentSessionRecord => entry !== null);
 }
@@ -142,7 +153,9 @@ export async function getRecentBookmarks(
   return bookmarks
     .map((bookmark, index) => {
       const document = documents[index];
-      return document ? { bookmark, document } : null;
+      return document && !isCatalogDocumentId(document.id)
+        ? { bookmark, document }
+        : null;
     })
     .filter((entry): entry is RecentBookmarkRecord => entry !== null);
 }
@@ -196,7 +209,9 @@ export async function getRecentHighlights(
   return highlights
     .map((highlight, index) => {
       const document = documents[index];
-      return document ? { highlight, document } : null;
+      return document && !isCatalogDocumentId(document.id)
+        ? { highlight, document }
+        : null;
     })
     .filter((entry): entry is RecentHighlightRecord => entry !== null);
 }

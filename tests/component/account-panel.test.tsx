@@ -134,7 +134,9 @@ describe("AccountPanel", () => {
       profile: {
         createdAt: "2026-03-30T10:00:00.000Z",
         displayName: "Lee Reader",
+        fileUploadCount: 4,
         marketingConsent: false,
+        planTier: "focus",
         updatedAt: "2026-04-05T10:00:00.000Z",
         userId: "user-1",
       },
@@ -187,7 +189,9 @@ describe("AccountPanel", () => {
       profile: {
         createdAt: "2026-03-30T10:00:00.000Z",
         displayName: "Lee Reader",
+        fileUploadCount: 2,
         marketingConsent: false,
+        planTier: "focus",
         updatedAt: "2026-03-30T10:00:00.000Z",
         userId: "user-1",
       },
@@ -216,6 +220,144 @@ describe("AccountPanel", () => {
         /bookmarks and highlights return without uploading the same file again/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("lets a Focus user save a word to the dictionary", async () => {
+    const updateProfile = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: "2026-03-30T10:00:00.000Z",
+      lastSyncSummary: undefined,
+      profile: {
+        createdAt: "2026-03-30T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 2,
+        marketingConsent: false,
+        planTier: "focus",
+        savedWords: [],
+        updatedAt: "2026-03-30T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "synced",
+      syncWithCloud: vi.fn(),
+      updateProfile,
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<AccountPanel />);
+
+    await user.type(screen.getByLabelText(/^word$/i), "serendipity");
+    await user.type(
+      screen.getByLabelText(/^meaning$/i),
+      "A fortunate discovery by chance",
+    );
+    await user.type(
+      screen.getByLabelText(/context or note/i),
+      "Found while reading an essay.",
+    );
+    await user.click(screen.getByRole("button", { name: /save word/i }));
+
+    await waitFor(() => {
+      expect(updateProfile).toHaveBeenCalledWith({
+        savedWords: [
+          expect.objectContaining({
+            meaning: "A fortunate discovery by chance",
+            note: "Found while reading an essay.",
+            word: "serendipity",
+          }),
+        ],
+      });
+    });
+
+    expect(
+      await screen.findByText(/word saved to your dictionary/i),
+    ).toBeInTheDocument();
+  });
+
+  it("lets a paid user remove a saved word", async () => {
+    const updateProfile = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: "2026-03-30T10:00:00.000Z",
+      lastSyncSummary: undefined,
+      profile: {
+        createdAt: "2026-03-30T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 2,
+        marketingConsent: false,
+        planTier: "max",
+        savedWords: [
+          {
+            createdAt: "2026-03-30T10:00:00.000Z",
+            meaning: "A fortunate discovery by chance",
+            note: "Found while reading an essay.",
+            word: "serendipity",
+          },
+        ],
+        updatedAt: "2026-03-30T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "synced",
+      syncWithCloud: vi.fn(),
+      updateProfile,
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<AccountPanel />);
+
+    await user.click(screen.getByRole("button", { name: /remove/i }));
+
+    await waitFor(() => {
+      expect(updateProfile).toHaveBeenCalledWith({
+        savedWords: [],
+      });
+    });
   });
 
   it("offers GitHub auth and explains the email link flow", async () => {
@@ -269,5 +411,49 @@ describe("AccountPanel", () => {
     expect(
       screen.getByRole("button", { name: /send email sign-in link/i }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps create-account locked until a paid plan has been selected", async () => {
+    const user = userEvent.setup();
+
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: undefined,
+      lastSyncSummary: undefined,
+      profile: undefined,
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "idle",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: null,
+    });
+
+    render(<AccountPanel />);
+
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(
+      screen.getByText(/focus or max is required to create an account/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /see paid plans/i }),
+    ).toHaveAttribute("href", "/pricing");
   });
 });

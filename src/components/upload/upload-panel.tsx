@@ -37,9 +37,18 @@ import {
   shouldOffloadPdfExtraction,
 } from "@/features/ingest/extract/file-text-client";
 import { getLocalizedCopy } from "@/lib/locale";
+import {
+  freeFileUploadLimit,
+  getEffectivePlanTier,
+  getFileUploadLimit,
+  getRemainingFileUploads,
+} from "@/lib/plans";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   ensureProfile,
+  getGuestFileUploadCount,
+  incrementGuestFileUploadCount,
+  incrementProfileFileUploadCount,
   upsertCloudDocuments,
   upsertCloudSessions,
 } from "@/lib/supabase/library-sync";
@@ -656,6 +665,71 @@ function createMissingContentStatus(
   };
 }
 
+function createUploadQuotaStatus(args: {
+  locale: "en" | "es" | "pt";
+  planTier: "basic" | "focus" | "max";
+}) {
+  const { locale, planTier } = args;
+
+  if (planTier === "focus") {
+    return {
+      tone: "error" as const,
+      eyebrow:
+        locale === "en"
+          ? "Upload limit reached"
+          : locale === "es"
+            ? "Limite de cargas alcanzado"
+            : "Limite de uploads atingido",
+      title:
+        locale === "en"
+          ? "Focus includes up to 15 file uploads"
+          : locale === "es"
+            ? "Focus incluye hasta 15 cargas de archivos"
+            : "Focus inclui ate 15 uploads de arquivo",
+      detail:
+        locale === "en"
+          ? "This account has already used all 15 Focus uploads. Upgrade to Max to keep importing files."
+          : locale === "es"
+            ? "Esta cuenta ya uso las 15 cargas de Focus. Mejora a Max para seguir importando archivos."
+            : "Esta conta ja usou os 15 uploads do Focus. Faca upgrade para Max para continuar importando arquivos.",
+      nextStep:
+        locale === "en"
+          ? "Pasted text still works, or you can upgrade for unlimited uploads."
+          : locale === "es"
+            ? "El texto pegado sigue funcionando, o puedes mejorar para tener cargas ilimitadas."
+            : "Texto colado continua funcionando, ou voce pode fazer upgrade para uploads ilimitados.",
+    };
+  }
+
+  return {
+    tone: "error" as const,
+    eyebrow:
+      locale === "en"
+        ? "Upload limit reached"
+        : locale === "es"
+          ? "Limite de cargas alcanzado"
+          : "Limite de uploads atingido",
+    title:
+      locale === "en"
+        ? "Free reading includes 3 file uploads"
+        : locale === "es"
+          ? "La lectura gratis incluye 3 cargas de archivos"
+          : "A leitura gratuita inclui 3 uploads de arquivo",
+    detail:
+      locale === "en"
+        ? "You have already used the 3 free uploads on this plan or device."
+        : locale === "es"
+          ? "Ya usaste las 3 cargas gratis disponibles en este plan o dispositivo."
+          : "Voce ja usou os 3 uploads gratis disponiveis neste plano ou dispositivo.",
+    nextStep:
+      locale === "en"
+        ? "Upgrade to Focus for 15 uploads or Max for unlimited uploads."
+        : locale === "es"
+          ? "Mejora a Focus para 15 cargas o a Max para cargas ilimitadas."
+          : "Faca upgrade para Focus com 15 uploads ou para Max com uploads ilimitados.",
+  };
+}
+
 function createSubmissionErrorStatus(
   locale: "en" | "es" | "pt",
   error: unknown,
@@ -1062,7 +1136,7 @@ function createUploadFlowSteps(
 export function UploadPanel() {
   const router = useRouter();
   const { locale } = useLocale();
-  const { user } = useSupabaseAuth();
+  const { profile, refreshProfile, user } = useSupabaseAuth();
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1084,6 +1158,7 @@ export function UploadPanel() {
   const [submissionProgress, setSubmissionProgress] =
     useState<SubmissionProgressState>();
   const [submissionElapsedMs, setSubmissionElapsedMs] = useState(0);
+  const [guestFileUploadCount, setGuestFileUploadCount] = useState(0);
 
   const modeOptions = [
     {
@@ -1133,6 +1208,36 @@ export function UploadPanel() {
   };
 
   const isBusy = isReadingFile || isSubmitting;
+  const activePlanTier = getEffectivePlanTier(profile);
+  const fileUploadPlanTier = user ? activePlanTier : "basic";
+  const usedFileUploads = user
+    ? (profile?.fileUploadCount ?? 0)
+    : guestFileUploadCount;
+  const fileUploadLimit = user
+    ? getFileUploadLimit(fileUploadPlanTier)
+    : freeFileUploadLimit;
+  const remainingFileUploads = getRemainingFileUploads({
+    planTier: fileUploadPlanTier,
+    usedUploads: usedFileUploads,
+  });
+
+  useEffect(() => {
+    if (user) {
+      return;
+    }
+
+    let isMounted = true;
+
+    void getGuestFileUploadCount().then((count) => {
+      if (isMounted) {
+        setGuestFileUploadCount(count);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!submissionProgress) {
@@ -1153,6 +1258,14 @@ export function UploadPanel() {
     };
   }, [submissionProgress]);
 
+  const isFileUploadAvailable = () => {
+    if (remainingFileUploads === null) {
+      return true;
+    }
+
+    return remainingFileUploads > 0;
+  };
+
   const handleFileSelection = async (file: File | null) => {
     if (!file) {
       clearImportedFile();
@@ -1161,6 +1274,17 @@ export function UploadPanel() {
     }
 
     setStatusMessage(undefined);
+
+    if (!isFileUploadAvailable()) {
+      clearImportedFile();
+      setStatusMessage(
+        createUploadQuotaStatus({
+          locale,
+          planTier: fileUploadPlanTier,
+        }),
+      );
+      return;
+    }
 
     if (file.size === 0) {
       clearImportedFile();
@@ -1253,6 +1377,16 @@ export function UploadPanel() {
       return;
     }
 
+    if (inputMode === "file" && !isFileUploadAvailable()) {
+      setStatusMessage(
+        createUploadQuotaStatus({
+          locale,
+          planTier: fileUploadPlanTier,
+        }),
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -1325,6 +1459,23 @@ export function UploadPanel() {
         saveSession(session),
         assetSavePromise,
       ]);
+
+      if (inputMode === "file") {
+        if (ownerId && supabase) {
+          try {
+            await incrementProfileFileUploadCount(supabase, ownerId);
+            await refreshProfile();
+          } catch (uploadCountError) {
+            console.warn(
+              "profile upload count could not be updated",
+              uploadCountError,
+            );
+          }
+        } else {
+          const nextGuestUploadCount = await incrementGuestFileUploadCount();
+          setGuestFileUploadCount(nextGuestUploadCount);
+        }
+      }
 
       if (ownerId && supabase) {
         try {
@@ -1605,6 +1756,19 @@ export function UploadPanel() {
                 </p>
                 <p className="mt-2 text-sm leading-6 text-(--text-strong)">
                   {getLocalizedCopy(locale, pdfBestResultsCopy)}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-(--text-muted)">
+                  {fileUploadLimit === null
+                    ? locale === "en"
+                      ? "Max includes unlimited file uploads."
+                      : locale === "es"
+                        ? "Max incluye cargas ilimitadas de archivos."
+                        : "Max inclui uploads ilimitados de arquivo."
+                    : locale === "en"
+                      ? `${Math.max(0, remainingFileUploads ?? 0)} of ${fileUploadLimit} file uploads left on ${fileUploadPlanTier === "focus" ? "Focus" : "Basic"}.`
+                      : locale === "es"
+                        ? `Quedan ${Math.max(0, remainingFileUploads ?? 0)} de ${fileUploadLimit} cargas en ${fileUploadPlanTier === "focus" ? "Focus" : "Basic"}.`
+                        : `Restam ${Math.max(0, remainingFileUploads ?? 0)} de ${fileUploadLimit} uploads no ${fileUploadPlanTier === "focus" ? "Focus" : "Basic"}.`}
                 </p>
                 <details className="mt-3 rounded-[1.1rem] border border-(--border-soft) bg-(--surface-card) px-4 py-3">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-(--text-strong)">

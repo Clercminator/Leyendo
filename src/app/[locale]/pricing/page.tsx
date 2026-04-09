@@ -11,6 +11,7 @@ interface LocalizedPricingPageProps {
   params: Promise<{ locale: string }>;
   searchParams?: Promise<{
     payment?: string;
+    plan?: string;
   }>;
 }
 
@@ -45,7 +46,10 @@ export default async function LocalizedPricingPage({
 
   return (
     <AppShell mainClassName="px-0 py-0 sm:px-0 sm:py-0 xl:py-0">
-      <PricingPageContent initialPaymentStatus={resolvedSearchParams.payment} />
+      <PricingPageContent
+        initialPaymentStatus={resolvedSearchParams.payment}
+        initialPlanId={resolvedSearchParams.plan}
+      />
     </AppShell>
   );
 }

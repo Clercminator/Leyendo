@@ -14,6 +14,13 @@ import {
 import type { ReaderPreferences } from "@/types/reader";
 
 import {
+  getEffectivePlanTier,
+  hasPlanAccess,
+  type PaidPlanTier,
+  type SubscriptionStatus,
+} from "@/lib/plans";
+import { clearLocalCatalogCache } from "@/lib/supabase/catalog";
+import {
   backUpLocalLibraryToCloud,
   clearSyncedLibraryForUser,
   deleteProfileAvatar,
@@ -26,6 +33,7 @@ import {
   type LocalLibrarySummary,
   type UserProfile,
   type UserPersonalInfo,
+  type UserSavedWord,
   uploadProfileAvatar,
   upsertProfile,
 } from "@/lib/supabase/library-sync";
@@ -47,6 +55,8 @@ interface ProfileUpdateInput {
   marketingConsent?: boolean;
   personalInfo?: UserPersonalInfo | null;
   removeAvatar?: boolean;
+  savedWords?: UserSavedWord[] | null;
+  subscriptionStatus?: SubscriptionStatus | null;
 }
 
 interface SupabaseAuthContextValue {
@@ -65,7 +75,11 @@ interface SupabaseAuthContextValue {
   signInWithGoogle: () => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    planTier: PaidPlanTier,
+  ) => Promise<void>;
   syncReaderPreferences: (preferences: ReaderPreferences) => Promise<void>;
   syncLocalLibraryToCloud: () => Promise<number>;
   syncStatus: SyncStatus;
@@ -121,6 +135,8 @@ const SupabaseAuthContext = createContext<SupabaseAuthContextValue>(
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
   const supabase = getSupabaseBrowserClient();
+  const cloudAccessErrorMessage =
+    "Focus or Max is required to unlock cloud sync and saved vocabulary.";
   const currentUserIdRef = useRef<string | undefined>(undefined);
   const syncLockRef = useRef<Promise<void> | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -157,7 +173,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   }, [supabase]);
 
   const runCloudSync = useCallback(
-    async (options?: { forceHydrate?: boolean }) => {
+    async (options?: { errorWhenLocked?: boolean; forceHydrate?: boolean }) => {
       if (!supabase) {
         return;
       }
@@ -178,7 +194,22 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
         try {
           await ensureProfile(supabase, userId);
-          setProfile(await getProfile(supabase, userId));
+          const nextProfile = await getProfile(supabase, userId);
+          setProfile(nextProfile);
+
+          if (!hasPlanAccess(nextProfile, "focus")) {
+            setSyncStatus("idle");
+            setLastSyncedAt(undefined);
+            setLastSyncSummary(undefined);
+            if (!hasPlanAccess(nextProfile, "max")) {
+              await clearLocalCatalogCache();
+            }
+            if (options?.errorWhenLocked) {
+              setErrorMessage(cloudAccessErrorMessage);
+            }
+            return;
+          }
+
           const localSummary = await getLocalOnlyLibrarySummary();
           let uploadedDocuments = 0;
 
@@ -223,11 +254,11 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       syncLockRef.current = syncPromise;
       return syncPromise;
     },
-    [refreshGuestLibrarySummary, supabase],
+    [cloudAccessErrorMessage, refreshGuestLibrarySummary, supabase],
   );
 
   const syncWithCloud = useCallback(async () => {
-    await runCloudSync({ forceHydrate: true });
+    await runCloudSync({ errorWhenLocked: true, forceHydrate: true });
   }, [runCloudSync]);
 
   const updateProfile = useCallback(
@@ -246,6 +277,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
         const currentProfile =
           profile ?? (await getProfile(supabase, currentUserId));
+        if ("savedWords" in input && !hasPlanAccess(currentProfile, "focus")) {
+          throw new Error(cloudAccessErrorMessage);
+        }
+
         const avatarUpdateNeeded =
           Boolean(input.avatarFile) || input.removeAvatar === true;
         const previousAvatarPath = currentProfile?.avatarPath;
@@ -266,6 +301,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
           displayName: input.displayName,
           marketingConsent: input.marketingConsent,
           personalInfo: input.personalInfo,
+          ...("savedWords" in input ? { savedWords: input.savedWords } : {}),
+          ...("subscriptionStatus" in input
+            ? { subscriptionStatus: input.subscriptionStatus }
+            : {}),
           userId: currentUserId,
         });
 
@@ -321,6 +360,12 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const activeProfile =
+        profile ?? (await getProfile(supabase, currentUserIdRef.current));
+      if (!hasPlanAccess(activeProfile, "focus")) {
+        return;
+      }
+
       try {
         const nextProfile = await upsertProfile(supabase, {
           readerPreferences: preferences,
@@ -332,11 +377,19 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         console.warn("reader preference sync failed", error);
       }
     },
-    [supabase],
+    [profile, supabase],
   );
 
   const syncLocalLibraryToCloud = useCallback(async () => {
     if (!supabase || !currentUserIdRef.current) {
+      return 0;
+    }
+
+    const activeProfile =
+      profile ?? (await getProfile(supabase, currentUserIdRef.current));
+    if (!hasPlanAccess(activeProfile, "focus")) {
+      setSyncStatus("error");
+      setErrorMessage(cloudAccessErrorMessage);
       return 0;
     }
 
@@ -377,7 +430,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       await refreshGuestLibrarySummary();
       return 0;
     }
-  }, [refreshGuestLibrarySummary, supabase]);
+  }, [cloudAccessErrorMessage, profile, refreshGuestLibrarySummary, supabase]);
 
   useEffect(() => {
     void refreshGuestLibrarySummary();
@@ -430,6 +483,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       setSyncStatus("idle");
       setLastSyncedAt(undefined);
       setLastSyncSummary(undefined);
+      void clearLocalCatalogCache();
       if (previousUserId) {
         void clearSyncedLibraryForUser(previousUserId).then(() => {
           void refreshGuestLibrarySummary();
@@ -462,7 +516,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, planTier: PaidPlanTier) => {
       if (!supabase) {
         throw new Error("Supabase is not configured.");
       }
@@ -471,7 +525,12 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/account`,
+          data: {
+            plan_tier: planTier,
+            subscription_started_at: new Date().toISOString(),
+            subscription_status: "active",
+          },
+          emailRedirectTo: `${window.location.origin}/account?payment=success&plan=${planTier}`,
         },
       });
 
@@ -520,6 +579,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         email: email.trim(),
         options: {
           emailRedirectTo: `${window.location.origin}/account`,
+          shouldCreateUser: false,
         },
       });
 
@@ -546,6 +606,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       await clearSyncedLibraryForUser(previousUserId);
     }
 
+    await clearLocalCatalogCache();
+
     setProfile(undefined);
     setLastSyncSummary(undefined);
     await refreshGuestLibrarySummary();
@@ -560,7 +622,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       isProfileSaving,
       lastSyncedAt,
       lastSyncSummary,
-      profile,
+      profile:
+        profile && getEffectivePlanTier(profile) !== profile.planTier
+          ? { ...profile, planTier: getEffectivePlanTier(profile) }
+          : profile,
       refreshProfile,
       session,
       signIn,

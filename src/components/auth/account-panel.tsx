@@ -16,7 +16,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/layout/locale-provider";
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
-import type { UserPersonalInfo } from "@/lib/supabase/library-sync";
+import {
+  getEffectivePlanTier,
+  hasPlanAccess,
+  type PaidPlanTier,
+} from "@/lib/plans";
+import type {
+  UserPersonalInfo,
+  UserSavedWord,
+} from "@/lib/supabase/library-sync";
 
 const modes = ["sign-in", "create-account", "magic-link"] as const;
 const avatarAccept =
@@ -34,6 +42,20 @@ interface ProfileFormState {
   marketingConsent: boolean;
   occupation: string;
   useCase: string;
+}
+
+interface DictionaryFormState {
+  meaning: string;
+  note: string;
+  word: string;
+}
+
+function createEmptyDictionaryFormState(): DictionaryFormState {
+  return {
+    meaning: "",
+    note: "",
+    word: "",
+  };
 }
 
 function formatDate(date: string | undefined) {
@@ -68,6 +90,10 @@ function buildProfileFormState(profile?: {
 function normalizeTextInput(value: string) {
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function normalizeSavedWordKey(value: string) {
+  return value.trim().toLocaleLowerCase();
 }
 
 function normalizeBirthYearInput(value: string) {
@@ -158,7 +184,28 @@ function getAvatarInitials(value: string | undefined) {
   return initials || fallback.slice(0, 2).toUpperCase();
 }
 
-export function AccountPanel() {
+function buildSavedWordFromForm(
+  form: DictionaryFormState,
+  existingEntry?: UserSavedWord,
+) {
+  const word = normalizeTextInput(form.word);
+  if (!word) {
+    return undefined;
+  }
+
+  return {
+    createdAt: existingEntry?.createdAt ?? new Date().toISOString(),
+    meaning: normalizeTextInput(form.meaning),
+    note: normalizeTextInput(form.note),
+    word,
+  } satisfies UserSavedWord;
+}
+
+interface AccountPanelProps {
+  paidSignupPlan?: PaidPlanTier;
+}
+
+export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
   const { locale } = useLocale();
   const {
     errorMessage,
@@ -187,6 +234,9 @@ export function AccountPanel() {
   const [formState, setFormState] = useState<ProfileFormState>(() =>
     buildProfileFormState(profile),
   );
+  const [dictionaryForm, setDictionaryForm] = useState<DictionaryFormState>(
+    () => createEmptyDictionaryFormState(),
+  );
   const [avatarDraftFile, setAvatarDraftFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string>();
   const [avatarRenderFailed, setAvatarRenderFailed] = useState(false);
@@ -201,6 +251,7 @@ export function AccountPanel() {
 
   useEffect(() => {
     setFormState(buildProfileFormState(profile));
+    setDictionaryForm(createEmptyDictionaryFormState());
     setAvatarDraftFile(null);
     setAvatarPreviewUrl(undefined);
     setAvatarRenderFailed(false);
@@ -228,6 +279,11 @@ export function AccountPanel() {
         accountReady: "Cuenta conectada",
         accountSync:
           "Tu biblioteca sincronizada aparecerá en cualquier dispositivo donde entres con esta cuenta.",
+        accountUpgradeCta: "Ver planes pagados",
+        accountUpgradeDetail:
+          "La sincronizacion entre dispositivos, el respaldo en la nube y el diccionario de palabras guardadas solo se activan con Focus o Max.",
+        accountUpgradeTitle:
+          "Activa Focus o Max para usar la cuenta en la nube",
         avatarHint:
           "La foto se guarda en esta cuenta y se puede reemplazar cuando quieras.",
         avatarPick: "Subir foto",
@@ -248,13 +304,30 @@ export function AccountPanel() {
           "Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para activar cuentas, sincronización y feedback.",
         createAccount: "Crear cuenta",
         createAccountHint:
-          "La sincronización es opcional. Sin cuenta, Leyendo sigue funcionando de forma local.",
+          "Focus o Max son obligatorios para crear una cuenta con sincronizacion y palabras guardadas.",
         countryLabel: "País",
         deviceBackup: "Respaldo del dispositivo",
+        dictionaryAddWord: "Guardar palabra",
+        dictionaryEmpty:
+          "Todavia no guardaste palabras. Agrega tu primer termino y su significado aqui.",
+        dictionaryIntro:
+          "Guarda vocabulario, significado y contexto en esta cuenta. Focus y Max lo mantienen sincronizado.",
+        dictionaryMeaningLabel: "Significado",
+        dictionaryMeaningPlaceholder: "Que significa esta palabra para ti",
+        dictionaryNoteLabel: "Contexto o nota",
+        dictionaryNotePlaceholder: "Donde la viste o como quieres recordarla",
+        dictionaryRemoved: "Palabra eliminada del diccionario.",
+        dictionaryRemoveWord: "Quitar",
+        dictionarySaved: "Palabra guardada en tu diccionario.",
+        dictionaryTitle: "Diccionario de palabras guardadas",
+        dictionaryWordLabel: "Palabra",
+        dictionaryWordRequired:
+          "Escribe una palabra antes de guardarla en el diccionario.",
+        dictionaryWordPlaceholder: "serendipia",
         displayNameLabel: "Nombre visible",
         displayNamePlaceholder: "Como quieres aparecer en tu cuenta",
         emailLinkModeDescription:
-          "Te enviaremos un enlace de acceso de un solo uso a tu email. No necesitas contraseña. Si este correo es nuevo, abrir el enlace también puede crear la cuenta.",
+          "Te enviaremos un enlace de acceso de un solo uso a tu email. No necesitas contrasena, pero este acceso es solo para cuentas que ya existen.",
         emailSent:
           "Revisa tu bandeja de entrada. Ya enviamos un enlace de acceso de un solo uso.",
         githubSignIn: "Continuar con GitHub",
@@ -305,7 +378,7 @@ export function AccountPanel() {
         uploadedFromDevice: "Subidos desde este dispositivo",
         useMagicLink: "Enlace por email",
         createAccountModeDescription:
-          "Crea una cuenta con email y contraseña, o usa GitHub o Google para entrar más rápido la primera vez.",
+          "Termina la configuracion de tu cuenta pagada con email y contrasena para activar Focus o Max.",
       };
     }
 
@@ -314,6 +387,10 @@ export function AccountPanel() {
         accountReady: "Conta conectada",
         accountSync:
           "Sua biblioteca sincronizada aparece em qualquer dispositivo onde voce entrar com esta conta.",
+        accountUpgradeCta: "Ver planos pagos",
+        accountUpgradeDetail:
+          "Sincronizacao entre dispositivos, backup na nuvem e dicionario de palavras salvas so sao ativados com Focus ou Max.",
+        accountUpgradeTitle: "Ative Focus ou Max para usar a conta em nuvem",
         avatarHint:
           "A foto fica salva nesta conta e pode ser trocada quando voce quiser.",
         avatarPick: "Enviar foto",
@@ -333,13 +410,31 @@ export function AccountPanel() {
           "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY para ativar contas, sincronizacao e feedback.",
         createAccount: "Criar conta",
         createAccountHint:
-          "A sincronizacao e opcional. Sem conta, o Leyendo continua local.",
+          "Focus ou Max sao obrigatorios para criar uma conta com sincronizacao e palavras salvas.",
         countryLabel: "Pais",
         deviceBackup: "Backup do dispositivo",
+        dictionaryAddWord: "Salvar palavra",
+        dictionaryEmpty:
+          "Voce ainda nao salvou palavras. Adicione o primeiro termo e significado aqui.",
+        dictionaryIntro:
+          "Guarde vocabulario, significado e contexto nesta conta. Focus e Max mantem tudo sincronizado.",
+        dictionaryMeaningLabel: "Significado",
+        dictionaryMeaningPlaceholder: "O que essa palavra quer dizer para voce",
+        dictionaryNoteLabel: "Contexto ou nota",
+        dictionaryNotePlaceholder:
+          "Onde voce viu a palavra ou como quer lembrar dela",
+        dictionaryRemoved: "Palavra removida do dicionario.",
+        dictionaryRemoveWord: "Remover",
+        dictionarySaved: "Palavra salva no dicionario.",
+        dictionaryTitle: "Dicionario de palavras salvas",
+        dictionaryWordLabel: "Palavra",
+        dictionaryWordRequired:
+          "Escreva uma palavra antes de salvar no dicionario.",
+        dictionaryWordPlaceholder: "serendipidade",
         displayNameLabel: "Nome de exibicao",
         displayNamePlaceholder: "Como voce quer aparecer na conta",
         emailLinkModeDescription:
-          "Vamos enviar um link unico de acesso para seu email. Nao precisa de senha. Se este email for novo, abrir o link tambem pode criar a conta.",
+          "Vamos enviar um link unico de acesso para seu email. Nao precisa de senha, mas este acesso vale apenas para contas que ja existem.",
         emailSent:
           "Confira sua caixa de entrada. Enviamos um link unico de acesso.",
         githubSignIn: "Continuar com GitHub",
@@ -390,7 +485,7 @@ export function AccountPanel() {
         uploadedFromDevice: "Enviados deste dispositivo",
         useMagicLink: "Link por email",
         createAccountModeDescription:
-          "Crie uma conta com email e senha, ou use GitHub ou Google para entrar mais rapido na primeira vez.",
+          "Conclua a configuracao da sua conta paga com email e senha para ativar Focus ou Max.",
       };
     }
 
@@ -398,6 +493,10 @@ export function AccountPanel() {
       accountReady: "Account connected",
       accountSync:
         "Your synced library will appear on any device where you sign in with this account.",
+      accountUpgradeCta: "See paid plans",
+      accountUpgradeDetail:
+        "Cross-device sync, cloud backup, and the saved-word dictionary only unlock on Focus or Max.",
+      accountUpgradeTitle: "Activate Focus or Max to use this cloud account",
       avatarHint:
         "The photo is stored on this account and can be replaced whenever you want.",
       avatarPick: "Upload photo",
@@ -417,13 +516,30 @@ export function AccountPanel() {
         "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable accounts, sync, and feedback.",
       createAccount: "Create account",
       createAccountHint:
-        "Sync is optional. Without an account, Leyendo still works locally.",
+        "Focus or Max is required to create an account with sync and saved words.",
       countryLabel: "Country",
       deviceBackup: "Device backup",
+      dictionaryAddWord: "Save word",
+      dictionaryEmpty:
+        "You have not saved any words yet. Add your first term and meaning here.",
+      dictionaryIntro:
+        "Keep vocabulary, meaning, and context on this account. Focus and Max keep it synced across devices.",
+      dictionaryMeaningLabel: "Meaning",
+      dictionaryMeaningPlaceholder: "What this word means to you",
+      dictionaryNoteLabel: "Context or note",
+      dictionaryNotePlaceholder:
+        "Where you saw it or how you want to remember it",
+      dictionaryRemoved: "Word removed from your dictionary.",
+      dictionaryRemoveWord: "Remove",
+      dictionarySaved: "Word saved to your dictionary.",
+      dictionaryTitle: "Saved-word dictionary",
+      dictionaryWordLabel: "Word",
+      dictionaryWordRequired: "Enter a word before saving it.",
+      dictionaryWordPlaceholder: "serendipity",
       displayNameLabel: "Display name",
       displayNamePlaceholder: "How you want this account to appear",
       emailLinkModeDescription:
-        "We'll email you a one-time sign-in link. No password needed. If this email is new, opening the link can also create the account.",
+        "We'll email you a one-time sign-in link. No password needed, but this only works for accounts that already exist.",
       emailSent: "Check your inbox. We sent a one-time sign-in link.",
       githubSignIn: "Continue with GitHub",
       googleSignIn: "Continue with Google",
@@ -473,12 +589,15 @@ export function AccountPanel() {
       uploadedFromDevice: "Uploaded from this device",
       useMagicLink: "Email link",
       createAccountModeDescription:
-        "Create an email and password account, or use GitHub or Google for a faster first sign-in.",
+        "Finish setting up your paid account with email and password to unlock Focus or Max.",
     };
   }, [locale]);
 
+  const paidSignupPlanLabel = paidSignupPlan === "max" ? "Max" : "Focus";
   const profileDisplayName = profile?.displayName ?? "";
   const profileNameInput = formState.displayName;
+  const activePlanTier = getEffectivePlanTier(profile);
+  const hasPaidAccountAccess = hasPlanAccess(profile, "focus");
   const draftPersonalInfo = buildPersonalInfoFromForm(formState);
   const currentAvatarUrl = removeStoredAvatar ? undefined : profile?.avatarUrl;
   const activeAvatarUrl = avatarPreviewUrl ?? currentAvatarUrl;
@@ -494,6 +613,7 @@ export function AccountPanel() {
     !isSamePersonalInfo(draftPersonalInfo, profile?.personalInfo) ||
     avatarDraftFile !== null ||
     (removeStoredAvatar && Boolean(profile?.avatarPath));
+  const savedWords = profile?.savedWords ?? [];
   const readerSetupSummary = profile?.readerPreferences
     ? `${profile.readerPreferences.wordsPerMinute} WPM / ${profile.readerPreferences.chunkSize} ${profile.readerPreferences.chunkSize === 1 ? "word" : "words"} / ${profile.readerPreferences.theme}`
     : helperCopy.readerSetupEmpty;
@@ -508,11 +628,48 @@ export function AccountPanel() {
           : helperCopy.syncIdle;
   const isOAuthPending =
     pendingAction === "github" || pendingAction === "google";
+  const showOAuthButtons = mode === "sign-in";
+  const showCreateAccountLock = mode === "create-account" && !paidSignupPlan;
+  const topKicker = paidSignupPlan
+    ? locale === "en"
+      ? `${paidSignupPlanLabel} checkout ready`
+      : locale === "es"
+        ? `${paidSignupPlanLabel} listo para activar`
+        : `${paidSignupPlanLabel} pronto para ativar`
+    : locale === "en"
+      ? "Paid cloud account"
+      : locale === "es"
+        ? "Cuenta pagada en la nube"
+        : "Conta paga na nuvem";
+  const topHeading = paidSignupPlan
+    ? locale === "en"
+      ? `Finish your ${paidSignupPlanLabel} account setup.`
+      : locale === "es"
+        ? `Termina la configuracion de tu cuenta ${paidSignupPlanLabel}.`
+        : `Conclua a configuracao da sua conta ${paidSignupPlanLabel}.`
+    : helperCopy.createAccountHint;
+  const topDescription = paidSignupPlan
+    ? locale === "en"
+      ? `${paidSignupPlanLabel} is ready to unlock cloud sync, cross-device reading, and the saved-word dictionary. Create the account below to finish activation.`
+      : locale === "es"
+        ? `${paidSignupPlanLabel} ya puede desbloquear la sincronizacion en la nube, la lectura entre dispositivos y el diccionario de palabras guardadas. Crea la cuenta abajo para terminar la activacion.`
+        : `${paidSignupPlanLabel} ja pode desbloquear a sincronizacao na nuvem, a leitura entre dispositivos e o dicionario de palavras salvas. Crie a conta abaixo para concluir a ativacao.`
+    : locale === "en"
+      ? "Guest reading still works for free, but cross-device sync and the saved-word dictionary now require a paid Focus or Max account."
+      : locale === "es"
+        ? "La lectura como invitado sigue siendo gratis, pero la sincronizacion entre dispositivos y el diccionario de palabras guardadas ahora requieren una cuenta pagada Focus o Max."
+        : "A leitura como convidado continua gratuita, mas a sincronizacao entre dispositivos e o dicionario de palavras salvas agora exigem uma conta paga Focus ou Max.";
   const authModeDescription =
     mode === "sign-in"
       ? helperCopy.signInModeDescription
       : mode === "create-account"
-        ? helperCopy.createAccountModeDescription
+        ? paidSignupPlan
+          ? helperCopy.createAccountModeDescription
+          : locale === "en"
+            ? "Choose Focus or Max first. After payment returns you here, this tab will unlock the email account setup."
+            : locale === "es"
+              ? "Elige Focus o Max primero. Cuando el pago te devuelva aqui, esta pestana desbloqueara la creacion de la cuenta por email."
+              : "Escolha Focus ou Max primeiro. Quando o pagamento trouxer voce de volta, esta aba vai desbloquear a criacao da conta por email."
         : helperCopy.emailLinkModeDescription;
 
   async function handleSubmit() {
@@ -524,13 +681,19 @@ export function AccountPanel() {
         await signIn(email, password);
         setStatusMessage(helperCopy.syncInProgress);
       } else if (mode === "create-account") {
-        await signUp(email, password);
+        if (!paidSignupPlan) {
+          setStatusMessage(helperCopy.accountUpgradeDetail);
+          setPendingAction(undefined);
+          return;
+        }
+
+        await signUp(email, password, paidSignupPlan);
         setStatusMessage(
           locale === "en"
-            ? "Account created. Check your inbox if email confirmation is enabled."
+            ? `${paidSignupPlanLabel} account created. Check your inbox if email confirmation is enabled.`
             : locale === "es"
-              ? "Cuenta creada. Revisa tu correo si la confirmación por email está activa."
-              : "Conta criada. Verifique seu email se a confirmacao estiver ativa.",
+              ? `Cuenta ${paidSignupPlanLabel} creada. Revisa tu correo si la confirmacion por email esta activa.`
+              : `Conta ${paidSignupPlanLabel} criada. Verifique seu email se a confirmacao estiver ativa.`,
         );
       } else {
         await signInWithMagicLink(email);
@@ -604,6 +767,16 @@ export function AccountPanel() {
     }));
   }
 
+  function updateDictionaryField<Key extends keyof DictionaryFormState>(
+    key: Key,
+    value: DictionaryFormState[Key],
+  ) {
+    setDictionaryForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
   function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0];
     event.currentTarget.value = "";
@@ -635,6 +808,69 @@ export function AccountPanel() {
       setAvatarRenderFailed(false);
       setRemoveStoredAvatar(false);
       setStatusMessage(helperCopy.profileSaved);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : helperCopy.profileSaveFallback,
+      );
+    } finally {
+      setPendingAction(undefined);
+    }
+  }
+
+  async function handleDictionarySave() {
+    const nextEntry = buildSavedWordFromForm(
+      dictionaryForm,
+      savedWords.find(
+        (entry) =>
+          normalizeSavedWordKey(entry.word) ===
+          normalizeSavedWordKey(dictionaryForm.word),
+      ),
+    );
+
+    if (!nextEntry) {
+      setStatusMessage(helperCopy.dictionaryWordRequired);
+      return;
+    }
+
+    setPendingAction("dictionary");
+    setStatusMessage(undefined);
+
+    try {
+      const nextSavedWords = [
+        nextEntry,
+        ...savedWords.filter(
+          (entry) =>
+            normalizeSavedWordKey(entry.word) !==
+            normalizeSavedWordKey(nextEntry.word),
+        ),
+      ];
+
+      await updateProfile({
+        savedWords: nextSavedWords,
+      });
+      setDictionaryForm(createEmptyDictionaryFormState());
+      setStatusMessage(helperCopy.dictionarySaved);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : helperCopy.profileSaveFallback,
+      );
+    } finally {
+      setPendingAction(undefined);
+    }
+  }
+
+  async function handleDictionaryRemove(word: string) {
+    setPendingAction("dictionary");
+    setStatusMessage(undefined);
+
+    try {
+      await updateProfile({
+        savedWords: savedWords.filter(
+          (entry) =>
+            normalizeSavedWordKey(entry.word) !== normalizeSavedWordKey(word),
+        ),
+      });
+      setStatusMessage(helperCopy.dictionaryRemoved);
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : helperCopy.profileSaveFallback,
@@ -698,14 +934,22 @@ export function AccountPanel() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="editorial-kicker text-(--accent-sky)">
-                {helperCopy.accountReady}
+                {hasPaidAccountAccess
+                  ? helperCopy.accountReady
+                  : locale === "en"
+                    ? "Upgrade required"
+                    : locale === "es"
+                      ? "Mejora requerida"
+                      : "Upgrade necessario"}
               </p>
               <h2 className="font-heading mt-4 text-4xl font-semibold text-(--text-strong)">
                 {avatarLabel}
               </h2>
               <p className="mt-3 text-sm text-(--text-muted)">{user.email}</p>
               <p className="mt-4 max-w-3xl text-base leading-8 text-(--text-muted)">
-                {helperCopy.accountSync}
+                {hasPaidAccountAccess
+                  ? helperCopy.accountSync
+                  : helperCopy.accountUpgradeDetail}
               </p>
             </div>
 
@@ -937,35 +1181,48 @@ export function AccountPanel() {
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button
-              className="h-11 rounded-full px-5"
-              disabled={pendingAction === "sync" || syncStatus === "syncing"}
-              onClick={() => {
-                void handleRefreshSync();
-              }}
-            >
-              {pendingAction === "sync" || syncStatus === "syncing" ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <Cloud className="h-4 w-4" />
-              )}
-              {helperCopy.refreshSync}
-            </Button>
-            <Button
-              variant="outline"
-              className="h-11 rounded-full px-5"
-              disabled={pendingAction === "backup" || guestDocuments === 0}
-              onClick={() => {
-                void handleBackup();
-              }}
-            >
-              {pendingAction === "backup" ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <CloudUpload className="h-4 w-4" />
-              )}
-              {helperCopy.backupAction}
-            </Button>
+            {hasPaidAccountAccess ? (
+              <>
+                <Button
+                  className="h-11 rounded-full px-5"
+                  disabled={
+                    pendingAction === "sync" || syncStatus === "syncing"
+                  }
+                  onClick={() => {
+                    void handleRefreshSync();
+                  }}
+                >
+                  {pendingAction === "sync" || syncStatus === "syncing" ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Cloud className="h-4 w-4" />
+                  )}
+                  {helperCopy.refreshSync}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 rounded-full px-5"
+                  disabled={pendingAction === "backup" || guestDocuments === 0}
+                  onClick={() => {
+                    void handleBackup();
+                  }}
+                >
+                  {pendingAction === "backup" ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CloudUpload className="h-4 w-4" />
+                  )}
+                  {helperCopy.backupAction}
+                </Button>
+              </>
+            ) : (
+              <a
+                href="/pricing"
+                className="inline-flex h-11 items-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                {helperCopy.accountUpgradeCta}
+              </a>
+            )}
             <Button
               variant="ghost"
               className="h-11 rounded-full px-5"
@@ -983,119 +1240,294 @@ export function AccountPanel() {
         </article>
 
         <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
-          <p className="editorial-kicker text-(--accent-amber)">
-            {helperCopy.deviceBackup}
-          </p>
-          <h2 className="font-heading mt-4 text-3xl font-semibold text-(--text-strong)">
-            {helperCopy.syncedLibraryTitle}
-          </h2>
-          <p className="mt-4 text-base leading-8 text-(--text-muted)">
-            {helperCopy.accountSync}
-          </p>
-
-          <ul className="mt-6 space-y-3 text-sm leading-7 text-(--text-muted)">
-            {helperCopy.syncChecklist.map((item) => (
-              <li key={item} className="flex gap-2">
-                <span className="text-(--accent-amber)">*</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-6 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-            <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-              {helperCopy.readerSetupTitle}
-            </p>
-            <p className="mt-3 text-sm leading-7 text-(--text-strong)">
-              {readerSetupSummary}
-            </p>
-          </div>
-
-          <div className="mt-4 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                {helperCopy.syncResultTitle}
+          {hasPaidAccountAccess ? (
+            <>
+              <p className="editorial-kicker text-(--accent-amber)">
+                {helperCopy.deviceBackup}
               </p>
-              <p className="text-xs text-(--text-muted)">
-                {lastSyncResultLabel ?? "-"}
+              <h2 className="font-heading mt-4 text-3xl font-semibold text-(--text-strong)">
+                {helperCopy.syncedLibraryTitle}
+              </h2>
+              <p className="mt-4 text-base leading-8 text-(--text-muted)">
+                {helperCopy.accountSync}
               </p>
-            </div>
 
-            {lastSyncSummary ? (
-              <>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                    <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
-                      {helperCopy.uploadedFromDevice}
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
-                      {lastSyncSummary.uploadedDocuments}
-                    </p>
+              <ul className="mt-6 space-y-3 text-sm leading-7 text-(--text-muted)">
+                {helperCopy.syncChecklist.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="text-(--accent-amber)">*</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-6 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+                <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                  {helperCopy.readerSetupTitle}
+                </p>
+                <p className="mt-3 text-sm leading-7 text-(--text-strong)">
+                  {readerSetupSummary}
+                </p>
+              </div>
+
+              <div className="mt-4 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                    {helperCopy.dictionaryTitle}
+                  </p>
+                  <p className="text-xs text-(--text-muted)">
+                    {savedWords.length}
+                  </p>
+                </div>
+                <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+                  {helperCopy.dictionaryIntro}
+                </p>
+
+                <div className="mt-4 grid gap-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
+                      <span>{helperCopy.dictionaryWordLabel}</span>
+                      <input
+                        type="text"
+                        value={dictionaryForm.word}
+                        onChange={(event) => {
+                          updateDictionaryField("word", event.target.value);
+                        }}
+                        placeholder={helperCopy.dictionaryWordPlaceholder}
+                        className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+                      />
+                    </label>
+
+                    <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
+                      <span>{helperCopy.dictionaryMeaningLabel}</span>
+                      <input
+                        type="text"
+                        value={dictionaryForm.meaning}
+                        onChange={(event) => {
+                          updateDictionaryField("meaning", event.target.value);
+                        }}
+                        placeholder={helperCopy.dictionaryMeaningPlaceholder}
+                        className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+                      />
+                    </label>
                   </div>
-                  <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                    <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
-                      {helperCopy.cloudDocuments}
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
-                      {lastSyncSummary.documents}
-                    </p>
-                  </div>
-                  <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                    <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
-                      {helperCopy.cloudSessions}
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
-                      {lastSyncSummary.sessions}
-                    </p>
-                  </div>
-                  <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                    <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
-                      {helperCopy.cloudBookmarks} / {helperCopy.cloudHighlights}
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
-                      {lastSyncSummary.bookmarks} / {lastSyncSummary.highlights}
-                    </p>
+
+                  <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
+                    <span>{helperCopy.dictionaryNoteLabel}</span>
+                    <textarea
+                      rows={3}
+                      value={dictionaryForm.note}
+                      onChange={(event) => {
+                        updateDictionaryField("note", event.target.value);
+                      }}
+                      placeholder={helperCopy.dictionaryNotePlaceholder}
+                      className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 py-3 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+                    />
+                  </label>
+
+                  <div className="flex justify-end">
+                    <Button
+                      className="h-11 rounded-full px-5"
+                      disabled={
+                        pendingAction === "dictionary" || isProfileSaving
+                      }
+                      onClick={() => {
+                        void handleDictionarySave();
+                      }}
+                    >
+                      {pendingAction === "dictionary" ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <KeyRound className="h-4 w-4" />
+                      )}
+                      {helperCopy.dictionaryAddWord}
+                    </Button>
                   </div>
                 </div>
-              </>
-            ) : (
-              <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-                {helperCopy.syncResultEmpty}
-              </p>
-            )}
-          </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                {helperCopy.syncStatusLabel}
+                {savedWords.length > 0 ? (
+                  <div className="mt-5 space-y-3">
+                    {savedWords.map((entry) => (
+                      <div
+                        key={`${entry.word}-${entry.createdAt}`}
+                        className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="space-y-2">
+                            <p className="text-base font-semibold text-(--text-strong)">
+                              {entry.word}
+                            </p>
+                            {entry.meaning ? (
+                              <p className="text-sm leading-7 text-(--text-strong)">
+                                {entry.meaning}
+                              </p>
+                            ) : null}
+                            {entry.note ? (
+                              <p className="text-sm leading-7 text-(--text-muted)">
+                                {entry.note}
+                              </p>
+                            ) : null}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            className="h-10 rounded-full px-4"
+                            disabled={
+                              pendingAction === "dictionary" || isProfileSaving
+                            }
+                            onClick={() => {
+                              void handleDictionaryRemove(entry.word);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            {helperCopy.dictionaryRemoveWord}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm leading-7 text-(--text-muted)">
+                    {helperCopy.dictionaryEmpty}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-4 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                    {helperCopy.syncResultTitle}
+                  </p>
+                  <p className="text-xs text-(--text-muted)">
+                    {lastSyncResultLabel ?? "-"}
+                  </p>
+                </div>
+
+                {lastSyncSummary ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
+                      <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
+                        {helperCopy.uploadedFromDevice}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
+                        {lastSyncSummary.uploadedDocuments}
+                      </p>
+                    </div>
+                    <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
+                      <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
+                        {helperCopy.cloudDocuments}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
+                        {lastSyncSummary.documents}
+                      </p>
+                    </div>
+                    <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
+                      <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
+                        {helperCopy.cloudSessions}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
+                        {lastSyncSummary.sessions}
+                      </p>
+                    </div>
+                    <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
+                      <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
+                        {helperCopy.cloudBookmarks} /{" "}
+                        {helperCopy.cloudHighlights}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
+                        {lastSyncSummary.bookmarks} /{" "}
+                        {lastSyncSummary.highlights}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+                    {helperCopy.syncResultEmpty}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                    {helperCopy.syncStatusLabel}
+                  </p>
+                  <p className="mt-3 text-lg font-semibold text-(--text-strong)">
+                    {syncCopy}
+                  </p>
+                </div>
+                <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                    {helperCopy.localOnlyDocs}
+                  </p>
+                  <p className="mt-3 text-3xl font-semibold text-(--text-strong)">
+                    {guestDocuments}
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+                    {guestDocuments > 0
+                      ? helperCopy.backupHint
+                      : helperCopy.backupDone}
+                  </p>
+                </div>
+                <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                    {helperCopy.lastCloudSync}
+                  </p>
+                  <p className="mt-3 text-lg font-semibold text-(--text-strong)">
+                    {lastSyncedLabel ?? "-"}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="editorial-kicker text-(--accent-amber)">
+                {locale === "en"
+                  ? "Paid account required"
+                  : locale === "es"
+                    ? "Cuenta pagada requerida"
+                    : "Conta paga obrigatoria"}
               </p>
-              <p className="mt-3 text-lg font-semibold text-(--text-strong)">
-                {syncCopy}
+              <h2 className="font-heading mt-4 text-3xl font-semibold text-(--text-strong)">
+                {helperCopy.accountUpgradeTitle}
+              </h2>
+              <p className="mt-4 text-base leading-8 text-(--text-muted)">
+                {helperCopy.accountUpgradeDetail}
               </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                {helperCopy.localOnlyDocs}
-              </p>
-              <p className="mt-3 text-3xl font-semibold text-(--text-strong)">
-                {guestDocuments}
-              </p>
-              <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-                {guestDocuments > 0
-                  ? helperCopy.backupHint
-                  : helperCopy.backupDone}
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-              <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                {helperCopy.lastCloudSync}
-              </p>
-              <p className="mt-3 text-lg font-semibold text-(--text-strong)">
-                {lastSyncedLabel ?? "-"}
-              </p>
-            </div>
-          </div>
+
+              <ul className="mt-6 space-y-3 text-sm leading-7 text-(--text-muted)">
+                {helperCopy.syncChecklist.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="text-(--accent-amber)">*</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-6 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
+                <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                  {locale === "en"
+                    ? "Current access"
+                    : locale === "es"
+                      ? "Acceso actual"
+                      : "Acesso atual"}
+                </p>
+                <p className="mt-3 text-sm leading-7 text-(--text-strong)">
+                  {locale === "en"
+                    ? "Local reading still works, but this sign-in will not sync documents or saved words until Focus or Max is active."
+                    : locale === "es"
+                      ? "La lectura local sigue funcionando, pero este acceso no sincronizara documentos ni palabras guardadas hasta que Focus o Max esten activos."
+                      : "A leitura local continua funcionando, mas este login nao vai sincronizar documentos nem palavras salvas ate que Focus ou Max estejam ativos."}
+                </p>
+              </div>
+
+              <a
+                href="/pricing"
+                className="mt-6 inline-flex h-11 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                {helperCopy.accountUpgradeCta}
+              </a>
+            </>
+          )}
 
           {statusMessage || errorMessage ? (
             <p className="mt-6 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
@@ -1110,18 +1542,12 @@ export function AccountPanel() {
   return (
     <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
       <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
-        <p className="editorial-kicker text-(--accent-sky)">
-          Optional cloud account
-        </p>
+        <p className="editorial-kicker text-(--accent-sky)">{topKicker}</p>
         <h2 className="font-heading mt-4 text-4xl font-semibold text-(--text-strong)">
-          {helperCopy.createAccountHint}
+          {topHeading}
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-8 text-(--text-muted)">
-          {locale === "en"
-            ? "Sign in only if you want your documents, reading progress, bookmarks, and highlights to follow you across devices. You can use GitHub, Google, email + password, or a one-time email link."
-            : locale === "es"
-              ? "Inicia sesión solo si quieres que tus documentos, progreso, marcadores y destacados te acompañen entre dispositivos. Puedes usar GitHub, Google, email con contraseña o un enlace de acceso por email."
-              : "Entre apenas se quiser que seus documentos, progresso, marcadores e destaques acompanhem voce entre dispositivos. Voce pode usar GitHub, Google, email com senha ou um link unico por email."}
+          {topDescription}
         </p>
 
         <div className="mt-8 flex flex-wrap gap-2">
@@ -1153,122 +1579,150 @@ export function AccountPanel() {
         </p>
 
         <div className="mt-8 grid gap-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Button
-              variant="outline"
-              className="h-12 rounded-[1.25rem]"
-              disabled={isOAuthPending}
-              onClick={() => {
-                void handleOAuthSignIn("github", signInWithGitHub);
-              }}
-            >
-              {pendingAction === "github" ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <span className="text-sm font-semibold tracking-[0.18em]">
-                  GH
-                </span>
-              )}
-              {helperCopy.githubSignIn}
-            </Button>
-
-            <Button
-              variant="outline"
-              className="h-12 rounded-[1.25rem]"
-              disabled={isOAuthPending}
-              onClick={() => {
-                void handleOAuthSignIn("google", signInWithGoogle);
-              }}
-            >
-              {pendingAction === "google" ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <span className="text-base font-semibold">G</span>
-              )}
-              {helperCopy.googleSignIn}
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-3 text-xs tracking-[0.24em] text-(--text-muted) uppercase">
-            <span className="h-px flex-1 bg-(--border-soft)" />
-            <span>
-              {locale === "en"
-                ? "Or use email"
-                : locale === "es"
-                  ? "O usa email"
-                  : "Ou use email"}
-            </span>
-            <span className="h-px flex-1 bg-(--border-soft)" />
-          </div>
-
-          <label
-            className="text-sm font-medium text-(--text-strong)"
-            htmlFor="account-email"
-          >
-            Email
-          </label>
-          <div className="relative">
-            <Mail className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
-            <input
-              id="account-email"
-              type="email"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-              }}
-              className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-              placeholder="reader@example.com"
-            />
-          </div>
-
-          {mode !== "magic-link" ? (
+          {showOAuthButtons ? (
             <>
-              <label
-                className="text-sm font-medium text-(--text-strong)"
-                htmlFor="account-password"
-              >
-                {helperCopy.password}
-              </label>
-              <div className="relative">
-                <KeyRound className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
-                <input
-                  id="account-password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => {
-                    setPassword(event.target.value);
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Button
+                  variant="outline"
+                  className="h-12 rounded-[1.25rem]"
+                  disabled={isOAuthPending}
+                  onClick={() => {
+                    void handleOAuthSignIn("github", signInWithGitHub);
                   }}
-                  className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                  placeholder="At least 6 characters"
-                />
+                >
+                  {pendingAction === "github" ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="text-sm font-semibold tracking-[0.18em]">
+                      GH
+                    </span>
+                  )}
+                  {helperCopy.githubSignIn}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-12 rounded-[1.25rem]"
+                  disabled={isOAuthPending}
+                  onClick={() => {
+                    void handleOAuthSignIn("google", signInWithGoogle);
+                  }}
+                >
+                  {pendingAction === "google" ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="text-base font-semibold">G</span>
+                  )}
+                  {helperCopy.googleSignIn}
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs tracking-[0.24em] text-(--text-muted) uppercase">
+                <span className="h-px flex-1 bg-(--border-soft)" />
+                <span>
+                  {locale === "en"
+                    ? "Or use email"
+                    : locale === "es"
+                      ? "O usa email"
+                      : "Ou use email"}
+                </span>
+                <span className="h-px flex-1 bg-(--border-soft)" />
               </div>
             </>
           ) : null}
 
-          <Button
-            className="mt-2 h-12 rounded-[1.25rem]"
-            disabled={
-              pendingAction === "auth" ||
-              !email ||
-              (mode !== "magic-link" && password.length < 6)
-            }
-            onClick={() => {
-              void handleSubmit();
-            }}
-          >
-            {pendingAction === "auth" ? (
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-            ) : mode === "magic-link" ? (
-              <Mail className="h-4 w-4" />
-            ) : (
-              <UserRound className="h-4 w-4" />
-            )}
-            {mode === "sign-in"
-              ? helperCopy.signIn
-              : mode === "create-account"
-                ? helperCopy.createAccount
-                : helperCopy.magicLink}
-          </Button>
+          {showCreateAccountLock ? (
+            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-5">
+              <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-sky) uppercase">
+                {locale === "en"
+                  ? "Paid checkout first"
+                  : locale === "es"
+                    ? "Primero el pago"
+                    : "Primeiro o pagamento"}
+              </p>
+              <p className="mt-3 text-sm leading-7 text-(--text-strong)">
+                {helperCopy.accountUpgradeDetail}
+              </p>
+              <a
+                href="/pricing"
+                className="mt-4 inline-flex h-11 items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                {helperCopy.accountUpgradeCta}
+              </a>
+            </div>
+          ) : (
+            <>
+              <label
+                className="text-sm font-medium text-(--text-strong)"
+                htmlFor="account-email"
+              >
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
+                <input
+                  id="account-email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                  }}
+                  className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+                  placeholder="reader@example.com"
+                />
+              </div>
+
+              {mode !== "magic-link" ? (
+                <>
+                  <label
+                    className="text-sm font-medium text-(--text-strong)"
+                    htmlFor="account-password"
+                  >
+                    {helperCopy.password}
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
+                    <input
+                      id="account-password"
+                      type="password"
+                      value={password}
+                      onChange={(event) => {
+                        setPassword(event.target.value);
+                      }}
+                      className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+                      placeholder="At least 6 characters"
+                    />
+                  </div>
+                </>
+              ) : null}
+
+              <Button
+                className="mt-2 h-12 rounded-[1.25rem]"
+                disabled={
+                  pendingAction === "auth" ||
+                  !email ||
+                  (mode !== "magic-link" && password.length < 6) ||
+                  (mode === "create-account" && !paidSignupPlan)
+                }
+                onClick={() => {
+                  void handleSubmit();
+                }}
+              >
+                {pendingAction === "auth" ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : mode === "magic-link" ? (
+                  <Mail className="h-4 w-4" />
+                ) : (
+                  <UserRound className="h-4 w-4" />
+                )}
+                {mode === "sign-in"
+                  ? helperCopy.signIn
+                  : mode === "create-account"
+                    ? helperCopy.createAccount
+                    : helperCopy.magicLink}
+              </Button>
+            </>
+          )}
 
           {statusMessage || errorMessage ? (
             <p className="rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
@@ -1297,10 +1751,10 @@ export function AccountPanel() {
           </li>
           <li>
             {locale === "en"
-              ? "Keep using Leyendo as a guest if you only want local reading on this device."
+              ? "Stay on the free guest mode if you only need local reading on this device with up to 3 file uploads."
               : locale === "es"
-                ? "Seguir usando Leyendo como invitado si solo quieres lectura local en este dispositivo."
-                : "Continuar usando o Leyendo como convidado se quiser leitura local apenas neste dispositivo."}
+                ? "Sigue en el modo invitado gratis si solo necesitas lectura local en este dispositivo con hasta 3 cargas de archivos."
+                : "Fique no modo convidado gratuito se voce so precisa de leitura local neste dispositivo com ate 3 uploads de arquivo."}
           </li>
         </ul>
       </article>

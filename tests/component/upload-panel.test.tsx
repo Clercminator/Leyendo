@@ -96,16 +96,27 @@ vi.mock("@/lib/supabase/client", () => ({
   getSupabaseBrowserClient,
 }));
 
-const { ensureProfile, upsertCloudDocuments, upsertCloudSessions } = vi.hoisted(
-  () => ({
-    ensureProfile: vi.fn(),
-    upsertCloudDocuments: vi.fn(),
-    upsertCloudSessions: vi.fn(),
-  }),
-);
+const {
+  ensureProfile,
+  getGuestFileUploadCount,
+  incrementGuestFileUploadCount,
+  incrementProfileFileUploadCount,
+  upsertCloudDocuments,
+  upsertCloudSessions,
+} = vi.hoisted(() => ({
+  ensureProfile: vi.fn(),
+  getGuestFileUploadCount: vi.fn(),
+  incrementGuestFileUploadCount: vi.fn(),
+  incrementProfileFileUploadCount: vi.fn(),
+  upsertCloudDocuments: vi.fn(),
+  upsertCloudSessions: vi.fn(),
+}));
 
 vi.mock("@/lib/supabase/library-sync", () => ({
   ensureProfile,
+  getGuestFileUploadCount,
+  incrementGuestFileUploadCount,
+  incrementProfileFileUploadCount,
   upsertCloudDocuments,
   upsertCloudSessions,
 }));
@@ -130,6 +141,9 @@ describe("UploadPanel", () => {
     isPdfTooLargeForBrowser.mockReturnValue(false);
     shouldOffloadPdfExtraction.mockReturnValue(false);
     shouldOffloadDocumentBuild.mockReturnValue(false);
+    getGuestFileUploadCount.mockResolvedValue(0);
+    incrementGuestFileUploadCount.mockResolvedValue(1);
+    incrementProfileFileUploadCount.mockResolvedValue(undefined);
     extractDocumentFromFileAsync.mockResolvedValue({
       payload: {
         rawText: "Imported from file.",
@@ -249,6 +263,26 @@ describe("UploadPanel", () => {
     expect(alert).toHaveTextContent(/above the current upload limit/i);
     expect(within(alert).getByText(/150 mb/i)).toBeInTheDocument();
     expect(within(alert).getByText(/175 mb/i)).toBeInTheDocument();
+  });
+
+  it("blocks guests after the 3 free file uploads are used", async () => {
+    const user = userEvent.setup({ applyAccept: false });
+
+    getGuestFileUploadCount.mockResolvedValue(3);
+
+    render(<UploadPanel />);
+
+    await user.click(screen.getByRole("radio", { name: /upload a document/i }));
+    await user.upload(
+      uploadFileInput(),
+      new File(["text"], "sample.txt", { type: "text/plain" }),
+    );
+
+    const alert = await screen.findByRole("alert");
+
+    expect(alert).toHaveTextContent(/free reading includes 3 file uploads/i);
+    expect(alert).toHaveTextContent(/upgrade to focus for 15 uploads/i);
+    expect(extractDocumentFromFileAsync).not.toHaveBeenCalled();
   });
 
   it("shows processing feedback while a file is being read and a success state after", async () => {

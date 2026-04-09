@@ -62,6 +62,9 @@ describe("PricingPageContent", () => {
     expect(
       screen.getByRole("button", { name: /get max/i }),
     ).toBeInTheDocument();
+    expect(screen.getAllByText(/3 file uploads/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/15 file uploads/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/unlimited uploads/i).length).toBeGreaterThan(0);
   });
 
   it("uses the real MercadoPago subscription plans for LATAM card checkout", async () => {
@@ -125,5 +128,15 @@ describe("PricingPageContent", () => {
         /payment approved\. if your plan does not unlock automatically/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("offers the paid account setup handoff after a successful checkout", () => {
+    window.localStorage.setItem("leyendo_paid_signup_plan", "focus");
+
+    render(<PricingPageContent initialPaymentStatus="success" />);
+
+    expect(
+      screen.getByRole("link", { name: /continue to paid account setup/i }),
+    ).toHaveAttribute("href", "/account?payment=success&plan=focus");
   });
 });

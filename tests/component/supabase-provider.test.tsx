@@ -72,7 +72,14 @@ describe("SupabaseProvider", () => {
     vi.clearAllMocks();
 
     ensureProfile.mockResolvedValue(undefined);
-    getProfile.mockResolvedValue(undefined);
+    getProfile.mockResolvedValue({
+      createdAt: "2026-03-30T10:00:00.000Z",
+      fileUploadCount: 0,
+      marketingConsent: false,
+      planTier: "focus",
+      updatedAt: "2026-03-30T10:00:00.000Z",
+      userId: "user-1",
+    });
     getLocalOnlyLibrarySummary.mockResolvedValue({
       bookmarks: 0,
       documents: 2,
