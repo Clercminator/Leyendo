@@ -8,7 +8,6 @@ import { Check, Coins, CreditCard, Globe2, X } from "lucide-react";
 
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { useLocale } from "@/components/layout/locale-provider";
-import { getMercadoPagoCheckoutUrl } from "@/lib/payment-config";
 import { focusFileUploadLimit, freeFileUploadLimit } from "@/lib/plans";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
 import { founderGitHubUrl, founderLinkedInUrl } from "@/lib/site";
@@ -458,11 +457,10 @@ export function PricingPageContent({
     planId: PaidPlanId,
     provider: Exclude<PaymentProvider, "binance">,
   ) {
+    const checkoutWindow = window.open("", "_blank");
     let providerUrl: string | undefined;
 
     if (provider === "lemonsqueezy") {
-      const checkoutWindow = window.open("", "_blank");
-
       try {
         const response = await fetch("/api/payments/lemonsqueezy", {
           method: "POST",
@@ -501,10 +499,37 @@ export function PricingPageContent({
         return;
       }
     } else {
-      providerUrl = getMercadoPagoCheckoutUrl(planId);
+      try {
+        const response = await fetch("/api/payments/mercadopago", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            plan: planId,
+          }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          checkoutUrl?: string;
+          error?: string;
+        } | null;
+
+        if (!response.ok || !payload?.checkoutUrl) {
+          checkoutWindow?.close();
+          setStatusMessage(payload?.error ?? copy.invalidMercadoPagoProvider);
+          return;
+        }
+
+        providerUrl = payload.checkoutUrl;
+      } catch {
+        checkoutWindow?.close();
+        setStatusMessage(copy.invalidMercadoPagoProvider);
+        return;
+      }
     }
 
     if (!providerUrl) {
+      checkoutWindow?.close();
       setStatusMessage(
         provider === "mercadopago"
           ? copy.invalidMercadoPagoProvider
@@ -517,8 +542,11 @@ export function PricingPageContent({
     window.localStorage.setItem(paidSignupPlanStorageKey, planId);
     setReadySignupPlan(planId);
 
-    if (provider === "mercadopago") {
-      window.open(providerUrl, "_blank", "noopener,noreferrer");
+    if (checkoutWindow) {
+      checkoutWindow.opener = null;
+      checkoutWindow.location.href = providerUrl;
+    } else {
+      window.location.assign(providerUrl);
     }
   }
 

@@ -2,7 +2,7 @@
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PricingPageContent } from "@/components/pricing/pricing-page-content";
 
@@ -10,6 +10,9 @@ const originalMercadoPagoFocusPlanId =
   process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID;
 const originalMercadoPagoMaxPlanId =
   process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID;
+const fetchMock = vi.fn<typeof fetch>();
+
+vi.stubGlobal("fetch", fetchMock);
 
 vi.mock("next/image", () => ({
   default: ({
@@ -55,6 +58,22 @@ describe("PricingPageContent", () => {
       "b9ee7e5887ba41608dbceb39a152073b";
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID =
       "9f0352ccb88840e38f5241214e548df4";
+    fetchMock.mockImplementation(async (input) => {
+      if (typeof input === "string" && input === "/api/payments/mercadopago") {
+        return new Response(
+          JSON.stringify({
+            checkoutUrl:
+              "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      throw new Error(`Unexpected fetch call: ${String(input)}`);
+    });
     useLocale.mockReturnValue({
       locale: "en",
       setLocale: vi.fn(),
@@ -91,7 +110,44 @@ describe("PricingPageContent", () => {
 
   it("uses the real MercadoPago subscription plans for LATAM card checkout", async () => {
     const user = userEvent.setup();
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const focusWindow = {
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
+    const maxWindow = {
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
+    const openSpy = vi
+      .spyOn(window, "open")
+      .mockReturnValueOnce(focusWindow)
+      .mockReturnValueOnce(maxWindow);
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            checkoutUrl:
+              "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            checkoutUrl:
+              "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=9f0352ccb88840e38f5241214e548df4",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
 
     render(<PricingPageContent />);
 
@@ -100,18 +156,16 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(openSpy).toHaveBeenCalledWith(
+    expect(openSpy).toHaveBeenNthCalledWith(1, "", "_blank");
+    expect(focusWindow.location.href).toBe(
       "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
-      "_blank",
-      "noopener,noreferrer",
     );
 
     await user.click(screen.getByRole("button", { name: /get max/i }));
 
-    expect(openSpy).toHaveBeenCalledWith(
+    expect(openSpy).toHaveBeenNthCalledWith(2, "", "_blank");
+    expect(maxWindow.location.href).toBe(
       "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=9f0352ccb88840e38f5241214e548df4",
-      "_blank",
-      "noopener,noreferrer",
     );
 
     openSpy.mockRestore();
@@ -119,9 +173,25 @@ describe("PricingPageContent", () => {
 
   it("blocks invalid MercadoPago plan ids instead of opening a broken checkout URL", async () => {
     const user = userEvent.setup();
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const checkoutWindow = {
+      close: vi.fn(),
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(checkoutWindow);
 
-    process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID = "952930";
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error:
+            "MercadoPago is not configured correctly yet. Use the real preapproval_plan_id or the full init_point URL, not a short dashboard number.",
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
 
     render(<PricingPageContent />);
 
@@ -130,7 +200,10 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(openSpy).not.toHaveBeenCalled();
+    expect(openSpy).toHaveBeenCalledWith("", "_blank");
+    expect(
+      (checkoutWindow as { close: ReturnType<typeof vi.fn> }).close,
+    ).toHaveBeenCalled();
     expect(
       screen.getByText(/mercadopago is not configured correctly yet/i),
     ).toBeInTheDocument();

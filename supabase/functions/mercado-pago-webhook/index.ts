@@ -3,11 +3,17 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const MERCADOPAGO_ACCESS_TOKEN =
   Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")?.trim() ?? "";
 const MERCADOPAGO_ACCESS_TOKEN_PRUEBA =
-  Deno.env.get("MERCADOPAGO_ACCESS_TOKEN_PRUEBA")?.trim() ?? "";
+  (
+    Deno.env.get("MERCADOPAGO_ACCESS_TOKEN_PRUEBA") ??
+    Deno.env.get("MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT")
+  )?.trim() ?? "";
 const MERCADOPAGO_WEBHOOK_SECRET =
   Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET")?.trim() ?? "";
 const MERCADOPAGO_WEBHOOK_SECRET_PRUEBA =
-  Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_PRUEBA")?.trim() ?? "";
+  (
+    Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_PRUEBA") ??
+    Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_TESTING_ACCOUNT")
+  )?.trim() ?? "";
 const MERCADOPAGO_PLAN_FOCUS_ID =
   (
     Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID") ??
@@ -18,12 +24,16 @@ const MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA =
   (
     Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA") ??
     Deno.env.get("MERCADOPAGO_PLAN_STANDARD_ID_PRUEBA") ??
-    Deno.env.get("MERCADOPAGO_PLAN_BUILDER_ID_PRUEBA")
+    Deno.env.get("MERCADOPAGO_PLAN_BUILDER_ID_PRUEBA") ??
+    Deno.env.get("MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT")
   )?.trim() ?? "";
 const MERCADOPAGO_PLAN_MAX_ID =
   Deno.env.get("MERCADOPAGO_PLAN_MAX_ID")?.trim() ?? "";
 const MERCADOPAGO_PLAN_MAX_ID_PRUEBA =
-  Deno.env.get("MERCADOPAGO_PLAN_MAX_ID_PRUEBA")?.trim() ?? "";
+  (
+    Deno.env.get("MERCADOPAGO_PLAN_MAX_ID_PRUEBA") ??
+    Deno.env.get("MERCADOPAGO_MAX_ID_TESTING_ACCOUNT")
+  )?.trim() ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
