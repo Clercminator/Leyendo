@@ -301,7 +301,7 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
         cloudHighlights: "Destacados",
         cloudSessions: "Sesiones",
         cloudSignInRequired:
-          "Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY para activar cuentas, sincronización y feedback.",
+          "Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY o NEXT_PUBLIC_SUPABASE_ANON_KEY para activar cuentas, sincronización y feedback.",
         createAccount: "Crear cuenta",
         createAccountHint:
           "Focus o Max son obligatorios para crear una cuenta con sincronizacion y palabras guardadas.",
@@ -407,7 +407,7 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
         cloudHighlights: "Destaques",
         cloudSessions: "Sessoes",
         cloudSignInRequired:
-          "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY para ativar contas, sincronizacao e feedback.",
+          "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY para ativar contas, sincronizacao e feedback.",
         createAccount: "Criar conta",
         createAccountHint:
           "Focus ou Max sao obrigatorios para criar uma conta com sincronizacao e palavras salvas.",
@@ -513,7 +513,7 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
       cloudHighlights: "Highlights",
       cloudSessions: "Sessions",
       cloudSignInRequired:
-        "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable accounts, sync, and feedback.",
+        "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY to enable accounts, sync, and feedback.",
       createAccount: "Create account",
       createAccountHint:
         "Focus or Max is required to create an account with sync and saved words.",
@@ -650,10 +650,10 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
     : helperCopy.createAccountHint;
   const topDescription = paidSignupPlan
     ? locale === "en"
-      ? `${paidSignupPlanLabel} is ready to unlock cloud sync, cross-device reading, and the saved-word dictionary. Create the account below to finish activation.`
+      ? `${paidSignupPlanLabel} is ready to unlock cloud sync, cross-device reading, and the saved-word dictionary. Create the account below with the same email used in checkout to finish activation automatically.`
       : locale === "es"
-        ? `${paidSignupPlanLabel} ya puede desbloquear la sincronizacion en la nube, la lectura entre dispositivos y el diccionario de palabras guardadas. Crea la cuenta abajo para terminar la activacion.`
-        : `${paidSignupPlanLabel} ja pode desbloquear a sincronizacao na nuvem, a leitura entre dispositivos e o dicionario de palavras salvas. Crie a conta abaixo para concluir a ativacao.`
+        ? `${paidSignupPlanLabel} ya puede desbloquear la sincronizacion en la nube, la lectura entre dispositivos y el diccionario de palabras guardadas. Crea la cuenta abajo con el mismo email usado en el checkout para terminar la activacion automaticamente.`
+        : `${paidSignupPlanLabel} ja pode desbloquear a sincronizacao na nuvem, a leitura entre dispositivos e o dicionario de palavras salvas. Crie a conta abaixo com o mesmo email usado no checkout para concluir a ativacao automaticamente.`
     : locale === "en"
       ? "Guest reading still works for free, but cross-device sync and the saved-word dictionary now require a paid Focus or Max account."
       : locale === "es"

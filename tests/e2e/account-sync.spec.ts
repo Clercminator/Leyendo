@@ -1,12 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabasePublicKey =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const accountEmail = process.env.PLAYWRIGHT_ACCOUNT_EMAIL;
 const accountPassword = process.env.PLAYWRIGHT_ACCOUNT_PASSWORD;
 
 const hasAuthE2eConfig = Boolean(
-  supabaseUrl && supabaseAnonKey && accountEmail && accountPassword,
+  supabaseUrl && supabasePublicKey && accountEmail && accountPassword,
 );
 
 function escapeRegExp(value: string) {

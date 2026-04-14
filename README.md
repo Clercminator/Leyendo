@@ -1347,8 +1347,11 @@ Account sync and the feedback widget are optional at runtime, but they need Supa
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
+
+Use `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` on newer Supabase projects or `NEXT_PUBLIC_SUPABASE_ANON_KEY` on older ones. Leyendo accepts either name for the browser client.
 
 If those variables are missing, Leyendo stays usable as a guest-only local app and the account sync UI will warn that Supabase is not configured.
 
