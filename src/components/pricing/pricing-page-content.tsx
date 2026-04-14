@@ -67,6 +67,7 @@ interface Copy {
   latamSwitch: string;
   maxCta: string;
   maxDescription: string;
+  invalidMercadoPagoProvider: string;
   missingProvider: string;
   paymentSuccess: string;
   paymentNote: string;
@@ -224,6 +225,8 @@ export function PricingPageContent({
         maxCta: "Obtener Max",
         maxDescription:
           "Todo Focus mas cargas ilimitadas, 100+ libros en la nube y acceso incluido a Vector Max.",
+        invalidMercadoPagoProvider:
+          "MercadoPago no esta configurado correctamente todavia. Usa el preapproval_plan_id real del plan o el init_point completo, no un numero corto del panel.",
         missingProvider:
           "Este checkout todavia no esta conectado. Puedes usar Binance mientras configuramos este proveedor.",
         paymentSuccess:
@@ -264,6 +267,8 @@ export function PricingPageContent({
         maxCta: "Obter Max",
         maxDescription:
           "Tudo do Focus mais uploads ilimitados, 100+ livros na nuvem e acesso incluido ao Vector Max.",
+        invalidMercadoPagoProvider:
+          "O MercadoPago ainda nao esta configurado corretamente. Use o preapproval_plan_id real do plano ou o init_point completo, e nao um numero curto do painel.",
         missingProvider:
           "Este checkout ainda nao esta conectado. Voce pode usar Binance enquanto este provedor e configurado.",
         paymentSuccess:
@@ -303,6 +308,8 @@ export function PricingPageContent({
       maxCta: "Get Max",
       maxDescription:
         "Everything in Focus plus unlimited file uploads, 100+ cloud books, and bundled Vector Max access.",
+      invalidMercadoPagoProvider:
+        "MercadoPago is not configured correctly yet. Use the real preapproval_plan_id or the full init_point URL, not a short dashboard number.",
       missingProvider:
         "This checkout is not connected yet. You can use Binance while this provider is being configured.",
       paymentSuccess:
@@ -498,7 +505,11 @@ export function PricingPageContent({
     }
 
     if (!providerUrl) {
-      setStatusMessage(copy.missingProvider);
+      setStatusMessage(
+        provider === "mercadopago"
+          ? copy.invalidMercadoPagoProvider
+          : copy.missingProvider,
+      );
       return;
     }
 

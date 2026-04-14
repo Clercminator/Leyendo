@@ -4,9 +4,20 @@ export type PaymentLocale = "en" | "es" | "pt";
 
 const DEFAULT_MERCADOPAGO_CHECKOUT_BASE_URL =
   "https://www.mercadopago.com.ar/subscriptions/checkout";
+const MERCADOPAGO_PLAN_ID_PATTERN = /^[a-f0-9]{32}$/i;
 const DEFAULT_LEMONSQUEEZY_VARIANT_IDS = {
   focus: "1497164",
 } satisfies Partial<Record<PaidPlanTier, string>>;
+
+function normalizeMercadoPagoPlanId(value: string | undefined) {
+  const planId = value?.trim();
+
+  if (!planId) {
+    return undefined;
+  }
+
+  return MERCADOPAGO_PLAN_ID_PATTERN.test(planId) ? planId : undefined;
+}
 
 export function normalizePaymentLocale(value: unknown): PaymentLocale {
   return value === "es" || value === "pt" ? value : "en";
@@ -41,8 +52,12 @@ export function getMercadoPagoCheckoutUrl(planTier: PaidPlanTier) {
 
   const planId =
     planTier === "focus"
-      ? process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID?.trim()
-      : process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID?.trim();
+      ? normalizeMercadoPagoPlanId(
+          process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID,
+        )
+      : normalizeMercadoPagoPlanId(
+          process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID,
+        );
 
   if (planId) {
     return buildMercadoPagoSubscriptionUrl(planId);

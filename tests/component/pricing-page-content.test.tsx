@@ -117,6 +117,27 @@ describe("PricingPageContent", () => {
     openSpy.mockRestore();
   });
 
+  it("blocks invalid MercadoPago plan ids instead of opening a broken checkout URL", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID = "952930";
+
+    render(<PricingPageContent />);
+
+    await user.click(
+      screen.getByRole("button", { name: /paying from latam\? switch/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /get focus/i }));
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/mercadopago is not configured correctly yet/i),
+    ).toBeInTheDocument();
+
+    openSpy.mockRestore();
+  });
+
   it("switches payment region and opens the Binance dialog", async () => {
     const user = userEvent.setup();
 

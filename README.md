@@ -109,6 +109,10 @@ NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID=
 NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID=
 ```
 
+Use the actual `preapproval_plan_id` returned by MercadoPago's API for these values.
+Do not use a short dashboard number or any other internal reference.
+If you configure something like `952930`, Leyendo will build a broken checkout URL and MercadoPago will answer with `412` / `SUB17`.
+
 Optional MercadoPago overrides:
 
 ```env
@@ -119,11 +123,17 @@ NEXT_PUBLIC_MERCADOPAGO_CHECKOUT_BASE_URL=https://www.mercadopago.com.ar/subscri
 
 Use the explicit URL variables only if you want to override the default plan-based checkout URL builder.
 
+For the current hosted MercadoPago flow, those public plan ids are the only frontend values Leyendo uses.
+The current repo does not use `MERCADOPAGO_PUBLIC_KEY`, `MERCADOPAGO_PUBLIC_KEY_PRUEBA`, `MERCADOPAGO_CLIENT_ID`, `MERCADOPAGO_CLIENT_SECRET`, or any `VITE_MERCADOPAGO_*` variables for checkout.
+
 Important:
 
 - Leyendo should not rely on Vector-era MercadoPago plan ids or checkout URLs anymore.
 - The current Leyendo pricing flow uses plan-based subscription checkout links, so the MercadoPago public key is not used by this repo right now.
 - After creating Leyendo's own MercadoPago recurring plans, set the new plan ids in Vercel before exposing LATAM checkout.
+- For the hosted MercadoPago return path, set each plan's `back_url` to the matching pricing URL:
+  - Focus: `https://leyendo.xyz/pricing?payment=success&plan=focus`
+  - Max: `https://leyendo.xyz/pricing?payment=success&plan=max`
 
 ### Supabase secrets
 
@@ -139,11 +149,77 @@ MERCADOPAGO_PLAN_FOCUS_ID=
 MERCADOPAGO_PLAN_MAX_ID=
 ```
 
+If you want one Supabase project to support both live seller events and test seller events at the same time, also add the test-seller versions:
+
+```env
+MERCADOPAGO_ACCESS_TOKEN_PRUEBA=
+MERCADOPAGO_WEBHOOK_SECRET_PRUEBA=
+MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA=
+MERCADOPAGO_PLAN_MAX_ID_PRUEBA=
+```
+
 Notes:
 
 - Leyendo needs its own LemonSqueezy webhook and its own MercadoPago webhook even when Max is shared with Vector, because Leyendo maintains a separate `billing_subscriptions` table and profile sync state.
 - The LemonSqueezy signing secret in the LemonSqueezy dashboard must exactly match `LEMONSQUEEZY_WEBHOOK_SECRET` in Leyendo's Supabase secrets.
 - MercadoPago should point recurring subscription notifications at Leyendo's own webhook endpoint and use the matching `MERCADOPAGO_WEBHOOK_SECRET` if you enable signed webhooks.
+- The webhook now supports both live seller and test seller MercadoPago credentials at the same time when the `_PRUEBA` secrets are present. This lets one Supabase project receive preview/test events and production events without manually swapping one global access token.
+
+### MercadoPago test vs live
+
+MercadoPago uses two different ideas that sound similar but are not the same:
+
+- `Credenciales de prueba` belong to an application and are mainly for API-style test integrations.
+- `Cuentas de prueba` create a fake seller and fake buyer ecosystem. When you test hosted subscription plans end to end, you use the production credentials of the seller test account, because inside that fake ecosystem they are the real seller credentials.
+
+For Leyendo's current hosted subscription-plan checkout, the important split is:
+
+- Production mode:
+  - real seller account
+  - real seller production access token
+  - live plan ids
+  - real buyers
+- Test mode:
+  - seller test account
+  - seller test account production access token
+  - test plan ids created under that seller test account
+  - buyer test accounts and test cards
+
+### Recommended workflow
+
+Use Vercel environments for the frontend split and keep Supabase able to recognize both MercadoPago sellers:
+
+- Vercel Production:
+  - `NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID` = live Focus plan id
+  - `NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID` = live Max plan id
+- Vercel Preview:
+  - `NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID` = test-seller Focus plan id
+  - `NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID` = test-seller Max plan id
+- Supabase:
+  - keep live MercadoPago secrets in the normal names
+  - keep test-seller MercadoPago secrets in the `_PRUEBA` names
+
+That means preview deploys can open test MercadoPago plans while production keeps opening live plans, and the same Supabase webhook can resolve either seller.
+
+### Branch and preview safety
+
+Do not treat `main` as your testing lane.
+
+Use this flow instead:
+
+1. Create a feature branch locally.
+2. Commit and push that branch.
+3. Let Vercel create a Preview deployment for that branch.
+4. Test MercadoPago from that Preview deployment using the test-seller plan ids.
+5. Merge into `main` only after the preview flow works.
+
+Important: `leyendo.vercel.app` is not currently your preview URL if it redirects to `leyendo.xyz`.
+For preview testing, use either:
+
+- the branch preview URL that Vercel generates automatically, or
+- a dedicated preview custom domain such as `preview.leyendo.xyz` attached to the Preview environment.
+
+If you want full round-trip hosted checkout on Preview, the test seller's plan `back_url` should point to that preview URL, not the production domain.
 
 ### Supabase deployment
 
