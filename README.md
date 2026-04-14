@@ -73,6 +73,311 @@ When Supabase is configured and the user signs in, Leyendo can also mirror these
 
 The cloud copy is there for cross-device resume. The import pipeline itself still runs locally in the browser.
 
+## Pricing Payments
+
+Leyendo's pricing page now routes recurring plan checkout by region:
+
+- US and EU users go through a server-side LemonSqueezy checkout creator,
+- LATAM users go through MercadoPago subscription checkout links,
+- and Binance remains the manual fallback.
+
+The current product flow is still pay first, account second.
+
+Leyendo now includes the recurring billing storage and webhook handlers needed to keep `profiles.plan_tier`, `subscription_status`, `subscription_expires_at`, and `subscription_grace_until` synced from LemonSqueezy and MercadoPago events. The `?payment=success&plan=...` redirect still exists as the signup bootstrap, but renewals, cancellations, grace periods, and shared Max access now depend on the Supabase billing sync described below.
+
+### Vercel environment variables
+
+Server-side variables for LemonSqueezy:
+
+```env
+LEMONSQUEEZY_API_KEY=
+LEMONSQUEEZY_STORE_ID=
+LEMONSQUEEZY_VARIANT_FOCUS=1497164
+LEMONSQUEEZY_VARIANT_MAX=
+```
+
+Notes:
+
+- `LEMONSQUEEZY_VARIANT_FOCUS` is the Leyendo Focus monthly variant.
+- `LEMONSQUEEZY_VARIANT_MAX` should point to the shared Vector/Leyendo Max monthly variant.
+- The route also accepts `LEMONSQUEEZY_VARIANT_STANDARD` or `LEMONSQUEEZY_VARIANT_BUILDER` as Focus fallbacks for compatibility, but Leyendo should prefer `LEMONSQUEEZY_VARIANT_FOCUS`.
+
+Public variables for MercadoPago:
+
+```env
+NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID=
+NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID=
+```
+
+Optional MercadoPago overrides:
+
+```env
+NEXT_PUBLIC_MERCADOPAGO_FOCUS_URL=
+NEXT_PUBLIC_MERCADOPAGO_MAX_URL=
+NEXT_PUBLIC_MERCADOPAGO_CHECKOUT_BASE_URL=https://www.mercadopago.com.ar/subscriptions/checkout
+```
+
+Use the explicit URL variables only if you want to override the default plan-based checkout URL builder.
+
+Important:
+
+- Leyendo should not rely on Vector-era MercadoPago plan ids or checkout URLs anymore.
+- The current Leyendo pricing flow uses plan-based subscription checkout links, so the MercadoPago public key is not used by this repo right now.
+- After creating Leyendo's own MercadoPago recurring plans, set the new plan ids in Vercel before exposing LATAM checkout.
+
+### Supabase secrets
+
+For recurring billing sync, add these secrets in Supabase Edge Functions:
+
+```env
+LEMONSQUEEZY_WEBHOOK_SECRET=
+LEMONSQUEEZY_VARIANT_FOCUS=1497164
+LEMONSQUEEZY_VARIANT_MAX=
+MERCADOPAGO_ACCESS_TOKEN=
+MERCADOPAGO_WEBHOOK_SECRET=
+MERCADOPAGO_PLAN_FOCUS_ID=
+MERCADOPAGO_PLAN_MAX_ID=
+```
+
+Notes:
+
+- Leyendo needs its own LemonSqueezy webhook and its own MercadoPago webhook even when Max is shared with Vector, because Leyendo maintains a separate `billing_subscriptions` table and profile sync state.
+- The LemonSqueezy signing secret in the LemonSqueezy dashboard must exactly match `LEMONSQUEEZY_WEBHOOK_SECRET` in Leyendo's Supabase secrets.
+- MercadoPago should point recurring subscription notifications at Leyendo's own webhook endpoint and use the matching `MERCADOPAGO_WEBHOOK_SECRET` if you enable signed webhooks.
+
+### Supabase deployment
+
+Apply the billing migration and deploy the two webhook functions:
+
+```bash
+supabase db push
+supabase functions deploy lemonsqueezy-webhook
+supabase functions deploy mercado-pago-webhook
+```
+
+Hosted function URLs for Leyendo:
+
+- `https://kibpmdbuwwwjptipypbd.supabase.co/functions/v1/lemonsqueezy-webhook`
+- `https://kibpmdbuwwwjptipypbd.supabase.co/functions/v1/mercado-pago-webhook`
+
+`supabase/config.toml` now marks both webhook functions with `verify_jwt = false`, which is required so provider callbacks are not rejected with `401`.
+
+## Reader Ad System
+
+Leyendo now includes an ad-break system that sits on top of the reader as a popup layer. It does not replace the existing reader UI, change the reading steps, or alter the existing local-first behavior underneath.
+
+The current implementation is designed so that the product integration can be finished before Google Ad Manager approval.
+
+What exists now:
+
+- a provider abstraction for reader ad breaks,
+- provider one implemented as IMA HTML5,
+- test VAST demand by default,
+- a hard environment kill switch,
+- local frequency caps independent of Google,
+- consent plumbing for UK and EU live demand,
+- internal analytics events for break shown, started, completed, failed, bounced, and upgrade click.
+
+### Current implementation state
+
+The system is already wired into the Reader route and ready for configuration-based activation later.
+
+Current behavior in code:
+
+- only Basic reading is eligible for reader ad breaks,
+- guest readers and signed-in Basic users are treated as the ad-supported tier,
+- Focus and Max stay exempt,
+- the reader stays exactly the same underneath and the ad system only adds a blocking popup layer above it,
+- if an ad fails to load, the reader unlocks instead of trapping the session,
+- the current provider abstraction supports one provider, `ima`, with room for future providers without rewriting the Reader integration.
+
+### Default behavior
+
+The system is off by default.
+
+If you do nothing, Leyendo behaves exactly as before.
+
+That means:
+
+- no popup appears,
+- no IMA SDK is used in practice,
+- no reader ad analytics events are emitted,
+- no consent gate is shown,
+- no reader flow changes for users.
+
+### Environment variables
+
+Add these to your `.env` only when you are ready to test or enable reader ads:
+
+```env
+NEXT_PUBLIC_READER_ADS_ENABLED=false
+NEXT_PUBLIC_READER_ADS_PROVIDER=ima
+NEXT_PUBLIC_READER_ADS_DEMAND_MODE=test
+NEXT_PUBLIC_READER_ADS_IMA_TAG_URL=https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_ad_samples&sz=640x480&cust_params=sample_ct%3Dlinear&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=
+NEXT_PUBLIC_READER_ADS_BREAK_INTERVAL_MINUTES=10
+NEXT_PUBLIC_READER_ADS_MAX_BREAKS_PER_DAY=3
+NEXT_PUBLIC_READER_ADS_INACTIVITY_GRACE_SECONDS=120
+NEXT_PUBLIC_READER_ADS_BOUNCE_WINDOW_SECONDS=45
+NEXT_PUBLIC_READER_ADS_REQUIRE_EU_UK_CONSENT=true
+NEXT_PUBLIC_READER_ADS_UPGRADE_HREF=/pricing?source=reader-ad-break
+```
+
+What these do:
+
+- `NEXT_PUBLIC_READER_ADS_ENABLED`: hard kill switch for the entire reader ad system,
+- `NEXT_PUBLIC_READER_ADS_PROVIDER`: current provider selector, currently `ima`,
+- `NEXT_PUBLIC_READER_ADS_DEMAND_MODE`: keeps demand in `test` until real trafficking is ready,
+- `NEXT_PUBLIC_READER_ADS_IMA_TAG_URL`: the IMA VAST tag used by the popup,
+- `NEXT_PUBLIC_READER_ADS_BREAK_INTERVAL_MINUTES`: target reading interval before showing a break,
+- `NEXT_PUBLIC_READER_ADS_MAX_BREAKS_PER_DAY`: local daily cap enforced independently of Google,
+- `NEXT_PUBLIC_READER_ADS_INACTIVITY_GRACE_SECONDS`: how long recent interaction still counts as active reading,
+- `NEXT_PUBLIC_READER_ADS_BOUNCE_WINDOW_SECONDS`: reserved window for bounce-style post-break analysis,
+- `NEXT_PUBLIC_READER_ADS_REQUIRE_EU_UK_CONSENT`: keeps live demand behind consent in UK and EU regions,
+- `NEXT_PUBLIC_READER_ADS_UPGRADE_HREF`: upgrade target used by the popup CTA.
+
+### What active reading means
+
+The current scheduler does not use naive wall-clock time.
+
+Active reading time accumulates only while:
+
+- the ad system is enabled,
+- a reader document is open,
+- the tab is visible,
+- the current plan is eligible for ads,
+- and the user is either actively playing the Reader or has interacted recently enough to stay inside the inactivity grace window.
+
+This is meant to avoid counting background tabs as real reading time.
+
+### Local caps and storage
+
+The reader ad system keeps its own local state in browser storage.
+
+What is stored:
+
+- break timestamps,
+- consent state,
+- last break shown timestamp,
+- accumulated reading milliseconds since the previous break.
+
+The storage key format is:
+
+- `leyendo:reader-ads:<ownerKey>`
+
+where `ownerKey` is either the signed-in user id or `guest`.
+
+This means the popup system can enforce a local cap even before Google Ad Manager applies its own interstitial or rewarded frequency limits.
+
+### Consent model
+
+Consent plumbing is already in place for future live demand.
+
+Current rule:
+
+- `test` demand does not require the consent step,
+- `live` demand requires consent for regions detected as UK or EU,
+- the current region check is timezone-based and distinguishes `uk`, `eu`, `other`, and `unknown`.
+
+That is not a full CMP by itself. It is the gating layer that keeps live rollout from skipping consent logic later.
+
+### Popup flow
+
+The popup currently has four phases:
+
+- `prompt`
+- `consent`
+- `loading`
+- `playing`
+
+High-level flow:
+
+1. The reading interval is reached.
+2. The Reader pauses and the popup appears.
+3. If live UK or EU demand needs consent, the popup asks first.
+4. The user starts the sponsor break from the popup.
+5. IMA loads and plays the ad.
+6. On completion, the popup unlocks the Reader.
+7. On failure, the popup unlocks the Reader and records a failed event.
+
+This is intentional: the Reader is never left in a stuck state just because the ad provider failed.
+
+### Analytics events
+
+The current analytics event names are:
+
+- `reader_ad_break_shown`
+- `reader_ad_break_started`
+- `reader_ad_break_completed`
+- `reader_ad_break_failed`
+- `reader_ad_bounced_after_break`
+- `reader_ad_upgrade_after_break`
+
+These are sent through Vercel Analytics and are designed to answer the main rollout questions:
+
+- how often the break appears,
+- how often it actually starts,
+- how often it completes,
+- how often it fails,
+- whether users disappear after a break,
+- whether the break creates upgrade intent.
+
+### Safe activation sequence
+
+When Google Ad Manager approval arrives, turning the system on should only require configuration changes, not code changes.
+
+Recommended sequence:
+
+1. Keep `NEXT_PUBLIC_READER_ADS_PROVIDER=ima`.
+2. Replace the test VAST tag in `NEXT_PUBLIC_READER_ADS_IMA_TAG_URL` with your real live tag.
+3. Change `NEXT_PUBLIC_READER_ADS_DEMAND_MODE=test` to `live`.
+4. Leave `NEXT_PUBLIC_READER_ADS_REQUIRE_EU_UK_CONSENT=true` enabled for production.
+5. Turn `NEXT_PUBLIC_READER_ADS_ENABLED=true` only after the live tag is ready.
+6. Start with a low-risk rollout and confirm analytics for shown, started, completed, failed, bounced, and upgrade click before widening exposure.
+
+In other words, the intended release order is:
+
+- finish the product integration first,
+- keep demand in test mode,
+- wait for Google Ad Manager approval,
+- swap only configuration values when real trafficking is ready.
+
+### Current test coverage
+
+The reader ad system is covered at three levels:
+
+- helper-level tests for caps, plan eligibility, and consent-region logic,
+- hook tests for interval scheduling, local daily caps, and the live-demand consent step,
+- overlay tests for the prompt start path and the consent-to-start path.
+
+Current related test files:
+
+- `tests/unit/reader-ads.test.ts`
+- `tests/component/use-reader-ad-breaks.test.tsx`
+- `tests/component/reader-ad-break-overlay.test.tsx`
+
+These tests exist specifically so future activation can happen with more confidence and fewer last-minute surprises.
+
+### Where the reader ad system lives
+
+- Config and env parsing: `src/lib/reader-ads.ts`
+- Analytics events: `src/lib/reader-ad-analytics.ts`
+- Active reading timer and break scheduler: `src/components/reader/use-reader-ad-breaks.ts`
+- IMA wrapper: `src/components/reader/ima-ad-player.tsx`
+- Provider abstraction: `src/components/reader/reader-ad-provider.tsx`
+- Popup overlay: `src/components/reader/reader-ad-break-overlay.tsx`
+- Workspace integration: `src/components/reader/reader-workspace.tsx`
+
+### What still depends on Google Ad Manager approval
+
+The engineering side is already in place. What still depends on approval is the monetization side:
+
+- real live ad unit setup,
+- real rewarded or interstitial trafficking,
+- real production VAST tags,
+- production buyer demand and reporting.
+
+That is the intended split: product integration first, real trafficking later.
+
 ## Supported Inputs And Honest Limits
 
 ### Supported now

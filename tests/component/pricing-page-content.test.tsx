@@ -6,6 +6,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PricingPageContent } from "@/components/pricing/pricing-page-content";
 
+const originalMercadoPagoFocusPlanId =
+  process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID;
+const originalMercadoPagoMaxPlanId =
+  process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID;
+
 vi.mock("next/image", () => ({
   default: ({
     alt,
@@ -36,14 +41,31 @@ vi.mock("@/components/layout/locale-provider", () => ({
   useLocale,
 }));
 
+vi.mock("@/components/auth/supabase-provider", () => ({
+  useSupabaseAuth: () => ({
+    user: null,
+  }),
+}));
+
 describe("PricingPageContent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID =
+      "b9ee7e5887ba41608dbceb39a152073b";
+    process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID =
+      "9f0352ccb88840e38f5241214e548df4";
     useLocale.mockReturnValue({
       locale: "en",
       setLocale: vi.fn(),
     });
+  });
+
+  afterAll(() => {
+    process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID =
+      originalMercadoPagoFocusPlanId;
+    process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID =
+      originalMercadoPagoMaxPlanId;
   });
 
   it("renders the three pricing plans and defaults to the global payment option in English", () => {

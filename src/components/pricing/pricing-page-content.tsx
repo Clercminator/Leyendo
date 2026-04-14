@@ -6,7 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Check, Coins, CreditCard, Globe2, X } from "lucide-react";
 
+import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { useLocale } from "@/components/layout/locale-provider";
+import { getMercadoPagoCheckoutUrl } from "@/lib/payment-config";
 import { focusFileUploadLimit, freeFileUploadLimit } from "@/lib/plans";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
 import { founderGitHubUrl, founderLinkedInUrl } from "@/lib/site";
@@ -39,26 +41,6 @@ const latamCountryCodes = new Set([
   "UY",
   "VE",
 ]);
-
-const mercadopagoPlanUrls = {
-  focus:
-    "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
-  max: "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=9f0352ccb88840e38f5241214e548df4",
-} satisfies Record<PaidPlanId, string>;
-
-const checkoutUrls = {
-  focus: {
-    lemonsqueezy: process.env.NEXT_PUBLIC_LEMONSQUEEZY_FOCUS_URL,
-    mercadopago: mercadopagoPlanUrls.focus,
-  },
-  max: {
-    lemonsqueezy: process.env.NEXT_PUBLIC_LEMONSQUEEZY_MAX_URL,
-    mercadopago: mercadopagoPlanUrls.max,
-  },
-} satisfies Record<
-  PaidPlanId,
-  Partial<Record<Exclude<PaymentProvider, "binance">, string | undefined>>
->;
 
 const binanceQrPath = "/payment/BinanceQR.png";
 
@@ -164,6 +146,7 @@ export function PricingPageContent({
   initialPaymentStatus,
 }: PricingPageContentProps) {
   const { locale } = useLocale();
+  const { user } = useSupabaseAuth();
   const [paymentRegion, setPaymentRegion] = useState<PaymentRegion>(() =>
     detectInitialRegion(locale),
   );
@@ -464,11 +447,55 @@ export function PricingPageContent({
   const primaryProvider =
     paymentRegion === "latam" ? "mercadopago" : "lemonsqueezy";
 
-  function handleProviderClick(
+  async function handleProviderClick(
     planId: PaidPlanId,
     provider: Exclude<PaymentProvider, "binance">,
   ) {
-    const providerUrl = checkoutUrls[planId][provider];
+    let providerUrl: string | undefined;
+
+    if (provider === "lemonsqueezy") {
+      const checkoutWindow = window.open("", "_blank");
+
+      try {
+        const response = await fetch("/api/payments/lemonsqueezy", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            locale,
+            plan: planId,
+            userEmail: user?.email,
+            userId: user?.id,
+          }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          checkoutUrl?: string;
+          error?: string;
+        } | null;
+
+        if (!response.ok || !payload?.checkoutUrl) {
+          checkoutWindow?.close();
+          setStatusMessage(payload?.error ?? copy.missingProvider);
+          return;
+        }
+
+        providerUrl = payload.checkoutUrl;
+
+        if (checkoutWindow) {
+          checkoutWindow.opener = null;
+          checkoutWindow.location.href = providerUrl;
+        } else {
+          window.location.assign(providerUrl);
+        }
+      } catch {
+        checkoutWindow?.close();
+        setStatusMessage(copy.missingProvider);
+        return;
+      }
+    } else {
+      providerUrl = getMercadoPagoCheckoutUrl(planId);
+    }
 
     if (!providerUrl) {
       setStatusMessage(copy.missingProvider);
@@ -478,7 +505,10 @@ export function PricingPageContent({
     setStatusMessage(undefined);
     window.localStorage.setItem(paidSignupPlanStorageKey, planId);
     setReadySignupPlan(planId);
-    window.open(providerUrl, "_blank", "noopener,noreferrer");
+
+    if (provider === "mercadopago") {
+      window.open(providerUrl, "_blank", "noopener,noreferrer");
+    }
   }
 
   const binancePlan = plans.find((plan) => plan.id === binancePlanId);

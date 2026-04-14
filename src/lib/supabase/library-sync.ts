@@ -837,13 +837,45 @@ export async function ensureProfile(supabase: SupabaseClient, userId?: string) {
   };
 
   const rpcResult = await supabase.rpc("ensure_my_profile");
-  if (!rpcResult.error) {
-    if (metadataPlanTier !== "basic") {
-      await supabase.from(PROFILES_TABLE).upsert(profileSeed, {
+  if (rpcResult.error) {
+    await supabase.from(PROFILES_TABLE).upsert(
+      {
+        updated_at: new Date().toISOString(),
+        user_id: currentUserId,
+      },
+      {
         onConflict: "user_id",
-      });
-    }
+      },
+    );
+  }
 
+  const reconcileResult = await supabase.rpc(
+    "reconcile_my_billing_subscriptions",
+  );
+  if (reconcileResult.error) {
+    console.warn("billing reconciliation could not run", reconcileResult.error);
+  }
+
+  if (metadataPlanTier === "basic") {
+    return;
+  }
+
+  const { data: existingProfile, error: existingProfileError } = await supabase
+    .from(PROFILES_TABLE)
+    .select("plan_tier, subscription_status, subscription_started_at")
+    .eq("user_id", currentUserId)
+    .maybeSingle();
+
+  if (existingProfileError) {
+    throw existingProfileError;
+  }
+
+  const shouldSeedMetadata =
+    normalizePlanTier(existingProfile?.plan_tier) === "basic" &&
+    !normalizeSubscriptionStatus(existingProfile?.subscription_status) &&
+    !existingProfile?.subscription_started_at;
+
+  if (!shouldSeedMetadata) {
     return;
   }
 

@@ -24,9 +24,11 @@ import { FocusWordView } from "@/components/reader/focus-word-view";
 import { GuidedLineView } from "@/components/reader/guided-line-view";
 import { PdfReaderWorkspace } from "@/components/reader/pdf-reader-workspace";
 import { PhraseChunkView } from "@/components/reader/phrase-chunk-view";
+import { ReaderAdBreakOverlay } from "@/components/reader/reader-ad-break-overlay";
 import { ReaderCanvas } from "@/components/reader/reader-canvas";
 import { ReaderSidebar } from "@/components/reader/reader-sidebar";
 import { useCloudAnchorSync } from "@/components/reader/use-cloud-anchor-sync";
+import { useReaderAdBreaks } from "@/components/reader/use-reader-ad-breaks";
 import { useReaderDocument } from "@/components/reader/use-reader-document";
 import { useReaderPersistence } from "@/components/reader/use-reader-persistence";
 import { useReaderPlayback } from "@/components/reader/use-reader-playback";
@@ -48,7 +50,7 @@ import {
 } from "@/features/reader/pdf/navigation";
 import { isCatalogDocumentId, toCatalogOwnerId } from "@/lib/catalog";
 import { getLocalizedCopy } from "@/lib/locale";
-import { hasPlanAccess } from "@/lib/plans";
+import { getEffectivePlanTier, hasPlanAccess } from "@/lib/plans";
 import { useReaderStore } from "@/state/reader-store";
 import type { Bookmark, ReaderMode, ReaderPreferences } from "@/types/reader";
 import { readerModes, readerPresets } from "@/types/reader";
@@ -128,6 +130,7 @@ export function ReaderWorkspace({
   const { locale } = useLocale();
   const { profile, syncReaderPreferences, user } = useSupabaseAuth();
   const userId = user?.id;
+  const activePlanTier = user ? getEffectivePlanTier(profile) : "basic";
   const isRequestedCatalogDocument = isCatalogDocumentId(documentId);
   const canAccessCatalog = hasPlanAccess(profile, "max");
   const canSyncDocumentState = Boolean(userId && !isRequestedCatalogDocument);
@@ -275,6 +278,15 @@ export function ReaderWorkspace({
       pt: "Leitor classico",
     },
   }[canvasMode][locale];
+  const readerAds = useReaderAdBreaks({
+    documentId,
+    isPlaying,
+    ownerKey: userId ?? "guest",
+    planTier: activePlanTier,
+    readerMode: canvasMode,
+    readerReady: Boolean(payload && (activeChunk || isPdfPageMode)),
+    setPlaying,
+  });
 
   useReaderPersistence({
     document,
@@ -993,6 +1005,37 @@ export function ReaderWorkspace({
     announce(isPlaying ? "Playback paused." : "Playback resumed.");
   }, [activeChunk, announce, isPdfPageMode, isPlaying, setPlaying]);
 
+  useEffect(() => {
+    if (!readerAds.shouldRender) {
+      return;
+    }
+
+    if (readerAds.phase === "idle") {
+      return;
+    }
+
+    if (readerAds.phase === "playing") {
+      announce(
+        locale === "en"
+          ? "Sponsor break in progress. The reader will unlock automatically when it finishes."
+          : locale === "es"
+            ? "Patrocinio en reproduccion. El lector se desbloqueara automaticamente cuando termine."
+            : "Patrocinio em reproducao. O leitor sera liberado automaticamente quando terminar.",
+      );
+      return;
+    }
+
+    if (readerAds.phase === "loading") {
+      announce(
+        locale === "en"
+          ? "Loading sponsor break."
+          : locale === "es"
+            ? "Cargando patrocinio."
+            : "Carregando patrocinio.",
+      );
+    }
+  }, [announce, locale, readerAds.phase, readerAds.shouldRender]);
+
   if (!documentId) {
     return (
       <section className="editorial-panel fade-rise rounded-[2rem] border border-dashed border-(--border-soft) bg-(--surface-card) p-10 text-center shadow-[0_20px_80px_rgba(20,26,56,0.12)] backdrop-blur-xl">
@@ -1200,6 +1243,64 @@ export function ReaderWorkspace({
           />
         )}
       </div>
+
+      {readerAds.shouldRender ? (
+        <ReaderAdBreakOverlay
+          adTagUrl={readerAds.adTagUrl}
+          onBeginAdBreak={readerAds.beginAdBreak}
+          consentRegion={readerAds.consentRegion}
+          consentState={readerAds.consentState}
+          demandMode={readerAds.demandMode}
+          isOpen={readerAds.isOpen}
+          locale={locale}
+          onAdCompleted={() => {
+            readerAds.handleAdCompleted();
+            announce(
+              locale === "en"
+                ? "Sponsor break finished. Reading resumed."
+                : locale === "es"
+                  ? "El patrocinio termino. La lectura continua."
+                  : "O patrocinio terminou. A leitura continua.",
+            );
+          }}
+          onAdFailed={(reason) => {
+            readerAds.handleAdFailed(reason);
+            announce(
+              locale === "en"
+                ? "Sponsor break could not load, so the reader was unlocked."
+                : locale === "es"
+                  ? "El patrocinio no pudo cargarse, asi que el lector se desbloqueo."
+                  : "O patrocinio nao conseguiu carregar, entao o leitor foi liberado.",
+            );
+          }}
+          onAdStarted={readerAds.handleAdStarted}
+          onConsentDenied={() => {
+            readerAds.denyConsent();
+            announce(
+              locale === "en"
+                ? "Ad consent was declined, so Leyendo kept the reader unlocked."
+                : locale === "es"
+                  ? "Se rechazo el consentimiento publicitario, asi que Leyendo dejo el lector desbloqueado."
+                  : "O consentimento publicitario foi recusado, entao Leyendo manteve o leitor liberado.",
+            );
+          }}
+          onConsentGranted={readerAds.grantConsent}
+          onUpgradeClick={readerAds.trackUpgradeClick}
+          phase={
+            readerAds.phase === "idle"
+              ? "prompt"
+              : readerAds.phase === "consent"
+                ? "consent"
+                : readerAds.phase === "loading"
+                  ? "loading"
+                  : readerAds.phase === "playing"
+                    ? "playing"
+                    : "prompt"
+          }
+          provider={readerAds.provider}
+          upgradeHref={readerAds.upgradeHref}
+        />
+      ) : null}
 
       {isPdfPageMode ? null : (
         <>

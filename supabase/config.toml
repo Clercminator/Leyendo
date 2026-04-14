@@ -218,6 +218,12 @@ otp_expiry = 3600
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]
+
+[functions.lemonsqueezy-webhook]
+verify_jwt = false
+
+[functions.mercado-pago-webhook]
+verify_jwt = false
 # enabled = true
 # host = "smtp.sendgrid.net"
 # port = 587
