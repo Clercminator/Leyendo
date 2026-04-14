@@ -16,15 +16,40 @@ interface CheckoutRequestBody {
   userId?: string;
 }
 
+function pickFirstNonEmpty(...values: Array<string | undefined>) {
+  for (const value of values) {
+    const normalized = value?.trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return undefined;
+}
+
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.LEMONSQUEEZY_API_KEY?.trim() ?? "";
-  const storeId = process.env.LEMONSQUEEZY_STORE_ID?.trim() ?? "";
+  const apiKey =
+    pickFirstNonEmpty(
+      process.env.LEMONSQUEEZY_API_KEY,
+      process.env.LEMONSQUEEZY_API_KEY_TESTING,
+      process.env.LEMONSQUEEZY_API_KEY_PRUEBA,
+      process.env.LEMONSQUEEZY_TESTING_API_KEY,
+      process.env.LEMONSQUEEZY_API_KEY_TESTING_ACCOUNT,
+    ) ?? "";
+  const storeId =
+    pickFirstNonEmpty(
+      process.env.LEMONSQUEEZY_STORE_ID,
+      process.env.LEMONSQUEEZY_STORE_ID_TESTING,
+      process.env.LEMONSQUEEZY_STORE_ID_PRUEBA,
+      process.env.LEMONSQUEEZY_TESTING_STORE_ID,
+      process.env.LEMONSQUEEZY_STORE_ID_TESTING_ACCOUNT,
+    ) ?? "";
 
   if (!apiKey || !storeId) {
     return NextResponse.json(
       {
         error:
-          "LemonSqueezy is not configured yet. Add LEMONSQUEEZY_API_KEY and LEMONSQUEEZY_STORE_ID on Vercel.",
+          "LemonSqueezy is not configured yet. Supported env names include LEMONSQUEEZY_API_KEY / LEMONSQUEEZY_API_KEY_TESTING and LEMONSQUEEZY_STORE_ID / LEMONSQUEEZY_STORE_ID_TESTING.",
       },
       { status: 500 },
     );
@@ -55,8 +80,8 @@ export async function POST(request: NextRequest) {
       {
         error:
           planTier === "focus"
-            ? "No Focus LemonSqueezy variant is configured. Add LEMONSQUEEZY_VARIANT_FOCUS on Vercel."
-            : "No Max LemonSqueezy variant is configured. Add LEMONSQUEEZY_VARIANT_MAX on Vercel.",
+            ? "No Focus LemonSqueezy variant is configured. Supported env names include LEMONSQUEEZY_VARIANT_FOCUS and LEMONSQUEEZY_VARIANT_FOCUS_TESTING."
+            : "No Max LemonSqueezy variant is configured. Supported env names include LEMONSQUEEZY_VARIANT_MAX and LEMONSQUEEZY_VARIANT_MAX_TESTING.",
       },
       { status: 500 },
     );

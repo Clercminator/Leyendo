@@ -1,0 +1,100 @@
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
+
+import { POST } from "@/app/api/payments/lemonsqueezy/route";
+
+const fetchMock = vi.fn<typeof fetch>();
+
+const originalApiKey = process.env.LEMONSQUEEZY_API_KEY;
+const originalApiKeyTesting = process.env.LEMONSQUEEZY_API_KEY_TESTING;
+const originalStoreId = process.env.LEMONSQUEEZY_STORE_ID;
+const originalStoreIdTesting = process.env.LEMONSQUEEZY_STORE_ID_TESTING;
+const originalFocusVariant = process.env.LEMONSQUEEZY_VARIANT_FOCUS;
+const originalFocusVariantTesting =
+  process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING;
+
+vi.stubGlobal("fetch", fetchMock);
+
+describe("LemonSqueezy checkout route", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    process.env.LEMONSQUEEZY_API_KEY = "";
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "";
+    process.env.LEMONSQUEEZY_STORE_ID = "";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "";
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS = "";
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING = "";
+  });
+
+  afterAll(() => {
+    process.env.LEMONSQUEEZY_API_KEY = originalApiKey;
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = originalApiKeyTesting;
+    process.env.LEMONSQUEEZY_STORE_ID = originalStoreId;
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = originalStoreIdTesting;
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS = originalFocusVariant;
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING =
+      originalFocusVariantTesting;
+  });
+
+  it("supports preview env aliases for api key, store id, and variants", async () => {
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING = "1497164";
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            attributes: {
+              url: "https://checkout.lemonsqueezy.com/buy/test-focus",
+            },
+          },
+        }),
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/payments/lemonsqueezy", {
+        body: JSON.stringify({ locale: "en", plan: "focus" }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      checkoutUrl: "https://checkout.lemonsqueezy.com/buy/test-focus",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.lemonsqueezy.com/v1/checkouts",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: "application/vnd.api+json",
+          Authorization: "Bearer ls_test_preview_key",
+          "Content-Type": "application/vnd.api+json",
+        }),
+        method: "POST",
+      }),
+    );
+
+    const payload = JSON.parse(
+      String(fetchMock.mock.calls[0]?.[1]?.body ?? "{}"),
+    ) as {
+      data?: {
+        relationships?: {
+          store?: { data?: { id?: string } };
+          variant?: { data?: { id?: string } };
+        };
+      };
+    };
+
+    expect(payload.data?.relationships?.store?.data?.id).toBe("98765");
+    expect(payload.data?.relationships?.variant?.data?.id).toBe("1497164");
+  });
+});

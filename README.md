@@ -91,15 +91,20 @@ Server-side variables for LemonSqueezy:
 
 ```env
 LEMONSQUEEZY_API_KEY=
+LEMONSQUEEZY_API_KEY_TESTING=
 LEMONSQUEEZY_STORE_ID=
+LEMONSQUEEZY_STORE_ID_TESTING=
 LEMONSQUEEZY_VARIANT_FOCUS=1497164
+LEMONSQUEEZY_VARIANT_FOCUS_TESTING=
 LEMONSQUEEZY_VARIANT_MAX=
+LEMONSQUEEZY_VARIANT_MAX_TESTING=
 ```
 
 Notes:
 
 - `LEMONSQUEEZY_VARIANT_FOCUS` is the Leyendo Focus monthly variant.
 - `LEMONSQUEEZY_VARIANT_MAX` should point to the shared Vector/Leyendo Max monthly variant.
+- Preview/test deploys can also use `LEMONSQUEEZY_API_KEY_TESTING`, `LEMONSQUEEZY_STORE_ID_TESTING`, `LEMONSQUEEZY_VARIANT_FOCUS_TESTING`, and `LEMONSQUEEZY_VARIANT_MAX_TESTING` without renaming them back to the production names.
 - The route also accepts `LEMONSQUEEZY_VARIANT_STANDARD` or `LEMONSQUEEZY_VARIANT_BUILDER` as Focus fallbacks for compatibility, but Leyendo should prefer `LEMONSQUEEZY_VARIANT_FOCUS`.
 
 Public variables for MercadoPago:

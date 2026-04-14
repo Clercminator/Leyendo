@@ -9,6 +9,17 @@ const DEFAULT_LEMONSQUEEZY_VARIANT_IDS = {
   focus: "1497164",
 } satisfies Partial<Record<PaidPlanTier, string>>;
 
+function pickFirstNonEmpty(...values: Array<string | undefined>) {
+  for (const value of values) {
+    const normalized = value?.trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return undefined;
+}
+
 function normalizeMercadoPagoPlanId(value: string | undefined) {
   const planId = value?.trim();
 
@@ -68,14 +79,26 @@ export function getMercadoPagoCheckoutUrl(planTier: PaidPlanTier) {
 
 export function getLemonSqueezyVariantId(planTier: PaidPlanTier) {
   if (planTier === "max") {
-    return process.env.LEMONSQUEEZY_VARIANT_MAX?.trim();
+    return pickFirstNonEmpty(
+      process.env.LEMONSQUEEZY_VARIANT_MAX,
+      process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING,
+      process.env.LEMONSQUEEZY_VARIANT_MAX_PRUEBA,
+      process.env.LEMONSQUEEZY_MAX_VARIANT_TESTING,
+      process.env.LEMONSQUEEZY_MAX_VARIANT_TESTING_ACCOUNT,
+    );
   }
 
-  return (
-    process.env.LEMONSQUEEZY_VARIANT_FOCUS?.trim() ||
-    process.env.LEMONSQUEEZY_VARIANT_STANDARD?.trim() ||
-    process.env.LEMONSQUEEZY_VARIANT_BUILDER?.trim() ||
-    DEFAULT_LEMONSQUEEZY_VARIANT_IDS.focus
+  return pickFirstNonEmpty(
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS,
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING,
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_PRUEBA,
+    process.env.LEMONSQUEEZY_FOCUS_VARIANT_TESTING,
+    process.env.LEMONSQUEEZY_FOCUS_VARIANT_TESTING_ACCOUNT,
+    process.env.LEMONSQUEEZY_VARIANT_STANDARD,
+    process.env.LEMONSQUEEZY_VARIANT_STANDARD_TESTING,
+    process.env.LEMONSQUEEZY_VARIANT_BUILDER,
+    process.env.LEMONSQUEEZY_VARIANT_BUILDER_TESTING,
+    DEFAULT_LEMONSQUEEZY_VARIANT_IDS.focus,
   );
 }
 
