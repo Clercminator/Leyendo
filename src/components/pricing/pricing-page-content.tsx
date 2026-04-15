@@ -421,8 +421,6 @@ export function PricingPageContent({
   const authModalCopy = useMemo(() => {
     if (locale === "es") {
       return {
-        accountRequired:
-          "La compra empieza con una cuenta Basic Reader gratuita.",
         close: "Cerrar",
         continueWithEmail: "Continuar con email",
         continueWithGitHub: "Continuar con GitHub",
@@ -452,7 +450,6 @@ export function PricingPageContent({
 
     if (locale === "pt") {
       return {
-        accountRequired: "A compra comeca com uma conta Basic Reader gratuita.",
         close: "Fechar",
         continueWithEmail: "Continuar com email",
         continueWithGitHub: "Continuar com GitHub",
@@ -481,7 +478,6 @@ export function PricingPageContent({
     }
 
     return {
-      accountRequired: "Paid checkout starts with a free Basic Reader account.",
       close: "Close",
       continueWithEmail: "Continue with email",
       continueWithGitHub: "Continue with GitHub",
@@ -1131,14 +1127,6 @@ export function PricingPageContent({
             </article>
           ))}
         </div>
-
-        {!user ? (
-          <div className="mt-8 flex justify-center">
-            <p className="rounded-full border border-[#30415e] bg-[#111827]/86 px-5 py-3 text-sm text-[#c6d1e3] shadow-[0_14px_34px_rgba(0,0,0,0.18)]">
-              {authModalCopy.accountRequired}
-            </p>
-          </div>
-        ) : null}
       </div>
 
       {authIntent ? (

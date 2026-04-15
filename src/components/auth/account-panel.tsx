@@ -951,11 +951,7 @@ export function AccountPanel({
             : `Entre com o mesmo email usado no checkout de ${paidSignupPlanLabel}.`
         : isPreCheckoutFlow
           ? helperCopy.signInModeDescription
-          : locale === "en"
-            ? "Use your existing Leyendo account here. New users should start from Pricing."
-            : locale === "es"
-              ? "Usa aqui tu cuenta existente de Leyendo. Los usuarios nuevos deben empezar desde Pricing."
-              : "Use aqui sua conta existente do Leyendo. Novos usuarios devem comecar por Pricing."
+          : undefined
       : mode === "create-account"
         ? isPreCheckoutFlow
           ? locale === "en"
@@ -971,6 +967,10 @@ export function AccountPanel({
                 ? "Crea aqui tu cuenta gratuita Basic Reader. Puedes mejorar a Focus o Max despues de entrar."
                 : "Crie aqui sua conta gratuita Basic Reader. Voce pode fazer upgrade para Focus ou Max depois do login."
         : helperCopy.emailLinkModeDescription;
+  const shouldShowAuthModeDescription =
+    Boolean(authModeDescription) &&
+    (mode === "magic-link" ||
+      (!activationSteps.length && !showStartFromPricingHint));
 
   async function handleSubmit() {
     setPendingAction("auth");
@@ -1939,10 +1939,10 @@ export function AccountPanel({
           >
             <p className="text-sm leading-7 text-(--text-muted)">
               {locale === "en"
-                ? "New to Leyendo? Start from Pricing. Paid checkout now creates or opens your Basic Reader account there."
+                ? "New to Leyendo? Start from Pricing."
                 : locale === "es"
-                  ? "Eres nuevo en Leyendo? Empieza desde Pricing. El checkout pagado ahora crea o abre alli tu cuenta Basic Reader."
-                  : "Novo no Leyendo? Comece por Pricing. O checkout pago agora cria ou abre ali sua conta Basic Reader."}
+                  ? "Eres nuevo en Leyendo? Empieza desde Pricing."
+                  : "Novo no Leyendo? Comece por Pricing."}
             </p>
             <a
               href={getLocalizedPublicPath("/pricing", locale)}
@@ -1983,9 +1983,11 @@ export function AccountPanel({
           ))}
         </div>
 
-        <p className="mt-4 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
-          {authModeDescription}
-        </p>
+        {shouldShowAuthModeDescription ? (
+          <p className="mt-4 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
+            {authModeDescription}
+          </p>
+        ) : null}
 
         <div className="mt-6 grid gap-4">
           {showOAuthButtons ? (

@@ -78,9 +78,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           pt: "O pagamento foi aprovado. Abra esta conta com o mesmo email do checkout para confirmar o plano atualizado.",
         }
       : {
-          en: "Already have a Leyendo account? Sign in here to manage your library, sync, and plan.",
-          es: "Ya tienes cuenta en Leyendo? Entra aqui para gestionar tu biblioteca, sincronizacion y plan.",
-          pt: "Ja tem conta no Leyendo? Entre aqui para gerenciar sua biblioteca, sincronizacao e plano.",
+          en: "Sign in to manage your library, sync, and plan.",
+          es: "Entra para gestionar tu biblioteca, sincronizacion y plan.",
+          pt: "Entre para gerenciar sua biblioteca, sincronizacao e plano.",
         };
 
   return (

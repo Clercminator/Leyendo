@@ -683,6 +683,9 @@ describe("AccountPanel", () => {
     expect(
       screen.queryByRole("button", { name: /create account/i }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/use your existing leyendo account here/i),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /open pricing/i })).toHaveAttribute(
       "href",
       "/pricing",
