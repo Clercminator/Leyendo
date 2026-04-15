@@ -1934,7 +1934,9 @@ export function AccountPanel({
         ) : null}
 
         {showStartFromPricingHint ? (
-          <div className={`${activationSteps.length > 0 ? "mt-6" : ""} rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 sm:flex sm:items-center sm:justify-between sm:gap-4`}>
+          <div
+            className={`${activationSteps.length > 0 ? "mt-6" : ""} rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 sm:flex sm:items-center sm:justify-between sm:gap-4`}
+          >
             <p className="text-sm leading-7 text-(--text-muted)">
               {locale === "en"
                 ? "New to Leyendo? Start from Pricing. Paid checkout now creates or opens your Basic Reader account there."
