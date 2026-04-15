@@ -26,16 +26,8 @@ export function pickPaymentEnvValue(args: {
   const compatibilityValues = args.compatibility ?? [];
 
   return process.env.VERCEL_ENV === "preview"
-    ? pickFirstNonEmpty(
-        ...testingValues,
-        ...args.live,
-        ...compatibilityValues,
-      )
-    : pickFirstNonEmpty(
-        ...args.live,
-        ...testingValues,
-        ...compatibilityValues,
-      );
+    ? pickFirstNonEmpty(...testingValues, ...args.live, ...compatibilityValues)
+    : pickFirstNonEmpty(...args.live, ...testingValues, ...compatibilityValues);
 }
 
 function normalizeMercadoPagoPlanId(value: string | undefined) {
@@ -96,9 +88,7 @@ export function getMercadoPagoCheckoutUrl(planTier: PaidPlanTier) {
       ? normalizeMercadoPagoPlanId(
           pickPaymentEnvValue({
             live: [process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID],
-            testing: [
-              process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA,
-            ],
+            testing: [process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA],
           }),
         )
       : normalizeMercadoPagoPlanId(
