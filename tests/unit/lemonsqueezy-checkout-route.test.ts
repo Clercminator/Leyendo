@@ -150,4 +150,60 @@ describe("LemonSqueezy checkout route", () => {
 
     expect(payload.data?.relationships?.variant?.data?.id).toBe("2497164");
   });
+
+  it("requires an explicit focus variant when no supported focus alias is configured", async () => {
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/payments/lemonsqueezy", {
+        body: JSON.stringify({ locale: "en", plan: "focus" }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "No Focus LemonSqueezy variant is configured. Supported env names include LEMONSQUEEZY_VARIANT_FOCUS, LEMONSQUEEZY_VARIANT_FOCUS_TESTING, LEMONSQUEEZY_VARIANT_STANDARD, and LEMONSQUEEZY_VARIANT_BUILDER.",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rewrites provider resource errors to explain store and variant mismatches", async () => {
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING = "1497164";
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          errors: [
+            {
+              detail: "The related resource does not exist.",
+            },
+          ],
+        }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/payments/lemonsqueezy", {
+        body: JSON.stringify({ locale: "en", plan: "focus" }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "LemonSqueezy could not create the checkout because the configured store id and variant id do not belong to the same account. Check LEMONSQUEEZY_STORE_ID and the selected LEMONSQUEEZY_VARIANT_* value in Vercel.",
+    });
+  });
 });

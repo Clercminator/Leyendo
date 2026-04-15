@@ -5,9 +5,6 @@ export type PaymentLocale = "en" | "es" | "pt";
 const DEFAULT_MERCADOPAGO_CHECKOUT_BASE_URL =
   "https://www.mercadopago.com.ar/subscriptions/checkout";
 const MERCADOPAGO_PLAN_ID_PATTERN = /^[a-f0-9]{32}$/i;
-const DEFAULT_LEMONSQUEEZY_VARIANT_IDS = {
-  focus: "1497164",
-} satisfies Partial<Record<PaidPlanTier, string>>;
 
 function pickFirstNonEmpty(...values: Array<string | undefined>) {
   for (const value of values) {
@@ -98,7 +95,6 @@ export function getLemonSqueezyVariantId(planTier: PaidPlanTier) {
     process.env.LEMONSQUEEZY_VARIANT_STANDARD_TESTING,
     process.env.LEMONSQUEEZY_VARIANT_BUILDER,
     process.env.LEMONSQUEEZY_VARIANT_BUILDER_TESTING,
-    DEFAULT_LEMONSQUEEZY_VARIANT_IDS.focus,
   );
 }
 

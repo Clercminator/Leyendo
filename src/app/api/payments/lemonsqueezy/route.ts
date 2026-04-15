@@ -16,6 +16,18 @@ interface CheckoutRequestBody {
   userId?: string;
 }
 
+interface LemonSqueezyErrorPayload {
+  data?: {
+    attributes?: {
+      url?: string;
+    };
+  };
+  errors?: Array<{
+    detail?: string;
+    title?: string;
+  }>;
+}
+
 function pickFirstNonEmpty(...values: Array<string | undefined>) {
   for (const value of values) {
     const normalized = value?.trim();
@@ -25,6 +37,23 @@ function pickFirstNonEmpty(...values: Array<string | undefined>) {
   }
 
   return undefined;
+}
+
+function resolveLemonSqueezyCheckoutError(
+  payload: LemonSqueezyErrorPayload | null,
+) {
+  const providerMessage =
+    payload?.errors?.[0]?.detail || payload?.errors?.[0]?.title;
+
+  if (!providerMessage) {
+    return "LemonSqueezy could not create the checkout.";
+  }
+
+  if (/related resource does not exist/i.test(providerMessage)) {
+    return "LemonSqueezy could not create the checkout because the configured store id and variant id do not belong to the same account. Check LEMONSQUEEZY_STORE_ID and the selected LEMONSQUEEZY_VARIANT_* value in Vercel.";
+  }
+
+  return providerMessage;
 }
 
 export async function POST(request: NextRequest) {
@@ -80,7 +109,7 @@ export async function POST(request: NextRequest) {
       {
         error:
           planTier === "focus"
-            ? "No Focus LemonSqueezy variant is configured. Supported env names include LEMONSQUEEZY_VARIANT_FOCUS and LEMONSQUEEZY_VARIANT_FOCUS_TESTING."
+            ? "No Focus LemonSqueezy variant is configured. Supported env names include LEMONSQUEEZY_VARIANT_FOCUS, LEMONSQUEEZY_VARIANT_FOCUS_TESTING, LEMONSQUEEZY_VARIANT_STANDARD, and LEMONSQUEEZY_VARIANT_BUILDER."
             : "No Max LemonSqueezy variant is configured. Supported env names include LEMONSQUEEZY_VARIANT_MAX and LEMONSQUEEZY_VARIANT_MAX_TESTING.",
       },
       { status: 500 },
@@ -128,25 +157,14 @@ export async function POST(request: NextRequest) {
     cache: "no-store",
   });
 
-  const data = (await response.json().catch(() => null)) as {
-    data?: {
-      attributes?: {
-        url?: string;
-      };
-    };
-    errors?: Array<{
-      detail?: string;
-      title?: string;
-    }>;
-  } | null;
+  const data = (await response
+    .json()
+    .catch(() => null)) as LemonSqueezyErrorPayload | null;
 
   if (!response.ok) {
     return NextResponse.json(
       {
-        error:
-          data?.errors?.[0]?.detail ||
-          data?.errors?.[0]?.title ||
-          "LemonSqueezy could not create the checkout.",
+        error: resolveLemonSqueezyCheckoutError(data),
       },
       { status: response.status },
     );
