@@ -699,4 +699,44 @@ describe("AccountPanel", () => {
       screen.getByText(/basic reader account created\./i),
     ).toBeInTheDocument();
   });
+
+  it("keeps the guest auth card compact without the old why sign in block", () => {
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: undefined,
+      lastSyncSummary: undefined,
+      profile: undefined,
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "idle",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: null,
+    });
+
+    render(<AccountPanel />);
+
+    expect(screen.queryByText(/why sign in\?/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: /create or sign in to your basic reader account\./i,
+      }),
+    ).not.toBeInTheDocument();
+  });
 });

@@ -61,20 +61,20 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         };
   const accountDescription = checkoutPlan
     ? {
-        en: `${checkoutPlan === "max" ? "Max" : "Focus"} checkout starts after you sign in. Leyendo creates your Basic Reader account first, then brings you back here with the upgraded plan after payment.`,
-        es: `El checkout de ${checkoutPlan === "max" ? "Max" : "Focus"} empieza despues de entrar. Leyendo crea primero tu cuenta Basic Reader y luego te trae de vuelta aqui con el plan mejorado tras el pago.`,
-        pt: `O checkout de ${checkoutPlan === "max" ? "Max" : "Focus"} comeca depois do login. O Leyendo cria primeiro sua conta Basic Reader e depois traz voce de volta aqui com o plano atualizado apos o pagamento.`,
+        en: `${checkoutPlan === "max" ? "Max" : "Focus"} starts after sign-in. Your account begins on Basic Reader and returns here upgraded after payment.`,
+        es: `${checkoutPlan === "max" ? "Max" : "Focus"} empieza despues de entrar. Tu cuenta comienza en Basic Reader y vuelve aqui mejorada tras el pago.`,
+        pt: `${checkoutPlan === "max" ? "Max" : "Focus"} comeca depois do login. Sua conta começa em Basic Reader e volta aqui atualizada apos o pagamento.`,
       }
     : paidSignupPlan
       ? {
-          en: "Payment is approved. Open this account with the same email used in checkout to confirm the upgraded plan and sync access.",
-          es: "El pago esta aprobado. Abre esta cuenta con el mismo email usado en el checkout para confirmar el plan mejorado y el acceso sincronizado.",
-          pt: "O pagamento foi aprovado. Abra esta conta com o mesmo email usado no checkout para confirmar o plano atualizado e o acesso sincronizado.",
+          en: "Payment is approved. Open this account with the same checkout email to confirm the upgraded plan.",
+          es: "El pago esta aprobado. Abre esta cuenta con el mismo email del checkout para confirmar el plan mejorado.",
+          pt: "O pagamento foi aprovado. Abra esta conta com o mesmo email do checkout para confirmar o plano atualizado.",
         }
       : {
-          en: "Basic Reader accounts are free. Upgrade to Focus or Max after signing in whenever you want cloud sync and saved-word tools.",
-          es: "Las cuentas Basic Reader son gratis. Mejora a Focus o Max despues de entrar cuando quieras sincronizacion en la nube y herramientas de palabras guardadas.",
-          pt: "As contas Basic Reader sao gratuitas. Faca upgrade para Focus ou Max depois do login quando quiser sincronizacao na nuvem e ferramentas de palavras salvas.",
+          en: "Basic Reader is free. Sign in now and upgrade later if you want cloud sync and saved words.",
+          es: "Basic Reader es gratis. Entra ahora y mejora despues si quieres sincronizacion en la nube y palabras guardadas.",
+          pt: "Basic Reader e gratis. Entre agora e faca upgrade depois se quiser sincronizacao na nuvem e palavras salvas.",
         };
 
   return (

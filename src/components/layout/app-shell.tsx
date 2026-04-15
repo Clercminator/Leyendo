@@ -73,7 +73,7 @@ export function AppShell({
           {(eyebrowText || titleText || descriptionText) && (
             <section
               className={`fade-rise mb-8 sm:mb-12 ${
-                centerIntro ? "mx-auto max-w-5xl text-center" : "max-w-4xl"
+                centerIntro ? "w-full text-center" : "max-w-4xl"
               }`}
             >
               {eyebrowText ? (
@@ -87,8 +87,10 @@ export function AppShell({
               ) : null}
               {titleText ? (
                 <h1
-                  className={`font-heading text-4xl leading-[0.98] font-semibold tracking-[-0.04em] text-balance text-(--text-strong) sm:text-5xl xl:text-7xl ${
-                    centerIntro ? "mx-auto max-w-5xl" : "max-w-4xl"
+                  className={`font-heading text-4xl leading-[0.98] font-semibold tracking-[-0.04em] text-(--text-strong) sm:text-5xl ${
+                    centerIntro
+                      ? "mx-auto max-w-none xl:text-6xl"
+                      : "max-w-4xl text-balance xl:text-7xl"
                   }`}
                 >
                   {titleText}
@@ -96,8 +98,10 @@ export function AppShell({
               ) : null}
               {descriptionText ? (
                 <p
-                  className={`mt-4 text-base leading-7 text-(--text-muted) sm:mt-6 sm:text-xl sm:leading-8 ${
-                    centerIntro ? "mx-auto max-w-3xl" : "max-w-3xl"
+                  className={`mt-4 text-base leading-7 text-(--text-muted) sm:mt-6 sm:leading-8 ${
+                    centerIntro
+                      ? "mx-auto max-w-none sm:text-lg"
+                      : "max-w-3xl sm:text-xl"
                   }`}
                 >
                   {descriptionText}
