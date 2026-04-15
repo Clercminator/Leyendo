@@ -93,7 +93,13 @@ describe("SiteHeader", () => {
 
   it("renders the full desktop header when the viewport is wide enough", async () => {
     useSupabaseAuth.mockReturnValue({
+      isLoading: false,
       signOut: vi.fn(),
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
       syncStatus: "idle",
       user: null,
     });
@@ -105,6 +111,12 @@ describe("SiteHeader", () => {
     });
 
     expect(screen.getByRole("link", { name: /pricing/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /privacy/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /account/i }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/guest mode/i)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /^menu$/i }),
@@ -115,7 +127,13 @@ describe("SiteHeader", () => {
     mockMatchMedia(false);
     const user = userEvent.setup();
     useSupabaseAuth.mockReturnValue({
+      isLoading: false,
       signOut: vi.fn(),
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
       syncStatus: "idle",
       user: null,
     });
@@ -136,6 +154,17 @@ describe("SiteHeader", () => {
 
     expect(screen.getByRole("link", { name: /reader/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /pricing/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /privacy/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /account/i }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /guest mode/i }));
+
+    expect(
+      screen.getByRole("dialog", { name: /create free account/i }),
+    ).toBeInTheDocument();
     expect(screen.queryAllByTitle(/light/i)).toHaveLength(1);
     expect(screen.queryAllByTitle(/dark/i)).toHaveLength(1);
   });

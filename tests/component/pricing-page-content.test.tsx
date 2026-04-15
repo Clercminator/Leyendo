@@ -131,7 +131,9 @@ describe("PricingPageContent", () => {
     expect(screen.getAllByText(/15 file uploads/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/unlimited uploads/i).length).toBeGreaterThan(0);
     expect(
-      screen.getByText(/card payments are routed by region/i),
+      screen.getByText(
+        /paid checkout starts with a free basic reader account/i,
+      ),
     ).toBeInTheDocument();
   });
 

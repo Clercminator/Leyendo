@@ -18,12 +18,16 @@ import {
   Menu,
   MoonStar,
   Sparkles,
-  ShieldCheck,
   SunMedium,
+  UserRound,
   X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
+import {
+  GuestAuthDialog,
+  getGuestAuthDialogCopy,
+} from "@/components/auth/guest-auth-dialog";
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/layout/locale-provider";
@@ -66,12 +70,6 @@ const links = [
     isPublic: true,
     label: { en: "Guides", es: "Guias", pt: "Guias" },
     icon: FileText,
-  },
-  {
-    href: "/privacy",
-    isPublic: true,
-    label: { en: "Privacy", es: "Privacidad", pt: "Privacidade" },
-    icon: ShieldCheck,
   },
   {
     href: "/account",
@@ -135,6 +133,12 @@ const accountPanelLabel: LocalizedCopy = {
   pt: "Conta",
 };
 
+const guestAccountHint: LocalizedCopy = {
+  en: "Create or log in",
+  es: "Crear o entrar",
+  pt: "Criar ou entrar",
+};
+
 const syncStatusLabels = {
   synced: {
     en: "Cloud synced",
@@ -174,7 +178,18 @@ export function SiteHeader() {
   const router = useRouter();
   const { locale, setLocale } = useLocale();
   const { resolvedTheme, setTheme } = useTheme();
-  const { profile, signOut, syncStatus, user } = useSupabaseAuth();
+  const {
+    isLoading: isAuthLoading,
+    profile,
+    signIn,
+    signInWithGitHub,
+    signInWithGoogle,
+    signInWithMagicLink,
+    signOut,
+    signUp,
+    syncStatus,
+    user,
+  } = useSupabaseAuth();
   const [showsFullHeader, setShowsFullHeader] = useState(() => {
     if (
       typeof window === "undefined" ||
@@ -187,6 +202,18 @@ export function SiteHeader() {
   });
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [isLocaleMenuOpen, setIsLocaleMenuOpen] = useState(false);
+  const [isGuestAuthOpen, setIsGuestAuthOpen] = useState(false);
+  const [guestAuthMode, setGuestAuthMode] = useState<
+    "sign-in" | "create-account"
+  >("create-account");
+  const [guestShowEmailAuth, setGuestShowEmailAuth] = useState(false);
+  const [guestUseMagicLink, setGuestUseMagicLink] = useState(false);
+  const [guestAuthEmail, setGuestAuthEmail] = useState("");
+  const [guestAuthPassword, setGuestAuthPassword] = useState("");
+  const [guestAuthPendingAction, setGuestAuthPendingAction] =
+    useState<string>();
+  const [guestAuthStatusMessage, setGuestAuthStatusMessage] =
+    useState<string>();
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const desktopLocaleMenuRef = useRef<HTMLDivElement>(null);
   const mobileLocaleMenuRef = useRef<HTMLDivElement>(null);
@@ -264,24 +291,47 @@ export function SiteHeader() {
   }, [pathname]);
 
   const localizedLinks = useMemo(
-    () =>
-      [...links, ...(hasPlanAccess(profile, "max") ? [catalogLink] : [])].map(
-        (link) => ({
-          ...link,
-          href:
-            link.isPublic && publicLocaleContext.isPublicRoute
-              ? getLocalizedPublicPath(link.href, publicLocaleContext.locale)
-              : link.href,
-          label: getLocalizedCopy(locale, link.label),
-        }),
-      ),
+    () => {
+      const visibleLinks = [
+        ...links,
+        ...(hasPlanAccess(profile, "max") ? [catalogLink] : []),
+      ].filter((link) => link.href !== "/account" || Boolean(user));
+
+      return visibleLinks.map((link) => ({
+        ...link,
+        href:
+          link.isPublic && publicLocaleContext.isPublicRoute
+            ? getLocalizedPublicPath(link.href, publicLocaleContext.locale)
+            : link.href,
+        label: getLocalizedCopy(locale, link.label),
+      }));
+    },
     [
       locale,
       profile,
       publicLocaleContext.isPublicRoute,
       publicLocaleContext.locale,
+      user,
     ],
   );
+
+  const guestAuthCopy = getGuestAuthDialogCopy({
+    locale,
+    variant: "account",
+  });
+
+  useEffect(() => {
+    if (!isGuestAuthOpen || !user) {
+      return;
+    }
+
+    setIsGuestAuthOpen(false);
+    setGuestAuthPendingAction(undefined);
+    setGuestAuthStatusMessage(undefined);
+    setGuestShowEmailAuth(false);
+    setGuestUseMagicLink(false);
+    setGuestAuthPassword("");
+  }, [isGuestAuthOpen, user]);
 
   function handleLocaleChange(nextLocale: typeof locale) {
     const nextPath = getLocaleSwitchPath(pathname ?? "/", nextLocale);
@@ -314,8 +364,74 @@ export function SiteHeader() {
   const signOutLabel =
     locale === "en" ? "Sign out" : locale === "es" ? "Cerrar sesion" : "Sair";
 
+  const openGuestAuthModal = () => {
+    setIsHeaderMenuOpen(false);
+    setGuestAuthMode("create-account");
+    setGuestShowEmailAuth(false);
+    setGuestUseMagicLink(false);
+    setGuestAuthEmail("");
+    setGuestAuthPassword("");
+    setGuestAuthPendingAction(undefined);
+    setGuestAuthStatusMessage(undefined);
+    setIsGuestAuthOpen(true);
+  };
+
+  const closeGuestAuthModal = () => {
+    setIsGuestAuthOpen(false);
+    setGuestAuthPendingAction(undefined);
+    setGuestAuthStatusMessage(undefined);
+    setGuestShowEmailAuth(false);
+    setGuestUseMagicLink(false);
+    setGuestAuthPassword("");
+  };
+
+  async function handleGuestAuthSubmit() {
+    setGuestAuthPendingAction(guestUseMagicLink ? "magic-link" : "email");
+    setGuestAuthStatusMessage(undefined);
+
+    try {
+      if (guestUseMagicLink) {
+        await signInWithMagicLink(guestAuthEmail, window.location.href);
+        setGuestAuthStatusMessage(guestAuthCopy.emailSent);
+        return;
+      }
+
+      if (guestAuthMode === "create-account") {
+        await signUp(guestAuthEmail, guestAuthPassword, window.location.href);
+        setGuestAuthStatusMessage(guestAuthCopy.createSuccess);
+      } else {
+        await signIn(guestAuthEmail, guestAuthPassword);
+        setGuestAuthStatusMessage(guestAuthCopy.signInSuccess);
+      }
+    } catch (error) {
+      setGuestAuthStatusMessage(
+        error instanceof Error ? error.message : guestAuthCopy.authFailed,
+      );
+    } finally {
+      setGuestAuthPendingAction(undefined);
+    }
+  }
+
+  async function handleGuestAuthOAuth(
+    provider: "github" | "google",
+    signInWithProvider: (redirectTo?: string) => Promise<void>,
+  ) {
+    setGuestAuthPendingAction(provider);
+    setGuestAuthStatusMessage(undefined);
+
+    try {
+      await signInWithProvider(window.location.href);
+    } catch (error) {
+      setGuestAuthStatusMessage(
+        error instanceof Error ? error.message : guestAuthCopy.authFailed,
+      );
+      setGuestAuthPendingAction(undefined);
+    }
+  }
+
   return (
-    <header className="sticky top-0 z-90 border-b border-(--border-soft) bg-(--surface-overlay) shadow-[0_14px_40px_rgba(8,12,22,0.08)] backdrop-blur-xl">
+    <>
+      <header className="sticky top-0 z-90 border-b border-(--border-soft) bg-(--surface-overlay) shadow-[0_14px_40px_rgba(8,12,22,0.08)] backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
         <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-4">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.15rem] border border-(--border-soft) bg-[radial-gradient(circle_at_30%_20%,rgba(120,231,255,0.2),transparent_55%),linear-gradient(160deg,rgba(17,34,58,0.95),rgba(8,19,29,0.98))] shadow-[0_20px_48px_rgba(6,12,24,0.3)] sm:h-14 sm:w-14 sm:rounded-[1.35rem]">
@@ -673,9 +789,33 @@ export function SiteHeader() {
                     <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
                       {getLocalizedCopy(locale, accountPanelLabel)}
                     </p>
-                    <p className="mt-2 text-sm text-(--text-strong)">
-                      {syncStatusLabel}
-                    </p>
+                    {user ? (
+                      <p className="mt-2 text-sm text-(--text-strong)">
+                        {syncStatusLabel}
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-haspopup="dialog"
+                        aria-label={`${syncStatusLabel}. ${getLocalizedCopy(locale, guestAccountHint)}`}
+                        onClick={() => {
+                          openGuestAuthModal();
+                        }}
+                        className="mt-3 flex w-full items-center gap-3 rounded-[1.1rem] border border-(--border-strong) bg-[linear-gradient(180deg,rgba(17,26,42,0.98),rgba(11,19,31,0.96))] px-3 py-3 text-left shadow-[0_18px_36px_rgba(8,12,22,0.2)] transition hover:border-(--accent-sky) hover:bg-[linear-gradient(180deg,rgba(20,30,48,0.99),rgba(13,21,35,0.97))]"
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/16 bg-[linear-gradient(180deg,rgba(8,13,22,0.98),rgba(17,26,40,0.92))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                          <UserRound className="h-5 w-5" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-(--text-strong)">
+                            {syncStatusLabel}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-(--text-muted)">
+                            {getLocalizedCopy(locale, guestAccountHint)}
+                          </span>
+                        </span>
+                      </button>
+                    )}
                     {user ? (
                       <Button
                         variant="ghost"
@@ -695,6 +835,53 @@ export function SiteHeader() {
           ) : null}
         </div>
       </div>
-    </header>
+      </header>
+
+      <GuestAuthDialog
+        copy={guestAuthCopy}
+        email={guestAuthEmail}
+        isAuthLoading={isAuthLoading}
+        isOpen={isGuestAuthOpen}
+        mode={guestAuthMode}
+        onClose={closeGuestAuthModal}
+        onContinueWithEmail={() => {
+          setGuestShowEmailAuth(true);
+          setGuestUseMagicLink(false);
+          setGuestAuthStatusMessage(undefined);
+        }}
+        onContinueWithGitHub={() => {
+          void handleGuestAuthOAuth("github", signInWithGitHub);
+        }}
+        onContinueWithGoogle={() => {
+          void handleGuestAuthOAuth("google", signInWithGoogle);
+        }}
+        onEmailChange={setGuestAuthEmail}
+        onPasswordChange={setGuestAuthPassword}
+        onSelectCreateAccount={() => {
+          setGuestAuthMode("create-account");
+          setGuestShowEmailAuth(false);
+          setGuestUseMagicLink(false);
+          setGuestAuthStatusMessage(undefined);
+        }}
+        onSelectSignIn={() => {
+          setGuestAuthMode("sign-in");
+          setGuestShowEmailAuth(false);
+          setGuestUseMagicLink(false);
+          setGuestAuthStatusMessage(undefined);
+        }}
+        onSubmit={() => {
+          void handleGuestAuthSubmit();
+        }}
+        onToggleMagicLink={() => {
+          setGuestUseMagicLink((current) => !current);
+          setGuestAuthStatusMessage(undefined);
+        }}
+        password={guestAuthPassword}
+        pendingAction={guestAuthPendingAction}
+        showEmailAuth={guestShowEmailAuth}
+        statusMessage={guestAuthStatusMessage}
+        useMagicLink={guestUseMagicLink}
+      />
+    </>
   );
 }

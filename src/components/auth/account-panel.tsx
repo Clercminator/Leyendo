@@ -363,21 +363,10 @@ export function AccountPanel({
   }, [profile?.userId, user?.id]);
 
   useEffect(() => {
-    if (checkoutPlan && !user) {
+    if ((paidSignupPlan || checkoutPlan) && !user) {
       setMode("create-account");
-      return;
-    }
-
-    if (paidSignupPlan && !user) {
-      setMode("sign-in");
     }
   }, [checkoutPlan, paidSignupPlan, user]);
-
-  useEffect(() => {
-    if (!checkoutPlan && mode === "create-account") {
-      setMode("sign-in");
-    }
-  }, [checkoutPlan, mode]);
 
   useEffect(() => {
     if (!paidSignupPlan || !user) {
@@ -846,10 +835,6 @@ export function AccountPanel({
   const showSubscriptionLinkedNotice = Boolean(
     paidSignupPlan && user && hasPaidAccountAccess,
   );
-  const guestModes = isPreCheckoutFlow
-    ? modes
-    : (["sign-in", "magic-link"] as const);
-  const showStartFromPricingHint = !isPreCheckoutFlow && !paidSignupPlan;
   const subscriptionLinkedEyebrow =
     locale === "en"
       ? "Subscription linked"
@@ -907,19 +892,19 @@ export function AccountPanel({
     : paidSignupPlan
       ? locale === "en"
         ? [
-            "Sign in with the same Leyendo account you used before checkout.",
-            "Use the same payment email so Leyendo can reconnect the upgraded plan.",
+            "If you already had a Leyendo account for the payment email, switch to Sign in.",
+            "If you did not have one yet, keep Create account selected and finish registration with that same email.",
             "Wait for the Subscription linked confirmation before using sync, cloud books, or saved words.",
           ]
         : locale === "es"
           ? [
-              "Entra con la misma cuenta de Leyendo que usaste antes del checkout.",
-              "Usa el mismo email del pago para que Leyendo reconecte el plan mejorado.",
+              "Si ya tenias cuenta en Leyendo para el email del pago, cambia a Entrar.",
+              "Si todavia no la tenias, deja Crear cuenta seleccionado y termina el registro con ese mismo email.",
               "Espera la confirmacion Subscription linked antes de usar sincronizacion, libros en la nube o palabras guardadas.",
             ]
           : [
-              "Entre com a mesma conta do Leyendo que voce usou antes do checkout.",
-              "Use o mesmo email do pagamento para que o Leyendo reconecte o plano atualizado.",
+              "Se voce ja tinha conta no Leyendo para o email do pagamento, troque para Entrar.",
+              "Se ainda nao tinha, deixe Criar conta selecionado e conclua o cadastro com esse mesmo email.",
               "Espere a confirmacao Subscription linked antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
             ]
       : [];
@@ -943,15 +928,7 @@ export function AccountPanel({
   const showOAuthButtons = mode !== "magic-link";
   const authModeDescription =
     mode === "sign-in"
-      ? paidSignupPlan
-        ? locale === "en"
-          ? `Sign in with the same email used for ${paidSignupPlanLabel} checkout.`
-          : locale === "es"
-            ? `Entra con el mismo email usado en el checkout de ${paidSignupPlanLabel}.`
-            : `Entre com o mesmo email usado no checkout de ${paidSignupPlanLabel}.`
-        : isPreCheckoutFlow
-          ? helperCopy.signInModeDescription
-          : undefined
+      ? helperCopy.signInModeDescription
       : mode === "create-account"
         ? isPreCheckoutFlow
           ? locale === "en"
@@ -967,10 +944,6 @@ export function AccountPanel({
                 ? "Crea aqui tu cuenta gratuita Basic Reader. Puedes mejorar a Focus o Max despues de entrar."
                 : "Crie aqui sua conta gratuita Basic Reader. Voce pode fazer upgrade para Focus ou Max depois do login."
         : helperCopy.emailLinkModeDescription;
-  const shouldShowAuthModeDescription =
-    Boolean(authModeDescription) &&
-    (mode === "magic-link" ||
-      (!activationSteps.length && !showStartFromPricingHint));
 
   async function handleSubmit() {
     setPendingAction("auth");
@@ -1933,34 +1906,10 @@ export function AccountPanel({
           </div>
         ) : null}
 
-        {showStartFromPricingHint ? (
-          <div
-            className={`${activationSteps.length > 0 ? "mt-6" : ""} rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 sm:flex sm:items-center sm:justify-between sm:gap-4`}
-          >
-            <p className="text-sm leading-7 text-(--text-muted)">
-              {locale === "en"
-                ? "New to Leyendo? Start from Pricing."
-                : locale === "es"
-                  ? "Eres nuevo en Leyendo? Empieza desde Pricing."
-                  : "Novo no Leyendo? Comece por Pricing."}
-            </p>
-            <a
-              href={getLocalizedPublicPath("/pricing", locale)}
-              className="mt-4 inline-flex h-11 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-card) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:mt-0"
-            >
-              {locale === "en"
-                ? "Open pricing"
-                : locale === "es"
-                  ? "Abrir pricing"
-                  : "Abrir pricing"}
-            </a>
-          </div>
-        ) : null}
-
         <div
-          className={`${activationSteps.length > 0 || showStartFromPricingHint ? "mt-6" : ""} flex flex-wrap gap-2`}
+          className={`${activationSteps.length > 0 ? "mt-6" : ""} flex flex-wrap gap-2`}
         >
-          {guestModes.map((entry) => (
+          {modes.map((entry) => (
             <button
               key={entry}
               type="button"
@@ -1983,11 +1932,9 @@ export function AccountPanel({
           ))}
         </div>
 
-        {shouldShowAuthModeDescription ? (
-          <p className="mt-4 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
-            {authModeDescription}
-          </p>
-        ) : null}
+        <p className="mt-4 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
+          {authModeDescription}
+        </p>
 
         <div className="mt-6 grid gap-4">
           {showOAuthButtons ? (
