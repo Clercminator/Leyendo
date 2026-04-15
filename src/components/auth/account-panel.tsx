@@ -363,10 +363,21 @@ export function AccountPanel({
   }, [profile?.userId, user?.id]);
 
   useEffect(() => {
-    if ((paidSignupPlan || checkoutPlan) && !user) {
+    if (checkoutPlan && !user) {
       setMode("create-account");
+      return;
+    }
+
+    if (paidSignupPlan && !user) {
+      setMode("sign-in");
     }
   }, [checkoutPlan, paidSignupPlan, user]);
+
+  useEffect(() => {
+    if (!checkoutPlan && mode === "create-account") {
+      setMode("sign-in");
+    }
+  }, [checkoutPlan, mode]);
 
   useEffect(() => {
     if (!paidSignupPlan || !user) {
@@ -835,6 +846,10 @@ export function AccountPanel({
   const showSubscriptionLinkedNotice = Boolean(
     paidSignupPlan && user && hasPaidAccountAccess,
   );
+  const guestModes = isPreCheckoutFlow
+    ? modes
+    : (["sign-in", "magic-link"] as const);
+  const showStartFromPricingHint = !isPreCheckoutFlow && !paidSignupPlan;
   const subscriptionLinkedEyebrow =
     locale === "en"
       ? "Subscription linked"
@@ -892,19 +907,19 @@ export function AccountPanel({
     : paidSignupPlan
       ? locale === "en"
         ? [
-            "If you already had a Leyendo account for the payment email, switch to Sign in.",
-            "If you did not have one yet, keep Create account selected and finish registration with that same email.",
+            "Sign in with the same Leyendo account you used before checkout.",
+            "Use the same payment email so Leyendo can reconnect the upgraded plan.",
             "Wait for the Subscription linked confirmation before using sync, cloud books, or saved words.",
           ]
         : locale === "es"
           ? [
-              "Si ya tenias cuenta en Leyendo para el email del pago, cambia a Entrar.",
-              "Si todavia no la tenias, deja Crear cuenta seleccionado y termina el registro con ese mismo email.",
+              "Entra con la misma cuenta de Leyendo que usaste antes del checkout.",
+              "Usa el mismo email del pago para que Leyendo reconecte el plan mejorado.",
               "Espera la confirmacion Subscription linked antes de usar sincronizacion, libros en la nube o palabras guardadas.",
             ]
           : [
-              "Se voce ja tinha conta no Leyendo para o email do pagamento, troque para Entrar.",
-              "Se ainda nao tinha, deixe Criar conta selecionado e conclua o cadastro com esse mesmo email.",
+              "Entre com a mesma conta do Leyendo que voce usou antes do checkout.",
+              "Use o mesmo email do pagamento para que o Leyendo reconecte o plano atualizado.",
               "Espere a confirmacao Subscription linked antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
             ]
       : [];
@@ -928,7 +943,19 @@ export function AccountPanel({
   const showOAuthButtons = mode !== "magic-link";
   const authModeDescription =
     mode === "sign-in"
-      ? helperCopy.signInModeDescription
+      ? paidSignupPlan
+        ? locale === "en"
+          ? `Sign in with the same email used for ${paidSignupPlanLabel} checkout.`
+          : locale === "es"
+            ? `Entra con el mismo email usado en el checkout de ${paidSignupPlanLabel}.`
+            : `Entre com o mesmo email usado no checkout de ${paidSignupPlanLabel}.`
+        : isPreCheckoutFlow
+          ? helperCopy.signInModeDescription
+          : locale === "en"
+            ? "Use your existing Leyendo account here. New users should start from Pricing."
+            : locale === "es"
+              ? "Usa aqui tu cuenta existente de Leyendo. Los usuarios nuevos deben empezar desde Pricing."
+              : "Use aqui sua conta existente do Leyendo. Novos usuarios devem comecar por Pricing."
       : mode === "create-account"
         ? isPreCheckoutFlow
           ? locale === "en"
@@ -1906,10 +1933,32 @@ export function AccountPanel({
           </div>
         ) : null}
 
+        {showStartFromPricingHint ? (
+          <div className={`${activationSteps.length > 0 ? "mt-6" : ""} rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4 sm:flex sm:items-center sm:justify-between sm:gap-4`}>
+            <p className="text-sm leading-7 text-(--text-muted)">
+              {locale === "en"
+                ? "New to Leyendo? Start from Pricing. Paid checkout now creates or opens your Basic Reader account there."
+                : locale === "es"
+                  ? "Eres nuevo en Leyendo? Empieza desde Pricing. El checkout pagado ahora crea o abre alli tu cuenta Basic Reader."
+                  : "Novo no Leyendo? Comece por Pricing. O checkout pago agora cria ou abre ali sua conta Basic Reader."}
+            </p>
+            <a
+              href={getLocalizedPublicPath("/pricing", locale)}
+              className="mt-4 inline-flex h-11 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-card) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:mt-0"
+            >
+              {locale === "en"
+                ? "Open pricing"
+                : locale === "es"
+                  ? "Abrir pricing"
+                  : "Abrir pricing"}
+            </a>
+          </div>
+        ) : null}
+
         <div
-          className={`${activationSteps.length > 0 ? "mt-6" : ""} flex flex-wrap gap-2`}
+          className={`${activationSteps.length > 0 || showStartFromPricingHint ? "mt-6" : ""} flex flex-wrap gap-2`}
         >
-          {modes.map((entry) => (
+          {guestModes.map((entry) => (
             <button
               key={entry}
               type="button"

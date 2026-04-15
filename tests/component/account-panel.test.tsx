@@ -335,7 +335,7 @@ describe("AccountPanel", () => {
     expect(screen.getByText(/exact next steps/i)).toBeInTheDocument();
     expect(
       screen.getByText(
-        /if you already had a leyendo account for the payment email/i,
+        /sign in with the same leyendo account you used before checkout/i,
       ),
     ).toBeInTheDocument();
     expect(
@@ -343,6 +343,9 @@ describe("AccountPanel", () => {
         /use the same email as the payment so leyendo can link/i,
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /create account/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("sends a signed-in user back to pricing to resume checkout", async () => {
@@ -645,10 +648,7 @@ describe("AccountPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("lets users create a free Basic Reader account before choosing a paid plan", async () => {
-    const signUp = vi.fn().mockResolvedValue(undefined);
-    const user = userEvent.setup();
-
+  it("keeps the plain account page sign-in only and points new users to pricing", () => {
     useSupabaseAuth.mockReturnValue({
       errorMessage: undefined,
       guestLibrarySummary: {
@@ -670,7 +670,7 @@ describe("AccountPanel", () => {
       signInWithGoogle: vi.fn(),
       signInWithMagicLink: vi.fn(),
       signOut: vi.fn(),
-      signUp,
+      signUp: vi.fn(),
       syncLocalLibraryToCloud: vi.fn(),
       syncStatus: "idle",
       syncWithCloud: vi.fn(),
@@ -680,24 +680,13 @@ describe("AccountPanel", () => {
 
     render(<AccountPanel />);
 
-    await user.click(screen.getByRole("button", { name: /create account/i }));
-    await user.type(screen.getByLabelText(/^email$/i), "reader@example.com");
-    await user.type(screen.getByLabelText(/password/i), "hunter2-password");
-    await user.click(
-      screen.getAllByRole("button", { name: /create account/i })[1],
-    );
-
-    await waitFor(() => {
-      expect(signUp).toHaveBeenCalledWith(
-        "reader@example.com",
-        "hunter2-password",
-        window.location.href,
-      );
-    });
-
     expect(
-      screen.getByText(/basic reader account created\./i),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /create account/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /open pricing/i })).toHaveAttribute(
+      "href",
+      "/pricing",
+    );
   });
 
   it("keeps the guest auth card compact without the old why sign in block", () => {

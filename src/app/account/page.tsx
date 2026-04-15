@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { AccountPanel } from "@/components/auth/account-panel";
 import { AppShell } from "@/components/layout/app-shell";
@@ -42,6 +43,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     resolvedSearchParams.provider === "mercadopago"
       ? resolvedSearchParams.provider
       : undefined;
+
+  if (checkoutPlan && checkoutProvider) {
+    redirect(`/pricing?checkout=${checkoutPlan}&provider=${checkoutProvider}`);
+  }
+
   const accountTitle = checkoutPlan
     ? {
         en: "Create your Basic Reader account first.",
@@ -55,9 +61,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           pt: `Volte para sua conta ${paidSignupPlan === "max" ? "Max" : "Focus"}.`,
         }
       : {
-          en: "Create or sign in to your Basic Reader account.",
-          es: "Crea o entra en tu cuenta Basic Reader.",
-          pt: "Crie ou entre na sua conta Basic Reader.",
+          en: "Account",
+          es: "Cuenta",
+          pt: "Conta",
         };
   const accountDescription = checkoutPlan
     ? {
@@ -72,9 +78,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           pt: "O pagamento foi aprovado. Abra esta conta com o mesmo email do checkout para confirmar o plano atualizado.",
         }
       : {
-          en: "Basic Reader is free. Sign in now and upgrade later if you want cloud sync and saved words.",
-          es: "Basic Reader es gratis. Entra ahora y mejora despues si quieres sincronizacion en la nube y palabras guardadas.",
-          pt: "Basic Reader e gratis. Entre agora e faca upgrade depois se quiser sincronizacao na nuvem e palavras salvas.",
+          en: "Already have a Leyendo account? Sign in here to manage your library, sync, and plan.",
+          es: "Ya tienes cuenta en Leyendo? Entra aqui para gestionar tu biblioteca, sincronizacion y plan.",
+          pt: "Ja tem conta no Leyendo? Entre aqui para gerenciar sua biblioteca, sincronizacao e plano.",
         };
 
   return (
