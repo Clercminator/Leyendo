@@ -137,6 +137,11 @@ interface PricingPageContentProps {
   initialPaymentStatus?: string;
 }
 
+interface CheckoutPreparationState {
+  planId: PaidPlanId;
+  provider: Exclude<PaymentProvider, "binance">;
+}
+
 function isPaidPlanId(value: unknown): value is PaidPlanId {
   return value === "focus" || value === "max";
 }
@@ -156,6 +161,8 @@ export function PricingPageContent({
     null,
   );
   const [binancePlanId, setBinancePlanId] = useState<PaidPlanId | null>(null);
+  const [checkoutPreparation, setCheckoutPreparation] =
+    useState<CheckoutPreparationState | null>(null);
 
   useEffect(() => {
     setPaymentRegion(
@@ -193,6 +200,28 @@ export function PricingPageContent({
     };
   }, [binancePlanId]);
 
+  useEffect(() => {
+    if (!checkoutPreparation) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setCheckoutPreparation(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [checkoutPreparation]);
+
   const copy = useMemo<Copy>(() => {
     if (locale === "es") {
       return {
@@ -209,7 +238,7 @@ export function PricingPageContent({
         comparisonEyebrow: "Planes",
         continueToAccount: "Continuar con la cuenta pagada",
         continueToAccountHint:
-          "Tu pago ya esta aprobado. Termina la cuenta para activar sincronizacion y palabras guardadas.",
+          "Tu pago ya esta aprobado. Termina la cuenta con el mismo email usado en el checkout para activar sincronizacion y palabras guardadas.",
         contactDavid: "Abrir pagina de contacto",
         focusCta: "Obtener Focus",
         focusDescription:
@@ -229,7 +258,7 @@ export function PricingPageContent({
         missingProvider:
           "Este checkout todavia no esta conectado. Puedes usar Binance mientras configuramos este proveedor.",
         paymentSuccess:
-          "Pago aprobado. Si tu plan no se activa automaticamente, entra a tu cuenta y contacta a David para confirmar la suscripcion.",
+          "Pago aprobado. Entra a tu cuenta con el mismo email usado en el checkout. Leyendo confirmara cuando la suscripcion quede vinculada.",
         paymentNote:
           "Las tarjetas se enrutan segun tu region. Binance siempre queda disponible como alternativa manual.",
         priceSuffix: "/mes",
@@ -251,7 +280,7 @@ export function PricingPageContent({
         comparisonEyebrow: "Planos",
         continueToAccount: "Continuar com a conta paga",
         continueToAccountHint:
-          "Seu pagamento ja foi aprovado. Conclua a conta para ativar sincronizacao e palavras salvas.",
+          "Seu pagamento ja foi aprovado. Conclua a conta com o mesmo email usado no checkout para ativar sincronizacao e palavras salvas.",
         contactDavid: "Abrir pagina de contato",
         focusCta: "Obter Focus",
         focusDescription:
@@ -271,7 +300,7 @@ export function PricingPageContent({
         missingProvider:
           "Este checkout ainda nao esta conectado. Voce pode usar Binance enquanto este provedor e configurado.",
         paymentSuccess:
-          "Pagamento aprovado. Se o plano nao for ativado automaticamente, entre na sua conta e fale com David para confirmar a assinatura.",
+          "Pagamento aprovado. Entre na sua conta com o mesmo email usado no checkout. O Leyendo vai confirmar quando a assinatura estiver vinculada.",
         paymentNote:
           "Cartoes sao roteados pela sua regiao. Binance continua disponivel como alternativa manual.",
         priceSuffix: "/mes",
@@ -292,7 +321,7 @@ export function PricingPageContent({
       comparisonEyebrow: "Plans",
       continueToAccount: "Continue to paid account setup",
       continueToAccountHint:
-        "Your payment is approved. Finish the account to unlock sync and the saved-word dictionary.",
+        "Your payment is approved. Finish the account with the same email used in checkout to unlock sync and the saved-word dictionary.",
       contactDavid: "Open contact page",
       focusCta: "Get Focus",
       focusDescription:
@@ -312,7 +341,7 @@ export function PricingPageContent({
       missingProvider:
         "This checkout is not connected yet. You can use Binance while this provider is being configured.",
       paymentSuccess:
-        "Payment approved. If your plan does not unlock automatically, go to your account and contact David so the subscription can be confirmed.",
+        "Payment approved. Go to your account with the same email used in checkout. Leyendo will confirm when the subscription is linked.",
       paymentNote:
         "Card payments are routed by region. Binance stays available as a manual fallback.",
       priceSuffix: "/month",
@@ -450,10 +479,104 @@ export function PricingPageContent({
     [copy, locale],
   );
 
+  const checkoutGuide = useMemo(() => {
+    if (locale === "es") {
+      return {
+        continueAction: "Continuar al checkout",
+        existingAccountHint:
+          "Si ya tienes cuenta en Leyendo, entra despues del pago con ese mismo email.",
+        eyebrow: "Sin cuenta todavia",
+        intro:
+          "Puedes comprar Focus o Max antes de crear tu cuenta de Leyendo. Sigue estos pasos exactos:",
+        steps: [
+          "Elige Focus o Max y continua al checkout.",
+          "Completa el pago con el mismo email o cuenta que quieres vincular a Leyendo.",
+          "Vuelve a Leyendo y abre la configuracion de cuenta pagada.",
+          "Crea tu cuenta o entra con ese mismo email.",
+          "Espera el mensaje Subscription linked antes de usar sincronizacion, libros en la nube o palabras guardadas.",
+        ],
+        title: "Asi se activa una cuenta pagada nueva",
+      };
+    }
+
+    if (locale === "pt") {
+      return {
+        continueAction: "Continuar para o checkout",
+        existingAccountHint:
+          "Se voce ja tem conta no Leyendo, entre depois do pagamento com esse mesmo email.",
+        eyebrow: "Sem conta ainda",
+        intro:
+          "Voce pode comprar Focus ou Max antes de criar sua conta do Leyendo. Siga estes passos exatos:",
+        steps: [
+          "Escolha Focus ou Max e continue para o checkout.",
+          "Conclua o pagamento com o mesmo email ou conta que voce quer vincular ao Leyendo.",
+          "Volte ao Leyendo e abra a configuracao da conta paga.",
+          "Crie sua conta ou entre com esse mesmo email.",
+          "Espere a mensagem Subscription linked antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
+        ],
+        title: "Como ativar uma conta paga nova",
+      };
+    }
+
+    return {
+      continueAction: "Continue to checkout",
+      existingAccountHint:
+        "If you already have a Leyendo account, sign in after payment with that same email.",
+      eyebrow: "No account yet",
+      intro:
+        "You can buy Focus or Max before creating your Leyendo account. Follow these exact steps:",
+      steps: [
+        "Choose Focus or Max and continue to checkout.",
+        "Complete payment with the same email or account you want attached to Leyendo.",
+        "Return to Leyendo and open paid account setup.",
+        "Create your account or sign in with that same email.",
+        "Wait for the Subscription linked confirmation before using sync, cloud books, or saved words.",
+      ],
+      title: "How a new paid account gets activated",
+    };
+  }, [locale]);
+
+  const successSteps = useMemo(() => {
+    if (user) {
+      return locale === "es"
+        ? [
+            "Abre tu cuenta pagada.",
+            "Comprueba que aparezca el mensaje Subscription linked.",
+          ]
+        : locale === "pt"
+          ? [
+              "Abra sua conta paga.",
+              "Confirme que a mensagem Subscription linked aparece.",
+            ]
+          : [
+              "Open your paid account setup.",
+              "Confirm that the Subscription linked message appears.",
+            ];
+    }
+
+    return locale === "es"
+      ? [
+          "Abre la configuracion de cuenta pagada.",
+          "Crea tu cuenta o entra con el mismo email usado en el pago.",
+          "Espera el mensaje Subscription linked.",
+        ]
+      : locale === "pt"
+        ? [
+            "Abra a configuracao da conta paga.",
+            "Crie sua conta ou entre com o mesmo email usado no pagamento.",
+            "Espere a mensagem Subscription linked.",
+          ]
+        : [
+            "Open paid account setup.",
+            "Create your account or sign in with the same email used for payment.",
+            "Wait for the Subscription linked message.",
+          ];
+  }, [locale, user]);
+
   const primaryProvider =
     paymentRegion === "latam" ? "mercadopago" : "lemonsqueezy";
 
-  async function handleProviderClick(
+  async function startProviderCheckout(
     planId: PaidPlanId,
     provider: Exclude<PaymentProvider, "binance">,
   ) {
@@ -550,7 +673,34 @@ export function PricingPageContent({
     }
   }
 
+  function handleProviderClick(
+    planId: PaidPlanId,
+    provider: Exclude<PaymentProvider, "binance">,
+  ) {
+    setStatusMessage(undefined);
+
+    if (!user) {
+      setCheckoutPreparation({ planId, provider });
+      return;
+    }
+
+    void startProviderCheckout(planId, provider);
+  }
+
+  async function handlePreparedCheckout() {
+    if (!checkoutPreparation) {
+      return;
+    }
+
+    const nextCheckout = checkoutPreparation;
+    setCheckoutPreparation(null);
+    await startProviderCheckout(nextCheckout.planId, nextCheckout.provider);
+  }
+
   const binancePlan = plans.find((plan) => plan.id === binancePlanId);
+  const checkoutPreparationPlan = plans.find(
+    (plan) => plan.id === checkoutPreparation?.planId,
+  );
 
   return (
     <section className="w-full px-6 pt-12 pb-24">
@@ -587,6 +737,32 @@ export function PricingPageContent({
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#6b7280]">
             {copy.paymentNote}
           </p>
+          {!user ? (
+            <div className="mx-auto mt-6 max-w-3xl rounded-[1.75rem] border border-[#2d466a] bg-[#111a2a] px-5 py-5 text-left text-sm leading-7 text-[#d9e4f5] shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
+              <p className="text-[0.68rem] font-bold tracking-[0.26em] text-[#8bb9ff] uppercase">
+                {checkoutGuide.eyebrow}
+              </p>
+              <h2 className="mt-3 text-xl font-semibold text-white sm:text-2xl">
+                {checkoutGuide.title}
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-[#aeb9cf]">
+                {checkoutGuide.intro}
+              </p>
+              <ol className="mt-4 space-y-3">
+                {checkoutGuide.steps.map((step, index) => (
+                  <li key={step} className="flex gap-3">
+                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#3b5a86] bg-[#17263b] text-xs font-semibold text-[#d9e4f5]">
+                      {index + 1}
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-4 text-xs leading-6 text-[#8f97ab]">
+                {checkoutGuide.existingAccountHint}
+              </p>
+            </div>
+          ) : null}
           {successMessage ? (
             <div className="mx-auto mt-5 max-w-2xl rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 text-sm leading-7 text-emerald-100">
               <p>{successMessage}</p>
@@ -595,6 +771,16 @@ export function PricingPageContent({
                   <p className="text-sm text-emerald-50/90">
                     {copy.continueToAccountHint}
                   </p>
+                  <ol className="mt-4 space-y-3 text-sm text-emerald-50/90">
+                    {successSteps.map((step, index) => (
+                      <li key={step} className="flex gap-3">
+                        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-emerald-200/30 bg-emerald-50/10 text-xs font-semibold text-emerald-50">
+                          {index + 1}
+                        </span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
                   <Link
                     href={`/account?payment=success&plan=${readySignupPlan}`}
                     className="mt-3 inline-flex min-h-11 items-center rounded-full border border-emerald-200/30 bg-emerald-50/10 px-5 py-2.5 font-semibold text-emerald-50 transition hover:bg-emerald-50/16"
@@ -797,6 +983,107 @@ export function PricingPageContent({
                   GitHub
                 </a>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {checkoutPreparation && checkoutPreparationPlan ? (
+        <div
+          className="fixed inset-0 z-120 flex items-center justify-center bg-[rgba(9,14,24,0.72)] px-4 py-6 backdrop-blur-md"
+          onClick={() => {
+            setCheckoutPreparation(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={checkoutGuide.title}
+            className="w-full max-w-xl rounded-[2rem] border border-white/14 bg-[linear-gradient(180deg,rgba(11,17,31,0.98),rgba(14,21,36,0.95))] p-6 text-white shadow-[0_30px_110px_rgba(0,0,0,0.45)]"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="editorial-kicker text-[#8bb9ff]">
+                  {checkoutGuide.eyebrow}
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em]">
+                  {checkoutGuide.title}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-white/75">
+                  {checkoutGuide.intro}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCheckoutPreparation(null);
+                }}
+                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/12 bg-white/6 text-white transition hover:bg-white/12"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">{copy.close}</span>
+              </button>
+            </div>
+
+            <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/6 p-4">
+              <p className="text-sm text-white/70">
+                {locale === "en" ? "Plan" : locale === "es" ? "Plan" : "Plano"}
+              </p>
+              <p className="mt-1 text-lg font-semibold">
+                {checkoutPreparationPlan.label}
+              </p>
+              <p className="mt-2 text-sm leading-7 text-white/75">
+                {primaryProvider === "mercadopago"
+                  ? locale === "en"
+                    ? "You will pay with MercadoPago in a new tab."
+                    : locale === "es"
+                      ? "Pagarás con MercadoPago en una pestaña nueva."
+                      : "Voce vai pagar com MercadoPago em uma nova aba."
+                  : locale === "en"
+                    ? "You will pay with LemonSqueezy in a new tab."
+                    : locale === "es"
+                      ? "Pagarás con LemonSqueezy en una pestaña nueva."
+                      : "Voce vai pagar com LemonSqueezy em uma nova aba."}
+              </p>
+            </div>
+
+            <ol className="mt-5 space-y-3 text-sm leading-7 text-white/80">
+              {checkoutGuide.steps.map((step, index) => (
+                <li key={step} className="flex gap-3">
+                  <span className="mt-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
+                    {index + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+
+            <p className="mt-5 text-xs leading-6 text-white/65">
+              {checkoutGuide.existingAccountHint}
+            </p>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setCheckoutPreparation(null);
+                }}
+                className="inline-flex min-h-11 items-center rounded-full border border-white/12 bg-white/6 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/12"
+              >
+                {copy.close}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handlePreparedCheckout();
+                }}
+                className="inline-flex min-h-11 items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-100"
+              >
+                {checkoutGuide.continueAction}
+              </button>
             </div>
           </div>
         </div>

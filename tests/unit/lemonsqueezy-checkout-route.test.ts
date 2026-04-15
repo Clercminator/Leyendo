@@ -12,6 +12,8 @@ const originalStoreIdTesting = process.env.LEMONSQUEEZY_STORE_ID_TESTING;
 const originalFocusVariant = process.env.LEMONSQUEEZY_VARIANT_FOCUS;
 const originalFocusVariantTesting =
   process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING;
+const originalMaxVariant = process.env.LEMONSQUEEZY_VARIANT_MAX;
+const originalMaxVariantTesting = process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING;
 
 vi.stubGlobal("fetch", fetchMock);
 
@@ -24,6 +26,8 @@ describe("LemonSqueezy checkout route", () => {
     process.env.LEMONSQUEEZY_STORE_ID_TESTING = "";
     process.env.LEMONSQUEEZY_VARIANT_FOCUS = "";
     process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING = "";
+    process.env.LEMONSQUEEZY_VARIANT_MAX = "";
+    process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING = "";
   });
 
   afterAll(() => {
@@ -34,6 +38,8 @@ describe("LemonSqueezy checkout route", () => {
     process.env.LEMONSQUEEZY_VARIANT_FOCUS = originalFocusVariant;
     process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING =
       originalFocusVariantTesting;
+    process.env.LEMONSQUEEZY_VARIANT_MAX = originalMaxVariant;
+    process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING = originalMaxVariantTesting;
   });
 
   it("supports preview env aliases for api key, store id, and variants", async () => {
@@ -96,5 +102,52 @@ describe("LemonSqueezy checkout route", () => {
 
     expect(payload.data?.relationships?.store?.data?.id).toBe("98765");
     expect(payload.data?.relationships?.variant?.data?.id).toBe("1497164");
+  });
+
+  it("supports the preview max variant alias when it is configured", async () => {
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
+    process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING = "2497164";
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            attributes: {
+              url: "https://checkout.lemonsqueezy.com/buy/test-max",
+            },
+          },
+        }),
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/payments/lemonsqueezy", {
+        body: JSON.stringify({ locale: "en", plan: "max" }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      checkoutUrl: "https://checkout.lemonsqueezy.com/buy/test-max",
+    });
+
+    const payload = JSON.parse(
+      String(fetchMock.mock.calls[0]?.[1]?.body ?? "{}"),
+    ) as {
+      data?: {
+        relationships?: {
+          variant?: { data?: { id?: string } };
+        };
+      };
+    };
+
+    expect(payload.data?.relationships?.variant?.data?.id).toBe("2497164");
   });
 });

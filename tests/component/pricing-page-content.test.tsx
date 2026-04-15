@@ -106,6 +106,9 @@ describe("PricingPageContent", () => {
     expect(screen.getAllByText(/3 file uploads/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/15 file uploads/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/unlimited uploads/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/how a new paid account gets activated/i),
+    ).toBeInTheDocument();
   });
 
   it("uses the real MercadoPago subscription plans for LATAM card checkout", async () => {
@@ -156,12 +159,32 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
+    expect(
+      screen.getByRole("dialog", {
+        name: /how a new paid account gets activated/i,
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /continue to checkout/i }),
+    );
+
     expect(openSpy).toHaveBeenNthCalledWith(1, "", "_blank");
     expect(focusWindow.location.href).toBe(
       "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
     );
 
     await user.click(screen.getByRole("button", { name: /get max/i }));
+
+    expect(
+      screen.getByRole("dialog", {
+        name: /how a new paid account gets activated/i,
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /continue to checkout/i }),
+    );
 
     expect(openSpy).toHaveBeenNthCalledWith(2, "", "_blank");
     expect(maxWindow.location.href).toBe(
@@ -200,6 +223,10 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
+    await user.click(
+      screen.getByRole("button", { name: /continue to checkout/i }),
+    );
+
     expect(openSpy).toHaveBeenCalledWith("", "_blank");
     expect(
       (checkoutWindow as { close: ReturnType<typeof vi.fn> }).close,
@@ -237,12 +264,18 @@ describe("PricingPageContent", () => {
   });
 
   it("shows a success notice when payment=success is present in the URL", () => {
-    render(<PricingPageContent initialPaymentStatus="success" />);
+    render(
+      <PricingPageContent
+        initialPaymentStatus="success"
+        initialPlanId="focus"
+      />,
+    );
 
     expect(
-      screen.getByText(
-        /payment approved\. if your plan does not unlock automatically/i,
-      ),
+      screen.getByText(/payment approved\. go to your account/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/wait for the subscription linked message/i),
     ).toBeInTheDocument();
   });
 

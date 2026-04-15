@@ -222,6 +222,166 @@ describe("AccountPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows an explicit subscription linked confirmation and billing status after a paid checkout returns", () => {
+    const renewalDate = "2026-04-20T12:00:00.000Z";
+    const renewalLabel = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+    }).format(new Date(renewalDate));
+
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 1,
+        documents: 0,
+        highlights: 1,
+        sessions: 1,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: "2026-04-14T10:00:00.000Z",
+      lastSyncSummary: undefined,
+      profile: {
+        createdAt: "2026-04-14T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 2,
+        marketingConsent: false,
+        planTier: "focus",
+        subscriptionExpiresAt: renewalDate,
+        subscriptionStatus: "active",
+        updatedAt: "2026-04-14T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "synced",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<AccountPanel paidSignupPlan="focus" />);
+
+    expect(screen.getByText(/subscription linked/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/focus is active on this account/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/your focus subscription is now linked/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/subscription status/i)).toBeInTheDocument();
+    expect(screen.getByText(/active plan/i)).toBeInTheDocument();
+    expect(screen.getByText(/current status/i)).toBeInTheDocument();
+    expect(screen.getByText(/renewal date/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Focus$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Active$/)).toBeInTheDocument();
+    expect(screen.getByText(renewalLabel)).toBeInTheDocument();
+  });
+
+  it("shows exact activation steps for a paid checkout before the user signs in", () => {
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: undefined,
+      lastSyncSummary: undefined,
+      profile: undefined,
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "idle",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: null,
+    });
+
+    render(<AccountPanel paidSignupPlan="focus" />);
+
+    expect(screen.getByText(/exact next steps/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /if you already had a leyendo account for the payment email/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/use the same email as the payment/i),
+    ).toBeInTheDocument();
+  });
+
+  it("warns when the signed-in account does not match the new paid subscription yet", () => {
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: undefined,
+      lastSyncSummary: undefined,
+      profile: {
+        createdAt: "2026-04-14T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 0,
+        marketingConsent: false,
+        planTier: "basic",
+        updatedAt: "2026-04-14T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "idle",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<AccountPanel paidSignupPlan="focus" />);
+
+    expect(screen.getByText(/one step left/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /this signed-in account is not linked to the new payment yet/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("lets a Focus user save a word to the dictionary", async () => {
     const updateProfile = vi.fn().mockResolvedValue(undefined);
     const user = userEvent.setup();

@@ -20,6 +20,7 @@ import {
   getEffectivePlanTier,
   hasPlanAccess,
   type PaidPlanTier,
+  type SubscriptionStatus,
 } from "@/lib/plans";
 import type {
   UserPersonalInfo,
@@ -58,15 +59,108 @@ function createEmptyDictionaryFormState(): DictionaryFormState {
   };
 }
 
-function formatDate(date: string | undefined) {
+function formatDate(
+  date: string | undefined,
+  options?: Intl.DateTimeFormatOptions,
+) {
   if (!date) {
+    return undefined;
+  }
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) {
     return undefined;
   }
 
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(date));
+    ...options,
+  }).format(parsedDate);
+}
+
+function getSubscriptionStatusLabel(
+  locale: string,
+  status: SubscriptionStatus,
+) {
+  switch (status) {
+    case "active":
+      return locale === "en" ? "Active" : locale === "es" ? "Activa" : "Ativa";
+    case "trialing":
+      return locale === "en"
+        ? "Trialing"
+        : locale === "es"
+          ? "En prueba"
+          : "Em teste";
+    case "pending":
+      return locale === "en"
+        ? "Pending"
+        : locale === "es"
+          ? "Pendiente"
+          : "Pendente";
+    case "grace_period":
+      return locale === "en"
+        ? "Grace period"
+        : locale === "es"
+          ? "Periodo de gracia"
+          : "Periodo de graca";
+    case "past_due":
+      return locale === "en"
+        ? "Past due"
+        : locale === "es"
+          ? "Cobro pendiente"
+          : "Cobranca pendente";
+    case "canceled":
+      return locale === "en"
+        ? "Canceled"
+        : locale === "es"
+          ? "Cancelada"
+          : "Cancelada";
+    case "expired":
+      return locale === "en"
+        ? "Expired"
+        : locale === "es"
+          ? "Expirada"
+          : "Expirada";
+    case "inactive":
+      return locale === "en"
+        ? "Inactive"
+        : locale === "es"
+          ? "Inactiva"
+          : "Inativa";
+  }
+}
+
+function getSubscriptionDateLabel(locale: string, status: SubscriptionStatus) {
+  if (status === "grace_period") {
+    return locale === "en"
+      ? "Grace period ends"
+      : locale === "es"
+        ? "Fin de la gracia"
+        : "Fim da graca";
+  }
+
+  if (status === "canceled") {
+    return locale === "en"
+      ? "Access until"
+      : locale === "es"
+        ? "Acceso hasta"
+        : "Acesso ate";
+  }
+
+  if (status === "expired" || status === "inactive") {
+    return locale === "en"
+      ? "Ended on"
+      : locale === "es"
+        ? "Termino el"
+        : "Terminou em";
+  }
+
+  return locale === "en"
+    ? "Renewal date"
+    : locale === "es"
+      ? "Fecha de renovacion"
+      : "Data de renovacao";
 }
 
 function buildProfileFormState(profile?: {
@@ -257,6 +351,12 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
     setAvatarRenderFailed(false);
     setRemoveStoredAvatar(false);
   }, [profile?.userId, user?.id]);
+
+  useEffect(() => {
+    if (paidSignupPlan && !user) {
+      setMode("create-account");
+    }
+  }, [paidSignupPlan, user]);
 
   useEffect(() => {
     if (!avatarDraftFile) {
@@ -598,6 +698,81 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
   const profileNameInput = formState.displayName;
   const activePlanTier = getEffectivePlanTier(profile);
   const hasPaidAccountAccess = hasPlanAccess(profile, "focus");
+  const activePaidPlanLabel = activePlanTier === "max" ? "Max" : "Focus";
+  const subscriptionPlanTier =
+    profile?.planTier === "focus" || profile?.planTier === "max"
+      ? profile.planTier
+      : activePlanTier === "focus" || activePlanTier === "max"
+        ? activePlanTier
+        : undefined;
+  const subscriptionPlanLabel =
+    subscriptionPlanTier === "max"
+      ? "Max"
+      : subscriptionPlanTier === "focus"
+        ? "Focus"
+        : undefined;
+  const subscriptionStatus =
+    profile?.subscriptionStatus ??
+    (subscriptionPlanTier
+      ? hasPaidAccountAccess
+        ? "active"
+        : "inactive"
+      : undefined);
+  const subscriptionStatusLabel = subscriptionStatus
+    ? getSubscriptionStatusLabel(locale, subscriptionStatus)
+    : undefined;
+  const subscriptionDateValue =
+    subscriptionStatus === "grace_period"
+      ? (profile?.subscriptionGraceUntil ?? profile?.subscriptionExpiresAt)
+      : (profile?.subscriptionExpiresAt ?? profile?.subscriptionGraceUntil);
+  const subscriptionDateLabel = subscriptionStatus
+    ? getSubscriptionDateLabel(locale, subscriptionStatus)
+    : locale === "en"
+      ? "Renewal date"
+      : locale === "es"
+        ? "Fecha de renovacion"
+        : "Data de renovacao";
+  const subscriptionDateDisplay =
+    formatDate(subscriptionDateValue, {
+      dateStyle: "medium",
+      timeStyle: undefined,
+    }) ??
+    (locale === "en"
+      ? "Awaiting provider sync"
+      : locale === "es"
+        ? "Esperando sincronizacion del proveedor"
+        : "Aguardando sincronizacao do provedor");
+  const showSubscriptionStatusCard = Boolean(
+    subscriptionPlanLabel &&
+    (hasPaidAccountAccess || subscriptionStatus || subscriptionDateValue),
+  );
+  const subscriptionStatusCardTitle =
+    locale === "en"
+      ? "Subscription status"
+      : locale === "es"
+        ? "Estado de la suscripcion"
+        : "Status da assinatura";
+  const subscriptionStatusCardDescription =
+    locale === "en"
+      ? "Check this card to confirm the paid entitlement, billing state, and renewal window currently attached to this account."
+      : locale === "es"
+        ? "Consulta esta tarjeta para confirmar la suscripcion pagada, el estado de cobro y la ventana de renovacion que ahora estan vinculados a esta cuenta."
+        : "Consulte este cartao para confirmar a assinatura paga, o estado da cobranca e a janela de renovacao agora vinculados a esta conta.";
+  const activePlanFieldLabel =
+    locale === "en"
+      ? "Active plan"
+      : locale === "es"
+        ? "Plan activo"
+        : "Plano ativo";
+  const currentStatusFieldLabel =
+    locale === "en"
+      ? "Current status"
+      : locale === "es"
+        ? "Estado actual"
+        : "Status atual";
+  const showSubscriptionPendingNotice = Boolean(
+    paidSignupPlan && user && !hasPaidAccountAccess,
+  );
   const draftPersonalInfo = buildPersonalInfoFromForm(formState);
   const currentAvatarUrl = removeStoredAvatar ? undefined : profile?.avatarUrl;
   const activeAvatarUrl = avatarPreviewUrl ?? currentAvatarUrl;
@@ -617,6 +792,70 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
   const readerSetupSummary = profile?.readerPreferences
     ? `${profile.readerPreferences.wordsPerMinute} WPM / ${profile.readerPreferences.chunkSize} ${profile.readerPreferences.chunkSize === 1 ? "word" : "words"} / ${profile.readerPreferences.theme}`
     : helperCopy.readerSetupEmpty;
+  const showSubscriptionLinkedNotice = Boolean(
+    paidSignupPlan && user && hasPaidAccountAccess,
+  );
+  const subscriptionLinkedEyebrow =
+    locale === "en"
+      ? "Subscription linked"
+      : locale === "es"
+        ? "Suscripcion vinculada"
+        : "Assinatura vinculada";
+  const subscriptionLinkedHeading =
+    locale === "en"
+      ? `${activePaidPlanLabel} is active on this account.`
+      : locale === "es"
+        ? `${activePaidPlanLabel} ya esta activa en esta cuenta.`
+        : `${activePaidPlanLabel} ja esta ativa nesta conta.`;
+  const subscriptionLinkedDescription =
+    locale === "en"
+      ? `Your ${activePaidPlanLabel} subscription is now linked. Cloud sync, cross-device reading, and the saved-word dictionary are unlocked.`
+      : locale === "es"
+        ? `Tu suscripcion ${activePaidPlanLabel} ya esta vinculada. La sincronizacion en la nube, la lectura entre dispositivos y el diccionario de palabras guardadas ya estan activos.`
+        : `Sua assinatura ${activePaidPlanLabel} ja esta vinculada. A sincronizacao na nuvem, a leitura entre dispositivos e o dicionario de palavras salvas ja estao ativos.`;
+  const subscriptionPendingEyebrow =
+    locale === "en"
+      ? "One step left"
+      : locale === "es"
+        ? "Falta un paso"
+        : "Falta um passo";
+  const subscriptionPendingHeading =
+    locale === "en"
+      ? "This signed-in account is not linked to the new payment yet."
+      : locale === "es"
+        ? "Esta cuenta iniciada no esta vinculada todavia al nuevo pago."
+        : "Esta conta conectada ainda nao esta vinculada ao novo pagamento.";
+  const subscriptionPendingDescription =
+    locale === "en"
+      ? "If you paid with a different email, sign out and use the same email as the payment account. If you already used the same email, wait a moment and reload this page."
+      : locale === "es"
+        ? "Si pagaste con otro email, cierra sesion y usa el mismo email de la cuenta de pago. Si ya usaste ese mismo email, espera un momento y vuelve a cargar esta pagina."
+        : "Se voce pagou com outro email, saia e use o mesmo email da conta de pagamento. Se ja usou esse mesmo email, espere um momento e recarregue esta pagina.";
+  const activationSteps = paidSignupPlan
+    ? locale === "en"
+      ? [
+          "If you already had a Leyendo account for the payment email, switch to Sign in.",
+          "If you did not have one yet, keep Create account selected and finish registration with that same email.",
+          "Wait for the Subscription linked confirmation before using sync, cloud books, or saved words.",
+        ]
+      : locale === "es"
+        ? [
+            "Si ya tenias cuenta en Leyendo para el email del pago, cambia a Entrar.",
+            "Si todavia no la tenias, deja Crear cuenta seleccionado y termina el registro con ese mismo email.",
+            "Espera la confirmacion Subscription linked antes de usar sincronizacion, libros en la nube o palabras guardadas.",
+          ]
+        : [
+            "Se voce ja tinha conta no Leyendo para o email do pagamento, troque para Entrar.",
+            "Se ainda nao tinha, deixe Criar conta selecionado e conclua o cadastro com esse mesmo email.",
+            "Espere a confirmacao Subscription linked antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
+          ]
+    : [];
+  const paymentEmailHint =
+    locale === "en"
+      ? "Use the same email as the payment so Leyendo can link the subscription automatically."
+      : locale === "es"
+        ? "Usa el mismo email del pago para que Leyendo pueda vincular la suscripcion automaticamente."
+        : "Use o mesmo email do pagamento para que o Leyendo possa vincular a assinatura automaticamente.";
 
   const syncCopy =
     syncStatus === "syncing"
@@ -921,6 +1160,34 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
     return (
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
+          {showSubscriptionLinkedNotice ? (
+            <div className="mb-6 rounded-[1.75rem] border border-emerald-400/30 bg-emerald-500/10 px-5 py-4">
+              <p className="text-xs font-semibold tracking-[0.18em] text-emerald-200 uppercase">
+                {subscriptionLinkedEyebrow}
+              </p>
+              <h3 className="mt-2 text-xl font-semibold text-white">
+                {subscriptionLinkedHeading}
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-emerald-50/90">
+                {subscriptionLinkedDescription}
+              </p>
+            </div>
+          ) : null}
+
+          {showSubscriptionPendingNotice ? (
+            <div className="mb-6 rounded-[1.75rem] border border-amber-300/30 bg-amber-500/10 px-5 py-4">
+              <p className="text-xs font-semibold tracking-[0.18em] text-amber-100 uppercase">
+                {subscriptionPendingEyebrow}
+              </p>
+              <h3 className="mt-2 text-xl font-semibold text-white">
+                {subscriptionPendingHeading}
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-amber-50/90">
+                {subscriptionPendingDescription}
+              </p>
+            </div>
+          ) : null}
+
           <input
             ref={avatarInputRef}
             type="file"
@@ -1019,6 +1286,46 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
               </p>
             </div>
           </div>
+
+          {showSubscriptionStatusCard ? (
+            <div className="mt-8 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) p-5">
+              <p className="editorial-kicker text-(--accent-sky)">
+                {subscriptionStatusCardTitle}
+              </p>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-(--text-muted)">
+                {subscriptionStatusCardDescription}
+              </p>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
+                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                    {activePlanFieldLabel}
+                  </p>
+                  <p className="mt-3 text-xl font-semibold text-(--text-strong)">
+                    {subscriptionPlanLabel}
+                  </p>
+                </div>
+
+                <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
+                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                    {currentStatusFieldLabel}
+                  </p>
+                  <p className="mt-3 text-xl font-semibold text-(--text-strong)">
+                    {subscriptionStatusLabel}
+                  </p>
+                </div>
+
+                <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
+                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                    {subscriptionDateLabel}
+                  </p>
+                  <p className="mt-3 text-xl font-semibold text-(--text-strong)">
+                    {subscriptionDateDisplay}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-8 grid gap-3">
             <label
@@ -1550,6 +1857,28 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
           {topDescription}
         </p>
 
+        {paidSignupPlan ? (
+          <div className="mt-6 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-5">
+            <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-sky) uppercase">
+              {locale === "en"
+                ? "Exact next steps"
+                : locale === "es"
+                  ? "Siguientes pasos exactos"
+                  : "Proximos passos exatos"}
+            </p>
+            <ol className="mt-4 space-y-3 text-sm leading-7 text-(--text-strong)">
+              {activationSteps.map((step, index) => (
+                <li key={step} className="flex gap-3">
+                  <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-card) text-xs font-semibold text-(--text-strong)">
+                    {index + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
+
         <div className="mt-8 flex flex-wrap gap-2">
           {modes.map((entry) => (
             <button
@@ -1671,6 +2000,12 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
                   placeholder="reader@example.com"
                 />
               </div>
+
+              {paidSignupPlan ? (
+                <p className="text-xs leading-6 text-(--text-muted)">
+                  {paymentEmailHint}
+                </p>
+              ) : null}
 
               {mode !== "magic-link" ? (
                 <>
