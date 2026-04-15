@@ -5,7 +5,15 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { Check, Coins, CreditCard, Globe2, X } from "lucide-react";
+import {
+  Check,
+  Coins,
+  CreditCard,
+  Globe2,
+  LoaderCircle,
+  Mail,
+  X,
+} from "lucide-react";
 
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { useLocale } from "@/components/layout/locale-provider";
@@ -18,9 +26,12 @@ type PaymentProvider = "binance" | "lemonsqueezy" | "mercadopago";
 type PlanId = "basic" | "focus" | "max";
 type PaidPlanId = Exclude<PlanId, "basic">;
 type HostedPaymentProvider = Exclude<PaymentProvider, "binance">;
+type AuthModalMode = "sign-in" | "create-account";
 
 const paymentRegionStorageKey = "leyendo_payment_region";
 const paidSignupPlanStorageKey = "leyendo_paid_signup_plan";
+const pendingCheckoutPlanStorageKey = "leyendo_pending_checkout_plan";
+const pendingCheckoutProviderStorageKey = "leyendo_pending_checkout_provider";
 const latamCountryCodes = new Set([
   "AR",
   "BO",
@@ -159,7 +170,16 @@ export function PricingPageContent({
 }: PricingPageContentProps) {
   const router = useRouter();
   const { locale } = useLocale();
-  const { user } = useSupabaseAuth();
+  const {
+    isConfigured: isAuthConfigured,
+    isLoading: isAuthLoading,
+    signIn,
+    signInWithGitHub,
+    signInWithGoogle,
+    signInWithMagicLink,
+    signUp,
+    user,
+  } = useSupabaseAuth();
   const checkoutResumeStartedRef = useRef(false);
   const paymentReturnHandledRef = useRef(false);
   const [paymentRegion, setPaymentRegion] = useState<PaymentRegion>(() =>
@@ -171,6 +191,17 @@ export function PricingPageContent({
     null,
   );
   const [binancePlanId, setBinancePlanId] = useState<PaidPlanId | null>(null);
+  const [authIntent, setAuthIntent] = useState<{
+    planId: PaidPlanId;
+    provider: HostedPaymentProvider;
+  } | null>(null);
+  const [authMode, setAuthMode] = useState<AuthModalMode>("create-account");
+  const [showEmailAuth, setShowEmailAuth] = useState(false);
+  const [useMagicLink, setUseMagicLink] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authPendingAction, setAuthPendingAction] = useState<string>();
+  const [authStatusMessage, setAuthStatusMessage] = useState<string>();
 
   useEffect(() => {
     setPaymentRegion(
@@ -207,6 +238,59 @@ export function PricingPageContent({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [binancePlanId]);
+
+  const rememberPendingCheckout = (
+    planId: PaidPlanId,
+    provider: HostedPaymentProvider,
+  ) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(pendingCheckoutPlanStorageKey, planId);
+    window.localStorage.setItem(pendingCheckoutProviderStorageKey, provider);
+  };
+
+  const clearPendingCheckout = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.removeItem(pendingCheckoutPlanStorageKey);
+    window.localStorage.removeItem(pendingCheckoutProviderStorageKey);
+  };
+
+  const closeAuthModal = () => {
+    clearPendingCheckout();
+    setAuthIntent(null);
+    setAuthPendingAction(undefined);
+    setAuthStatusMessage(undefined);
+    setShowEmailAuth(false);
+    setUseMagicLink(false);
+    setAuthPassword("");
+  };
+
+  useEffect(() => {
+    if (!authIntent) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeAuthModal();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [authIntent]);
 
   const copy = useMemo<Copy>(() => {
     if (locale === "es") {
@@ -334,6 +418,97 @@ export function PricingPageContent({
     };
   }, [locale]);
 
+  const authModalCopy = useMemo(() => {
+    if (locale === "es") {
+      return {
+        accountRequired:
+          "La compra empieza con una cuenta Basic Reader gratuita.",
+        close: "Cerrar",
+        continueWithEmail: "Continuar con email",
+        continueWithGitHub: "Continuar con GitHub",
+        continueWithGoogle: "Continuar con Google",
+        createAccount: "Crear cuenta",
+        createDescription: (planLabel: string) =>
+          `Tu cuenta comienza en Basic Reader y ${planLabel} se abre justo despues del registro.`,
+        createTitle: "Crear cuenta gratis",
+        emailLabel: "Email",
+        emailPlaceholder: "reader@example.com",
+        emailSent:
+          "Revisa tu correo. En cuanto abras el enlace, Leyendo continuara con el checkout.",
+        existingAccount: "Entrar",
+        magicLink: "Enviar enlace de acceso",
+        or: "o",
+        passwordLabel: "Contrasena",
+        passwordPlaceholder: "Al menos 6 caracteres",
+        signInDescription: (planLabel: string) =>
+          `Entra con la cuenta que debe recibir ${planLabel} despues del pago.`,
+        signInTitle: "Entrar para continuar",
+        submitCreate: "Crear Basic Reader",
+        submitSignIn: "Continuar al pago",
+        useMagicLink: "Usar enlace de acceso en su lugar",
+        usePassword: "Usar contrasena en su lugar",
+      };
+    }
+
+    if (locale === "pt") {
+      return {
+        accountRequired: "A compra comeca com uma conta Basic Reader gratuita.",
+        close: "Fechar",
+        continueWithEmail: "Continuar com email",
+        continueWithGitHub: "Continuar com GitHub",
+        continueWithGoogle: "Continuar com Google",
+        createAccount: "Criar conta",
+        createDescription: (planLabel: string) =>
+          `Sua conta comeca em Basic Reader e ${planLabel} abre logo depois do cadastro.`,
+        createTitle: "Criar conta gratis",
+        emailLabel: "Email",
+        emailPlaceholder: "reader@example.com",
+        emailSent:
+          "Verifique seu email. Assim que abrir o link, o Leyendo continua para o checkout.",
+        existingAccount: "Entrar",
+        magicLink: "Enviar link de acesso",
+        or: "ou",
+        passwordLabel: "Senha",
+        passwordPlaceholder: "Pelo menos 6 caracteres",
+        signInDescription: (planLabel: string) =>
+          `Entre com a conta que deve receber ${planLabel} depois do pagamento.`,
+        signInTitle: "Entrar para continuar",
+        submitCreate: "Criar Basic Reader",
+        submitSignIn: "Continuar para o pagamento",
+        useMagicLink: "Usar link de acesso no lugar",
+        usePassword: "Usar senha no lugar",
+      };
+    }
+
+    return {
+      accountRequired: "Paid checkout starts with a free Basic Reader account.",
+      close: "Close",
+      continueWithEmail: "Continue with email",
+      continueWithGitHub: "Continue with GitHub",
+      continueWithGoogle: "Continue with Google",
+      createAccount: "Create account",
+      createDescription: (planLabel: string) =>
+        `Your account starts on Basic Reader, and ${planLabel} opens right after sign-up.`,
+      createTitle: "Create free account",
+      emailLabel: "Email",
+      emailPlaceholder: "reader@example.com",
+      emailSent:
+        "Check your inbox. As soon as you open the link, Leyendo continues to checkout.",
+      existingAccount: "Log in",
+      magicLink: "Send sign-in link",
+      or: "or",
+      passwordLabel: "Password",
+      passwordPlaceholder: "At least 6 characters",
+      signInDescription: (planLabel: string) =>
+        `Sign in with the account that should receive ${planLabel} after payment.`,
+      signInTitle: "Log in to continue",
+      submitCreate: "Create Basic Reader",
+      submitSignIn: "Continue to payment",
+      useMagicLink: "Use a sign-in link instead",
+      usePassword: "Use your password instead",
+    };
+  }, [locale]);
+
   useEffect(() => {
     if (isPaidPlanId(initialPlanId)) {
       setReadySignupPlan(initialPlanId);
@@ -382,8 +557,8 @@ export function PricingPageContent({
 
   useEffect(() => {
     if (
-      checkoutResumeStartedRef.current ||
-      !user ||
+      user ||
+      authIntent ||
       !resumeCheckoutPlan ||
       !resumeCheckoutProvider ||
       initialPaymentStatus === "success"
@@ -391,15 +566,71 @@ export function PricingPageContent({
       return;
     }
 
-    checkoutResumeStartedRef.current = true;
-    window.localStorage.setItem(paidSignupPlanStorageKey, resumeCheckoutPlan);
+    rememberPendingCheckout(resumeCheckoutPlan, resumeCheckoutProvider);
     setReadySignupPlan(resumeCheckoutPlan);
+    setAuthMode("create-account");
+    setShowEmailAuth(false);
+    setUseMagicLink(false);
+    setAuthStatusMessage(undefined);
+    setAuthIntent({
+      planId: resumeCheckoutPlan,
+      provider: resumeCheckoutProvider,
+    });
     window.history.replaceState(
       null,
       "",
       getLocalizedPublicPath("/pricing", locale),
     );
-    void startProviderCheckout(resumeCheckoutPlan, resumeCheckoutProvider);
+  }, [
+    authIntent,
+    initialPaymentStatus,
+    locale,
+    resumeCheckoutPlan,
+    resumeCheckoutProvider,
+    user,
+  ]);
+
+  useEffect(() => {
+    if (
+      checkoutResumeStartedRef.current ||
+      !user ||
+      initialPaymentStatus === "success"
+    ) {
+      return;
+    }
+
+    const storedPlan =
+      typeof window === "undefined"
+        ? null
+        : window.localStorage.getItem(pendingCheckoutPlanStorageKey);
+    const storedProvider =
+      typeof window === "undefined"
+        ? null
+        : window.localStorage.getItem(pendingCheckoutProviderStorageKey);
+    const nextCheckoutPlan =
+      resumeCheckoutPlan ?? (isPaidPlanId(storedPlan) ? storedPlan : undefined);
+    const nextCheckoutProvider =
+      resumeCheckoutProvider ??
+      (isHostedPaymentProvider(storedProvider) ? storedProvider : undefined);
+
+    if (!nextCheckoutPlan || !nextCheckoutProvider) {
+      return;
+    }
+
+    checkoutResumeStartedRef.current = true;
+    clearPendingCheckout();
+    setAuthIntent(null);
+    setShowEmailAuth(false);
+    setUseMagicLink(false);
+    setAuthStatusMessage(undefined);
+    window.localStorage.setItem(paidSignupPlanStorageKey, nextCheckoutPlan);
+    setReadySignupPlan(nextCheckoutPlan);
+    window.history.replaceState(
+      null,
+      "",
+      getLocalizedPublicPath("/pricing", locale),
+    );
+    void startProviderCheckout(nextCheckoutPlan, nextCheckoutProvider);
   }, [
     initialPaymentStatus,
     locale,
@@ -515,57 +746,6 @@ export function PricingPageContent({
     ],
     [copy, locale],
   );
-
-  const checkoutGuide = useMemo(() => {
-    if (locale === "es") {
-      return {
-        existingAccountHint:
-          "Si ya tienes cuenta en Leyendo, entra primero y despues vuelve a elegir Focus o Max para pagar.",
-        eyebrow: "Cuenta Basic Reader primero",
-        intro:
-          "Crea o abre tu cuenta Basic Reader antes de pagar Focus o Max. Leyendo te devolvera a tu cuenta mejorada despues del checkout.",
-        steps: [
-          "Crea tu cuenta Basic Reader o entra con la cuenta que quieres mejorar.",
-          "Vuelve a elegir Focus o Max y continua al checkout correspondiente.",
-          "Completa el pago y pulsa Volver al sitio del vendedor.",
-          "Leyendo te lleva a tu cuenta para confirmar el nuevo plan.",
-        ],
-        title: "Asi funciona una mejora pagada",
-      };
-    }
-
-    if (locale === "pt") {
-      return {
-        existingAccountHint:
-          "Se voce ja tem conta no Leyendo, entre primeiro e depois volte para escolher Focus ou Max e pagar.",
-        eyebrow: "Conta Basic Reader primeiro",
-        intro:
-          "Crie ou abra sua conta Basic Reader antes de pagar Focus ou Max. O Leyendo leva voce de volta para a conta atualizada depois do checkout.",
-        steps: [
-          "Crie sua conta Basic Reader ou entre com a conta que voce quer atualizar.",
-          "Escolha Focus ou Max novamente e continue para o checkout correspondente.",
-          "Conclua o pagamento e clique em Voltar ao site do vendedor.",
-          "O Leyendo leva voce para a conta para confirmar o novo plano.",
-        ],
-        title: "Como funciona um upgrade pago",
-      };
-    }
-
-    return {
-      existingAccountHint:
-        "If you already have a Leyendo account, sign in first and then choose Focus or Max again to pay.",
-      eyebrow: "Basic Reader account first",
-      intro:
-        "Create or open your Basic Reader account before paying for Focus or Max. Leyendo brings you back to the upgraded account after checkout.",
-      steps: [
-        "Create your Basic Reader account or sign in with the account you want to upgrade.",
-        "Choose Focus or Max again and continue to the matching checkout.",
-        "Complete payment and click back to the vendor site.",
-        "Leyendo returns you to your account to confirm the new plan.",
-      ],
-      title: "How a paid upgrade works",
-    };
-  }, [locale]);
 
   const successSteps = useMemo(() => {
     if (user) {
@@ -713,14 +893,94 @@ export function PricingPageContent({
     setReadySignupPlan(planId);
 
     if (!user) {
-      router.push(`/account?checkout=${planId}&provider=${provider}`);
+      if (!isAuthConfigured) {
+        setStatusMessage(copy.missingProvider);
+        return;
+      }
+
+      rememberPendingCheckout(planId, provider);
+      setAuthMode("create-account");
+      setShowEmailAuth(false);
+      setUseMagicLink(false);
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthPendingAction(undefined);
+      setAuthStatusMessage(undefined);
+      setAuthIntent({ planId, provider });
       return;
     }
 
+    clearPendingCheckout();
     void startProviderCheckout(planId, provider);
   }
 
+  async function handleAuthSubmit() {
+    if (!authIntent) {
+      return;
+    }
+
+    setAuthPendingAction(useMagicLink ? "magic-link" : "email");
+    setAuthStatusMessage(undefined);
+
+    try {
+      if (useMagicLink) {
+        await signInWithMagicLink(authEmail, window.location.href);
+        setAuthStatusMessage(authModalCopy.emailSent);
+        return;
+      }
+
+      if (authMode === "create-account") {
+        await signUp(authEmail, authPassword, window.location.href);
+        setAuthStatusMessage(
+          locale === "en"
+            ? `Basic Reader account created. If email confirmation is enabled, open the Leyendo message and checkout will continue to ${authIntent.planId === "max" ? "Max" : "Focus"}.`
+            : locale === "es"
+              ? `Cuenta Basic Reader creada. Si la confirmacion por email esta activa, abre el mensaje de Leyendo y el checkout continuara a ${authIntent.planId === "max" ? "Max" : "Focus"}.`
+              : `Conta Basic Reader criada. Se a confirmacao por email estiver ativa, abra a mensagem do Leyendo e o checkout continuara para ${authIntent.planId === "max" ? "Max" : "Focus"}.`,
+        );
+      } else {
+        await signIn(authEmail, authPassword);
+        setAuthStatusMessage(
+          locale === "en"
+            ? "Continuing to checkout..."
+            : locale === "es"
+              ? "Continuando al checkout..."
+              : "Continuando para o checkout...",
+        );
+      }
+    } catch (error) {
+      setAuthStatusMessage(
+        error instanceof Error ? error.message : "Authentication failed.",
+      );
+    } finally {
+      setAuthPendingAction(undefined);
+    }
+  }
+
+  async function handleAuthOAuth(
+    provider: "github" | "google",
+    signInWithProvider: (redirectTo?: string) => Promise<void>,
+  ) {
+    setAuthPendingAction(provider);
+    setAuthStatusMessage(undefined);
+
+    try {
+      await signInWithProvider(window.location.href);
+    } catch (error) {
+      setAuthStatusMessage(
+        error instanceof Error ? error.message : "Authentication failed.",
+      );
+      setAuthPendingAction(undefined);
+    }
+  }
+
   const binancePlan = plans.find((plan) => plan.id === binancePlanId);
+  const authPlanLabel =
+    authIntent?.planId === "max"
+      ? "Max"
+      : authIntent?.planId === "focus"
+        ? "Focus"
+        : undefined;
 
   return (
     <section className="w-full px-6 pt-12 pb-24">
@@ -873,37 +1133,247 @@ export function PricingPageContent({
         </div>
 
         {!user ? (
-          <div className="mt-8 w-full rounded-[1.75rem] border border-[#2d466a] bg-[#111a2a] px-6 py-6 text-left text-sm leading-7 text-[#d9e4f5] shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:px-7 lg:px-8">
-            <div className="lg:grid lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] lg:gap-8 xl:gap-10">
-              <div>
-                <p className="text-[0.68rem] font-bold tracking-[0.26em] text-[#8bb9ff] uppercase">
-                  {checkoutGuide.eyebrow}
-                </p>
-                <h2 className="mt-3 text-xl font-semibold text-white sm:text-2xl">
-                  {checkoutGuide.title}
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-[#aeb9cf]">
-                  {checkoutGuide.intro}
-                </p>
-                <p className="mt-4 text-xs leading-6 text-[#8f97ab] lg:mt-6">
-                  {checkoutGuide.existingAccountHint}
-                </p>
-              </div>
-
-              <ol className="mt-5 space-y-3 lg:mt-0">
-                {checkoutGuide.steps.map((step, index) => (
-                  <li key={step} className="flex gap-3">
-                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#3b5a86] bg-[#17263b] text-xs font-semibold text-[#d9e4f5]">
-                      {index + 1}
-                    </span>
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
+          <div className="mt-8 flex justify-center">
+            <p className="rounded-full border border-[#30415e] bg-[#111827]/86 px-5 py-3 text-sm text-[#c6d1e3] shadow-[0_14px_34px_rgba(0,0,0,0.18)]">
+              {authModalCopy.accountRequired}
+            </p>
           </div>
         ) : null}
       </div>
+
+      {authIntent ? (
+        <div
+          className="fixed inset-0 z-125 flex items-center justify-center bg-[rgba(4,9,19,0.74)] px-4 py-6 backdrop-blur-md"
+          onClick={() => {
+            closeAuthModal();
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              authMode === "create-account"
+                ? authModalCopy.createTitle
+                : authModalCopy.signInTitle
+            }
+            className="w-full max-w-md rounded-[1.75rem] border border-white/12 bg-[linear-gradient(180deg,rgba(13,17,28,0.98),rgba(16,20,30,0.97))] p-6 text-white shadow-[0_30px_120px_rgba(0,0,0,0.5)]"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_30%_20%,rgba(86,191,255,0.46),transparent_55%),rgba(14,23,39,0.98)] px-3 py-2 text-[0.68rem] font-semibold tracking-[0.28em] text-[#d8e7ff] uppercase">
+                Leyendo
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  closeAuthModal();
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white transition hover:bg-white/12"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">{authModalCopy.close}</span>
+              </button>
+            </div>
+
+            <div className="mt-6 flex gap-2 rounded-full border border-white/10 bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("sign-in");
+                  setShowEmailAuth(false);
+                  setUseMagicLink(false);
+                  setAuthStatusMessage(undefined);
+                }}
+                className={`flex-1 rounded-full px-4 py-2 text-sm transition ${
+                  authMode === "sign-in"
+                    ? "bg-white text-[#10131c]"
+                    : "text-white/70 hover:bg-white/8 hover:text-white"
+                }`}
+              >
+                {authModalCopy.existingAccount}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("create-account");
+                  setShowEmailAuth(false);
+                  setUseMagicLink(false);
+                  setAuthStatusMessage(undefined);
+                }}
+                className={`flex-1 rounded-full px-4 py-2 text-sm transition ${
+                  authMode === "create-account"
+                    ? "bg-white text-[#10131c]"
+                    : "text-white/70 hover:bg-white/8 hover:text-white"
+                }`}
+              >
+                {authModalCopy.createAccount}
+              </button>
+            </div>
+
+            <p className="mt-6 text-[0.68rem] font-bold tracking-[0.26em] text-[#ffce91] uppercase">
+              {authPlanLabel} upgrade
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
+              {authMode === "create-account"
+                ? authModalCopy.createTitle
+                : authModalCopy.signInTitle}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-white/72">
+              {authMode === "create-account"
+                ? authModalCopy.createDescription(authPlanLabel ?? "Focus")
+                : authModalCopy.signInDescription(authPlanLabel ?? "Focus")}
+            </p>
+
+            {!showEmailAuth ? (
+              <div className="mt-6 grid gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleAuthOAuth("google", signInWithGoogle);
+                  }}
+                  disabled={Boolean(authPendingAction) || isAuthLoading}
+                  className="flex h-12 items-center justify-center rounded-[1rem] border border-white/12 bg-white/6 px-4 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {authPendingAction === "google" ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="text-base font-semibold">G</span>
+                  )}
+                  <span className="ml-2">
+                    {authModalCopy.continueWithGoogle}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleAuthOAuth("github", signInWithGitHub);
+                  }}
+                  disabled={Boolean(authPendingAction) || isAuthLoading}
+                  className="flex h-12 items-center justify-center rounded-[1rem] border border-white/12 bg-white/6 px-4 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {authPendingAction === "github" ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="text-sm font-semibold tracking-[0.18em]">
+                      GH
+                    </span>
+                  )}
+                  <span className="ml-2">
+                    {authModalCopy.continueWithGitHub}
+                  </span>
+                </button>
+
+                <div className="flex items-center gap-3 py-1 text-[0.68rem] tracking-[0.24em] text-white/45 uppercase">
+                  <span className="h-px flex-1 bg-white/10" />
+                  <span>{authModalCopy.or}</span>
+                  <span className="h-px flex-1 bg-white/10" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmailAuth(true);
+                    setUseMagicLink(false);
+                    setAuthStatusMessage(undefined);
+                  }}
+                  className="flex h-12 items-center justify-center rounded-[1rem] bg-white px-4 text-sm font-semibold text-[#0f1420] transition hover:bg-[#f3f6fb]"
+                >
+                  <Mail className="h-4 w-4" />
+                  <span className="ml-2">
+                    {authModalCopy.continueWithEmail}
+                  </span>
+                </button>
+              </div>
+            ) : (
+              <div className="mt-6 grid gap-4">
+                <label className="grid gap-2 text-sm font-medium text-white">
+                  <span>{authModalCopy.emailLabel}</span>
+                  <input
+                    type="email"
+                    value={authEmail}
+                    onChange={(event) => {
+                      setAuthEmail(event.target.value);
+                    }}
+                    placeholder={authModalCopy.emailPlaceholder}
+                    className="h-12 rounded-[1rem] border border-white/12 bg-white/6 px-4 text-white placeholder:text-white/38 focus:border-white/30 focus:outline-none"
+                  />
+                </label>
+
+                {!useMagicLink ? (
+                  <label className="grid gap-2 text-sm font-medium text-white">
+                    <span>{authModalCopy.passwordLabel}</span>
+                    <input
+                      type="password"
+                      value={authPassword}
+                      onChange={(event) => {
+                        setAuthPassword(event.target.value);
+                      }}
+                      placeholder={authModalCopy.passwordPlaceholder}
+                      className="h-12 rounded-[1rem] border border-white/12 bg-white/6 px-4 text-white placeholder:text-white/38 focus:border-white/30 focus:outline-none"
+                    />
+                  </label>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleAuthSubmit();
+                  }}
+                  disabled={
+                    Boolean(authPendingAction) ||
+                    !authEmail ||
+                    (!useMagicLink && authPassword.length < 6)
+                  }
+                  className="flex h-12 items-center justify-center rounded-[1rem] bg-white px-4 text-sm font-semibold text-[#0f1420] transition hover:bg-[#f3f6fb] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {authPendingAction === "email" ||
+                  authPendingAction === "magic-link" ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  <span
+                    className={
+                      authPendingAction === "email" ||
+                      authPendingAction === "magic-link"
+                        ? "ml-2"
+                        : ""
+                    }
+                  >
+                    {useMagicLink
+                      ? authModalCopy.magicLink
+                      : authMode === "create-account"
+                        ? authModalCopy.submitCreate
+                        : authModalCopy.submitSignIn}
+                  </span>
+                </button>
+
+                {authMode === "sign-in" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseMagicLink((current) => !current);
+                      setAuthStatusMessage(undefined);
+                    }}
+                    className="text-left text-sm text-white/68 transition hover:text-white"
+                  >
+                    {useMagicLink
+                      ? authModalCopy.usePassword
+                      : authModalCopy.useMagicLink}
+                  </button>
+                ) : null}
+              </div>
+            )}
+
+            {authStatusMessage ? (
+              <p className="mt-4 rounded-[1rem] border border-white/10 bg-white/6 px-4 py-3 text-sm leading-7 text-white/84">
+                {authStatusMessage}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {binancePlan ? (
         <div

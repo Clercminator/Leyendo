@@ -69,6 +69,13 @@ describe("PricingPageContent", () => {
       replace: vi.fn(),
     });
     useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
       user: null,
     });
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID =
@@ -108,9 +115,6 @@ describe("PricingPageContent", () => {
     render(<PricingPageContent />);
 
     const basicHeading = screen.getByRole("heading", { name: /basic reader/i });
-    const activationGuideHeading = screen.getByRole("heading", {
-      name: /how a paid upgrade works/i,
-    });
 
     expect(basicHeading).toBeInTheDocument();
     expect(
@@ -126,21 +130,15 @@ describe("PricingPageContent", () => {
     expect(screen.getAllByText(/3 file uploads/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/15 file uploads/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/unlimited uploads/i).length).toBeGreaterThan(0);
-    expect(activationGuideHeading).toBeInTheDocument();
     expect(
-      basicHeading.compareDocumentPosition(activationGuideHeading) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).not.toBe(0);
+      screen.getByText(
+        /paid checkout starts with a free basic reader account/i,
+      ),
+    ).toBeInTheDocument();
   });
 
-  it("sends guests to account creation before starting MercadoPago checkout", async () => {
+  it("opens a clean auth modal for guests before starting MercadoPago checkout", async () => {
     const user = userEvent.setup();
-    const push = vi.fn();
-
-    useRouter.mockReturnValue({
-      push,
-      replace: vi.fn(),
-    });
 
     render(<PricingPageContent />);
 
@@ -149,21 +147,79 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(push).toHaveBeenCalledWith(
-      "/account?checkout=focus&provider=mercadopago",
-    );
+    expect(
+      screen.getByRole("dialog", { name: /create free account/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /your account starts on basic reader, and focus opens right after sign-up/i,
+      ),
+    ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("resumes MercadoPago checkout automatically after the user signs in", async () => {
+  it("lets a guest create a Basic Reader account inside the pricing modal", async () => {
+    const signUp = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp,
+      user: null,
+    });
+
+    render(<PricingPageContent />);
+
+    await user.click(screen.getByRole("button", { name: /get focus/i }));
+    await user.click(
+      screen.getByRole("button", { name: /continue with email/i }),
+    );
+    await user.type(screen.getByLabelText(/^email$/i), "reader@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "hunter2-password");
+    await user.click(
+      screen.getByRole("button", { name: /create basic reader/i }),
+    );
+
+    await waitFor(() => {
+      expect(signUp).toHaveBeenCalledWith(
+        "reader@example.com",
+        "hunter2-password",
+        window.location.href,
+      );
+    });
+
+    expect(
+      screen.getByText(/basic reader account created\./i),
+    ).toBeInTheDocument();
+  });
+
+  it("resumes MercadoPago checkout automatically after auth returns with stored intent", async () => {
     const focusWindow = {
       location: { href: "" },
       opener: null as Window | null,
     } as unknown as Window;
     const openSpy = vi.spyOn(window, "open").mockReturnValue(focusWindow);
+
+    window.localStorage.setItem("leyendo_pending_checkout_plan", "focus");
+    window.localStorage.setItem(
+      "leyendo_pending_checkout_provider",
+      "mercadopago",
+    );
     const replaceStateSpy = vi.spyOn(window.history, "replaceState");
 
     useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
       user: {
         email: "reader@example.com",
         id: "user-1",
@@ -183,12 +239,7 @@ describe("PricingPageContent", () => {
       ),
     );
 
-    render(
-      <PricingPageContent
-        initialCheckoutPlan="focus"
-        initialCheckoutProvider="mercadopago"
-      />,
-    );
+    render(<PricingPageContent />);
 
     await waitFor(() => {
       expect(openSpy).toHaveBeenCalledWith("", "_blank");
@@ -219,6 +270,13 @@ describe("PricingPageContent", () => {
       .mockReturnValueOnce(maxWindow);
 
     useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
       user: {
         email: "reader@example.com",
         id: "user-1",
@@ -283,6 +341,13 @@ describe("PricingPageContent", () => {
     const openSpy = vi.spyOn(window, "open").mockReturnValue(checkoutWindow);
 
     useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
       user: {
         email: "reader@example.com",
         id: "user-1",
@@ -369,6 +434,13 @@ describe("PricingPageContent", () => {
       replace,
     });
     useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
       user: {
         email: "reader@example.com",
         id: "user-1",
