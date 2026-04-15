@@ -71,14 +71,14 @@ interface SupabaseAuthContextValue {
   refreshProfile: () => Promise<void>;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithGitHub: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  signInWithMagicLink: (email: string) => Promise<void>;
+  signInWithGitHub: (redirectTo?: string) => Promise<void>;
+  signInWithGoogle: (redirectTo?: string) => Promise<void>;
+  signInWithMagicLink: (email: string, redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (
     email: string,
     password: string,
-    planTier: PaidPlanTier,
+    redirectTo?: string,
   ) => Promise<void>;
   syncReaderPreferences: (preferences: ReaderPreferences) => Promise<void>;
   syncLocalLibraryToCloud: () => Promise<number>;
@@ -150,6 +150,19 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>();
   const [guestLibrarySummary, setGuestLibrarySummary] =
     useState<LocalLibrarySummary>(defaultGuestLibrarySummary);
+
+  const resolveAuthRedirectTo = useCallback((redirectTo?: string) => {
+    const normalizedRedirect = redirectTo?.trim();
+    if (normalizedRedirect) {
+      return normalizedRedirect;
+    }
+
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    return `${window.location.origin}/account`;
+  }, []);
 
   const refreshGuestLibrarySummary = useCallback(async () => {
     const summary = await getLocalOnlyLibrarySummary();
@@ -516,7 +529,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string, planTier: PaidPlanTier) => {
+    async (email: string, password: string, redirectTo?: string) => {
       if (!supabase) {
         throw new Error("Supabase is not configured.");
       }
@@ -525,12 +538,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         email: email.trim(),
         password,
         options: {
-          data: {
-            plan_tier: planTier,
-            subscription_started_at: new Date().toISOString(),
-            subscription_status: "active",
-          },
-          emailRedirectTo: `${window.location.origin}/account?payment=success&plan=${planTier}`,
+          emailRedirectTo: resolveAuthRedirectTo(redirectTo),
         },
       });
 
@@ -538,11 +546,11 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [supabase],
+    [resolveAuthRedirectTo, supabase],
   );
 
   const signInWithOAuth = useCallback(
-    async (provider: "github" | "google") => {
+    async (provider: "github" | "google", redirectTo?: string) => {
       if (!supabase) {
         throw new Error("Supabase is not configured.");
       }
@@ -550,7 +558,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/account`,
+          redirectTo: resolveAuthRedirectTo(redirectTo),
         },
       });
 
@@ -558,19 +566,25 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [supabase],
+    [resolveAuthRedirectTo, supabase],
   );
 
-  const signInWithGitHub = useCallback(async () => {
-    await signInWithOAuth("github");
-  }, [signInWithOAuth]);
+  const signInWithGitHub = useCallback(
+    async (redirectTo?: string) => {
+      await signInWithOAuth("github", redirectTo);
+    },
+    [signInWithOAuth],
+  );
 
-  const signInWithGoogle = useCallback(async () => {
-    await signInWithOAuth("google");
-  }, [signInWithOAuth]);
+  const signInWithGoogle = useCallback(
+    async (redirectTo?: string) => {
+      await signInWithOAuth("google", redirectTo);
+    },
+    [signInWithOAuth],
+  );
 
   const signInWithMagicLink = useCallback(
-    async (email: string) => {
+    async (email: string, redirectTo?: string) => {
       if (!supabase) {
         throw new Error("Supabase is not configured.");
       }
@@ -578,7 +592,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: `${window.location.origin}/account`,
+          emailRedirectTo: resolveAuthRedirectTo(redirectTo),
           shouldCreateUser: false,
         },
       });
@@ -587,7 +601,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [supabase],
+    [resolveAuthRedirectTo, supabase],
   );
 
   const signOut = useCallback(async () => {

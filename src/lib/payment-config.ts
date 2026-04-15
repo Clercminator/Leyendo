@@ -139,6 +139,17 @@ export function getPricingPathForLocale(locale: PaymentLocale) {
   return locale === "en" ? "/pricing" : `/${locale}/pricing`;
 }
 
+export function buildAccountReturnUrl(args: {
+  origin: string;
+  planTier: PaidPlanTier;
+  paymentStatus?: "success" | "failed" | "pending";
+}) {
+  const returnUrl = new URL("/account", args.origin);
+  returnUrl.searchParams.set("plan", args.planTier);
+  returnUrl.searchParams.set("payment", args.paymentStatus ?? "success");
+  return returnUrl.toString();
+}
+
 export function buildPricingReturnUrl(args: {
   locale: PaymentLocale;
   origin: string;

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
-  buildPricingReturnUrl,
+  buildAccountReturnUrl,
   getLemonSqueezyVariantId,
   normalizePaidPlanTier,
-  normalizePaymentLocale,
   pickPaymentEnvValue,
 } from "@/lib/payment-config";
 
@@ -121,9 +120,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const locale = normalizePaymentLocale(body.locale);
-  const redirectUrl = buildPricingReturnUrl({
-    locale,
+  const redirectUrl = buildAccountReturnUrl({
     origin: request.nextUrl.origin,
     planTier,
     paymentStatus: "success",

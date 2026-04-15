@@ -4,6 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AccountPanel } from "@/components/auth/account-panel";
 
+const { useRouter } = vi.hoisted(() => ({
+  useRouter: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter,
+}));
+
 const { useLocale } = vi.hoisted(() => ({
   useLocale: vi.fn(),
 }));
@@ -23,6 +31,10 @@ vi.mock("@/components/auth/supabase-provider", () => ({
 describe("AccountPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useRouter.mockReturnValue({
+      push: vi.fn(),
+      replace: vi.fn(),
+    });
     useLocale.mockReturnValue({
       locale: "en",
       setLocale: vi.fn(),
@@ -327,8 +339,68 @@ describe("AccountPanel", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/use the same email as the payment/i),
+      screen.getByText(
+        /use the same email as the payment so leyendo can link/i,
+      ),
     ).toBeInTheDocument();
+  });
+
+  it("sends a signed-in user back to pricing to resume checkout", async () => {
+    const replace = vi.fn();
+
+    useRouter.mockReturnValue({
+      push: vi.fn(),
+      replace,
+    });
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: undefined,
+      lastSyncSummary: undefined,
+      profile: {
+        createdAt: "2026-04-14T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 0,
+        marketingConsent: false,
+        planTier: "basic",
+        updatedAt: "2026-04-14T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "idle",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(
+      <AccountPanel checkoutPlan="focus" checkoutProvider="mercadopago" />,
+    );
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(
+        "/pricing?checkout=focus&provider=mercadopago",
+      );
+    });
   });
 
   it("warns when the signed-in account does not match the new paid subscription yet", () => {
@@ -560,7 +632,7 @@ describe("AccountPanel", () => {
     );
 
     await waitFor(() => {
-      expect(signInWithGitHub).toHaveBeenCalledTimes(1);
+      expect(signInWithGitHub).toHaveBeenCalledWith(window.location.href);
     });
 
     await user.click(screen.getByRole("button", { name: /email link/i }));
@@ -573,7 +645,8 @@ describe("AccountPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps create-account locked until a paid plan has been selected", async () => {
+  it("lets users create a free Basic Reader account before choosing a paid plan", async () => {
+    const signUp = vi.fn().mockResolvedValue(undefined);
     const user = userEvent.setup();
 
     useSupabaseAuth.mockReturnValue({
@@ -597,7 +670,7 @@ describe("AccountPanel", () => {
       signInWithGoogle: vi.fn(),
       signInWithMagicLink: vi.fn(),
       signOut: vi.fn(),
-      signUp: vi.fn(),
+      signUp,
       syncLocalLibraryToCloud: vi.fn(),
       syncStatus: "idle",
       syncWithCloud: vi.fn(),
@@ -608,12 +681,22 @@ describe("AccountPanel", () => {
     render(<AccountPanel />);
 
     await user.click(screen.getByRole("button", { name: /create account/i }));
+    await user.type(screen.getByLabelText(/^email$/i), "reader@example.com");
+    await user.type(screen.getByLabelText(/password/i), "hunter2-password");
+    await user.click(
+      screen.getAllByRole("button", { name: /create account/i })[1],
+    );
+
+    await waitFor(() => {
+      expect(signUp).toHaveBeenCalledWith(
+        "reader@example.com",
+        "hunter2-password",
+        window.location.href,
+      );
+    });
 
     expect(
-      screen.getByText(/focus or max is required to create an account/i),
+      screen.getByText(/basic reader account created\./i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /see paid plans/i }),
-    ).toHaveAttribute("href", "/pricing");
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -16,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/layout/locale-provider";
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
+import { getLocalizedPublicPath } from "@/lib/public-paths";
 import {
   getEffectivePlanTier,
   hasPlanAccess,
@@ -296,10 +298,17 @@ function buildSavedWordFromForm(
 }
 
 interface AccountPanelProps {
+  checkoutPlan?: PaidPlanTier;
+  checkoutProvider?: "lemonsqueezy" | "mercadopago";
   paidSignupPlan?: PaidPlanTier;
 }
 
-export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
+export function AccountPanel({
+  paidSignupPlan,
+  checkoutPlan,
+  checkoutProvider,
+}: AccountPanelProps) {
+  const router = useRouter();
   const { locale } = useLocale();
   const {
     errorMessage,
@@ -310,6 +319,7 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
     lastSyncedAt,
     lastSyncSummary,
     profile,
+    refreshProfile,
     signIn,
     signInWithGitHub,
     signInWithGoogle,
@@ -353,10 +363,28 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
   }, [profile?.userId, user?.id]);
 
   useEffect(() => {
-    if (paidSignupPlan && !user) {
+    if ((paidSignupPlan || checkoutPlan) && !user) {
       setMode("create-account");
     }
-  }, [paidSignupPlan, user]);
+  }, [checkoutPlan, paidSignupPlan, user]);
+
+  useEffect(() => {
+    if (!paidSignupPlan || !user) {
+      return;
+    }
+
+    void refreshProfile();
+  }, [paidSignupPlan, refreshProfile, user]);
+
+  useEffect(() => {
+    if (!user || !checkoutPlan || !checkoutProvider || paidSignupPlan) {
+      return;
+    }
+
+    router.replace(
+      `${getLocalizedPublicPath("/pricing", locale)}?checkout=${checkoutPlan}&provider=${checkoutProvider}`,
+    );
+  }, [checkoutPlan, checkoutProvider, locale, paidSignupPlan, router, user]);
 
   useEffect(() => {
     if (!avatarDraftFile) {
@@ -693,7 +721,19 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
     };
   }, [locale]);
 
-  const paidSignupPlanLabel = paidSignupPlan === "max" ? "Max" : "Focus";
+  const paidSignupPlanLabel =
+    paidSignupPlan === "max"
+      ? "Max"
+      : paidSignupPlan === "focus"
+        ? "Focus"
+        : undefined;
+  const checkoutPlanLabel =
+    checkoutPlan === "max"
+      ? "Max"
+      : checkoutPlan === "focus"
+        ? "Focus"
+        : undefined;
+  const isPreCheckoutFlow = Boolean(checkoutPlanLabel && !paidSignupPlan);
   const profileDisplayName = profile?.displayName ?? "";
   const profileNameInput = formState.displayName;
   const activePlanTier = getEffectivePlanTier(profile);
@@ -831,25 +871,43 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
       : locale === "es"
         ? "Si pagaste con otro email, cierra sesion y usa el mismo email de la cuenta de pago. Si ya usaste ese mismo email, espera un momento y vuelve a cargar esta pagina."
         : "Se voce pagou com outro email, saia e use o mesmo email da conta de pagamento. Se ja usou esse mesmo email, espere um momento e recarregue esta pagina.";
-  const activationSteps = paidSignupPlan
+  const activationSteps = isPreCheckoutFlow
     ? locale === "en"
       ? [
-          "If you already had a Leyendo account for the payment email, switch to Sign in.",
-          "If you did not have one yet, keep Create account selected and finish registration with that same email.",
-          "Wait for the Subscription linked confirmation before using sync, cloud books, or saved words.",
+          "Create your Basic Reader account or sign in with the account you want to upgrade.",
+          `Leyendo continues to the ${checkoutPlanLabel} payment page right after authentication.`,
+          "Complete payment and return to this account to confirm the upgraded plan.",
         ]
       : locale === "es"
         ? [
-            "Si ya tenias cuenta en Leyendo para el email del pago, cambia a Entrar.",
-            "Si todavia no la tenias, deja Crear cuenta seleccionado y termina el registro con ese mismo email.",
-            "Espera la confirmacion Subscription linked antes de usar sincronizacion, libros en la nube o palabras guardadas.",
+            "Crea tu cuenta Basic Reader o entra con la cuenta que quieres mejorar.",
+            `Leyendo continuara a la pagina de pago de ${checkoutPlanLabel} justo despues de la autenticacion.`,
+            "Completa el pago y vuelve a esta cuenta para confirmar el plan mejorado.",
           ]
         : [
-            "Se voce ja tinha conta no Leyendo para o email do pagamento, troque para Entrar.",
-            "Se ainda nao tinha, deixe Criar conta selecionado e conclua o cadastro com esse mesmo email.",
-            "Espere a confirmacao Subscription linked antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
+            "Crie sua conta Basic Reader ou entre com a conta que voce quer atualizar.",
+            `O Leyendo vai continuar para a pagina de pagamento de ${checkoutPlanLabel} logo apos a autenticacao.`,
+            "Conclua o pagamento e volte para esta conta para confirmar o plano atualizado.",
           ]
-    : [];
+    : paidSignupPlan
+      ? locale === "en"
+        ? [
+            "If you already had a Leyendo account for the payment email, switch to Sign in.",
+            "If you did not have one yet, keep Create account selected and finish registration with that same email.",
+            "Wait for the Subscription linked confirmation before using sync, cloud books, or saved words.",
+          ]
+        : locale === "es"
+          ? [
+              "Si ya tenias cuenta en Leyendo para el email del pago, cambia a Entrar.",
+              "Si todavia no la tenias, deja Crear cuenta seleccionado y termina el registro con ese mismo email.",
+              "Espera la confirmacion Subscription linked antes de usar sincronizacion, libros en la nube o palabras guardadas.",
+            ]
+          : [
+              "Se voce ja tinha conta no Leyendo para o email do pagamento, troque para Entrar.",
+              "Se ainda nao tinha, deixe Criar conta selecionado e conclua o cadastro com esse mesmo email.",
+              "Espere a confirmacao Subscription linked antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
+            ]
+      : [];
   const paymentEmailHint =
     locale === "en"
       ? "Use the same email as the payment so Leyendo can link the subscription automatically."
@@ -865,77 +923,123 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
         : syncStatus === "error"
           ? helperCopy.syncError
           : helperCopy.syncIdle;
+  const signInReasons =
+    locale === "en"
+      ? [
+          "Keep the same library across desktop, laptop, and phone.",
+          "Sync progress, bookmarks, and highlights after you come back on another device.",
+          "Stay on the free guest mode if you only need local reading on this device with up to 3 file uploads.",
+        ]
+      : locale === "es"
+        ? [
+            "Mantener la misma biblioteca entre escritorio, portatil y telefono.",
+            "Sincronizar progreso, marcadores y destacados cuando vuelves en otro dispositivo.",
+            "Sigue en el modo invitado gratis si solo necesitas lectura local en este dispositivo con hasta 3 cargas de archivos.",
+          ]
+        : [
+            "Manter a mesma biblioteca entre desktop, notebook e telefone.",
+            "Sincronizar progresso, marcadores e destaques quando voce volta em outro dispositivo.",
+            "Fique no modo convidado gratuito se voce so precisa de leitura local neste dispositivo com ate 3 uploads de arquivo.",
+          ];
   const isOAuthPending =
     pendingAction === "github" || pendingAction === "google";
-  const showOAuthButtons = mode === "sign-in";
-  const showCreateAccountLock = mode === "create-account" && !paidSignupPlan;
-  const topKicker = paidSignupPlan
+  const showOAuthButtons = mode !== "magic-link";
+  const topKicker = isPreCheckoutFlow
     ? locale === "en"
-      ? `${paidSignupPlanLabel} checkout ready`
+      ? "Basic account first"
       : locale === "es"
-        ? `${paidSignupPlanLabel} listo para activar`
-        : `${paidSignupPlanLabel} pronto para ativar`
-    : locale === "en"
-      ? "Paid cloud account"
-      : locale === "es"
-        ? "Cuenta pagada en la nube"
-        : "Conta paga na nuvem";
-  const topHeading = paidSignupPlan
+        ? "Cuenta Basic primero"
+        : "Conta Basic primeiro"
+    : paidSignupPlan
+      ? locale === "en"
+        ? `${paidSignupPlanLabel} payment received`
+        : locale === "es"
+          ? `Pago ${paidSignupPlanLabel} recibido`
+          : `Pagamento ${paidSignupPlanLabel} recebido`
+      : locale === "en"
+        ? "Basic Reader account"
+        : locale === "es"
+          ? "Cuenta Basic Reader"
+          : "Conta Basic Reader";
+  const topHeading = isPreCheckoutFlow
     ? locale === "en"
-      ? `Finish your ${paidSignupPlanLabel} account setup.`
+      ? `Create your Basic Reader account to continue to ${checkoutPlanLabel}.`
       : locale === "es"
-        ? `Termina la configuracion de tu cuenta ${paidSignupPlanLabel}.`
-        : `Conclua a configuracao da sua conta ${paidSignupPlanLabel}.`
-    : helperCopy.createAccountHint;
-  const topDescription = paidSignupPlan
+        ? `Crea tu cuenta Basic Reader para continuar a ${checkoutPlanLabel}.`
+        : `Crie sua conta Basic Reader para continuar para ${checkoutPlanLabel}.`
+    : paidSignupPlan
+      ? locale === "en"
+        ? `Open your account to confirm ${paidSignupPlanLabel}.`
+        : locale === "es"
+          ? `Abre tu cuenta para confirmar ${paidSignupPlanLabel}.`
+          : `Abra sua conta para confirmar ${paidSignupPlanLabel}.`
+      : locale === "en"
+        ? "Create or sign in to your Basic Reader account."
+        : locale === "es"
+          ? "Crea o entra en tu cuenta Basic Reader."
+          : "Crie ou entre na sua conta Basic Reader.";
+  const topDescription = isPreCheckoutFlow
     ? locale === "en"
-      ? `${paidSignupPlanLabel} is ready to unlock cloud sync, cross-device reading, and the saved-word dictionary. Create the account below with the same email used in checkout to finish activation automatically.`
+      ? `${checkoutPlanLabel} checkout starts right after you sign in. Your account begins on Basic Reader, then Leyendo brings you back here with the upgraded plan after payment.`
       : locale === "es"
-        ? `${paidSignupPlanLabel} ya puede desbloquear la sincronizacion en la nube, la lectura entre dispositivos y el diccionario de palabras guardadas. Crea la cuenta abajo con el mismo email usado en el checkout para terminar la activacion automaticamente.`
-        : `${paidSignupPlanLabel} ja pode desbloquear a sincronizacao na nuvem, a leitura entre dispositivos e o dicionario de palavras salvas. Crie a conta abaixo com o mesmo email usado no checkout para concluir a ativacao automaticamente.`
-    : locale === "en"
-      ? "Guest reading still works for free, but cross-device sync and the saved-word dictionary now require a paid Focus or Max account."
-      : locale === "es"
-        ? "La lectura como invitado sigue siendo gratis, pero la sincronizacion entre dispositivos y el diccionario de palabras guardadas ahora requieren una cuenta pagada Focus o Max."
-        : "A leitura como convidado continua gratuita, mas a sincronizacao entre dispositivos e o dicionario de palavras salvas agora exigem uma conta paga Focus ou Max.";
+        ? `El checkout de ${checkoutPlanLabel} empieza justo despues de entrar. Tu cuenta comienza como Basic Reader y luego Leyendo te trae de vuelta aqui con el plan mejorado despues del pago.`
+        : `O checkout de ${checkoutPlanLabel} comeca logo depois do login. Sua conta comeca como Basic Reader e depois o Leyendo traz voce de volta aqui com o plano atualizado apos o pagamento.`
+    : paidSignupPlan
+      ? locale === "en"
+        ? `${paidSignupPlanLabel} payment is approved. Open this account with the same email used in checkout so Leyendo can show the upgraded plan here.`
+        : locale === "es"
+          ? `El pago de ${paidSignupPlanLabel} esta aprobado. Abre esta cuenta con el mismo email usado en el checkout para que Leyendo muestre aqui el plan mejorado.`
+          : `O pagamento de ${paidSignupPlanLabel} foi aprovado. Abra esta conta com o mesmo email usado no checkout para que o Leyendo mostre aqui o plano atualizado.`
+      : locale === "en"
+        ? "Basic Reader accounts are free. Upgrade to Focus or Max after signing in whenever you want cloud sync and saved-word tools."
+        : locale === "es"
+          ? "Las cuentas Basic Reader son gratis. Mejora a Focus o Max despues de entrar cuando quieras sincronizacion en la nube y herramientas de palabras guardadas."
+          : "As contas Basic Reader sao gratuitas. Faca upgrade para Focus ou Max depois do login quando quiser sincronizacao na nuvem e ferramentas de palavras salvas.";
   const authModeDescription =
     mode === "sign-in"
       ? helperCopy.signInModeDescription
       : mode === "create-account"
-        ? paidSignupPlan
-          ? helperCopy.createAccountModeDescription
-          : locale === "en"
-            ? "Choose Focus or Max first. After payment returns you here, this tab will unlock the email account setup."
+        ? isPreCheckoutFlow
+          ? locale === "en"
+            ? `Create your Basic Reader account here. Leyendo will continue to the ${checkoutPlanLabel} payment page as soon as you finish signing in.`
             : locale === "es"
-              ? "Elige Focus o Max primero. Cuando el pago te devuelva aqui, esta pestana desbloqueara la creacion de la cuenta por email."
-              : "Escolha Focus ou Max primeiro. Quando o pagamento trouxer voce de volta, esta aba vai desbloquear a criacao da conta por email."
+              ? `Crea aqui tu cuenta Basic Reader. Leyendo continuara a la pagina de pago de ${checkoutPlanLabel} en cuanto termines de entrar.`
+              : `Crie aqui sua conta Basic Reader. O Leyendo vai continuar para a pagina de pagamento de ${checkoutPlanLabel} assim que voce concluir o login.`
+          : paidSignupPlan
+            ? helperCopy.createAccountModeDescription
+            : locale === "en"
+              ? "Create your free Basic Reader account here. You can upgrade to Focus or Max after signing in."
+              : locale === "es"
+                ? "Crea aqui tu cuenta gratuita Basic Reader. Puedes mejorar a Focus o Max despues de entrar."
+                : "Crie aqui sua conta gratuita Basic Reader. Voce pode fazer upgrade para Focus ou Max depois do login."
         : helperCopy.emailLinkModeDescription;
 
   async function handleSubmit() {
     setPendingAction("auth");
     setStatusMessage(undefined);
+    const accountRedirectUrl = window.location.href;
 
     try {
       if (mode === "sign-in") {
         await signIn(email, password);
         setStatusMessage(helperCopy.syncInProgress);
       } else if (mode === "create-account") {
-        if (!paidSignupPlan) {
-          setStatusMessage(helperCopy.accountUpgradeDetail);
-          setPendingAction(undefined);
-          return;
-        }
-
-        await signUp(email, password, paidSignupPlan);
+        await signUp(email, password, accountRedirectUrl);
         setStatusMessage(
-          locale === "en"
-            ? `${paidSignupPlanLabel} account created. Check your inbox if email confirmation is enabled.`
-            : locale === "es"
-              ? `Cuenta ${paidSignupPlanLabel} creada. Revisa tu correo si la confirmacion por email esta activa.`
-              : `Conta ${paidSignupPlanLabel} criada. Verifique seu email se a confirmacao estiver ativa.`,
+          isPreCheckoutFlow
+            ? locale === "en"
+              ? `Basic Reader account created. Check your inbox if email confirmation is enabled, then Leyendo will continue to ${checkoutPlanLabel}.`
+              : locale === "es"
+                ? `Cuenta Basic Reader creada. Revisa tu correo si la confirmacion por email esta activa y luego Leyendo continuara a ${checkoutPlanLabel}.`
+                : `Conta Basic Reader criada. Verifique seu email se a confirmacao estiver ativa e depois o Leyendo continuara para ${checkoutPlanLabel}.`
+            : locale === "en"
+              ? "Basic Reader account created. Check your inbox if email confirmation is enabled."
+              : locale === "es"
+                ? "Cuenta Basic Reader creada. Revisa tu correo si la confirmacion por email esta activa."
+                : "Conta Basic Reader criada. Verifique seu email se a confirmacao estiver ativa.",
         );
       } else {
-        await signInWithMagicLink(email);
+        await signInWithMagicLink(email, accountRedirectUrl);
         setStatusMessage(helperCopy.emailSent);
       }
     } catch (error) {
@@ -949,13 +1053,13 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
 
   async function handleOAuthSignIn(
     provider: "github" | "google",
-    signInWithProvider: () => Promise<void>,
+    signInWithProvider: (redirectTo?: string) => Promise<void>,
   ) {
     setPendingAction(provider);
     setStatusMessage(undefined);
 
     try {
-      await signInWithProvider();
+      await signInWithProvider(window.location.href);
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Authentication failed.",
@@ -1847,17 +1951,17 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
   }
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+    <section className="grid gap-6">
       <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
         <p className="editorial-kicker text-(--accent-sky)">{topKicker}</p>
         <h2 className="font-heading mt-4 text-4xl font-semibold text-(--text-strong)">
           {topHeading}
         </h2>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-(--text-muted)">
+        <p className="mt-4 max-w-4xl text-base leading-8 text-(--text-muted)">
           {topDescription}
         </p>
 
-        {paidSignupPlan ? (
+        {activationSteps.length > 0 ? (
           <div className="mt-6 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-5">
             <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-sky) uppercase">
               {locale === "en"
@@ -1878,6 +1982,15 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
             </ol>
           </div>
         ) : null}
+
+        <div className="mt-6 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-5">
+          <p className="editorial-kicker text-(--accent-amber)">Why sign in?</p>
+          <ul className="mt-4 space-y-4 text-base leading-8 text-(--text-muted)">
+            {signInReasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </div>
 
         <div className="mt-8 flex flex-wrap gap-2">
           {modes.map((entry) => (
@@ -1960,104 +2073,88 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
             </>
           ) : null}
 
-          {showCreateAccountLock ? (
-            <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-5">
-              <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-sky) uppercase">
-                {locale === "en"
-                  ? "Paid checkout first"
-                  : locale === "es"
-                    ? "Primero el pago"
-                    : "Primeiro o pagamento"}
-              </p>
-              <p className="mt-3 text-sm leading-7 text-(--text-strong)">
-                {helperCopy.accountUpgradeDetail}
-              </p>
-              <a
-                href="/pricing"
-                className="mt-4 inline-flex h-11 items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-              >
-                {helperCopy.accountUpgradeCta}
-              </a>
-            </div>
-          ) : (
+          <label
+            className="text-sm font-medium text-(--text-strong)"
+            htmlFor="account-email"
+          >
+            Email
+          </label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
+            <input
+              id="account-email"
+              type="email"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+              }}
+              className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
+              placeholder="reader@example.com"
+            />
+          </div>
+
+          {paidSignupPlan ? (
+            <p className="text-xs leading-6 text-(--text-muted)">
+              {paymentEmailHint}
+            </p>
+          ) : isPreCheckoutFlow ? (
+            <p className="text-xs leading-6 text-(--text-muted)">
+              {locale === "en"
+                ? `Use the account that should continue to ${checkoutPlanLabel}. Leyendo keeps that same account attached to the upgrade after payment.`
+                : locale === "es"
+                  ? `Usa la cuenta que debe continuar a ${checkoutPlanLabel}. Leyendo mantiene esa misma cuenta vinculada a la mejora despues del pago.`
+                  : `Use a conta que deve continuar para ${checkoutPlanLabel}. O Leyendo mantem essa mesma conta vinculada ao upgrade apos o pagamento.`}
+            </p>
+          ) : null}
+
+          {mode !== "magic-link" ? (
             <>
               <label
                 className="text-sm font-medium text-(--text-strong)"
-                htmlFor="account-email"
+                htmlFor="account-password"
               >
-                Email
+                {helperCopy.password}
               </label>
               <div className="relative">
-                <Mail className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
+                <KeyRound className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
                 <input
-                  id="account-email"
-                  type="email"
-                  value={email}
+                  id="account-password"
+                  type="password"
+                  value={password}
                   onChange={(event) => {
-                    setEmail(event.target.value);
+                    setPassword(event.target.value);
                   }}
                   className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                  placeholder="reader@example.com"
+                  placeholder="At least 6 characters"
                 />
               </div>
-
-              {paidSignupPlan ? (
-                <p className="text-xs leading-6 text-(--text-muted)">
-                  {paymentEmailHint}
-                </p>
-              ) : null}
-
-              {mode !== "magic-link" ? (
-                <>
-                  <label
-                    className="text-sm font-medium text-(--text-strong)"
-                    htmlFor="account-password"
-                  >
-                    {helperCopy.password}
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
-                    <input
-                      id="account-password"
-                      type="password"
-                      value={password}
-                      onChange={(event) => {
-                        setPassword(event.target.value);
-                      }}
-                      className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                      placeholder="At least 6 characters"
-                    />
-                  </div>
-                </>
-              ) : null}
-
-              <Button
-                className="mt-2 h-12 rounded-[1.25rem]"
-                disabled={
-                  pendingAction === "auth" ||
-                  !email ||
-                  (mode !== "magic-link" && password.length < 6) ||
-                  (mode === "create-account" && !paidSignupPlan)
-                }
-                onClick={() => {
-                  void handleSubmit();
-                }}
-              >
-                {pendingAction === "auth" ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : mode === "magic-link" ? (
-                  <Mail className="h-4 w-4" />
-                ) : (
-                  <UserRound className="h-4 w-4" />
-                )}
-                {mode === "sign-in"
-                  ? helperCopy.signIn
-                  : mode === "create-account"
-                    ? helperCopy.createAccount
-                    : helperCopy.magicLink}
-              </Button>
             </>
-          )}
+          ) : null}
+
+          <Button
+            className="mt-2 h-12 rounded-[1.25rem]"
+            disabled={
+              pendingAction === "auth" ||
+              !email ||
+              (mode !== "magic-link" && password.length < 6)
+            }
+            onClick={() => {
+              void handleSubmit();
+            }}
+          >
+            {pendingAction === "auth" ? (
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            ) : mode === "magic-link" ? (
+              <Mail className="h-4 w-4" />
+            ) : (
+              <UserRound className="h-4 w-4" />
+            )}
+            {mode === "sign-in"
+              ? helperCopy.signIn
+              : mode === "create-account"
+                ? helperCopy.createAccount
+                : helperCopy.magicLink}
+          </Button>
 
           {statusMessage || errorMessage ? (
             <p className="rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
@@ -2065,33 +2162,6 @@ export function AccountPanel({ paidSignupPlan }: AccountPanelProps) {
             </p>
           ) : null}
         </div>
-      </article>
-
-      <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
-        <p className="editorial-kicker text-(--accent-amber)">Why sign in?</p>
-        <ul className="mt-6 space-y-4 text-base leading-8 text-(--text-muted)">
-          <li>
-            {locale === "en"
-              ? "Keep the same library across desktop, laptop, and phone."
-              : locale === "es"
-                ? "Mantener la misma biblioteca entre escritorio, portatil y telefono."
-                : "Manter a mesma biblioteca entre desktop, notebook e telefone."}
-          </li>
-          <li>
-            {locale === "en"
-              ? "Sync progress, bookmarks, and highlights after you come back on another device."
-              : locale === "es"
-                ? "Sincronizar progreso, marcadores y destacados cuando vuelves en otro dispositivo."
-                : "Sincronizar progresso, marcadores e destaques quando voce volta em outro dispositivo."}
-          </li>
-          <li>
-            {locale === "en"
-              ? "Stay on the free guest mode if you only need local reading on this device with up to 3 file uploads."
-              : locale === "es"
-                ? "Sigue en el modo invitado gratis si solo necesitas lectura local en este dispositivo con hasta 3 cargas de archivos."
-                : "Fique no modo convidado gratuito se voce so precisa de leitura local neste dispositivo com ate 3 uploads de arquivo."}
-          </li>
-        </ul>
       </article>
     </section>
   );

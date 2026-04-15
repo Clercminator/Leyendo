@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Check, Coins, CreditCard, Globe2, X } from "lucide-react";
 
@@ -16,6 +17,7 @@ type PaymentRegion = "global" | "latam";
 type PaymentProvider = "binance" | "lemonsqueezy" | "mercadopago";
 type PlanId = "basic" | "focus" | "max";
 type PaidPlanId = Exclude<PlanId, "basic">;
+type HostedPaymentProvider = Exclude<PaymentProvider, "binance">;
 
 const paymentRegionStorageKey = "leyendo_payment_region";
 const paidSignupPlanStorageKey = "leyendo_paid_signup_plan";
@@ -133,13 +135,16 @@ function topBadgeClass(planId: PlanId) {
 }
 
 interface PricingPageContentProps {
+  initialCheckoutPlan?: string;
+  initialCheckoutProvider?: string;
   initialPlanId?: string;
   initialPaymentStatus?: string;
 }
 
-interface CheckoutPreparationState {
-  planId: PaidPlanId;
-  provider: Exclude<PaymentProvider, "binance">;
+function isHostedPaymentProvider(
+  value: unknown,
+): value is HostedPaymentProvider {
+  return value === "lemonsqueezy" || value === "mercadopago";
 }
 
 function isPaidPlanId(value: unknown): value is PaidPlanId {
@@ -147,11 +152,16 @@ function isPaidPlanId(value: unknown): value is PaidPlanId {
 }
 
 export function PricingPageContent({
+  initialCheckoutPlan,
+  initialCheckoutProvider,
   initialPlanId,
   initialPaymentStatus,
 }: PricingPageContentProps) {
+  const router = useRouter();
   const { locale } = useLocale();
   const { user } = useSupabaseAuth();
+  const checkoutResumeStartedRef = useRef(false);
+  const paymentReturnHandledRef = useRef(false);
   const [paymentRegion, setPaymentRegion] = useState<PaymentRegion>(() =>
     detectInitialRegion(locale),
   );
@@ -161,8 +171,6 @@ export function PricingPageContent({
     null,
   );
   const [binancePlanId, setBinancePlanId] = useState<PaidPlanId | null>(null);
-  const [checkoutPreparation, setCheckoutPreparation] =
-    useState<CheckoutPreparationState | null>(null);
 
   useEffect(() => {
     setPaymentRegion(
@@ -199,28 +207,6 @@ export function PricingPageContent({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [binancePlanId]);
-
-  useEffect(() => {
-    if (!checkoutPreparation) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setCheckoutPreparation(null);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [checkoutPreparation]);
 
   const copy = useMemo<Copy>(() => {
     if (locale === "es") {
@@ -371,6 +357,57 @@ export function PricingPageContent({
     setSuccessMessage(undefined);
   }, [copy.paymentSuccess, initialPaymentStatus]);
 
+  const resumeCheckoutPlan = isPaidPlanId(initialCheckoutPlan)
+    ? initialCheckoutPlan
+    : undefined;
+  const resumeCheckoutProvider = isHostedPaymentProvider(
+    initialCheckoutProvider,
+  )
+    ? initialCheckoutProvider
+    : undefined;
+
+  useEffect(() => {
+    if (
+      paymentReturnHandledRef.current ||
+      !user ||
+      initialPaymentStatus !== "success" ||
+      !isPaidPlanId(initialPlanId)
+    ) {
+      return;
+    }
+
+    paymentReturnHandledRef.current = true;
+    router.replace(`/account?payment=success&plan=${initialPlanId}`);
+  }, [initialPaymentStatus, initialPlanId, router, user]);
+
+  useEffect(() => {
+    if (
+      checkoutResumeStartedRef.current ||
+      !user ||
+      !resumeCheckoutPlan ||
+      !resumeCheckoutProvider ||
+      initialPaymentStatus === "success"
+    ) {
+      return;
+    }
+
+    checkoutResumeStartedRef.current = true;
+    window.localStorage.setItem(paidSignupPlanStorageKey, resumeCheckoutPlan);
+    setReadySignupPlan(resumeCheckoutPlan);
+    window.history.replaceState(
+      null,
+      "",
+      getLocalizedPublicPath("/pricing", locale),
+    );
+    void startProviderCheckout(resumeCheckoutPlan, resumeCheckoutProvider);
+  }, [
+    initialPaymentStatus,
+    locale,
+    resumeCheckoutPlan,
+    resumeCheckoutProvider,
+    user,
+  ]);
+
   const plans = useMemo(
     () => [
       {
@@ -482,57 +519,51 @@ export function PricingPageContent({
   const checkoutGuide = useMemo(() => {
     if (locale === "es") {
       return {
-        continueAction: "Continuar al checkout",
         existingAccountHint:
-          "Si ya tienes cuenta en Leyendo, entra despues del pago con ese mismo email.",
-        eyebrow: "Sin cuenta todavia",
+          "Si ya tienes cuenta en Leyendo, entra primero y despues vuelve a elegir Focus o Max para pagar.",
+        eyebrow: "Cuenta Basic Reader primero",
         intro:
-          "Puedes comprar Focus o Max antes de crear tu cuenta de Leyendo. Sigue estos pasos exactos:",
+          "Crea o abre tu cuenta Basic Reader antes de pagar Focus o Max. Leyendo te devolvera a tu cuenta mejorada despues del checkout.",
         steps: [
-          "Elige Focus o Max y continua al checkout.",
-          "Completa el pago con el mismo email o cuenta que quieres vincular a Leyendo.",
-          "Vuelve a Leyendo y abre la configuracion de cuenta pagada.",
-          "Crea tu cuenta o entra con ese mismo email.",
-          "Espera el mensaje Subscription linked antes de usar sincronizacion, libros en la nube o palabras guardadas.",
+          "Crea tu cuenta Basic Reader o entra con la cuenta que quieres mejorar.",
+          "Vuelve a elegir Focus o Max y continua al checkout correspondiente.",
+          "Completa el pago y pulsa Volver al sitio del vendedor.",
+          "Leyendo te lleva a tu cuenta para confirmar el nuevo plan.",
         ],
-        title: "Asi se activa una cuenta pagada nueva",
+        title: "Asi funciona una mejora pagada",
       };
     }
 
     if (locale === "pt") {
       return {
-        continueAction: "Continuar para o checkout",
         existingAccountHint:
-          "Se voce ja tem conta no Leyendo, entre depois do pagamento com esse mesmo email.",
-        eyebrow: "Sem conta ainda",
+          "Se voce ja tem conta no Leyendo, entre primeiro e depois volte para escolher Focus ou Max e pagar.",
+        eyebrow: "Conta Basic Reader primeiro",
         intro:
-          "Voce pode comprar Focus ou Max antes de criar sua conta do Leyendo. Siga estes passos exatos:",
+          "Crie ou abra sua conta Basic Reader antes de pagar Focus ou Max. O Leyendo leva voce de volta para a conta atualizada depois do checkout.",
         steps: [
-          "Escolha Focus ou Max e continue para o checkout.",
-          "Conclua o pagamento com o mesmo email ou conta que voce quer vincular ao Leyendo.",
-          "Volte ao Leyendo e abra a configuracao da conta paga.",
-          "Crie sua conta ou entre com esse mesmo email.",
-          "Espere a mensagem Subscription linked antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
+          "Crie sua conta Basic Reader ou entre com a conta que voce quer atualizar.",
+          "Escolha Focus ou Max novamente e continue para o checkout correspondente.",
+          "Conclua o pagamento e clique em Voltar ao site do vendedor.",
+          "O Leyendo leva voce para a conta para confirmar o novo plano.",
         ],
-        title: "Como ativar uma conta paga nova",
+        title: "Como funciona um upgrade pago",
       };
     }
 
     return {
-      continueAction: "Continue to checkout",
       existingAccountHint:
-        "If you already have a Leyendo account, sign in after payment with that same email.",
-      eyebrow: "No account yet",
+        "If you already have a Leyendo account, sign in first and then choose Focus or Max again to pay.",
+      eyebrow: "Basic Reader account first",
       intro:
-        "You can buy Focus or Max before creating your Leyendo account. Follow these exact steps:",
+        "Create or open your Basic Reader account before paying for Focus or Max. Leyendo brings you back to the upgraded account after checkout.",
       steps: [
-        "Choose Focus or Max and continue to checkout.",
-        "Complete payment with the same email or account you want attached to Leyendo.",
-        "Return to Leyendo and open paid account setup.",
-        "Create your account or sign in with that same email.",
-        "Wait for the Subscription linked confirmation before using sync, cloud books, or saved words.",
+        "Create your Basic Reader account or sign in with the account you want to upgrade.",
+        "Choose Focus or Max again and continue to the matching checkout.",
+        "Complete payment and click back to the vendor site.",
+        "Leyendo returns you to your account to confirm the new plan.",
       ],
-      title: "How a new paid account gets activated",
+      title: "How a paid upgrade works",
     };
   }, [locale]);
 
@@ -556,19 +587,19 @@ export function PricingPageContent({
 
     return locale === "es"
       ? [
-          "Abre la configuracion de cuenta pagada.",
-          "Crea tu cuenta o entra con el mismo email usado en el pago.",
+          "Abre tu cuenta Basic Reader.",
+          "Entra con el mismo email usado antes del pago.",
           "Espera el mensaje Subscription linked.",
         ]
       : locale === "pt"
         ? [
-            "Abra a configuracao da conta paga.",
-            "Crie sua conta ou entre com o mesmo email usado no pagamento.",
+            "Abra sua conta Basic Reader.",
+            "Entre com o mesmo email usado antes do pagamento.",
             "Espere a mensagem Subscription linked.",
           ]
         : [
-            "Open paid account setup.",
-            "Create your account or sign in with the same email used for payment.",
+            "Open your Basic Reader account.",
+            "Sign in with the same email you used before payment.",
             "Wait for the Subscription linked message.",
           ];
   }, [locale, user]);
@@ -578,7 +609,7 @@ export function PricingPageContent({
 
   async function startProviderCheckout(
     planId: PaidPlanId,
-    provider: Exclude<PaymentProvider, "binance">,
+    provider: HostedPaymentProvider,
   ) {
     const checkoutWindow = window.open("", "_blank");
     let providerUrl: string | undefined;
@@ -675,32 +706,21 @@ export function PricingPageContent({
 
   function handleProviderClick(
     planId: PaidPlanId,
-    provider: Exclude<PaymentProvider, "binance">,
+    provider: HostedPaymentProvider,
   ) {
     setStatusMessage(undefined);
+    window.localStorage.setItem(paidSignupPlanStorageKey, planId);
+    setReadySignupPlan(planId);
 
     if (!user) {
-      setCheckoutPreparation({ planId, provider });
+      router.push(`/account?checkout=${planId}&provider=${provider}`);
       return;
     }
 
     void startProviderCheckout(planId, provider);
   }
 
-  async function handlePreparedCheckout() {
-    if (!checkoutPreparation) {
-      return;
-    }
-
-    const nextCheckout = checkoutPreparation;
-    setCheckoutPreparation(null);
-    await startProviderCheckout(nextCheckout.planId, nextCheckout.provider);
-  }
-
   const binancePlan = plans.find((plan) => plan.id === binancePlanId);
-  const checkoutPreparationPlan = plans.find(
-    (plan) => plan.id === checkoutPreparation?.planId,
-  );
 
   return (
     <section className="w-full px-6 pt-12 pb-24">
@@ -989,107 +1009,6 @@ export function PricingPageContent({
                   GitHub
                 </a>
               </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {checkoutPreparation && checkoutPreparationPlan ? (
-        <div
-          className="fixed inset-0 z-120 flex items-center justify-center bg-[rgba(9,14,24,0.72)] px-4 py-6 backdrop-blur-md"
-          onClick={() => {
-            setCheckoutPreparation(null);
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={checkoutGuide.title}
-            className="w-full max-w-xl rounded-[2rem] border border-white/14 bg-[linear-gradient(180deg,rgba(11,17,31,0.98),rgba(14,21,36,0.95))] p-6 text-white shadow-[0_30px_110px_rgba(0,0,0,0.45)]"
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="editorial-kicker text-[#8bb9ff]">
-                  {checkoutGuide.eyebrow}
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em]">
-                  {checkoutGuide.title}
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-white/75">
-                  {checkoutGuide.intro}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setCheckoutPreparation(null);
-                }}
-                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/12 bg-white/6 text-white transition hover:bg-white/12"
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">{copy.close}</span>
-              </button>
-            </div>
-
-            <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/6 p-4">
-              <p className="text-sm text-white/70">
-                {locale === "en" ? "Plan" : locale === "es" ? "Plan" : "Plano"}
-              </p>
-              <p className="mt-1 text-lg font-semibold">
-                {checkoutPreparationPlan.label}
-              </p>
-              <p className="mt-2 text-sm leading-7 text-white/75">
-                {primaryProvider === "mercadopago"
-                  ? locale === "en"
-                    ? "You will pay with MercadoPago in a new tab."
-                    : locale === "es"
-                      ? "Pagarás con MercadoPago en una pestaña nueva."
-                      : "Voce vai pagar com MercadoPago em uma nova aba."
-                  : locale === "en"
-                    ? "You will pay with LemonSqueezy in a new tab."
-                    : locale === "es"
-                      ? "Pagarás con LemonSqueezy en una pestaña nueva."
-                      : "Voce vai pagar com LemonSqueezy em uma nova aba."}
-              </p>
-            </div>
-
-            <ol className="mt-5 space-y-3 text-sm leading-7 text-white/80">
-              {checkoutGuide.steps.map((step, index) => (
-                <li key={step} className="flex gap-3">
-                  <span className="mt-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
-                    {index + 1}
-                  </span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
-
-            <p className="mt-5 text-xs leading-6 text-white/65">
-              {checkoutGuide.existingAccountHint}
-            </p>
-
-            <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setCheckoutPreparation(null);
-                }}
-                className="inline-flex min-h-11 items-center rounded-full border border-white/12 bg-white/6 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/12"
-              >
-                {copy.close}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void handlePreparedCheckout();
-                }}
-                className="inline-flex min-h-11 items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-100"
-              >
-                {checkoutGuide.continueAction}
-              </button>
             </div>
           </div>
         </div>

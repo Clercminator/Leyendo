@@ -10,8 +10,10 @@ import { createPublicPageMetadata } from "@/lib/site";
 interface LocalizedPricingPageProps {
   params: Promise<{ locale: string }>;
   searchParams?: Promise<{
+    checkout?: string;
     payment?: string;
     plan?: string;
+    provider?: string;
   }>;
 }
 
@@ -47,6 +49,8 @@ export default async function LocalizedPricingPage({
   return (
     <AppShell mainClassName="px-0 py-0 sm:px-0 sm:py-0 xl:py-0">
       <PricingPageContent
+        initialCheckoutPlan={resolvedSearchParams.checkout}
+        initialCheckoutProvider={resolvedSearchParams.provider}
         initialPaymentStatus={resolvedSearchParams.payment}
         initialPlanId={resolvedSearchParams.plan}
       />

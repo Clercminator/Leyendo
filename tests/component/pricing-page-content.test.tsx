@@ -6,6 +6,14 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PricingPageContent } from "@/components/pricing/pricing-page-content";
 
+const { useRouter } = vi.hoisted(() => ({
+  useRouter: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter,
+}));
+
 const originalMercadoPagoFocusPlanId =
   process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID;
 const originalMercadoPagoMaxPlanId =
@@ -44,16 +52,25 @@ vi.mock("@/components/layout/locale-provider", () => ({
   useLocale,
 }));
 
+const { useSupabaseAuth } = vi.hoisted(() => ({
+  useSupabaseAuth: vi.fn(),
+}));
+
 vi.mock("@/components/auth/supabase-provider", () => ({
-  useSupabaseAuth: () => ({
-    user: null,
-  }),
+  useSupabaseAuth,
 }));
 
 describe("PricingPageContent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    useRouter.mockReturnValue({
+      push: vi.fn(),
+      replace: vi.fn(),
+    });
+    useSupabaseAuth.mockReturnValue({
+      user: null,
+    });
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID =
       "b9ee7e5887ba41608dbceb39a152073b";
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID =
@@ -92,7 +109,7 @@ describe("PricingPageContent", () => {
 
     const basicHeading = screen.getByRole("heading", { name: /basic reader/i });
     const activationGuideHeading = screen.getByRole("heading", {
-      name: /how a new paid account gets activated/i,
+      name: /how a paid upgrade works/i,
     });
 
     expect(basicHeading).toBeInTheDocument();
@@ -116,7 +133,77 @@ describe("PricingPageContent", () => {
     ).not.toBe(0);
   });
 
-  it("uses the real MercadoPago subscription plans for LATAM card checkout", async () => {
+  it("sends guests to account creation before starting MercadoPago checkout", async () => {
+    const user = userEvent.setup();
+    const push = vi.fn();
+
+    useRouter.mockReturnValue({
+      push,
+      replace: vi.fn(),
+    });
+
+    render(<PricingPageContent />);
+
+    await user.click(
+      screen.getByRole("button", { name: /paying from latam\? switch/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /get focus/i }));
+
+    expect(push).toHaveBeenCalledWith(
+      "/account?checkout=focus&provider=mercadopago",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("resumes MercadoPago checkout automatically after the user signs in", async () => {
+    const focusWindow = {
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(focusWindow);
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+    useSupabaseAuth.mockReturnValue({
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          checkoutUrl:
+            "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(
+      <PricingPageContent
+        initialCheckoutPlan="focus"
+        initialCheckoutProvider="mercadopago"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(openSpy).toHaveBeenCalledWith("", "_blank");
+    });
+
+    expect(focusWindow.location.href).toBe(
+      "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
+    );
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/pricing");
+
+    openSpy.mockRestore();
+    replaceStateSpy.mockRestore();
+  });
+
+  it("uses the real MercadoPago subscription plans for signed-in LATAM checkout", async () => {
     const user = userEvent.setup();
     const focusWindow = {
       location: { href: "" },
@@ -130,6 +217,13 @@ describe("PricingPageContent", () => {
       .spyOn(window, "open")
       .mockReturnValueOnce(focusWindow)
       .mockReturnValueOnce(maxWindow);
+
+    useSupabaseAuth.mockReturnValue({
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
 
     fetchMock
       .mockResolvedValueOnce(
@@ -164,32 +258,12 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(
-      screen.getByRole("dialog", {
-        name: /how a new paid account gets activated/i,
-      }),
-    ).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", { name: /continue to checkout/i }),
-    );
-
     expect(openSpy).toHaveBeenNthCalledWith(1, "", "_blank");
     expect(focusWindow.location.href).toBe(
       "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
     );
 
     await user.click(screen.getByRole("button", { name: /get max/i }));
-
-    expect(
-      screen.getByRole("dialog", {
-        name: /how a new paid account gets activated/i,
-      }),
-    ).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", { name: /continue to checkout/i }),
-    );
 
     expect(openSpy).toHaveBeenNthCalledWith(2, "", "_blank");
     expect(maxWindow.location.href).toBe(
@@ -207,6 +281,13 @@ describe("PricingPageContent", () => {
       opener: null as Window | null,
     } as unknown as Window;
     const openSpy = vi.spyOn(window, "open").mockReturnValue(checkoutWindow);
+
+    useSupabaseAuth.mockReturnValue({
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
 
     fetchMock.mockResolvedValueOnce(
       new Response(
@@ -227,10 +308,6 @@ describe("PricingPageContent", () => {
       screen.getByRole("button", { name: /paying from latam\? switch/i }),
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
-
-    await user.click(
-      screen.getByRole("button", { name: /continue to checkout/i }),
-    );
 
     expect(openSpy).toHaveBeenCalledWith("", "_blank");
     expect(
@@ -282,6 +359,34 @@ describe("PricingPageContent", () => {
     expect(
       screen.getByText(/wait for the subscription linked message/i),
     ).toBeInTheDocument();
+  });
+
+  it("redirects signed-in payment returns back to the account page", async () => {
+    const replace = vi.fn();
+
+    useRouter.mockReturnValue({
+      push: vi.fn(),
+      replace,
+    });
+    useSupabaseAuth.mockReturnValue({
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(
+      <PricingPageContent
+        initialPaymentStatus="success"
+        initialPlanId="focus"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(
+        "/account?payment=success&plan=focus",
+      );
+    });
   });
 
   it("offers the paid account setup handoff after a successful checkout", () => {
