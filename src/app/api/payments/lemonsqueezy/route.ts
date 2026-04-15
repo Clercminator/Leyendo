@@ -5,6 +5,7 @@ import {
   getLemonSqueezyVariantId,
   normalizePaidPlanTier,
   normalizePaymentLocale,
+  pickPaymentEnvValue,
 } from "@/lib/payment-config";
 
 const LEMONSQUEEZY_API = "https://api.lemonsqueezy.com/v1";
@@ -50,7 +51,7 @@ function resolveLemonSqueezyCheckoutError(
   }
 
   if (/related resource does not exist/i.test(providerMessage)) {
-    return "LemonSqueezy could not create the checkout because the configured store id and variant id do not belong to the same account. Check LEMONSQUEEZY_STORE_ID and the selected LEMONSQUEEZY_VARIANT_* value in Vercel.";
+    return "LemonSqueezy could not create the checkout because the configured store id and variant id do not belong to the same account. Check LEMONSQUEEZY_STORE_ID or LEMONSQUEEZY_STORE_ID_TESTING and the selected LEMONSQUEEZY_VARIANT_* value in Vercel.";
   }
 
   return providerMessage;
@@ -58,21 +59,25 @@ function resolveLemonSqueezyCheckoutError(
 
 export async function POST(request: NextRequest) {
   const apiKey =
-    pickFirstNonEmpty(
-      process.env.LEMONSQUEEZY_API_KEY,
-      process.env.LEMONSQUEEZY_API_KEY_TESTING,
-      process.env.LEMONSQUEEZY_API_KEY_PRUEBA,
-      process.env.LEMONSQUEEZY_TESTING_API_KEY,
-      process.env.LEMONSQUEEZY_API_KEY_TESTING_ACCOUNT,
-    ) ?? "";
+    pickPaymentEnvValue({
+      live: [process.env.LEMONSQUEEZY_API_KEY],
+      testing: [
+        process.env.LEMONSQUEEZY_API_KEY_TESTING,
+        process.env.LEMONSQUEEZY_API_KEY_PRUEBA,
+        process.env.LEMONSQUEEZY_TESTING_API_KEY,
+        process.env.LEMONSQUEEZY_API_KEY_TESTING_ACCOUNT,
+      ],
+    }) ?? "";
   const storeId =
-    pickFirstNonEmpty(
-      process.env.LEMONSQUEEZY_STORE_ID,
-      process.env.LEMONSQUEEZY_STORE_ID_TESTING,
-      process.env.LEMONSQUEEZY_STORE_ID_PRUEBA,
-      process.env.LEMONSQUEEZY_TESTING_STORE_ID,
-      process.env.LEMONSQUEEZY_STORE_ID_TESTING_ACCOUNT,
-    ) ?? "";
+    pickPaymentEnvValue({
+      live: [process.env.LEMONSQUEEZY_STORE_ID],
+      testing: [
+        process.env.LEMONSQUEEZY_STORE_ID_TESTING,
+        process.env.LEMONSQUEEZY_STORE_ID_PRUEBA,
+        process.env.LEMONSQUEEZY_TESTING_STORE_ID,
+        process.env.LEMONSQUEEZY_STORE_ID_TESTING_ACCOUNT,
+      ],
+    }) ?? "";
 
   if (!apiKey || !storeId) {
     return NextResponse.json(

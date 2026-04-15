@@ -17,6 +17,27 @@ function pickFirstNonEmpty(...values: Array<string | undefined>) {
   return undefined;
 }
 
+export function pickPaymentEnvValue(args: {
+  live: Array<string | undefined>;
+  testing?: Array<string | undefined>;
+  compatibility?: Array<string | undefined>;
+}) {
+  const testingValues = args.testing ?? [];
+  const compatibilityValues = args.compatibility ?? [];
+
+  return process.env.VERCEL_ENV === "preview"
+    ? pickFirstNonEmpty(
+        ...testingValues,
+        ...args.live,
+        ...compatibilityValues,
+      )
+    : pickFirstNonEmpty(
+        ...args.live,
+        ...testingValues,
+        ...compatibilityValues,
+      );
+}
+
 function normalizeMercadoPagoPlanId(value: string | undefined) {
   const planId = value?.trim();
 
@@ -51,8 +72,20 @@ export function buildMercadoPagoSubscriptionUrl(
 export function getMercadoPagoCheckoutUrl(planTier: PaidPlanTier) {
   const explicitUrl =
     planTier === "focus"
-      ? process.env.NEXT_PUBLIC_MERCADOPAGO_FOCUS_URL?.trim()
-      : process.env.NEXT_PUBLIC_MERCADOPAGO_MAX_URL?.trim();
+      ? pickPaymentEnvValue({
+          live: [process.env.NEXT_PUBLIC_MERCADOPAGO_FOCUS_URL],
+          testing: [
+            process.env.NEXT_PUBLIC_MERCADOPAGO_FOCUS_URL_PRUEBA,
+            process.env.NEXT_PUBLIC_MERCADOPAGO_FOCUS_URL_TESTING,
+          ],
+        })
+      : pickPaymentEnvValue({
+          live: [process.env.NEXT_PUBLIC_MERCADOPAGO_MAX_URL],
+          testing: [
+            process.env.NEXT_PUBLIC_MERCADOPAGO_MAX_URL_PRUEBA,
+            process.env.NEXT_PUBLIC_MERCADOPAGO_MAX_URL_TESTING,
+          ],
+        });
 
   if (explicitUrl) {
     return explicitUrl;
@@ -61,10 +94,18 @@ export function getMercadoPagoCheckoutUrl(planTier: PaidPlanTier) {
   const planId =
     planTier === "focus"
       ? normalizeMercadoPagoPlanId(
-          process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID,
+          pickPaymentEnvValue({
+            live: [process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID],
+            testing: [
+              process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA,
+            ],
+          }),
         )
       : normalizeMercadoPagoPlanId(
-          process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID,
+          pickPaymentEnvValue({
+            live: [process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID],
+            testing: [process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID_PRUEBA],
+          }),
         );
 
   if (planId) {
@@ -76,26 +117,32 @@ export function getMercadoPagoCheckoutUrl(planTier: PaidPlanTier) {
 
 export function getLemonSqueezyVariantId(planTier: PaidPlanTier) {
   if (planTier === "max") {
-    return pickFirstNonEmpty(
-      process.env.LEMONSQUEEZY_VARIANT_MAX,
-      process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING,
-      process.env.LEMONSQUEEZY_VARIANT_MAX_PRUEBA,
-      process.env.LEMONSQUEEZY_MAX_VARIANT_TESTING,
-      process.env.LEMONSQUEEZY_MAX_VARIANT_TESTING_ACCOUNT,
-    );
+    return pickPaymentEnvValue({
+      live: [process.env.LEMONSQUEEZY_VARIANT_MAX],
+      testing: [
+        process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING,
+        process.env.LEMONSQUEEZY_VARIANT_MAX_PRUEBA,
+        process.env.LEMONSQUEEZY_MAX_VARIANT_TESTING,
+        process.env.LEMONSQUEEZY_MAX_VARIANT_TESTING_ACCOUNT,
+      ],
+    });
   }
 
-  return pickFirstNonEmpty(
-    process.env.LEMONSQUEEZY_VARIANT_FOCUS,
-    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING,
-    process.env.LEMONSQUEEZY_VARIANT_FOCUS_PRUEBA,
-    process.env.LEMONSQUEEZY_FOCUS_VARIANT_TESTING,
-    process.env.LEMONSQUEEZY_FOCUS_VARIANT_TESTING_ACCOUNT,
-    process.env.LEMONSQUEEZY_VARIANT_STANDARD,
-    process.env.LEMONSQUEEZY_VARIANT_STANDARD_TESTING,
-    process.env.LEMONSQUEEZY_VARIANT_BUILDER,
-    process.env.LEMONSQUEEZY_VARIANT_BUILDER_TESTING,
-  );
+  return pickPaymentEnvValue({
+    live: [
+      process.env.LEMONSQUEEZY_VARIANT_FOCUS,
+      process.env.LEMONSQUEEZY_VARIANT_STANDARD,
+      process.env.LEMONSQUEEZY_VARIANT_BUILDER,
+    ],
+    testing: [
+      process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING,
+      process.env.LEMONSQUEEZY_VARIANT_FOCUS_PRUEBA,
+      process.env.LEMONSQUEEZY_FOCUS_VARIANT_TESTING,
+      process.env.LEMONSQUEEZY_FOCUS_VARIANT_TESTING_ACCOUNT,
+      process.env.LEMONSQUEEZY_VARIANT_STANDARD_TESTING,
+      process.env.LEMONSQUEEZY_VARIANT_BUILDER_TESTING,
+    ],
+  });
 }
 
 export function getPricingPathForLocale(locale: PaymentLocale) {

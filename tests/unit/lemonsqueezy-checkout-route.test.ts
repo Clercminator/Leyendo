@@ -14,6 +14,7 @@ const originalFocusVariantTesting =
   process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING;
 const originalMaxVariant = process.env.LEMONSQUEEZY_VARIANT_MAX;
 const originalMaxVariantTesting = process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING;
+const originalVercelEnv = process.env.VERCEL_ENV;
 
 vi.stubGlobal("fetch", fetchMock);
 
@@ -28,6 +29,7 @@ describe("LemonSqueezy checkout route", () => {
     process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING = "";
     process.env.LEMONSQUEEZY_VARIANT_MAX = "";
     process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING = "";
+    process.env.VERCEL_ENV = "";
   });
 
   afterAll(() => {
@@ -40,6 +42,7 @@ describe("LemonSqueezy checkout route", () => {
       originalFocusVariantTesting;
     process.env.LEMONSQUEEZY_VARIANT_MAX = originalMaxVariant;
     process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING = originalMaxVariantTesting;
+    process.env.VERCEL_ENV = originalVercelEnv;
   });
 
   it("supports preview env aliases for api key, store id, and variants", async () => {
@@ -151,6 +154,65 @@ describe("LemonSqueezy checkout route", () => {
     expect(payload.data?.relationships?.variant?.data?.id).toBe("2497164");
   });
 
+  it("prefers preview LemonSqueezy aliases over live values on Vercel Preview", async () => {
+    process.env.VERCEL_ENV = "preview";
+    process.env.LEMONSQUEEZY_API_KEY = "ls_live_key";
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
+    process.env.LEMONSQUEEZY_STORE_ID = "11111";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS = "live-focus";
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING = "1497164";
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            attributes: {
+              url: "https://checkout.lemonsqueezy.com/buy/test-focus",
+            },
+          },
+        }),
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/payments/lemonsqueezy", {
+        body: JSON.stringify({ locale: "en", plan: "focus" }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(200);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.lemonsqueezy.com/v1/checkouts",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer ls_test_preview_key",
+        }),
+      }),
+    );
+
+    const payload = JSON.parse(
+      String(fetchMock.mock.calls[0]?.[1]?.body ?? "{}"),
+    ) as {
+      data?: {
+        relationships?: {
+          store?: { data?: { id?: string } };
+          variant?: { data?: { id?: string } };
+        };
+      };
+    };
+
+    expect(payload.data?.relationships?.store?.data?.id).toBe("98765");
+    expect(payload.data?.relationships?.variant?.data?.id).toBe("1497164");
+  });
+
   it("requires an explicit focus variant when no supported focus alias is configured", async () => {
     process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
     process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
@@ -203,7 +265,7 @@ describe("LemonSqueezy checkout route", () => {
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({
       error:
-        "LemonSqueezy could not create the checkout because the configured store id and variant id do not belong to the same account. Check LEMONSQUEEZY_STORE_ID and the selected LEMONSQUEEZY_VARIANT_* value in Vercel.",
+        "LemonSqueezy could not create the checkout because the configured store id and variant id do not belong to the same account. Check LEMONSQUEEZY_STORE_ID or LEMONSQUEEZY_STORE_ID_TESTING and the selected LEMONSQUEEZY_VARIANT_* value in Vercel.",
     });
   });
 });

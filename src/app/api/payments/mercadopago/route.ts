@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   buildMercadoPagoSubscriptionUrl,
   normalizePaidPlanTier,
+  pickPaymentEnvValue,
 } from "@/lib/payment-config";
 
 const MERCADOPAGO_PLAN_ID_PATTERN = /^[a-f0-9]{32}$/i;
@@ -35,60 +36,80 @@ function normalizeMercadoPagoPlanId(value: string | undefined) {
 function getMercadoPagoEnvAliases(planTier: "focus" | "max") {
   if (planTier === "focus") {
     return {
-      explicitUrl: pickFirstNonEmpty(
-        process.env.NEXT_PUBLIC_MERCADOPAGO_FOCUS_URL,
-        process.env.MERCADOPAGO_FOCUS_URL,
-        process.env.MERCADOPAGO_FOCUS_URL_TESTING,
-      ),
+      explicitUrl: pickPaymentEnvValue({
+        live: [
+          process.env.NEXT_PUBLIC_MERCADOPAGO_FOCUS_URL,
+          process.env.MERCADOPAGO_FOCUS_URL,
+        ],
+        testing: [process.env.MERCADOPAGO_FOCUS_URL_TESTING],
+      }),
       planId: normalizeMercadoPagoPlanId(
-        pickFirstNonEmpty(
+        pickPaymentEnvValue({
+          live: [
+            process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID,
+            process.env.MERCADOPAGO_PLAN_FOCUS_ID,
+          ],
+          testing: [
+            process.env.MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA,
+            process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA,
+            process.env.MERCADOPAGO_FOCUS_ID_TESTING,
+            process.env.MERCADOPAGO_PLAN_FOCUS_ID_TESTING,
+            process.env.MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT,
+          ],
+        }),
+      ),
+      rawPlanId: pickPaymentEnvValue({
+        live: [
           process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID,
           process.env.MERCADOPAGO_PLAN_FOCUS_ID,
+        ],
+        testing: [
           process.env.MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA,
           process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA,
           process.env.MERCADOPAGO_FOCUS_ID_TESTING,
           process.env.MERCADOPAGO_PLAN_FOCUS_ID_TESTING,
           process.env.MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT,
-        ),
-      ),
-      rawPlanId: pickFirstNonEmpty(
-        process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID,
-        process.env.MERCADOPAGO_PLAN_FOCUS_ID,
-        process.env.MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA,
-        process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA,
-        process.env.MERCADOPAGO_FOCUS_ID_TESTING,
-        process.env.MERCADOPAGO_PLAN_FOCUS_ID_TESTING,
-        process.env.MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT,
-      ),
+        ],
+      }),
     };
   }
 
   return {
-    explicitUrl: pickFirstNonEmpty(
-      process.env.NEXT_PUBLIC_MERCADOPAGO_MAX_URL,
-      process.env.MERCADOPAGO_MAX_URL,
-      process.env.MERCADOPAGO_MAX_URL_TESTING,
-    ),
+    explicitUrl: pickPaymentEnvValue({
+      live: [
+        process.env.NEXT_PUBLIC_MERCADOPAGO_MAX_URL,
+        process.env.MERCADOPAGO_MAX_URL,
+      ],
+      testing: [process.env.MERCADOPAGO_MAX_URL_TESTING],
+    }),
     planId: normalizeMercadoPagoPlanId(
-      pickFirstNonEmpty(
+      pickPaymentEnvValue({
+        live: [
+          process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID,
+          process.env.MERCADOPAGO_PLAN_MAX_ID,
+        ],
+        testing: [
+          process.env.MERCADOPAGO_PLAN_MAX_ID_PRUEBA,
+          process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID_PRUEBA,
+          process.env.MERCADOPAGO_MAX_ID_TESTING,
+          process.env.MERCADOPAGO_PLAN_MAX_ID_TESTING,
+          process.env.MERCADOPAGO_MAX_ID_TESTING_ACCOUNT,
+        ],
+      }),
+    ),
+    rawPlanId: pickPaymentEnvValue({
+      live: [
         process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID,
         process.env.MERCADOPAGO_PLAN_MAX_ID,
+      ],
+      testing: [
         process.env.MERCADOPAGO_PLAN_MAX_ID_PRUEBA,
         process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID_PRUEBA,
         process.env.MERCADOPAGO_MAX_ID_TESTING,
         process.env.MERCADOPAGO_PLAN_MAX_ID_TESTING,
         process.env.MERCADOPAGO_MAX_ID_TESTING_ACCOUNT,
-      ),
-    ),
-    rawPlanId: pickFirstNonEmpty(
-      process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID,
-      process.env.MERCADOPAGO_PLAN_MAX_ID,
-      process.env.MERCADOPAGO_PLAN_MAX_ID_PRUEBA,
-      process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID_PRUEBA,
-      process.env.MERCADOPAGO_MAX_ID_TESTING,
-      process.env.MERCADOPAGO_PLAN_MAX_ID_TESTING,
-      process.env.MERCADOPAGO_MAX_ID_TESTING_ACCOUNT,
-    ),
+      ],
+    }),
   };
 }
 
