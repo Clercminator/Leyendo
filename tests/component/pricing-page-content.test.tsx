@@ -90,9 +90,12 @@ describe("PricingPageContent", () => {
   it("renders the three pricing plans and defaults to the global payment option in English", () => {
     render(<PricingPageContent />);
 
-    expect(
-      screen.getByRole("heading", { name: /basic reader/i }),
-    ).toBeInTheDocument();
+    const basicHeading = screen.getByRole("heading", { name: /basic reader/i });
+    const activationGuideHeading = screen.getByRole("heading", {
+      name: /how a new paid account gets activated/i,
+    });
+
+    expect(basicHeading).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /^focus$/i }),
     ).toBeInTheDocument();
@@ -106,9 +109,11 @@ describe("PricingPageContent", () => {
     expect(screen.getAllByText(/3 file uploads/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/15 file uploads/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/unlimited uploads/i).length).toBeGreaterThan(0);
+    expect(activationGuideHeading).toBeInTheDocument();
     expect(
-      screen.getByText(/how a new paid account gets activated/i),
-    ).toBeInTheDocument();
+      basicHeading.compareDocumentPosition(activationGuideHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
   });
 
   it("uses the real MercadoPago subscription plans for LATAM card checkout", async () => {

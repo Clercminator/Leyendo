@@ -737,32 +737,6 @@ export function PricingPageContent({
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#6b7280]">
             {copy.paymentNote}
           </p>
-          {!user ? (
-            <div className="mx-auto mt-6 max-w-3xl rounded-[1.75rem] border border-[#2d466a] bg-[#111a2a] px-5 py-5 text-left text-sm leading-7 text-[#d9e4f5] shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
-              <p className="text-[0.68rem] font-bold tracking-[0.26em] text-[#8bb9ff] uppercase">
-                {checkoutGuide.eyebrow}
-              </p>
-              <h2 className="mt-3 text-xl font-semibold text-white sm:text-2xl">
-                {checkoutGuide.title}
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-[#aeb9cf]">
-                {checkoutGuide.intro}
-              </p>
-              <ol className="mt-4 space-y-3">
-                {checkoutGuide.steps.map((step, index) => (
-                  <li key={step} className="flex gap-3">
-                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#3b5a86] bg-[#17263b] text-xs font-semibold text-[#d9e4f5]">
-                      {index + 1}
-                    </span>
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ol>
-              <p className="mt-4 text-xs leading-6 text-[#8f97ab]">
-                {checkoutGuide.existingAccountHint}
-              </p>
-            </div>
-          ) : null}
           {successMessage ? (
             <div className="mx-auto mt-5 max-w-2xl rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 text-sm leading-7 text-emerald-100">
               <p>{successMessage}</p>
@@ -877,6 +851,38 @@ export function PricingPageContent({
             </article>
           ))}
         </div>
+
+        {!user ? (
+          <div className="mt-8 w-full rounded-[1.75rem] border border-[#2d466a] bg-[#111a2a] px-6 py-6 text-left text-sm leading-7 text-[#d9e4f5] shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:px-7 lg:px-8">
+            <div className="lg:grid lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] lg:gap-8 xl:gap-10">
+              <div>
+                <p className="text-[0.68rem] font-bold tracking-[0.26em] text-[#8bb9ff] uppercase">
+                  {checkoutGuide.eyebrow}
+                </p>
+                <h2 className="mt-3 text-xl font-semibold text-white sm:text-2xl">
+                  {checkoutGuide.title}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[#aeb9cf]">
+                  {checkoutGuide.intro}
+                </p>
+                <p className="mt-4 text-xs leading-6 text-[#8f97ab] lg:mt-6">
+                  {checkoutGuide.existingAccountHint}
+                </p>
+              </div>
+
+              <ol className="mt-5 space-y-3 lg:mt-0">
+                {checkoutGuide.steps.map((step, index) => (
+                  <li key={step} className="flex gap-3">
+                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#3b5a86] bg-[#17263b] text-xs font-semibold text-[#d9e4f5]">
+                      {index + 1}
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {binancePlan ? (
