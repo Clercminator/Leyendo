@@ -179,17 +179,16 @@ export function getGuestAuthDialogCopy({
 
   if (locale === "es") {
     return {
-      accountRequired: "La compra empieza con una cuenta Basic Reader gratuita.",
+      accountRequired:
+        "La compra empieza con una cuenta Basic Reader gratuita.",
       authFailed: "La autenticacion fallo.",
       close: "Cerrar",
       continueWithEmail: "Continuar con email",
       continueWithGitHub: "Continuar con GitHub",
       continueWithGoogle: "Continuar con Google",
       createAccount: "Crear cuenta",
-      createDescription:
-        `Tu cuenta comienza en Basic Reader y ${planLabel} se abre justo despues del registro.`,
-      createSuccess:
-        `Cuenta Basic Reader creada. Si la confirmacion por email esta activa, abre el mensaje de Leyendo y el checkout continuara a ${planLabel}.`,
+      createDescription: `Tu cuenta comienza en Basic Reader y ${planLabel} se abre justo despues del registro.`,
+      createSuccess: `Cuenta Basic Reader creada. Si la confirmacion por email esta activa, abre el mensaje de Leyendo y el checkout continuara a ${planLabel}.`,
       createTitle: "Crear cuenta gratis",
       emailLabel: "Email",
       emailPlaceholder: "reader@example.com",
@@ -201,8 +200,7 @@ export function getGuestAuthDialogCopy({
       or: "o",
       passwordLabel: "Contrasena",
       passwordPlaceholder: "Al menos 6 caracteres",
-      signInDescription:
-        `Entra con la cuenta que debe recibir ${planLabel} despues del pago.`,
+      signInDescription: `Entra con la cuenta que debe recibir ${planLabel} despues del pago.`,
       signInSuccess: "Continuando al checkout...",
       signInTitle: "Entrar para continuar",
       submitCreate: "Crear Basic Reader",
@@ -221,10 +219,8 @@ export function getGuestAuthDialogCopy({
       continueWithGitHub: "Continuar com GitHub",
       continueWithGoogle: "Continuar com Google",
       createAccount: "Criar conta",
-      createDescription:
-        `Sua conta comeca em Basic Reader e ${planLabel} abre logo depois do cadastro.`,
-      createSuccess:
-        `Conta Basic Reader criada. Se a confirmacao por email estiver ativa, abra a mensagem do Leyendo e o checkout continuara para ${planLabel}.`,
+      createDescription: `Sua conta comeca em Basic Reader e ${planLabel} abre logo depois do cadastro.`,
+      createSuccess: `Conta Basic Reader criada. Se a confirmacao por email estiver ativa, abra a mensagem do Leyendo e o checkout continuara para ${planLabel}.`,
       createTitle: "Criar conta gratis",
       emailLabel: "Email",
       emailPlaceholder: "reader@example.com",
@@ -236,8 +232,7 @@ export function getGuestAuthDialogCopy({
       or: "ou",
       passwordLabel: "Senha",
       passwordPlaceholder: "Pelo menos 6 caracteres",
-      signInDescription:
-        `Entre com a conta que deve receber ${planLabel} depois do pagamento.`,
+      signInDescription: `Entre com a conta que deve receber ${planLabel} depois do pagamento.`,
       signInSuccess: "Continuando para o checkout...",
       signInTitle: "Entrar para continuar",
       submitCreate: "Criar Basic Reader",
@@ -255,10 +250,8 @@ export function getGuestAuthDialogCopy({
     continueWithGitHub: "Continue with GitHub",
     continueWithGoogle: "Continue with Google",
     createAccount: "Create account",
-    createDescription:
-      `Your account starts on Basic Reader, and ${planLabel} opens right after sign-up.`,
-    createSuccess:
-      `Basic Reader account created. If email confirmation is enabled, open the Leyendo message and checkout will continue to ${planLabel}.`,
+    createDescription: `Your account starts on Basic Reader, and ${planLabel} opens right after sign-up.`,
+    createSuccess: `Basic Reader account created. If email confirmation is enabled, open the Leyendo message and checkout will continue to ${planLabel}.`,
     createTitle: "Create free account",
     emailLabel: "Email",
     emailPlaceholder: "reader@example.com",
@@ -270,8 +263,7 @@ export function getGuestAuthDialogCopy({
     or: "or",
     passwordLabel: "Password",
     passwordPlaceholder: "At least 6 characters",
-    signInDescription:
-      `Sign in with the account that should receive ${planLabel} after payment.`,
+    signInDescription: `Sign in with the account that should receive ${planLabel} after payment.`,
     signInSuccess: "Continuing to checkout...",
     signInTitle: "Log in to continue",
     submitCreate: "Create Basic Reader",
@@ -329,7 +321,8 @@ export function GuestAuthDialog({
     return null;
   }
 
-  const dialogTitle = mode === "create-account" ? copy.createTitle : copy.signInTitle;
+  const dialogTitle =
+    mode === "create-account" ? copy.createTitle : copy.signInTitle;
   const dialogDescription =
     mode === "create-account" ? copy.createDescription : copy.signInDescription;
   const isEmailActionPending =
@@ -402,7 +395,9 @@ export function GuestAuthDialog({
         <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
           {dialogTitle}
         </h2>
-        <p className="mt-3 text-sm leading-7 text-white/72">{dialogDescription}</p>
+        <p className="mt-3 text-sm leading-7 text-white/72">
+          {dialogDescription}
+        </p>
 
         {!showEmailAuth ? (
           <div className="mt-6 grid gap-3">
@@ -433,7 +428,9 @@ export function GuestAuthDialog({
               {pendingAction === "github" ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" />
               ) : (
-                <span className="text-sm font-semibold tracking-[0.18em]">GH</span>
+                <span className="text-sm font-semibold tracking-[0.18em]">
+                  GH
+                </span>
               )}
               <span className="ml-2">{copy.continueWithGitHub}</span>
             </button>
@@ -491,7 +488,9 @@ export function GuestAuthDialog({
                 onSubmit();
               }}
               disabled={
-                Boolean(pendingAction) || !email || (!useMagicLink && password.length < 6)
+                Boolean(pendingAction) ||
+                !email ||
+                (!useMagicLink && password.length < 6)
               }
               className="flex h-12 items-center justify-center rounded-[1rem] bg-white px-4 text-sm font-semibold text-[#0f1420] transition hover:bg-[#f3f6fb] disabled:cursor-not-allowed disabled:opacity-60"
             >

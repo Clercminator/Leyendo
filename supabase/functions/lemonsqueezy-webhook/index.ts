@@ -4,13 +4,33 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WEBHOOK_SECRET =
   Deno.env.get("LEMONSQUEEZY_WEBHOOK_SECRET")?.trim() ?? "";
-const FOCUS_VARIANT_ID =
-  (
-    Deno.env.get("LEMONSQUEEZY_VARIANT_FOCUS") ??
-    Deno.env.get("LEMONSQUEEZY_VARIANT_STANDARD") ??
-    Deno.env.get("LEMONSQUEEZY_VARIANT_BUILDER")
-  )?.trim() ?? "";
-const MAX_VARIANT_ID = Deno.env.get("LEMONSQUEEZY_VARIANT_MAX")?.trim() ?? "";
+
+function getConfiguredVariantIds(...values: Array<string | undefined>) {
+  return new Set(
+    values
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value)),
+  );
+}
+
+const FOCUS_VARIANT_IDS = getConfiguredVariantIds(
+  Deno.env.get("LEMONSQUEEZY_VARIANT_FOCUS"),
+  Deno.env.get("LEMONSQUEEZY_VARIANT_STANDARD"),
+  Deno.env.get("LEMONSQUEEZY_VARIANT_BUILDER"),
+  Deno.env.get("LEMONSQUEEZY_VARIANT_FOCUS_TESTING"),
+  Deno.env.get("LEMONSQUEEZY_VARIANT_FOCUS_PRUEBA"),
+  Deno.env.get("LEMONSQUEEZY_FOCUS_VARIANT_TESTING"),
+  Deno.env.get("LEMONSQUEEZY_FOCUS_VARIANT_TESTING_ACCOUNT"),
+  Deno.env.get("LEMONSQUEEZY_VARIANT_STANDARD_TESTING"),
+  Deno.env.get("LEMONSQUEEZY_VARIANT_BUILDER_TESTING"),
+);
+const MAX_VARIANT_IDS = getConfiguredVariantIds(
+  Deno.env.get("LEMONSQUEEZY_VARIANT_MAX"),
+  Deno.env.get("LEMONSQUEEZY_VARIANT_MAX_TESTING"),
+  Deno.env.get("LEMONSQUEEZY_VARIANT_MAX_PRUEBA"),
+  Deno.env.get("LEMONSQUEEZY_MAX_VARIANT_TESTING"),
+  Deno.env.get("LEMONSQUEEZY_MAX_VARIANT_TESTING_ACCOUNT"),
+);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -102,19 +122,11 @@ function inferTierFromVariant(
   const normalizedVariantId = asString(variantId);
   const normalizedVariantName = asString(variantName)?.toLowerCase() ?? "";
 
-  if (
-    normalizedVariantId &&
-    MAX_VARIANT_ID &&
-    normalizedVariantId === MAX_VARIANT_ID
-  ) {
+  if (normalizedVariantId && MAX_VARIANT_IDS.has(normalizedVariantId)) {
     return "max";
   }
 
-  if (
-    normalizedVariantId &&
-    FOCUS_VARIANT_ID &&
-    normalizedVariantId === FOCUS_VARIANT_ID
-  ) {
+  if (normalizedVariantId && FOCUS_VARIANT_IDS.has(normalizedVariantId)) {
     return "focus";
   }
 

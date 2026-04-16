@@ -5,13 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import {
-  Check,
-  Coins,
-  CreditCard,
-  Globe2,
-  X,
-} from "lucide-react";
+import { Check, Coins, CreditCard, Globe2, X } from "lucide-react";
 
 import {
   GuestAuthDialog,

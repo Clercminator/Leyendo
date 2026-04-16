@@ -1,0 +1,13 @@
+.git
+.gitignore
+.next
+.playwright-mcp
+.vercel
+coverage
+data
+node_modules
+test-results
+tmp
+.env
+.env.*
+.pnpm-store

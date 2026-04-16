@@ -41,6 +41,7 @@ import {
   getSupabaseBrowserClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/client";
+import { buildSupabaseAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
@@ -152,16 +153,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     useState<LocalLibrarySummary>(defaultGuestLibrarySummary);
 
   const resolveAuthRedirectTo = useCallback((redirectTo?: string) => {
-    const normalizedRedirect = redirectTo?.trim();
-    if (normalizedRedirect) {
-      return normalizedRedirect;
-    }
-
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    return `${window.location.origin}/account`;
+    return buildSupabaseAuthRedirectUrl(redirectTo);
   }, []);
 
   const refreshGuestLibrarySummary = useCallback(async () => {
