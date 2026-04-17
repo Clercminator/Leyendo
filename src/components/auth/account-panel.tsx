@@ -953,11 +953,7 @@ export function AccountPanel({
   }, [paidSignupPlan, paidSignupProvider, user?.id]);
 
   useEffect(() => {
-    if (
-      mercadoPagoConfirmationStartedRef.current ||
-      !paidSignupPlan ||
-      !user
-    ) {
+    if (mercadoPagoConfirmationStartedRef.current || !paidSignupPlan || !user) {
       return;
     }
 

@@ -67,8 +67,9 @@ function getMercadoPagoAccessToken() {
 function resolveMercadoPagoCheckoutError(
   payload: MercadoPagoCheckoutPayload | null,
 ) {
-  const causeMessage = payload?.cause?.find((cause) => cause.description?.trim())
-    ?.description;
+  const causeMessage = payload?.cause?.find((cause) =>
+    cause.description?.trim(),
+  )?.description;
   const providerMessage =
     causeMessage?.trim() ||
     payload?.message?.trim() ||

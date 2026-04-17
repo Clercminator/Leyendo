@@ -256,11 +256,7 @@ describe("PricingPageContent", () => {
     render(<PricingPageContent />);
 
     await waitFor(() => {
-      expect(openSpy).toHaveBeenCalledWith(
-        "",
-        "_blank",
-        "noopener,noreferrer",
-      );
+      expect(openSpy).toHaveBeenCalledWith("", "_blank", "noopener,noreferrer");
     });
 
     expect(focusWindow.location.href).toBe(
@@ -404,11 +400,7 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(openSpy).toHaveBeenCalledWith(
-      "",
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(openSpy).toHaveBeenCalledWith("", "_blank", "noopener,noreferrer");
     expect(
       (checkoutWindow as { close: ReturnType<typeof vi.fn> }).close,
     ).toHaveBeenCalled();
@@ -448,11 +440,7 @@ describe("PricingPageContent", () => {
 
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(openSpy).toHaveBeenCalledWith(
-      "",
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(openSpy).toHaveBeenCalledWith("", "_blank", "noopener,noreferrer");
     await waitFor(() => {
       expect(checkoutWindow.location.href).toBe(
         "https://checkout.lemonsqueezy.com/buy/test-focus",
@@ -486,9 +474,7 @@ describe("PricingPageContent", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(
-      screen.getByText(
-        /leyendo could not open the payment page in a new tab/i,
-      ),
+      screen.getByText(/leyendo could not open the payment page in a new tab/i),
     ).toBeInTheDocument();
   });
 

@@ -299,11 +299,7 @@ export function PricingPageContent({
       return null;
     }
 
-    const checkoutWindow = window.open(
-      "",
-      "_blank",
-      "noopener,noreferrer",
-    );
+    const checkoutWindow = window.open("", "_blank", "noopener,noreferrer");
 
     if (checkoutWindow) {
       checkoutWindow.opener = null;
