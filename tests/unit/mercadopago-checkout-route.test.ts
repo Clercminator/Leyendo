@@ -11,6 +11,7 @@ const originalMaxTestingId = process.env.MERCADOPAGO_MAX_ID_TESTING;
 const originalAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
 const originalAccessTokenTesting =
   process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT;
+const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalVercelEnv = process.env.VERCEL_ENV;
 
 vi.stubGlobal("fetch", fetchMock);
@@ -24,6 +25,7 @@ describe("MercadoPago checkout route", () => {
     process.env.MERCADOPAGO_MAX_ID_TESTING = "";
     process.env.MERCADOPAGO_ACCESS_TOKEN = "";
     process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT = "";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.VERCEL_ENV = "";
   });
 
@@ -35,6 +37,7 @@ describe("MercadoPago checkout route", () => {
     process.env.MERCADOPAGO_ACCESS_TOKEN = originalAccessToken;
     process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT =
       originalAccessTokenTesting;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = originalSupabaseUrl;
     process.env.VERCEL_ENV = originalVercelEnv;
   });
 
@@ -87,6 +90,7 @@ describe("MercadoPago checkout route", () => {
       String(fetchMock.mock.calls[0]?.[1]?.body ?? "{}"),
     ) as {
       back_url?: string;
+      notification_url?: string;
       preapproval_plan_id?: string;
       status?: string;
     };
@@ -96,6 +100,9 @@ describe("MercadoPago checkout route", () => {
     );
     expect(payload.back_url).toBe(
       "http://localhost/account?plan=focus&payment=success&provider=mercadopago",
+    );
+    expect(payload.notification_url).toBe(
+      "https://example.supabase.co/functions/v1/mercado-pago-webhook?source_news=webhooks",
     );
     expect(payload.status).toBe("pending");
   });
@@ -213,6 +220,7 @@ describe("MercadoPago checkout route", () => {
     ) as {
       back_url?: string;
       external_reference?: string;
+      notification_url?: string;
       payer_email?: string;
       preapproval_plan_id?: string;
       reason?: string;
@@ -226,6 +234,32 @@ describe("MercadoPago checkout route", () => {
     expect(payload.back_url).toBe(
       "https://leyendo.vercel.app/account?plan=max&payment=success&provider=mercadopago",
     );
+    expect(payload.notification_url).toBe(
+      "https://example.supabase.co/functions/v1/mercado-pago-webhook?source_news=webhooks",
+    );
     expect(payload.reason).toBe("Leyendo Max");
+  });
+
+  it("requires a Supabase project URL so MercadoPago preapprovals can set notification_url", async () => {
+    process.env.MERCADOPAGO_FOCUS_ID_TESTING =
+      "5870237243d3400bacd2d236caae7a20";
+    process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT =
+      "mp_test_preview_token";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "";
+
+    const response = await POST(
+      new Request("http://localhost/api/payments/mercadopago", {
+        body: JSON.stringify({ plan: "focus" }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "MercadoPago webhook delivery requires NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL so Leyendo can set a deterministic notification_url.",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

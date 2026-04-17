@@ -12,14 +12,6 @@ import {
   getGuestAuthDialogCopy,
 } from "@/components/auth/guest-auth-dialog";
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
-import {
-  buildHostedCheckoutLaunchPath,
-  isHostedPaymentProvider,
-  paidSignupPlanStorageKey,
-  pendingCheckoutPlanStorageKey,
-  pendingCheckoutProviderStorageKey,
-  pendingCheckoutSubscriptionIdStorageKey,
-} from "@/lib/hosted-checkout";
 import { useLocale } from "@/components/layout/locale-provider";
 import { focusFileUploadLimit, freeFileUploadLimit } from "@/lib/plans";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
@@ -32,6 +24,11 @@ type PaidPlanId = Exclude<PlanId, "basic">;
 type HostedPaymentProvider = Exclude<PaymentProvider, "binance">;
 
 const paymentRegionStorageKey = "leyendo_payment_region";
+const paidSignupPlanStorageKey = "leyendo_paid_signup_plan";
+const pendingCheckoutPlanStorageKey = "leyendo_pending_checkout_plan";
+const pendingCheckoutProviderStorageKey = "leyendo_pending_checkout_provider";
+const pendingCheckoutSubscriptionIdStorageKey =
+  "leyendo_pending_checkout_subscription_id";
 const latamCountryCodes = new Set([
   "AR",
   "BO",
@@ -151,6 +148,12 @@ interface PricingPageContentProps {
   initialCheckoutProvider?: string;
   initialPlanId?: string;
   initialPaymentStatus?: string;
+}
+
+function isHostedPaymentProvider(
+  value: unknown,
+): value is HostedPaymentProvider {
+  return value === "lemonsqueezy" || value === "mercadopago";
 }
 
 function isPaidPlanId(value: unknown): value is PaidPlanId {
@@ -291,12 +294,18 @@ export function PricingPageContent({
     window.localStorage.removeItem(pendingCheckoutProviderStorageKey);
   };
 
-  const openHostedCheckoutWindow = (path: string) => {
+  const openHostedCheckoutWindow = () => {
     if (typeof window === "undefined") {
       return null;
     }
 
-    return window.open(path, "_blank", "noopener,noreferrer");
+    const checkoutWindow = window.open("", "_blank", "noopener,noreferrer");
+
+    if (checkoutWindow) {
+      checkoutWindow.opener = null;
+    }
+
+    return checkoutWindow;
   };
 
   const closeAuthModal = () => {
@@ -731,26 +740,102 @@ export function PricingPageContent({
   const primaryProvider =
     paymentRegion === "latam" ? "mercadopago" : "lemonsqueezy";
 
-  function startProviderCheckout(
+  async function startProviderCheckout(
     planId: PaidPlanId,
     provider: HostedPaymentProvider,
+    checkoutWindow: Window | null = openHostedCheckoutWindow(),
   ) {
-    const launchPath = buildHostedCheckoutLaunchPath({
-      locale,
-      planId,
-      provider,
-    });
-    const checkoutWindow = openHostedCheckoutWindow(launchPath);
-
     if (!checkoutWindow) {
       setStatusMessage(copy.popupBlocked);
       return;
     }
 
+    let providerUrl: string | undefined;
+    let providerSubscriptionId: string | undefined;
+
     rememberPendingCheckoutSubscriptionId(undefined);
+
+    if (provider === "lemonsqueezy") {
+      try {
+        const response = await fetch("/api/payments/lemonsqueezy", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            locale,
+            plan: planId,
+            userEmail: user?.email,
+            userId: user?.id,
+          }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          checkoutUrl?: string;
+          error?: string;
+        } | null;
+
+        if (!response.ok || !payload?.checkoutUrl) {
+          checkoutWindow?.close();
+          setStatusMessage(payload?.error ?? copy.missingProvider);
+          return;
+        }
+
+        providerUrl = payload.checkoutUrl;
+      } catch {
+        checkoutWindow?.close();
+        setStatusMessage(copy.missingProvider);
+        return;
+      }
+    } else {
+      try {
+        const response = await fetch("/api/payments/mercadopago", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            locale,
+            plan: planId,
+            userEmail: user?.email,
+            userId: user?.id,
+          }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          checkoutUrl?: string;
+          error?: string;
+          providerSubscriptionId?: string;
+        } | null;
+
+        if (!response.ok || !payload?.checkoutUrl) {
+          checkoutWindow?.close();
+          setStatusMessage(payload?.error ?? copy.invalidMercadoPagoProvider);
+          return;
+        }
+
+        providerUrl = payload.checkoutUrl;
+        providerSubscriptionId = payload.providerSubscriptionId;
+      } catch {
+        checkoutWindow?.close();
+        setStatusMessage(copy.invalidMercadoPagoProvider);
+        return;
+      }
+    }
+
+    if (!providerUrl) {
+      checkoutWindow?.close();
+      setStatusMessage(
+        provider === "mercadopago"
+          ? copy.invalidMercadoPagoProvider
+          : copy.missingProvider,
+      );
+      return;
+    }
+
     setStatusMessage(undefined);
     window.localStorage.setItem(paidSignupPlanStorageKey, planId);
     setReadySignupPlan(planId);
+    rememberPendingCheckoutSubscriptionId(providerSubscriptionId);
+    checkoutWindow.location.href = providerUrl;
   }
 
   function handleProviderClick(
@@ -779,8 +864,14 @@ export function PricingPageContent({
       return;
     }
 
+    const checkoutWindow = openHostedCheckoutWindow();
+    if (!checkoutWindow) {
+      setStatusMessage(copy.popupBlocked);
+      return;
+    }
+
     clearPendingCheckout();
-    startProviderCheckout(planId, provider);
+    void startProviderCheckout(planId, provider, checkoutWindow);
   }
 
   async function handleAuthSubmit() {

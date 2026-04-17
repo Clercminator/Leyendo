@@ -1,10 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-import {
-  buildMercadoPagoSignatureManifest,
-  resolveMercadoPagoWebhookResourceId,
-} from "./shared.ts";
-
 const MERCADOPAGO_ACCESS_TOKEN =
   Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")?.trim() ?? "";
 const MERCADOPAGO_ACCESS_TOKEN_PRUEBA =
@@ -351,6 +346,7 @@ async function getExistingSubscriptionTier(
 
 async function verifySignature(
   req: Request,
+  body: WebhookBody,
   webhookSecret: string,
 ): Promise<boolean> {
   if (!webhookSecret) {
@@ -376,11 +372,20 @@ async function verifySignature(
     return false;
   }
 
-  const manifest = buildMercadoPagoSignatureManifest({
-    requestId: req.headers.get("x-request-id"),
-    requestUrl: req.url,
-    timestamp: ts,
-  });
+  const url = new URL(req.url);
+  const dataId =
+    pickString(url.searchParams.get("data.id"), body.data?.id)?.toLowerCase() ??
+    null;
+  const requestId = req.headers.get("x-request-id");
+  const manifestParts: string[] = [];
+
+  if (dataId) {
+    manifestParts.push(`id:${dataId};`);
+  }
+  if (requestId) {
+    manifestParts.push(`request-id:${requestId};`);
+  }
+  manifestParts.push(`ts:${ts};`);
 
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -393,7 +398,7 @@ async function verifySignature(
   const signature = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(manifest),
+    encoder.encode(manifestParts.join("")),
   );
   const hex = Array.from(new Uint8Array(signature))
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -404,6 +409,7 @@ async function verifySignature(
 
 async function resolveMercadoPagoCredentials(
   req: Request,
+  body: WebhookBody,
 ): Promise<MercadoPagoCredentials[] | null> {
   const credentialsWithSecret = mercadoPagoCredentials.filter((credentials) =>
     Boolean(credentials.webhookSecret),
@@ -415,7 +421,7 @@ async function resolveMercadoPagoCredentials(
 
   const matchingCredentials: MercadoPagoCredentials[] = [];
   for (const credentials of credentialsWithSecret) {
-    if (await verifySignature(req, credentials.webhookSecret)) {
+    if (await verifySignature(req, body, credentials.webhookSecret)) {
       matchingCredentials.push(credentials);
     }
   }
@@ -644,7 +650,7 @@ async function fetchSubscriptionPreapproval(
 ): Promise<{
   credentials: MercadoPagoCredentials;
   subscription: Record<string, unknown>;
-} | null> {
+}> {
   const result = await fetchMercadoPagoJson(
     `/preapproval/${subscriptionId}`,
     credentialsCandidates,
@@ -652,14 +658,15 @@ async function fetchSubscriptionPreapproval(
   if (result.ok) {
     return { credentials: result.credentials, subscription: result.data };
   }
-  if (result.status !== 404) {
-    console.error(
-      "Failed to fetch MercadoPago subscription",
-      result.status,
-      result.body,
-    );
-  }
-  return null;
+
+  console.error(
+    "Failed to fetch MercadoPago subscription",
+    result.status,
+    result.body,
+  );
+  throw new Error(
+    `Failed to fetch MercadoPago subscription ${subscriptionId} (${result.status})`,
+  );
 }
 
 async function fetchAuthorizedPayment(
@@ -668,7 +675,7 @@ async function fetchAuthorizedPayment(
 ): Promise<{
   authorizedPayment: Record<string, unknown>;
   credentials: MercadoPagoCredentials;
-} | null> {
+}> {
   const result = await fetchMercadoPagoJson(
     `/authorized_payments/${authorizedPaymentId}`,
     credentialsCandidates,
@@ -679,14 +686,15 @@ async function fetchAuthorizedPayment(
       credentials: result.credentials,
     };
   }
-  if (result.status !== 404) {
-    console.error(
-      "Failed to fetch MercadoPago authorized payment",
-      result.status,
-      result.body,
-    );
-  }
-  return null;
+
+  console.error(
+    "Failed to fetch MercadoPago authorized payment",
+    result.status,
+    result.body,
+  );
+  throw new Error(
+    `Failed to fetch MercadoPago authorized payment ${authorizedPaymentId} (${result.status})`,
+  );
 }
 
 async function syncMercadoPagoSubscription(params: {
@@ -790,9 +798,6 @@ async function handleSubscriptionPreapprovalNotification(
     subscriptionId,
     credentialsCandidates,
   );
-  if (!subscriptionResult) {
-    return okResponse();
-  }
 
   const subscription = subscriptionResult.subscription;
 
@@ -819,9 +824,6 @@ async function handleSubscriptionAuthorizedPaymentNotification(
     authorizedPaymentId,
     credentialsCandidates,
   );
-  if (!authorizedPaymentResult) {
-    return okResponse();
-  }
 
   const { authorizedPayment, credentials } = authorizedPaymentResult;
 
@@ -990,7 +992,10 @@ async function handleWebhook(req: Request): Promise<Response> {
       return await handleReturnConfirmation(req, body);
     }
 
-    const credentialsCandidates = await resolveMercadoPagoCredentials(req);
+    const credentialsCandidates = await resolveMercadoPagoCredentials(
+      req,
+      body,
+    );
 
     if (!credentialsCandidates?.length) {
       return jsonResponse({ error: "Invalid signature" }, 401);
@@ -1003,10 +1008,11 @@ async function handleWebhook(req: Request): Promise<Response> {
       url.searchParams.get("topic"),
       url.searchParams.get("type"),
     );
-    const resourceId = resolveMercadoPagoWebhookResourceId({
-      bodyDataId: body.data?.id,
-      requestUrl: req.url,
-    });
+    const resourceId = pickString(
+      body.data?.id,
+      url.searchParams.get("data.id"),
+      url.searchParams.get("id"),
+    );
     const action = asString(body.action);
 
     if (!topic || !resourceId) {
@@ -1027,6 +1033,12 @@ async function handleWebhook(req: Request): Promise<Response> {
         credentialsCandidates,
       );
     }
+
+    console.warn("Ignoring unsupported MercadoPago webhook topic", {
+      action,
+      resourceId,
+      topic,
+    });
 
     return okResponse();
   } catch (error) {

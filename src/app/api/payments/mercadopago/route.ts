@@ -30,6 +30,24 @@ interface MercadoPagoCheckoutPayload {
   sandbox_init_point?: string;
 }
 
+function buildMercadoPagoNotificationUrl() {
+  const supabaseProjectUrl = pickFirstNonEmpty(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_URL,
+  );
+
+  if (!supabaseProjectUrl) {
+    return undefined;
+  }
+
+  const notificationUrl = new URL(
+    "/functions/v1/mercado-pago-webhook",
+    supabaseProjectUrl,
+  );
+  notificationUrl.searchParams.set("source_news", "webhooks");
+  return notificationUrl.toString();
+}
+
 function pickFirstNonEmpty(...values: Array<string | undefined>) {
   for (const value of values) {
     const normalized = value?.trim();
@@ -192,6 +210,7 @@ export async function POST(request: NextRequest) {
   const userId = typeof body.userId === "string" ? body.userId.trim() : "";
   const requestOrigin = new URL(request.url).origin;
   const mercadoPagoAccessToken = getMercadoPagoAccessToken();
+  const notificationUrl = buildMercadoPagoNotificationUrl();
   const hostedCheckoutOptions = {
     backUrl: buildAccountReturnUrl({
       origin: requestOrigin,
@@ -207,6 +226,16 @@ export async function POST(request: NextRequest) {
   const { explicitUrl, planId, rawPlanId } = getMercadoPagoEnvAliases(planTier);
 
   if (planId && mercadoPagoAccessToken) {
+    if (!notificationUrl) {
+      return NextResponse.json(
+        {
+          error:
+            "MercadoPago webhook delivery requires NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL so Leyendo can set a deterministic notification_url.",
+        },
+        { status: 500 },
+      );
+    }
+
     const response = await fetch(`${MERCADOPAGO_API}/preapproval`, {
       method: "POST",
       headers: {
@@ -218,6 +247,7 @@ export async function POST(request: NextRequest) {
         back_url: hostedCheckoutOptions.backUrl,
         ...(userId ? { external_reference: userId } : {}),
         ...(userEmail ? { payer_email: userEmail } : {}),
+        notification_url: notificationUrl,
         preapproval_plan_id: planId,
         reason: hostedCheckoutOptions.reason,
         status: "pending",

@@ -212,7 +212,11 @@ describe("PricingPageContent", () => {
   });
 
   it("resumes MercadoPago checkout automatically after auth returns with stored intent", async () => {
-    const openSpy = vi.spyOn(window, "open").mockReturnValue({} as Window);
+    const focusWindow = {
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(focusWindow);
 
     window.localStorage.setItem("leyendo_pending_checkout_plan", "focus");
     window.localStorage.setItem(
@@ -235,17 +239,29 @@ describe("PricingPageContent", () => {
       },
     });
 
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          checkoutUrl:
+            "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
+          providerSubscriptionId: "preapproval_focus_1",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
     render(<PricingPageContent />);
 
     await waitFor(() => {
-      expect(openSpy).toHaveBeenCalledWith(
-        "/checkout/launch?plan=focus&provider=mercadopago",
-        "_blank",
-        "noopener,noreferrer",
-      );
+      expect(openSpy).toHaveBeenCalledWith("", "_blank", "noopener,noreferrer");
     });
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(focusWindow.location.href).toBe(
+      "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
+    );
     expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/pricing");
 
     openSpy.mockRestore();
@@ -254,10 +270,18 @@ describe("PricingPageContent", () => {
 
   it("uses the real MercadoPago subscription plans for signed-in LATAM checkout", async () => {
     const user = userEvent.setup();
+    const focusWindow = {
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
+    const maxWindow = {
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
     const openSpy = vi
       .spyOn(window, "open")
-      .mockReturnValueOnce({} as Window)
-      .mockReturnValueOnce({} as Window);
+      .mockReturnValueOnce(focusWindow)
+      .mockReturnValueOnce(maxWindow);
 
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
@@ -272,6 +296,34 @@ describe("PricingPageContent", () => {
         id: "user-1",
       },
     });
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            checkoutUrl:
+              "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
+            providerSubscriptionId: "preapproval_focus_1",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            checkoutUrl:
+              "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_max_1",
+            providerSubscriptionId: "preapproval_max_1",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
 
     render(<PricingPageContent />);
 
@@ -282,27 +334,37 @@ describe("PricingPageContent", () => {
 
     expect(openSpy).toHaveBeenNthCalledWith(
       1,
-      "/checkout/launch?plan=focus&provider=mercadopago",
+      "",
       "_blank",
       "noopener,noreferrer",
+    );
+    expect(focusWindow.location.href).toBe(
+      "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
     );
 
     await user.click(screen.getByRole("button", { name: /get max/i }));
 
     expect(openSpy).toHaveBeenNthCalledWith(
       2,
-      "/checkout/launch?plan=max&provider=mercadopago",
+      "",
       "_blank",
       "noopener,noreferrer",
     );
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(maxWindow.location.href).toBe(
+      "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_max_1",
+    );
 
     openSpy.mockRestore();
   });
 
-  it("opens the Leyendo checkout launcher instead of a blank placeholder tab", async () => {
+  it("blocks invalid MercadoPago plan ids instead of opening a broken checkout URL", async () => {
     const user = userEvent.setup();
-    const openSpy = vi.spyOn(window, "open").mockReturnValue({} as Window);
+    const checkoutWindow = {
+      close: vi.fn(),
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(checkoutWindow);
 
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
@@ -317,6 +379,19 @@ describe("PricingPageContent", () => {
         id: "user-1",
       },
     });
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error:
+            "MercadoPago is not configured correctly yet. Use the real preapproval_plan_id or the full init_point URL, not a short dashboard number.",
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
 
     render(<PricingPageContent />);
 
@@ -325,19 +400,27 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(openSpy).toHaveBeenCalledWith(
-      "/checkout/launch?plan=focus&provider=mercadopago",
-      "_blank",
-      "noopener,noreferrer",
-    );
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(openSpy).toHaveBeenCalledWith("", "_blank", "noopener,noreferrer");
+    expect(
+      (checkoutWindow as { close: ReturnType<typeof vi.fn> }).close,
+    ).toHaveBeenCalled();
+    expect(
+      screen.getByText(/mercadopago is not configured correctly yet/i),
+    ).toBeInTheDocument();
+    expect(
+      window.localStorage.getItem("leyendo_pending_checkout_subscription_id"),
+    ).toBeNull();
 
     openSpy.mockRestore();
   });
 
   it("opens LemonSqueezy checkout in a new tab for signed-in global users", async () => {
     const user = userEvent.setup();
-    const openSpy = vi.spyOn(window, "open").mockReturnValue({} as Window);
+    const checkoutWindow = {
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(checkoutWindow);
 
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
@@ -357,12 +440,12 @@ describe("PricingPageContent", () => {
 
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(openSpy).toHaveBeenCalledWith(
-      "/checkout/launch?plan=focus&provider=lemonsqueezy",
-      "_blank",
-      "noopener,noreferrer",
-    );
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(openSpy).toHaveBeenCalledWith("", "_blank", "noopener,noreferrer");
+    await waitFor(() => {
+      expect(checkoutWindow.location.href).toBe(
+        "https://checkout.lemonsqueezy.com/buy/test-focus",
+      );
+    });
 
     openSpy.mockRestore();
   });
