@@ -68,8 +68,16 @@ const corsHeaders = {
 interface WebhookBody {
   action?: string;
   data?: { id?: string | number };
+  paymentId?: string | number;
+  plan?: string;
+  subscriptionId?: string | number;
   topic?: string;
   type?: string;
+}
+
+interface AuthenticatedReturnUser {
+  email: string | null;
+  id: string;
 }
 
 interface MercadoPagoCredentials {
@@ -201,6 +209,11 @@ function inferTierFromPlanId(planId: string | null): PaidTierId | null {
   }
 
   return null;
+}
+
+function normalizePaidTierId(value: unknown): PaidTierId | null {
+  const normalized = asString(value)?.toLowerCase();
+  return normalized === "focus" || normalized === "max" ? normalized : null;
 }
 
 function normalizeMercadoPagoSubscriptionStatus(params: {
@@ -410,6 +423,135 @@ async function resolveMercadoPagoCredentials(
   }
 
   return matchingCredentials.length ? matchingCredentials : null;
+}
+
+async function resolveAuthenticatedReturnUser(
+  req: Request,
+): Promise<AuthenticatedReturnUser | null> {
+  const authorizationHeader = req.headers.get("authorization");
+  if (!authorizationHeader?.toLowerCase().startsWith("bearer ")) {
+    return null;
+  }
+
+  const accessToken = authorizationHeader.slice(7).trim();
+  if (!accessToken) {
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getUser(accessToken);
+  if (error || !data.user) {
+    console.error(
+      "Failed to resolve signed-in MercadoPago return user:",
+      error,
+    );
+    return null;
+  }
+
+  return {
+    email: data.user.email ?? null,
+    id: data.user.id,
+  };
+}
+
+function getPlanIdForCredentials(
+  credentials: MercadoPagoCredentials,
+  plan: PaidTierId,
+) {
+  return plan === "max" ? credentials.maxPlanId : credentials.focusPlanId;
+}
+
+async function searchLatestSubscriptionPreapproval(params: {
+  credentialsCandidates: MercadoPagoCredentials[];
+  plan: PaidTierId;
+  userEmail: string;
+}): Promise<{
+  credentials: MercadoPagoCredentials;
+  subscription: Record<string, unknown>;
+} | null> {
+  for (const credentials of params.credentialsCandidates) {
+    const searchParams = new URLSearchParams({
+      criteria: "desc",
+      limit: "10",
+      offset: "0",
+      payer_email: params.userEmail,
+      sort: "date_created",
+    });
+    const planId = getPlanIdForCredentials(credentials, params.plan);
+
+    if (planId) {
+      searchParams.set("preapproval_plan_id", planId);
+    }
+
+    const response = await fetch(
+      `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${credentials.accessToken}`,
+          Accept: "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      console.error(
+        "Failed to search MercadoPago subscriptions",
+        credentials.environment,
+        response.status,
+        await response.text(),
+      );
+      continue;
+    }
+
+    const payload = (await response.json()) as {
+      results?: Array<Record<string, unknown>>;
+    };
+    const results = Array.isArray(payload.results) ? payload.results : [];
+    const matchingSubscription = results.find((subscription) => {
+      const subscriptionEmail = pickString(subscription.payer_email);
+      if (
+        subscriptionEmail &&
+        subscriptionEmail.toLowerCase() !== params.userEmail.toLowerCase()
+      ) {
+        return false;
+      }
+
+      const subscriptionPlanId = pickString(
+        subscription.preapproval_plan_id,
+        subscription.preapproval_plan &&
+          typeof subscription.preapproval_plan === "object"
+          ? (subscription.preapproval_plan as Record<string, unknown>).id
+          : null,
+      );
+
+      return !planId || subscriptionPlanId === planId;
+    });
+
+    if (matchingSubscription) {
+      return { credentials, subscription: matchingSubscription };
+    }
+  }
+
+  return null;
+}
+
+async function getLinkedMercadoPagoSubscriptionForUser(params: {
+  plan?: PaidTierId | null;
+  userId: string;
+}) {
+  let query = supabase
+    .from("billing_subscriptions")
+    .select("provider_subscription_id,tier,status,updated_at")
+    .eq("provider", "mercadopago")
+    .eq("user_id", params.userId)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+
+  if (params.plan) {
+    query = query.eq("tier", params.plan);
+  }
+
+  const { data } = await query.maybeSingle();
+  return data ?? null;
 }
 
 async function fetchMercadoPagoJson(
@@ -739,6 +881,58 @@ async function handleSubscriptionAuthorizedPaymentNotification(
   return okResponse();
 }
 
+async function handleReturnConfirmation(
+  req: Request,
+  body: WebhookBody,
+): Promise<Response> {
+  const authenticatedUser = await resolveAuthenticatedReturnUser(req);
+  const requestedPlan = normalizePaidTierId(body.plan);
+  const paymentId = pickString(body.paymentId, body.data?.id);
+  const subscriptionId = pickString(body.subscriptionId);
+
+  if (paymentId) {
+    await handleSubscriptionAuthorizedPaymentNotification(
+      paymentId,
+      "confirm_return",
+      mercadoPagoCredentials,
+    );
+  }
+
+  if (subscriptionId) {
+    await handleSubscriptionPreapprovalNotification(
+      subscriptionId,
+      mercadoPagoCredentials,
+    );
+  }
+
+  if (authenticatedUser?.email && requestedPlan) {
+    const latestSubscription = await searchLatestSubscriptionPreapproval({
+      credentialsCandidates: mercadoPagoCredentials,
+      plan: requestedPlan,
+      userEmail: authenticatedUser.email,
+    });
+
+    if (latestSubscription) {
+      await syncMercadoPagoSubscription({
+        subscription: latestSubscription.subscription,
+        userId: authenticatedUser.id,
+      });
+    }
+  }
+
+  const linkedSubscription = authenticatedUser
+    ? await getLinkedMercadoPagoSubscriptionForUser({
+        plan: requestedPlan,
+        userId: authenticatedUser.id,
+      })
+    : null;
+
+  return jsonResponse({
+    confirmed: Boolean(linkedSubscription),
+    tier: linkedSubscription?.tier ?? requestedPlan ?? null,
+  });
+}
+
 async function handleWebhook(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -756,6 +950,10 @@ async function handleWebhook(req: Request): Promise<Response> {
   try {
     const rawBody = await req.text();
     const body = JSON.parse(rawBody) as WebhookBody;
+
+    if (body.action === "confirm_return") {
+      return await handleReturnConfirmation(req, body);
+    }
 
     const credentialsCandidates = await resolveMercadoPagoCredentials(
       req,

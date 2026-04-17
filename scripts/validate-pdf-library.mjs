@@ -28,17 +28,9 @@ const fileFilters = process.argv
 const catalogWordsPerMinute = 220;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-const pdfDriveSuffixPattern = /\s*\(\s*pdfdrive\s*\)\s*$/iu;
-
-function sanitizeCatalogTitle(value) {
-  const trimmedValue = value.trim();
-  const sanitizedValue = trimmedValue.replace(pdfDriveSuffixPattern, "").trim();
-
-  return sanitizedValue || trimmedValue;
-}
 
 function slugifyCatalogTitle(value) {
-  const normalized = sanitizeCatalogTitle(value)
+  const normalized = value
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
@@ -69,7 +61,7 @@ function normalizeCatalogPayloadForPublish(payload, input) {
   return {
     ...payload,
     id: input.documentId,
-    title: sanitizeCatalogTitle(input.title?.trim() || payload.title),
+    title: input.title?.trim() || payload.title,
     updatedAt: input.updatedAt ?? payload.updatedAt,
   };
 }
@@ -296,9 +288,8 @@ async function collectDocumentRecord(page) {
 }
 
 async function publishCatalogDocument(supabase, input) {
-  const title = sanitizeCatalogTitle(
-    input.record.title?.trim() || input.fileName.replace(/\.[^.]+$/u, ""),
-  );
+  const title =
+    input.record.title?.trim() || input.fileName.replace(/\.[^.]+$/u, "");
   const slug = slugifyCatalogTitle(title);
   const payloadPath = toCatalogPayloadPath(slug);
   const now = nowIso();

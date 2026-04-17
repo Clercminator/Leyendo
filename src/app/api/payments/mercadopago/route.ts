@@ -5,15 +5,16 @@ import {
   buildMercadoPagoSubscriptionUrl,
   normalizePaidPlanTier,
   pickPaymentEnvValue,
-  withMercadoPagoCheckoutOptions,
+  withMercadoPagoCheckoutParams,
 } from "@/lib/payment-config";
 
 const MERCADOPAGO_PLAN_ID_PATTERN = /^[a-f0-9]{32}$/i;
 
 interface CheckoutRequestBody {
+  locale?: string;
+  plan?: string;
   userEmail?: string;
   userId?: string;
-  plan?: string;
 }
 
 function pickFirstNonEmpty(...values: Array<string | undefined>) {
@@ -35,18 +36,6 @@ function normalizeMercadoPagoPlanId(value: string | undefined) {
   }
 
   return MERCADOPAGO_PLAN_ID_PATTERN.test(planId) ? planId : undefined;
-}
-
-function getRequestOrigin(request: NextRequest | Request) {
-  if (
-    "nextUrl" in request &&
-    request.nextUrl &&
-    typeof request.nextUrl.origin === "string"
-  ) {
-    return request.nextUrl.origin;
-  }
-
-  return new URL(request.url).origin;
 }
 
 function getMercadoPagoEnvAliases(planTier: "focus" | "max") {
@@ -152,28 +141,37 @@ export async function POST(request: NextRequest) {
   const userEmail =
     typeof body.userEmail === "string" ? body.userEmail.trim() : "";
   const userId = typeof body.userId === "string" ? body.userId.trim() : "";
-  const backUrl = buildAccountReturnUrl({
-    origin: getRequestOrigin(request),
-    planTier,
-    paymentStatus: "success",
-  });
-  const checkoutOptions = {
-    backUrl,
-    ...(userId ? { externalReference: userId } : {}),
-    ...(userEmail ? { payerEmail: userEmail } : {}),
+  const requestOrigin = new URL(request.url).origin;
+  const hostedCheckoutOptions = {
+    backUrl: buildAccountReturnUrl({
+      origin: requestOrigin,
+      planTier,
+      paymentStatus: "success",
+      provider: "mercadopago",
+    }),
+    externalReference: userId,
+    payerEmail: userEmail,
+    reason: `Leyendo ${planTier === "max" ? "Max" : "Focus"}`,
   };
 
   const { explicitUrl, planId, rawPlanId } = getMercadoPagoEnvAliases(planTier);
 
   if (explicitUrl) {
     return NextResponse.json({
-      checkoutUrl: withMercadoPagoCheckoutOptions(explicitUrl, checkoutOptions),
+      checkoutUrl: withMercadoPagoCheckoutParams(
+        explicitUrl,
+        hostedCheckoutOptions,
+      ),
     });
   }
 
   if (planId) {
     return NextResponse.json({
-      checkoutUrl: buildMercadoPagoSubscriptionUrl(planId, checkoutOptions),
+      checkoutUrl: buildMercadoPagoSubscriptionUrl(
+        planId,
+        undefined,
+        hostedCheckoutOptions,
+      ),
     });
   }
 

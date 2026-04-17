@@ -29,6 +29,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     resolvedSearchParams.payment === "success" && isPaidPlan(planTier)
       ? planTier
       : undefined;
+  const paymentProvider =
+    resolvedSearchParams.provider === "lemonsqueezy" ||
+    resolvedSearchParams.provider === "mercadopago"
+      ? resolvedSearchParams.provider
+      : undefined;
   const requestedCheckoutPlan = normalizePlanTier(
     resolvedSearchParams.checkout ?? resolvedSearchParams.plan,
   );
@@ -37,11 +42,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     !isPaidPlan(requestedCheckoutPlan)
       ? undefined
       : requestedCheckoutPlan;
-  const checkoutProvider =
-    resolvedSearchParams.provider === "lemonsqueezy" ||
-    resolvedSearchParams.provider === "mercadopago"
-      ? resolvedSearchParams.provider
-      : undefined;
+  const checkoutProvider = paymentProvider;
   const accountTitle = checkoutPlan
     ? {
         en: "Create your Basic Reader account first.",
@@ -81,6 +82,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     <AppShell centerIntro title={accountTitle} description={accountDescription}>
       <AccountPanel
         paidSignupPlan={paidSignupPlan}
+        paidSignupProvider={
+          resolvedSearchParams.payment === "success"
+            ? paymentProvider
+            : undefined
+        }
         checkoutPlan={checkoutPlan}
         checkoutProvider={checkoutProvider}
       />

@@ -1,11 +1,13 @@
 import { isPaidPlan, normalizePlanTier, type PaidPlanTier } from "@/lib/plans";
 
 export type PaymentLocale = "en" | "es" | "pt";
+export type HostedPaymentProvider = "lemonsqueezy" | "mercadopago";
 
-interface MercadoPagoCheckoutUrlOptions {
+interface MercadoPagoHostedCheckoutOptions {
   backUrl?: string;
   externalReference?: string;
   payerEmail?: string;
+  reason?: string;
 }
 
 const DEFAULT_MERCADOPAGO_CHECKOUT_BASE_URL =
@@ -46,36 +48,6 @@ function normalizeMercadoPagoPlanId(value: string | undefined) {
   return MERCADOPAGO_PLAN_ID_PATTERN.test(planId) ? planId : undefined;
 }
 
-function normalizeMercadoPagoCheckoutOption(value: string | undefined) {
-  const normalized = value?.trim();
-  return normalized ? normalized : undefined;
-}
-
-function applyMercadoPagoCheckoutOptions(
-  checkoutUrl: URL,
-  options?: MercadoPagoCheckoutUrlOptions,
-) {
-  const backUrl = normalizeMercadoPagoCheckoutOption(options?.backUrl);
-  const externalReference = normalizeMercadoPagoCheckoutOption(
-    options?.externalReference,
-  );
-  const payerEmail = normalizeMercadoPagoCheckoutOption(options?.payerEmail);
-
-  if (backUrl) {
-    checkoutUrl.searchParams.set("back_url", backUrl);
-  }
-
-  if (externalReference) {
-    checkoutUrl.searchParams.set("external_reference", externalReference);
-  }
-
-  if (payerEmail) {
-    checkoutUrl.searchParams.set("payer_email", payerEmail);
-  }
-
-  return checkoutUrl;
-}
-
 export function normalizePaymentLocale(value: unknown): PaymentLocale {
   return value === "es" || value === "pt" ? value : "en";
 }
@@ -87,29 +59,43 @@ export function normalizePaidPlanTier(
   return isPaidPlan(normalizedPlan) ? normalizedPlan : undefined;
 }
 
+export function withMercadoPagoCheckoutParams(
+  checkoutUrl: string,
+  options?: MercadoPagoHostedCheckoutOptions,
+) {
+  const url = new URL(checkoutUrl);
+
+  if (options?.backUrl?.trim()) {
+    url.searchParams.set("back_url", options.backUrl.trim());
+  }
+
+  if (options?.externalReference?.trim()) {
+    url.searchParams.set(
+      "external_reference",
+      options.externalReference.trim(),
+    );
+  }
+
+  if (options?.payerEmail?.trim()) {
+    url.searchParams.set("payer_email", options.payerEmail.trim());
+  }
+
+  if (options?.reason?.trim()) {
+    url.searchParams.set("reason", options.reason.trim());
+  }
+
+  return url.toString();
+}
+
 export function buildMercadoPagoSubscriptionUrl(
   planId: string,
-  options?: MercadoPagoCheckoutUrlOptions,
   baseUrl = process.env.NEXT_PUBLIC_MERCADOPAGO_CHECKOUT_BASE_URL?.trim() ||
     DEFAULT_MERCADOPAGO_CHECKOUT_BASE_URL,
+  options?: MercadoPagoHostedCheckoutOptions,
 ) {
   const checkoutUrl = new URL(baseUrl);
   checkoutUrl.searchParams.set("preapproval_plan_id", planId);
-  return applyMercadoPagoCheckoutOptions(checkoutUrl, options).toString();
-}
-
-export function withMercadoPagoCheckoutOptions(
-  checkoutUrl: string,
-  options?: MercadoPagoCheckoutUrlOptions,
-) {
-  try {
-    return applyMercadoPagoCheckoutOptions(
-      new URL(checkoutUrl),
-      options,
-    ).toString();
-  } catch {
-    return checkoutUrl;
-  }
+  return withMercadoPagoCheckoutParams(checkoutUrl.toString(), options);
 }
 
 export function getMercadoPagoCheckoutUrl(planTier: PaidPlanTier) {
@@ -194,10 +180,14 @@ export function buildAccountReturnUrl(args: {
   origin: string;
   planTier: PaidPlanTier;
   paymentStatus?: "success" | "failed" | "pending";
+  provider?: HostedPaymentProvider;
 }) {
   const returnUrl = new URL("/account", args.origin);
   returnUrl.searchParams.set("plan", args.planTier);
   returnUrl.searchParams.set("payment", args.paymentStatus ?? "success");
+  if (args.provider) {
+    returnUrl.searchParams.set("provider", args.provider);
+  }
   return returnUrl.toString();
 }
 
@@ -206,9 +196,13 @@ export function buildPricingReturnUrl(args: {
   origin: string;
   planTier: PaidPlanTier;
   paymentStatus?: "success" | "failed" | "pending";
+  provider?: HostedPaymentProvider;
 }) {
   const returnUrl = new URL(getPricingPathForLocale(args.locale), args.origin);
   returnUrl.searchParams.set("plan", args.planTier);
   returnUrl.searchParams.set("payment", args.paymentStatus ?? "success");
+  if (args.provider) {
+    returnUrl.searchParams.set("provider", args.provider);
+  }
   return returnUrl.toString();
 }

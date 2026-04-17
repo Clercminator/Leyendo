@@ -83,80 +83,37 @@ describe("CatalogPageContent", () => {
   });
 
   it("renders catalog books for an active Max reader", async () => {
-    getSupabaseBrowserClient.mockReturnValue({});
-    listCatalogBooks.mockResolvedValue([
-      {
-        author: "David Clerc",
-        createdAt: "2026-04-09T10:00:00.000Z",
-        estimatedReadingMinutes: 42,
-        excerpt: "A curated test title.",
-        id: "book-1",
-        payloadPath: "catalog/book-1.json",
-        slug: "book-1",
-        sourceKind: "pdf",
-        title: "Test Catalog Book",
-        totalChunks: 10,
-        totalSections: 4,
-        updatedAt: "2026-04-09T10:00:00.000Z",
-      },
-    ]);
-    useSupabaseAuth.mockReturnValue({
-      isConfigured: true,
-      profile: {
-        planTier: "max",
-        subscriptionStatus: "active",
-      },
-      user: {
-        id: "user-1",
-      },
-    });
-
-    render(<CatalogPageContent />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/test catalog book/i)).toBeInTheDocument();
-    });
-
-    expect(screen.getByText(/42 min read/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /open in reader/i }),
-    ).toHaveAttribute("href", "/reader?document=catalog%3Abook-1");
-  });
-
-  it("sanitizes noisy titles and lets Max readers filter by topic and search", async () => {
     const user = userEvent.setup();
 
     getSupabaseBrowserClient.mockReturnValue({});
     listCatalogBooks.mockResolvedValue([
       {
-        author: "David Clerc",
+        author: "Daniel Kahneman",
         createdAt: "2026-04-09T10:00:00.000Z",
-        description: "Leadership strategy for managers and founders.",
-        estimatedReadingMinutes: 120,
-        excerpt: "Leadership strategy for managers and founders.",
+        estimatedReadingMinutes: 864,
+        excerpt: "A curated test title about decision making.",
         id: "book-1",
         payloadPath: "catalog/book-1.json",
         slug: "book-1",
         sourceKind: "pdf",
-        title: "Leadership Manual ( PDFDrive )",
+        title: "Thinking, Fast and Slow ( PDFDrive )",
         totalChunks: 10,
         totalSections: 4,
         updatedAt: "2026-04-09T10:00:00.000Z",
       },
       {
-        author: "Daniel Kahneman",
-        createdAt: "2026-04-09T10:00:00.000Z",
-        description: "Psychology, bias, and decision making.",
-        estimatedReadingMinutes: 620,
-        excerpt: "Psychology, bias, and decision making.",
+        author: "Peter Drucker",
+        createdAt: "2026-04-08T10:00:00.000Z",
+        estimatedReadingMinutes: 42,
+        excerpt: "A practical leadership classic.",
         id: "book-2",
         payloadPath: "catalog/book-2.json",
         slug: "book-2",
         sourceKind: "pdf",
-        title: "Thinking Fast and Slow",
-        totalChunks: 14,
-        totalSections: 7,
-        updatedAt: "2026-04-09T10:00:00.000Z",
+        title: "Five Important Questions",
+        totalChunks: 8,
+        totalSections: 3,
+        updatedAt: "2026-04-08T10:00:00.000Z",
       },
     ]);
     useSupabaseAuth.mockReturnValue({
@@ -173,20 +130,26 @@ describe("CatalogPageContent", () => {
     render(<CatalogPageContent />);
 
     await waitFor(() => {
-      expect(screen.getByText("Leadership Manual")).toBeInTheDocument();
+      expect(
+        screen.getByText(/^Thinking, Fast and Slow$/i),
+      ).toBeInTheDocument();
     });
 
+    expect(screen.queryByText(/pdfdrive/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/more than 6 hours/i)).toBeInTheDocument();
     expect(
-      screen.queryByText(/leadership manual \( pdfdrive \)/i),
+      screen.getAllByRole("link", { name: /open in reader/i })[0],
+    ).toHaveAttribute("href", "/reader?document=catalog%3Abook-1");
+
+    await user.selectOptions(screen.getByLabelText(/category/i), "business");
+
+    expect(screen.getByText(/five important questions/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/^Thinking, Fast and Slow$/i),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /mindset/i }));
+    await user.selectOptions(screen.getByLabelText(/reading time/i), "quick");
 
-    expect(screen.getByText(/thinking fast and slow/i)).toBeInTheDocument();
-    expect(screen.queryByText("Leadership Manual")).not.toBeInTheDocument();
-
-    await user.type(screen.getByLabelText(/search the catalog/i), "kahneman");
-
-    expect(screen.getByText(/thinking fast and slow/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 book visible/i)).toBeInTheDocument();
   });
 });

@@ -1,168 +1,206 @@
 const catalogDocumentIdPrefix = "catalog:";
 const catalogOwnerIdPrefix = "catalog:";
+const catalogTitleSourceSuffixPattern = /\s*[\[(]\s*pdfdrive\s*[\])]\s*$/i;
 
-export type CatalogCategoryId =
+type CatalogSearchableBook = {
+  author?: string;
+  description?: string;
+  excerpt: string;
+  language?: string;
+  sourceKind?: string;
+  title: string;
+};
+
+export type CatalogCategoryKey =
   | "business"
   | "communication"
-  | "mindset"
-  | "money"
-  | "society"
+  | "finance"
+  | "history"
+  | "philosophy"
+  | "productivity"
+  | "psychology"
   | "technology"
   | "general";
 
-export type CatalogDurationFilter = "all" | "short" | "medium" | "long";
+export type CatalogReadingTimeBucket =
+  | "self-paced"
+  | "quick"
+  | "standard"
+  | "deep"
+  | "marathon";
 
-interface CatalogCategoryDefinition {
-  id: CatalogCategoryId;
+const catalogCategoryMatchers: Array<{
+  category: CatalogCategoryKey;
   keywords: string[];
-  labels: {
-    en: string;
-    es: string;
-    pt: string;
-  };
-}
-
-const pdfDriveSuffixPattern = /\s*\(\s*pdfdrive\s*\)\s*$/iu;
-
-const catalogCategoryDefinitions: CatalogCategoryDefinition[] = [
+}> = [
   {
-    id: "business",
+    category: "business",
     keywords: [
+      "business",
+      "company",
+      "drucker",
+      "execution",
       "leader",
       "leadership",
       "management",
-      "manager",
-      "strategy",
-      "business",
       "marketing",
-      "startup",
-      "company",
-      "execution",
       "organization",
-      "productivity",
+      "strategy",
     ],
-    labels: {
-      en: "Business",
-      es: "Negocios",
-      pt: "Negocios",
-    },
   },
   {
-    id: "communication",
+    category: "psychology",
     keywords: [
-      "write",
-      "writing",
-      "writer",
-      "story",
-      "speaking",
-      "conversation",
-      "negotiation",
-      "language",
-      "communication",
-      "rhetoric",
-    ],
-    labels: {
-      en: "Communication",
-      es: "Comunicacion",
-      pt: "Comunicacao",
-    },
-  },
-  {
-    id: "mindset",
-    keywords: [
-      "mind",
-      "thinking",
-      "psychology",
-      "habit",
       "behavior",
-      "brain",
-      "decision",
-      "attention",
-      "focus",
-      "motivation",
-      "mindset",
+      "behaviour",
       "cognitive",
+      "decision",
+      "fast and slow",
+      "habit",
+      "kahneman",
+      "mind",
+      "psychology",
+      "thinking",
     ],
-    labels: {
-      en: "Mindset",
-      es: "Mentalidad",
-      pt: "Mentalidade",
-    },
   },
   {
-    id: "money",
+    category: "productivity",
     keywords: [
-      "money",
-      "finance",
-      "financial",
-      "invest",
-      "investing",
-      "economics",
-      "market",
-      "wealth",
-      "capital",
-      "portfolio",
-      "trading",
+      "attention",
+      "deep work",
+      "focus",
+      "learning",
+      "memory",
+      "practice",
+      "productivity",
+      "research",
+      "study",
+      "workflow",
     ],
-    labels: {
-      en: "Money",
-      es: "Dinero",
-      pt: "Dinheiro",
-    },
   },
   {
-    id: "society",
+    category: "technology",
     keywords: [
-      "history",
-      "politics",
-      "society",
-      "culture",
-      "civilization",
-      "war",
-      "government",
-      "law",
-      "education",
-      "public",
-    ],
-    labels: {
-      en: "Society",
-      es: "Sociedad",
-      pt: "Sociedade",
-    },
-  },
-  {
-    id: "technology",
-    keywords: [
-      "technology",
-      "software",
-      "computer",
-      "digital",
-      "internet",
       "ai",
-      "artificial intelligence",
-      "programming",
-      "systems",
-      "engineering",
+      "computer",
       "data",
+      "engineering",
+      "programming",
+      "software",
+      "system",
+      "technology",
     ],
-    labels: {
-      en: "Technology",
-      es: "Tecnologia",
-      pt: "Tecnologia",
-    },
   },
   {
-    id: "general",
-    keywords: [],
-    labels: {
-      en: "General",
-      es: "General",
-      pt: "Geral",
-    },
+    category: "finance",
+    keywords: [
+      "capital",
+      "economics",
+      "finance",
+      "invest",
+      "market",
+      "money",
+      "trading",
+      "wealth",
+    ],
+  },
+  {
+    category: "history",
+    keywords: [
+      "ancient",
+      "biography",
+      "civilization",
+      "history",
+      "memoir",
+      "war",
+    ],
+  },
+  {
+    category: "philosophy",
+    keywords: [
+      "culture",
+      "ethics",
+      "justice",
+      "meaning",
+      "philosophy",
+      "politic",
+      "society",
+      "stoic",
+    ],
+  },
+  {
+    category: "communication",
+    keywords: [
+      "communication",
+      "education",
+      "essay",
+      "grammar",
+      "language",
+      "writing",
+    ],
   },
 ];
 
 export const maxCatalogCacheDocuments = 2;
+
+export function sanitizeCatalogTitle(title: string) {
+  return title.replace(catalogTitleSourceSuffixPattern, "").trim();
+}
+
+export function getCatalogCategoryKey(book: CatalogSearchableBook) {
+  const catalogText = [
+    sanitizeCatalogTitle(book.title),
+    book.author,
+    book.description,
+    book.excerpt,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  for (const matcher of catalogCategoryMatchers) {
+    if (matcher.keywords.some((keyword) => catalogText.includes(keyword))) {
+      return matcher.category;
+    }
+  }
+
+  return "general";
+}
+
+export function getCatalogReadingTimeBucket(minutes: number) {
+  if (minutes <= 0) {
+    return "self-paced" satisfies CatalogReadingTimeBucket;
+  }
+
+  if (minutes <= 120) {
+    return "quick" satisfies CatalogReadingTimeBucket;
+  }
+
+  if (minutes <= 360) {
+    return "standard" satisfies CatalogReadingTimeBucket;
+  }
+
+  if (minutes <= 720) {
+    return "deep" satisfies CatalogReadingTimeBucket;
+  }
+
+  return "marathon" satisfies CatalogReadingTimeBucket;
+}
+
+export function buildCatalogSearchText(book: CatalogSearchableBook) {
+  return [
+    sanitizeCatalogTitle(book.title),
+    book.author,
+    book.description,
+    book.excerpt,
+    book.language,
+    book.sourceKind,
+    getCatalogCategoryKey(book),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
 
 export function toCatalogDocumentId(catalogBookId: string) {
   return `${catalogDocumentIdPrefix}${catalogBookId}`;
@@ -189,70 +227,4 @@ export function isCatalogOwnerId(ownerId: string | undefined) {
   return (
     typeof ownerId === "string" && ownerId.startsWith(catalogOwnerIdPrefix)
   );
-}
-
-export function sanitizeCatalogTitle(title: string) {
-  const trimmedTitle = title.trim();
-  const sanitizedTitle = trimmedTitle.replace(pdfDriveSuffixPattern, "").trim();
-
-  return sanitizedTitle || trimmedTitle;
-}
-
-export function getCatalogSearchText(input: {
-  author?: string;
-  description?: string;
-  excerpt?: string;
-  title: string;
-}) {
-  return [
-    sanitizeCatalogTitle(input.title),
-    input.author ?? "",
-    input.description ?? "",
-    input.excerpt ?? "",
-  ]
-    .join(" ")
-    .toLocaleLowerCase();
-}
-
-export function getCatalogCategoryDefinitions() {
-  return catalogCategoryDefinitions;
-}
-
-export function getCatalogCategoryId(input: {
-  author?: string;
-  description?: string;
-  excerpt?: string;
-  title: string;
-}) {
-  const searchText = getCatalogSearchText(input);
-
-  for (const definition of catalogCategoryDefinitions) {
-    if (
-      definition.id !== "general" &&
-      definition.keywords.some((keyword) => searchText.includes(keyword))
-    ) {
-      return definition.id;
-    }
-  }
-
-  return "general";
-}
-
-export function matchesCatalogDurationFilter(
-  minutes: number,
-  filter: CatalogDurationFilter,
-) {
-  if (filter === "all") {
-    return true;
-  }
-
-  if (filter === "short") {
-    return minutes <= 180;
-  }
-
-  if (filter === "medium") {
-    return minutes > 180 && minutes <= 420;
-  }
-
-  return minutes > 420;
 }

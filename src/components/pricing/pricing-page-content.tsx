@@ -157,6 +157,22 @@ function isPaidPlanId(value: unknown): value is PaidPlanId {
   return value === "focus" || value === "max";
 }
 
+function buildPaidAccountHref(
+  planId: PaidPlanId,
+  provider?: HostedPaymentProvider,
+) {
+  const searchParams = new URLSearchParams({
+    payment: "success",
+    plan: planId,
+  });
+
+  if (provider) {
+    searchParams.set("provider", provider);
+  }
+
+  return `/account?${searchParams.toString()}`;
+}
+
 export function PricingPageContent({
   initialCheckoutPlan,
   initialCheckoutProvider,
@@ -424,6 +440,11 @@ export function PricingPageContent({
   )
     ? initialCheckoutProvider
     : undefined;
+  const paymentReturnProvider =
+    initialPaymentStatus === "success" &&
+    isHostedPaymentProvider(initialCheckoutProvider)
+      ? initialCheckoutProvider
+      : undefined;
 
   useEffect(() => {
     if (
@@ -436,8 +457,14 @@ export function PricingPageContent({
     }
 
     paymentReturnHandledRef.current = true;
-    router.replace(`/account?payment=success&plan=${initialPlanId}`);
-  }, [initialPaymentStatus, initialPlanId, router, user]);
+    router.replace(buildPaidAccountHref(initialPlanId, paymentReturnProvider));
+  }, [
+    initialPaymentStatus,
+    initialPlanId,
+    paymentReturnProvider,
+    router,
+    user,
+  ]);
 
   useEffect(() => {
     if (
@@ -514,9 +541,7 @@ export function PricingPageContent({
       "",
       getLocalizedPublicPath("/pricing", locale),
     );
-    void startProviderCheckout(nextCheckoutPlan, nextCheckoutProvider, {
-      openInNewTab: false,
-    });
+    void startProviderCheckout(nextCheckoutPlan, nextCheckoutProvider);
   }, [
     initialPaymentStatus,
     locale,
@@ -676,12 +701,8 @@ export function PricingPageContent({
   async function startProviderCheckout(
     planId: PaidPlanId,
     provider: HostedPaymentProvider,
-    options?: {
-      openInNewTab?: boolean;
-    },
   ) {
-    const openInNewTab = options?.openInNewTab ?? false;
-    const checkoutWindow = openInNewTab ? window.open("", "_blank") : null;
+    const checkoutWindow = window.open("", "_blank");
     let providerUrl: string | undefined;
 
     if (provider === "lemonsqueezy") {
@@ -730,6 +751,7 @@ export function PricingPageContent({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            locale,
             plan: planId,
             userEmail: user?.email,
             userId: user?.id,
@@ -772,11 +794,7 @@ export function PricingPageContent({
       checkoutWindow.opener = null;
       checkoutWindow.location.href = providerUrl;
     } else {
-      const currentTab = window.open(providerUrl, "_self");
-
-      if (!currentTab) {
-        window.location.assign(providerUrl);
-      }
+      window.location.assign(providerUrl);
     }
   }
 
@@ -807,7 +825,7 @@ export function PricingPageContent({
     }
 
     clearPendingCheckout();
-    void startProviderCheckout(planId, provider, { openInNewTab: true });
+    void startProviderCheckout(planId, provider);
   }
 
   async function handleAuthSubmit() {
@@ -852,7 +870,7 @@ export function PricingPageContent({
       await signInWithProvider(window.location.href);
     } catch (error) {
       setAuthStatusMessage(
-        error instanceof Error ? error.message : authDialogCopy.authFailed,
+        error instanceof Error ? error.message : "Authentication failed.",
       );
       setAuthPendingAction(undefined);
     }
@@ -925,7 +943,10 @@ export function PricingPageContent({
                     ))}
                   </ol>
                   <Link
-                    href={`/account?payment=success&plan=${readySignupPlan}`}
+                    href={buildPaidAccountHref(
+                      readySignupPlan,
+                      paymentReturnProvider,
+                    )}
                     className="mt-3 inline-flex min-h-11 items-center rounded-full border border-emerald-200/30 bg-emerald-50/10 px-5 py-2.5 font-semibold text-emerald-50 transition hover:bg-emerald-50/16"
                   >
                     {copy.continueToAccount}

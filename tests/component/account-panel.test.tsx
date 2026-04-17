@@ -28,9 +28,18 @@ vi.mock("@/components/auth/supabase-provider", () => ({
   useSupabaseAuth,
 }));
 
+const { getSupabaseBrowserClient } = vi.hoisted(() => ({
+  getSupabaseBrowserClient: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/client", () => ({
+  getSupabaseBrowserClient,
+}));
+
 describe("AccountPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getSupabaseBrowserClient.mockReturnValue(null);
     useRouter.mockReturnValue({
       push: vi.fn(),
       replace: vi.fn(),
@@ -39,6 +48,7 @@ describe("AccountPanel", () => {
       locale: "en",
       setLocale: vi.fn(),
     });
+    window.history.replaceState({}, "", "/account");
   });
 
   it("lets a signed-in user save a display name", async () => {
@@ -451,6 +461,87 @@ describe("AccountPanel", () => {
       screen.getByText(
         /this signed-in account is not linked to the new payment yet/i,
       ),
+    ).toBeInTheDocument();
+  });
+
+  it("confirms MercadoPago returns for the signed-in payment account", async () => {
+    const invoke = vi.fn().mockResolvedValue({
+      data: { confirmed: true },
+      error: null,
+    });
+    const refreshProfile = vi.fn().mockResolvedValue(undefined);
+
+    getSupabaseBrowserClient.mockReturnValue({
+      functions: {
+        invoke,
+      },
+    });
+    window.history.replaceState(
+      {},
+      "",
+      "/account?payment=success&plan=focus&provider=mercadopago&collection_id=155099861306",
+    );
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: undefined,
+      lastSyncSummary: undefined,
+      profile: {
+        createdAt: "2026-04-14T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 0,
+        marketingConsent: false,
+        planTier: "basic",
+        updatedAt: "2026-04-14T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile,
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "idle",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(
+      <AccountPanel paidSignupPlan="focus" paidSignupProvider="mercadopago" />,
+    );
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith("mercado-pago-webhook", {
+        body: {
+          action: "confirm_return",
+          paymentId: "155099861306",
+          plan: "focus",
+          subscriptionId: null,
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(refreshProfile).toHaveBeenCalledTimes(2);
+    });
+
+    expect(
+      screen.getByText(/mercadopago payment confirmed/i),
     ).toBeInTheDocument();
   });
 

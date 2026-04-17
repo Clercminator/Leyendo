@@ -199,7 +199,11 @@ describe("PricingPageContent", () => {
   });
 
   it("resumes MercadoPago checkout automatically after auth returns with stored intent", async () => {
-    const openSpy = vi.spyOn(window, "open").mockReturnValue(window);
+    const focusWindow = {
+      location: { href: "" },
+      opener: null as Window | null,
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(focusWindow);
 
     window.localStorage.setItem("leyendo_pending_checkout_plan", "focus");
     window.localStorage.setItem(
@@ -238,21 +242,11 @@ describe("PricingPageContent", () => {
     render(<PricingPageContent />);
 
     await waitFor(() => {
-      expect(openSpy).toHaveBeenCalledWith(
-        "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
-        "_self",
-      );
+      expect(openSpy).toHaveBeenCalledWith("", "_blank");
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/payments/mercadopago",
-      expect.objectContaining({
-        body: JSON.stringify({
-          plan: "focus",
-          userEmail: "reader@example.com",
-          userId: "user-1",
-        }),
-      }),
+    expect(focusWindow.location.href).toBe(
+      "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
     );
     expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/pricing");
 
@@ -332,28 +326,6 @@ describe("PricingPageContent", () => {
     expect(openSpy).toHaveBeenNthCalledWith(2, "", "_blank");
     expect(maxWindow.location.href).toBe(
       "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=9f0352ccb88840e38f5241214e548df4",
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
-      "/api/payments/mercadopago",
-      expect.objectContaining({
-        body: JSON.stringify({
-          plan: "focus",
-          userEmail: "reader@example.com",
-          userId: "user-1",
-        }),
-      }),
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      "/api/payments/mercadopago",
-      expect.objectContaining({
-        body: JSON.stringify({
-          plan: "max",
-          userEmail: "reader@example.com",
-          userId: "user-1",
-        }),
-      }),
     );
 
     openSpy.mockRestore();
@@ -485,6 +457,42 @@ describe("PricingPageContent", () => {
     await waitFor(() => {
       expect(replace).toHaveBeenCalledWith(
         "/account?payment=success&plan=focus",
+      );
+    });
+  });
+
+  it("preserves the MercadoPago provider on the paid account handoff", async () => {
+    const replace = vi.fn();
+
+    useRouter.mockReturnValue({
+      push: vi.fn(),
+      replace,
+    });
+    useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(
+      <PricingPageContent
+        initialCheckoutProvider="mercadopago"
+        initialPaymentStatus="success"
+        initialPlanId="focus"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(
+        "/account?payment=success&plan=focus&provider=mercadopago",
       );
     });
   });

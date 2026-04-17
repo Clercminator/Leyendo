@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/layout/locale-provider";
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   getEffectivePlanTier,
   hasPlanAccess,
@@ -301,10 +302,12 @@ interface AccountPanelProps {
   checkoutPlan?: PaidPlanTier;
   checkoutProvider?: "lemonsqueezy" | "mercadopago";
   paidSignupPlan?: PaidPlanTier;
+  paidSignupProvider?: "lemonsqueezy" | "mercadopago";
 }
 
 export function AccountPanel({
   paidSignupPlan,
+  paidSignupProvider,
   checkoutPlan,
   checkoutProvider,
 }: AccountPanelProps) {
@@ -348,6 +351,7 @@ export function AccountPanel({
   const [statusMessage, setStatusMessage] = useState<string>();
   const [pendingAction, setPendingAction] = useState<string>();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const mercadoPagoConfirmationStartedRef = useRef(false);
 
   const guestDocuments = guestLibrarySummary.documents;
   const lastSyncedLabel = formatDate(lastSyncedAt);
@@ -466,6 +470,12 @@ export function AccountPanel({
         lastCloudSync: "Última sincronización",
         localOnlyDocs: "Solo en este dispositivo",
         magicLink: "Enviar enlace de acceso por email",
+        mercadoPagoConfirming:
+          "MercadoPago ya aprobó el pago. Leyendo está confirmando ahora la suscripción en esta cuenta.",
+        mercadoPagoLinked:
+          "Pago de MercadoPago confirmado. Esta cuenta está actualizando el nuevo plan.",
+        mercadoPagoPending:
+          "MercadoPago aprobó el pago, pero la suscripción todavía se está sincronizando. Espera un momento y vuelve a cargar esta página si el plan aún no aparece.",
         marketingConsentHint:
           "Permite usar estos datos para recomendaciones personalizadas y futuras promociones.",
         marketingConsentLabel:
@@ -573,6 +583,12 @@ export function AccountPanel({
         lastCloudSync: "Ultima sincronizacao",
         localOnlyDocs: "So neste dispositivo",
         magicLink: "Enviar link de acesso por email",
+        mercadoPagoConfirming:
+          "O MercadoPago ja aprovou o pagamento. O Leyendo esta confirmando agora a assinatura nesta conta.",
+        mercadoPagoLinked:
+          "Pagamento do MercadoPago confirmado. Esta conta esta atualizando o novo plano.",
+        mercadoPagoPending:
+          "O MercadoPago aprovou o pagamento, mas a assinatura ainda esta sincronizando. Espere um momento e recarregue esta pagina se o plano ainda nao aparecer.",
         marketingConsentHint:
           "Permite usar estes dados para recomendacoes personalizadas e futuras promocoes.",
         marketingConsentLabel:
@@ -677,6 +693,12 @@ export function AccountPanel({
       lastCloudSync: "Last cloud sync",
       localOnlyDocs: "Local-only docs",
       magicLink: "Send email sign-in link",
+      mercadoPagoConfirming:
+        "MercadoPago approved the payment. Leyendo is confirming the subscription on this account now.",
+      mercadoPagoLinked:
+        "MercadoPago payment confirmed. This account is refreshing the new plan now.",
+      mercadoPagoPending:
+        "MercadoPago approved the payment, but the subscription is still syncing. Wait a moment and reload this page if the plan does not appear yet.",
       marketingConsentHint:
         "Allow Leyendo to use this profile for personalized recommendations and future promotions.",
       marketingConsentLabel:
@@ -923,6 +945,107 @@ export function AccountPanel({
         : syncStatus === "error"
           ? helperCopy.syncError
           : helperCopy.syncIdle;
+
+  useEffect(() => {
+    mercadoPagoConfirmationStartedRef.current = false;
+  }, [paidSignupPlan, paidSignupProvider, user?.id]);
+
+  useEffect(() => {
+    if (
+      mercadoPagoConfirmationStartedRef.current ||
+      !paidSignupPlan ||
+      !user ||
+      hasPaidAccountAccess
+    ) {
+      return;
+    }
+
+    const currentUrl =
+      typeof window === "undefined" ? null : new URL(window.location.href);
+    const paymentId =
+      currentUrl?.searchParams.get("collection_id") ??
+      currentUrl?.searchParams.get("payment_id") ??
+      currentUrl?.searchParams.get("authorized_payment_id");
+    const subscriptionId =
+      currentUrl?.searchParams.get("preapproval_id") ??
+      currentUrl?.searchParams.get("subscription_id");
+
+    if (paidSignupProvider !== "mercadopago" && !paymentId && !subscriptionId) {
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      return;
+    }
+
+    mercadoPagoConfirmationStartedRef.current = true;
+    let cancelled = false;
+    setStatusMessage(helperCopy.mercadoPagoConfirming);
+
+    void (async () => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const { data, error } = await supabase.functions.invoke(
+          "mercado-pago-webhook",
+          {
+            body: {
+              action: "confirm_return",
+              paymentId,
+              plan: paidSignupPlan,
+              subscriptionId,
+            },
+          },
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!error) {
+          await refreshProfile();
+
+          if (cancelled) {
+            return;
+          }
+
+          if (
+            data &&
+            typeof data === "object" &&
+            "confirmed" in data &&
+            data.confirmed === true
+          ) {
+            setStatusMessage(helperCopy.mercadoPagoLinked);
+            return;
+          }
+        }
+
+        if (attempt < 2) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        }
+      }
+
+      if (!cancelled) {
+        setStatusMessage(helperCopy.mercadoPagoPending);
+      }
+    })().catch(() => {
+      if (!cancelled) {
+        setStatusMessage(helperCopy.mercadoPagoPending);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    hasPaidAccountAccess,
+    helperCopy.mercadoPagoConfirming,
+    helperCopy.mercadoPagoLinked,
+    helperCopy.mercadoPagoPending,
+    paidSignupPlan,
+    paidSignupProvider,
+    refreshProfile,
+    user,
+  ]);
   const isOAuthPending =
     pendingAction === "github" || pendingAction === "google";
   const showOAuthButtons = mode !== "magic-link";
