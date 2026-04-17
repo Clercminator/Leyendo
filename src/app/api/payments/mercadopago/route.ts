@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  buildAccountReturnUrl,
   buildMercadoPagoSubscriptionUrl,
   normalizePaidPlanTier,
   pickPaymentEnvValue,
+  withMercadoPagoCheckoutOptions,
 } from "@/lib/payment-config";
 
 const MERCADOPAGO_PLAN_ID_PATTERN = /^[a-f0-9]{32}$/i;
 
 interface CheckoutRequestBody {
+  userEmail?: string;
+  userId?: string;
   plan?: string;
 }
 
@@ -31,6 +35,18 @@ function normalizeMercadoPagoPlanId(value: string | undefined) {
   }
 
   return MERCADOPAGO_PLAN_ID_PATTERN.test(planId) ? planId : undefined;
+}
+
+function getRequestOrigin(request: NextRequest | Request) {
+  if (
+    "nextUrl" in request &&
+    request.nextUrl &&
+    typeof request.nextUrl.origin === "string"
+  ) {
+    return request.nextUrl.origin;
+  }
+
+  return new URL(request.url).origin;
 }
 
 function getMercadoPagoEnvAliases(planTier: "focus" | "max") {
@@ -133,15 +149,31 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const userEmail =
+    typeof body.userEmail === "string" ? body.userEmail.trim() : "";
+  const userId = typeof body.userId === "string" ? body.userId.trim() : "";
+  const backUrl = buildAccountReturnUrl({
+    origin: getRequestOrigin(request),
+    planTier,
+    paymentStatus: "success",
+  });
+  const checkoutOptions = {
+    backUrl,
+    ...(userId ? { externalReference: userId } : {}),
+    ...(userEmail ? { payerEmail: userEmail } : {}),
+  };
+
   const { explicitUrl, planId, rawPlanId } = getMercadoPagoEnvAliases(planTier);
 
   if (explicitUrl) {
-    return NextResponse.json({ checkoutUrl: explicitUrl });
+    return NextResponse.json({
+      checkoutUrl: withMercadoPagoCheckoutOptions(explicitUrl, checkoutOptions),
+    });
   }
 
   if (planId) {
     return NextResponse.json({
-      checkoutUrl: buildMercadoPagoSubscriptionUrl(planId),
+      checkoutUrl: buildMercadoPagoSubscriptionUrl(planId, checkoutOptions),
     });
   }
 

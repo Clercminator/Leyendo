@@ -4,6 +4,7 @@ import { POST } from "@/app/api/payments/mercadopago/route";
 
 const originalFocusPlanId = process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID;
 const originalFocusTestingId = process.env.MERCADOPAGO_FOCUS_ID_TESTING;
+const originalFocusTestingUrl = process.env.MERCADOPAGO_FOCUS_URL_TESTING;
 const originalMaxPlanId = process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID;
 const originalMaxTestingId = process.env.MERCADOPAGO_MAX_ID_TESTING;
 const originalVercelEnv = process.env.VERCEL_ENV;
@@ -12,6 +13,7 @@ describe("MercadoPago checkout route", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID = "";
     process.env.MERCADOPAGO_FOCUS_ID_TESTING = "";
+    process.env.MERCADOPAGO_FOCUS_URL_TESTING = "";
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID = "";
     process.env.MERCADOPAGO_MAX_ID_TESTING = "";
     process.env.VERCEL_ENV = "";
@@ -20,6 +22,7 @@ describe("MercadoPago checkout route", () => {
   afterAll(() => {
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID = originalFocusPlanId;
     process.env.MERCADOPAGO_FOCUS_ID_TESTING = originalFocusTestingId;
+    process.env.MERCADOPAGO_FOCUS_URL_TESTING = originalFocusTestingUrl;
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID = originalMaxPlanId;
     process.env.MERCADOPAGO_MAX_ID_TESTING = originalMaxTestingId;
     process.env.VERCEL_ENV = originalVercelEnv;
@@ -40,7 +43,30 @@ describe("MercadoPago checkout route", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       checkoutUrl:
-        "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=5870237243d3400bacd2d236caae7a20",
+        "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=5870237243d3400bacd2d236caae7a20&back_url=http%3A%2F%2Flocalhost%2Faccount%3Fplan%3Dfocus%26payment%3Dsuccess",
+    });
+  });
+
+  it("adds the account return target and payer context to explicit checkout URLs", async () => {
+    process.env.MERCADOPAGO_FOCUS_URL_TESTING =
+      "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=5870237243d3400bacd2d236caae7a20";
+
+    const response = await POST(
+      new Request("https://preview.leyendo.test/api/payments/mercadopago", {
+        body: JSON.stringify({
+          plan: "focus",
+          userEmail: "reader@example.com",
+          userId: "user-1",
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      checkoutUrl:
+        "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=5870237243d3400bacd2d236caae7a20&back_url=https%3A%2F%2Fpreview.leyendo.test%2Faccount%3Fplan%3Dfocus%26payment%3Dsuccess&external_reference=user-1&payer_email=reader%40example.com",
     });
   });
 
@@ -80,7 +106,7 @@ describe("MercadoPago checkout route", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       checkoutUrl:
-        "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=5870237243d3400bacd2d236caae7a20",
+        "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=5870237243d3400bacd2d236caae7a20&back_url=http%3A%2F%2Flocalhost%2Faccount%3Fplan%3Dfocus%26payment%3Dsuccess",
     });
   });
 });

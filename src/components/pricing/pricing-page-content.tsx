@@ -514,7 +514,9 @@ export function PricingPageContent({
       "",
       getLocalizedPublicPath("/pricing", locale),
     );
-    void startProviderCheckout(nextCheckoutPlan, nextCheckoutProvider);
+    void startProviderCheckout(nextCheckoutPlan, nextCheckoutProvider, {
+      openInNewTab: false,
+    });
   }, [
     initialPaymentStatus,
     locale,
@@ -674,8 +676,12 @@ export function PricingPageContent({
   async function startProviderCheckout(
     planId: PaidPlanId,
     provider: HostedPaymentProvider,
+    options?: {
+      openInNewTab?: boolean;
+    },
   ) {
-    const checkoutWindow = window.open("", "_blank");
+    const openInNewTab = options?.openInNewTab ?? false;
+    const checkoutWindow = openInNewTab ? window.open("", "_blank") : null;
     let providerUrl: string | undefined;
 
     if (provider === "lemonsqueezy") {
@@ -725,6 +731,8 @@ export function PricingPageContent({
           },
           body: JSON.stringify({
             plan: planId,
+            userEmail: user?.email,
+            userId: user?.id,
           }),
         });
         const payload = (await response.json().catch(() => null)) as {
@@ -764,7 +772,11 @@ export function PricingPageContent({
       checkoutWindow.opener = null;
       checkoutWindow.location.href = providerUrl;
     } else {
-      window.location.assign(providerUrl);
+      const currentTab = window.open(providerUrl, "_self");
+
+      if (!currentTab) {
+        window.location.assign(providerUrl);
+      }
     }
   }
 
@@ -795,7 +807,7 @@ export function PricingPageContent({
     }
 
     clearPendingCheckout();
-    void startProviderCheckout(planId, provider);
+    void startProviderCheckout(planId, provider, { openInNewTab: true });
   }
 
   async function handleAuthSubmit() {
@@ -840,7 +852,7 @@ export function PricingPageContent({
       await signInWithProvider(window.location.href);
     } catch (error) {
       setAuthStatusMessage(
-        error instanceof Error ? error.message : "Authentication failed.",
+        error instanceof Error ? error.message : authDialogCopy.authFailed,
       );
       setAuthPendingAction(undefined);
     }

@@ -199,11 +199,7 @@ describe("PricingPageContent", () => {
   });
 
   it("resumes MercadoPago checkout automatically after auth returns with stored intent", async () => {
-    const focusWindow = {
-      location: { href: "" },
-      opener: null as Window | null,
-    } as unknown as Window;
-    const openSpy = vi.spyOn(window, "open").mockReturnValue(focusWindow);
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(window);
 
     window.localStorage.setItem("leyendo_pending_checkout_plan", "focus");
     window.localStorage.setItem(
@@ -242,11 +238,21 @@ describe("PricingPageContent", () => {
     render(<PricingPageContent />);
 
     await waitFor(() => {
-      expect(openSpy).toHaveBeenCalledWith("", "_blank");
+      expect(openSpy).toHaveBeenCalledWith(
+        "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
+        "_self",
+      );
     });
 
-    expect(focusWindow.location.href).toBe(
-      "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/payments/mercadopago",
+      expect.objectContaining({
+        body: JSON.stringify({
+          plan: "focus",
+          userEmail: "reader@example.com",
+          userId: "user-1",
+        }),
+      }),
     );
     expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/pricing");
 
@@ -326,6 +332,28 @@ describe("PricingPageContent", () => {
     expect(openSpy).toHaveBeenNthCalledWith(2, "", "_blank");
     expect(maxWindow.location.href).toBe(
       "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=9f0352ccb88840e38f5241214e548df4",
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/payments/mercadopago",
+      expect.objectContaining({
+        body: JSON.stringify({
+          plan: "focus",
+          userEmail: "reader@example.com",
+          userId: "user-1",
+        }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/payments/mercadopago",
+      expect.objectContaining({
+        body: JSON.stringify({
+          plan: "max",
+          userEmail: "reader@example.com",
+          userId: "user-1",
+        }),
+      }),
     );
 
     openSpy.mockRestore();

@@ -2,6 +2,12 @@ import { isPaidPlan, normalizePlanTier, type PaidPlanTier } from "@/lib/plans";
 
 export type PaymentLocale = "en" | "es" | "pt";
 
+interface MercadoPagoCheckoutUrlOptions {
+  backUrl?: string;
+  externalReference?: string;
+  payerEmail?: string;
+}
+
 const DEFAULT_MERCADOPAGO_CHECKOUT_BASE_URL =
   "https://www.mercadopago.com.ar/subscriptions/checkout";
 const MERCADOPAGO_PLAN_ID_PATTERN = /^[a-f0-9]{32}$/i;
@@ -40,6 +46,36 @@ function normalizeMercadoPagoPlanId(value: string | undefined) {
   return MERCADOPAGO_PLAN_ID_PATTERN.test(planId) ? planId : undefined;
 }
 
+function normalizeMercadoPagoCheckoutOption(value: string | undefined) {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function applyMercadoPagoCheckoutOptions(
+  checkoutUrl: URL,
+  options?: MercadoPagoCheckoutUrlOptions,
+) {
+  const backUrl = normalizeMercadoPagoCheckoutOption(options?.backUrl);
+  const externalReference = normalizeMercadoPagoCheckoutOption(
+    options?.externalReference,
+  );
+  const payerEmail = normalizeMercadoPagoCheckoutOption(options?.payerEmail);
+
+  if (backUrl) {
+    checkoutUrl.searchParams.set("back_url", backUrl);
+  }
+
+  if (externalReference) {
+    checkoutUrl.searchParams.set("external_reference", externalReference);
+  }
+
+  if (payerEmail) {
+    checkoutUrl.searchParams.set("payer_email", payerEmail);
+  }
+
+  return checkoutUrl;
+}
+
 export function normalizePaymentLocale(value: unknown): PaymentLocale {
   return value === "es" || value === "pt" ? value : "en";
 }
@@ -53,12 +89,27 @@ export function normalizePaidPlanTier(
 
 export function buildMercadoPagoSubscriptionUrl(
   planId: string,
+  options?: MercadoPagoCheckoutUrlOptions,
   baseUrl = process.env.NEXT_PUBLIC_MERCADOPAGO_CHECKOUT_BASE_URL?.trim() ||
     DEFAULT_MERCADOPAGO_CHECKOUT_BASE_URL,
 ) {
   const checkoutUrl = new URL(baseUrl);
   checkoutUrl.searchParams.set("preapproval_plan_id", planId);
-  return checkoutUrl.toString();
+  return applyMercadoPagoCheckoutOptions(checkoutUrl, options).toString();
+}
+
+export function withMercadoPagoCheckoutOptions(
+  checkoutUrl: string,
+  options?: MercadoPagoCheckoutUrlOptions,
+) {
+  try {
+    return applyMercadoPagoCheckoutOptions(
+      new URL(checkoutUrl),
+      options,
+    ).toString();
+  } catch {
+    return checkoutUrl;
+  }
 }
 
 export function getMercadoPagoCheckoutUrl(planTier: PaidPlanTier) {

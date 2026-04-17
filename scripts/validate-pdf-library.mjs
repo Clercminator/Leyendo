@@ -6,7 +6,9 @@ import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 const appUrl = process.env.LEYENDO_APP_URL ?? "http://127.0.0.1:3000";
-const dataDirFlag = process.argv.find((value) => value.startsWith("--data-dir="));
+const dataDirFlag = process.argv.find((value) =>
+  value.startsWith("--data-dir="),
+);
 const outputFlag = process.argv.find((value) => value.startsWith("--output="));
 const shouldPublish = process.argv.includes("--publish");
 const dataDir = path.resolve(
@@ -26,9 +28,17 @@ const fileFilters = process.argv
 const catalogWordsPerMinute = 220;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+const pdfDriveSuffixPattern = /\s*\(\s*pdfdrive\s*\)\s*$/iu;
+
+function sanitizeCatalogTitle(value) {
+  const trimmedValue = value.trim();
+  const sanitizedValue = trimmedValue.replace(pdfDriveSuffixPattern, "").trim();
+
+  return sanitizedValue || trimmedValue;
+}
 
 function slugifyCatalogTitle(value) {
-  const normalized = value
+  const normalized = sanitizeCatalogTitle(value)
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
@@ -59,7 +69,7 @@ function normalizeCatalogPayloadForPublish(payload, input) {
   return {
     ...payload,
     id: input.documentId,
-    title: input.title?.trim() || payload.title,
+    title: sanitizeCatalogTitle(input.title?.trim() || payload.title),
     updatedAt: input.updatedAt ?? payload.updatedAt,
   };
 }
@@ -94,14 +104,29 @@ async function writeScanSummary(outputPath, input) {
       pdfCount: input.totalPdfCount,
       processed: input.results.length,
       remaining: Math.max(input.totalPdfCount - input.results.length, 0),
-      catalogReady: input.results.filter((result) => result.catalogDecision === "catalog-ready").length,
-      excluded: input.results.filter((result) => result.catalogDecision === "excluded").length,
-      openFailed: input.results.filter((result) => result.status === "open-failed").length,
-      published: input.results.filter((result) => result.catalogDecision === "published").length,
-      publishFailed: input.results.filter((result) => result.catalogDecision === "publish-failed").length,
-      passed: input.results.filter((result) => result.status === "passed").length,
-      selectionFailed: input.results.filter((result) => result.status === "selection-failed").length,
-      scriptError: input.results.filter((result) => result.status === "script-error").length,
+      catalogReady: input.results.filter(
+        (result) => result.catalogDecision === "catalog-ready",
+      ).length,
+      excluded: input.results.filter(
+        (result) => result.catalogDecision === "excluded",
+      ).length,
+      openFailed: input.results.filter(
+        (result) => result.status === "open-failed",
+      ).length,
+      published: input.results.filter(
+        (result) => result.catalogDecision === "published",
+      ).length,
+      publishFailed: input.results.filter(
+        (result) => result.catalogDecision === "publish-failed",
+      ).length,
+      passed: input.results.filter((result) => result.status === "passed")
+        .length,
+      selectionFailed: input.results.filter(
+        (result) => result.status === "selection-failed",
+      ).length,
+      scriptError: input.results.filter(
+        (result) => result.status === "script-error",
+      ).length,
     },
     results: input.results,
   };
@@ -123,7 +148,12 @@ async function loadExistingScanResults(existingOutputPath) {
 
     return parsed.results;
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
       return [];
     }
 
@@ -140,75 +170,85 @@ function truncate(text, length = 220) {
 }
 
 async function waitForExtractionResult(page, timeoutMs) {
-  const handle = await page.waitForFunction(() => {
-    const alert = document.querySelector('[role="alert"]');
-    if (alert?.textContent?.trim()) {
-      return {
-        kind: "alert",
-        text: alert.textContent.trim(),
-      };
-    }
+  const handle = await page.waitForFunction(
+    () => {
+      const alert = document.querySelector('[role="alert"]');
+      if (alert?.textContent?.trim()) {
+        return {
+          kind: "alert",
+          text: alert.textContent.trim(),
+        };
+      }
 
-    const buttons = Array.from(document.querySelectorAll("button"));
-    const openImportedButton = buttons.find((button) => {
-      const text = button.textContent?.trim() ?? "";
-      return /open imported file|abrir archivo importado|abrir arquivo importado/i.test(text);
-    });
+      const buttons = Array.from(document.querySelectorAll("button"));
+      const openImportedButton = buttons.find((button) => {
+        const text = button.textContent?.trim() ?? "";
+        return /open imported file|abrir archivo importado|abrir arquivo importado/i.test(
+          text,
+        );
+      });
 
-    if (openImportedButton) {
-      const statusText =
-        document.querySelector('[role="status"]')?.textContent?.trim() ?? "";
-      return {
-        kind: "ready",
-        text: statusText || openImportedButton.textContent?.trim() || "ready",
-      };
-    }
+      if (openImportedButton) {
+        const statusText =
+          document.querySelector('[role="status"]')?.textContent?.trim() ?? "";
+        return {
+          kind: "ready",
+          text: statusText || openImportedButton.textContent?.trim() || "ready",
+        };
+      }
 
-    return false;
-  }, { timeout: timeoutMs });
+      return false;
+    },
+    { timeout: timeoutMs },
+  );
 
   return handle.jsonValue();
 }
 
 async function waitForReaderOpen(page, timeoutMs) {
-  const handle = await page.waitForFunction(() => {
-    const alert = document.querySelector('[role="alert"]');
-    if (alert?.textContent?.trim()) {
-      return {
-        kind: "alert",
-        text: alert.textContent.trim(),
-      };
-    }
+  const handle = await page.waitForFunction(
+    () => {
+      const alert = document.querySelector('[role="alert"]');
+      if (alert?.textContent?.trim()) {
+        return {
+          kind: "alert",
+          text: alert.textContent.trim(),
+        };
+      }
 
-    const isReaderRoute = window.location.pathname === "/reader";
-    const bodyText = document.body?.innerText ?? "";
-    const looksLikeReaderWorkspace =
-      /reader canvas/i.test(bodyText) && /highlights and bookmarks/i.test(bodyText);
+      const isReaderRoute = window.location.pathname === "/reader";
+      const bodyText = document.body?.innerText ?? "";
+      const looksLikeReaderWorkspace =
+        /reader canvas/i.test(bodyText) &&
+        /highlights and bookmarks/i.test(bodyText);
 
-    if (isReaderRoute && looksLikeReaderWorkspace) {
-      const title =
-        document.querySelector("main h1, main h2")?.textContent?.trim() ?? "";
-      return {
-        kind: "reader",
-        text: title,
-        url: window.location.href,
-      };
-    }
+      if (isReaderRoute && looksLikeReaderWorkspace) {
+        const title =
+          document.querySelector("main h1, main h2")?.textContent?.trim() ?? "";
+        return {
+          kind: "reader",
+          text: title,
+          url: window.location.href,
+        };
+      }
 
-    return false;
-  }, { timeout: timeoutMs });
+      return false;
+    },
+    { timeout: timeoutMs },
+  );
 
   return handle.jsonValue();
 }
 
 async function collectPreviewData(page) {
   return page.evaluate(() => {
-    const textarea = document.querySelector('#document-content');
+    const textarea = document.querySelector("#document-content");
     const value = textarea instanceof HTMLTextAreaElement ? textarea.value : "";
 
     return {
       charCount: value.length,
-      imagePlaceholderCount: (value.match(/\[Image omitted from PDF\]/g) ?? []).length,
+      imagePlaceholderCount: (value.match(/\[Image omitted from PDF\]/g) ?? [])
+        .length,
       previewSample: value.slice(0, 400),
     };
   });
@@ -237,7 +277,9 @@ async function collectDocumentRecord(page) {
         const getRequest = store.get(documentId);
 
         getRequest.onerror = () => {
-          reject(getRequest.error ?? new Error("Document record could not be read."));
+          reject(
+            getRequest.error ?? new Error("Document record could not be read."),
+          );
         };
 
         getRequest.onsuccess = () => {
@@ -254,7 +296,9 @@ async function collectDocumentRecord(page) {
 }
 
 async function publishCatalogDocument(supabase, input) {
-  const title = input.record.title?.trim() || input.fileName.replace(/\.[^.]+$/u, "");
+  const title = sanitizeCatalogTitle(
+    input.record.title?.trim() || input.fileName.replace(/\.[^.]+$/u, ""),
+  );
   const slug = slugifyCatalogTitle(title);
   const payloadPath = toCatalogPayloadPath(slug);
   const now = nowIso();
@@ -328,10 +372,11 @@ async function publishCatalogDocument(supabase, input) {
 
 async function collectUiState(page) {
   return page.evaluate(() => {
-    const statusTexts = Array.from(document.querySelectorAll('[role="status"]')).map(
-      (node) => node.textContent?.trim() ?? "",
-    );
-    const alertText = document.querySelector('[role="alert"]')?.textContent?.trim() ?? null;
+    const statusTexts = Array.from(
+      document.querySelectorAll('[role="status"]'),
+    ).map((node) => node.textContent?.trim() ?? "");
+    const alertText =
+      document.querySelector('[role="alert"]')?.textContent?.trim() ?? null;
 
     return {
       alertText,
@@ -442,7 +487,9 @@ async function validatePdf(browser, fileName) {
           payloadBytes: Buffer.byteLength(JSON.stringify(payload), "utf8"),
           title: payload.title,
           tokenCount: Array.isArray(payload.tokens) ? payload.tokens.length : 0,
-          totalChunks: Array.isArray(payload.chunks) ? payload.chunks.length : 0,
+          totalChunks: Array.isArray(payload.chunks)
+            ? payload.chunks.length
+            : 0,
           totalSections: Array.isArray(payload.sections)
             ? payload.sections.length
             : 0,
@@ -452,7 +499,8 @@ async function validatePdf(browser, fileName) {
       } else {
         result.status = "script-error";
         result.catalogDecision = "excluded";
-        result.error = "The imported document payload was not found in IndexedDB.";
+        result.error =
+          "The imported document payload was not found in IndexedDB.";
       }
     }
 
@@ -481,7 +529,9 @@ async function validatePdf(browser, fileName) {
 async function main() {
   const entries = await readdir(dataDir, { withFileTypes: true });
   const pdfs = entries
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".pdf"))
+    .filter(
+      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".pdf"),
+    )
     .map((entry) => entry.name)
     .filter((name) =>
       fileFilters.length === 0
@@ -555,6 +605,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.stack ?? error.message : error);
+  console.error(
+    error instanceof Error ? (error.stack ?? error.message) : error,
+  );
   process.exitCode = 1;
 });
