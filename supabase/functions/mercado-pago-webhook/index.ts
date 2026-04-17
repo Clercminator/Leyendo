@@ -1,5 +1,10 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+import {
+  buildMercadoPagoSignatureManifest,
+  resolveMercadoPagoWebhookResourceId,
+} from "./shared.ts";
+
 const MERCADOPAGO_ACCESS_TOKEN =
   Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")?.trim() ?? "";
 const MERCADOPAGO_ACCESS_TOKEN_PRUEBA =
@@ -346,7 +351,6 @@ async function getExistingSubscriptionTier(
 
 async function verifySignature(
   req: Request,
-  body: WebhookBody,
   webhookSecret: string,
 ): Promise<boolean> {
   if (!webhookSecret) {
@@ -372,20 +376,11 @@ async function verifySignature(
     return false;
   }
 
-  const url = new URL(req.url);
-  const dataId =
-    pickString(url.searchParams.get("data.id"), body.data?.id)?.toLowerCase() ??
-    null;
-  const requestId = req.headers.get("x-request-id");
-  const manifestParts: string[] = [];
-
-  if (dataId) {
-    manifestParts.push(`id:${dataId};`);
-  }
-  if (requestId) {
-    manifestParts.push(`request-id:${requestId};`);
-  }
-  manifestParts.push(`ts:${ts};`);
+  const manifest = buildMercadoPagoSignatureManifest({
+    requestId: req.headers.get("x-request-id"),
+    requestUrl: req.url,
+    timestamp: ts,
+  });
 
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -398,7 +393,7 @@ async function verifySignature(
   const signature = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(manifestParts.join("")),
+    encoder.encode(manifest),
   );
   const hex = Array.from(new Uint8Array(signature))
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -409,7 +404,6 @@ async function verifySignature(
 
 async function resolveMercadoPagoCredentials(
   req: Request,
-  body: WebhookBody,
 ): Promise<MercadoPagoCredentials[] | null> {
   const credentialsWithSecret = mercadoPagoCredentials.filter((credentials) =>
     Boolean(credentials.webhookSecret),
@@ -421,7 +415,7 @@ async function resolveMercadoPagoCredentials(
 
   const matchingCredentials: MercadoPagoCredentials[] = [];
   for (const credentials of credentialsWithSecret) {
-    if (await verifySignature(req, body, credentials.webhookSecret)) {
+    if (await verifySignature(req, credentials.webhookSecret)) {
       matchingCredentials.push(credentials);
     }
   }
@@ -996,10 +990,7 @@ async function handleWebhook(req: Request): Promise<Response> {
       return await handleReturnConfirmation(req, body);
     }
 
-    const credentialsCandidates = await resolveMercadoPagoCredentials(
-      req,
-      body,
-    );
+    const credentialsCandidates = await resolveMercadoPagoCredentials(req);
 
     if (!credentialsCandidates?.length) {
       return jsonResponse({ error: "Invalid signature" }, 401);
@@ -1012,11 +1003,10 @@ async function handleWebhook(req: Request): Promise<Response> {
       url.searchParams.get("topic"),
       url.searchParams.get("type"),
     );
-    const resourceId = pickString(
-      body.data?.id,
-      url.searchParams.get("data.id"),
-      url.searchParams.get("id"),
-    );
+    const resourceId = resolveMercadoPagoWebhookResourceId({
+      bodyDataId: body.data?.id,
+      requestUrl: req.url,
+    });
     const action = asString(body.action);
 
     if (!topic || !resourceId) {
