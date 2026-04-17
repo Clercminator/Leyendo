@@ -26,6 +26,8 @@ const MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA =
     Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA") ??
     Deno.env.get("MERCADOPAGO_PLAN_STANDARD_ID_PRUEBA") ??
     Deno.env.get("MERCADOPAGO_PLAN_BUILDER_ID_PRUEBA") ??
+    Deno.env.get("MERCADOPAGO_FOCUS_ID_TESTING") ??
+    Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID_TESTING") ??
     Deno.env.get("MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT")
   )?.trim() ?? "";
 const MERCADOPAGO_PLAN_MAX_ID =
@@ -33,6 +35,8 @@ const MERCADOPAGO_PLAN_MAX_ID =
 const MERCADOPAGO_PLAN_MAX_ID_PRUEBA =
   (
     Deno.env.get("MERCADOPAGO_PLAN_MAX_ID_PRUEBA") ??
+    Deno.env.get("MERCADOPAGO_MAX_ID_TESTING") ??
+    Deno.env.get("MERCADOPAGO_PLAN_MAX_ID_TESTING") ??
     Deno.env.get("MERCADOPAGO_MAX_ID_TESTING_ACCOUNT")
   )?.trim() ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -460,6 +464,35 @@ function getPlanIdForCredentials(
   return plan === "max" ? credentials.maxPlanId : credentials.focusPlanId;
 }
 
+function inferTierFromSubscriptionRecord(
+  subscription: Record<string, unknown>,
+): PaidTierId {
+  const planId = pickString(
+    subscription.preapproval_plan_id,
+    subscription.preapproval_plan &&
+      typeof subscription.preapproval_plan === "object"
+      ? (subscription.preapproval_plan as Record<string, unknown>).id
+      : null,
+  );
+  const reason = pickString(
+    subscription.reason,
+    subscription.description,
+    subscription.summarized,
+  );
+  const autoRecurring =
+    typeof subscription.auto_recurring === "object" &&
+    subscription.auto_recurring !== null
+      ? (subscription.auto_recurring as Record<string, unknown>)
+      : null;
+  const amount = asNumber(autoRecurring?.transaction_amount);
+
+  return (
+    inferTierFromPlanId(planId) ??
+    inferTierFromText(reason, planId) ??
+    inferTierFromAmount(amount)
+  );
+}
+
 async function searchLatestSubscriptionPreapproval(params: {
   credentialsCandidates: MercadoPagoCredentials[];
   plan: PaidTierId;
@@ -469,65 +502,73 @@ async function searchLatestSubscriptionPreapproval(params: {
   subscription: Record<string, unknown>;
 } | null> {
   for (const credentials of params.credentialsCandidates) {
-    const searchParams = new URLSearchParams({
-      criteria: "desc",
-      limit: "10",
-      offset: "0",
-      payer_email: params.userEmail,
-      sort: "date_created",
-    });
-    const planId = getPlanIdForCredentials(credentials, params.plan);
+    const exactPlanId = getPlanIdForCredentials(credentials, params.plan);
+    const searchPlanIds = exactPlanId ? [exactPlanId, null] : [null];
 
-    if (planId) {
-      searchParams.set("preapproval_plan_id", planId);
-    }
+    for (const searchPlanId of searchPlanIds) {
+      const searchParams = new URLSearchParams({
+        criteria: "desc",
+        limit: "10",
+        offset: "0",
+        payer_email: params.userEmail,
+        sort: "date_created",
+      });
 
-    const response = await fetch(
-      `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${credentials.accessToken}`,
-          Accept: "application/json",
-        },
-      },
-    );
-
-    if (!response.ok) {
-      console.error(
-        "Failed to search MercadoPago subscriptions",
-        credentials.environment,
-        response.status,
-        await response.text(),
-      );
-      continue;
-    }
-
-    const payload = (await response.json()) as {
-      results?: Array<Record<string, unknown>>;
-    };
-    const results = Array.isArray(payload.results) ? payload.results : [];
-    const matchingSubscription = results.find((subscription) => {
-      const subscriptionEmail = pickString(subscription.payer_email);
-      if (
-        subscriptionEmail &&
-        subscriptionEmail.toLowerCase() !== params.userEmail.toLowerCase()
-      ) {
-        return false;
+      if (searchPlanId) {
+        searchParams.set("preapproval_plan_id", searchPlanId);
       }
 
-      const subscriptionPlanId = pickString(
-        subscription.preapproval_plan_id,
-        subscription.preapproval_plan &&
-          typeof subscription.preapproval_plan === "object"
-          ? (subscription.preapproval_plan as Record<string, unknown>).id
-          : null,
+      const response = await fetch(
+        `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${credentials.accessToken}`,
+            Accept: "application/json",
+          },
+        },
       );
 
-      return !planId || subscriptionPlanId === planId;
-    });
+      if (!response.ok) {
+        console.error(
+          "Failed to search MercadoPago subscriptions",
+          credentials.environment,
+          response.status,
+          await response.text(),
+        );
+        break;
+      }
 
-    if (matchingSubscription) {
-      return { credentials, subscription: matchingSubscription };
+      const payload = (await response.json()) as {
+        results?: Array<Record<string, unknown>>;
+      };
+      const results = Array.isArray(payload.results) ? payload.results : [];
+      const matchingSubscription = results.find((subscription) => {
+        const subscriptionEmail = pickString(subscription.payer_email);
+        if (
+          subscriptionEmail &&
+          subscriptionEmail.toLowerCase() !== params.userEmail.toLowerCase()
+        ) {
+          return false;
+        }
+
+        if (searchPlanId) {
+          const subscriptionPlanId = pickString(
+            subscription.preapproval_plan_id,
+            subscription.preapproval_plan &&
+              typeof subscription.preapproval_plan === "object"
+              ? (subscription.preapproval_plan as Record<string, unknown>).id
+              : null,
+          );
+
+          return subscriptionPlanId === searchPlanId;
+        }
+
+        return inferTierFromSubscriptionRecord(subscription) === params.plan;
+      });
+
+      if (matchingSubscription) {
+        return { credentials, subscription: matchingSubscription };
+      }
     }
   }
 
