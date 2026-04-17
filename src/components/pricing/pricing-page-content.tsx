@@ -27,6 +27,8 @@ const paymentRegionStorageKey = "leyendo_payment_region";
 const paidSignupPlanStorageKey = "leyendo_paid_signup_plan";
 const pendingCheckoutPlanStorageKey = "leyendo_pending_checkout_plan";
 const pendingCheckoutProviderStorageKey = "leyendo_pending_checkout_provider";
+const pendingCheckoutSubscriptionIdStorageKey =
+  "leyendo_pending_checkout_subscription_id";
 const latamCountryCodes = new Set([
   "AR",
   "BO",
@@ -76,6 +78,7 @@ interface Copy {
   maxDescription: string;
   invalidMercadoPagoProvider: string;
   missingProvider: string;
+  popupBlocked: string;
   paymentSuccess: string;
   paymentNote: string;
   priceSuffix: string;
@@ -264,6 +267,24 @@ export function PricingPageContent({
     window.localStorage.setItem(pendingCheckoutProviderStorageKey, provider);
   };
 
+  const rememberPendingCheckoutSubscriptionId = (
+    subscriptionId: string | undefined,
+  ) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (subscriptionId?.trim()) {
+      window.localStorage.setItem(
+        pendingCheckoutSubscriptionIdStorageKey,
+        subscriptionId.trim(),
+      );
+      return;
+    }
+
+    window.localStorage.removeItem(pendingCheckoutSubscriptionIdStorageKey);
+  };
+
   const clearPendingCheckout = () => {
     if (typeof window === "undefined") {
       return;
@@ -273,8 +294,27 @@ export function PricingPageContent({
     window.localStorage.removeItem(pendingCheckoutProviderStorageKey);
   };
 
+  const openHostedCheckoutWindow = () => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const checkoutWindow = window.open(
+      "",
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+    if (checkoutWindow) {
+      checkoutWindow.opener = null;
+    }
+
+    return checkoutWindow;
+  };
+
   const closeAuthModal = () => {
     clearPendingCheckout();
+    rememberPendingCheckoutSubscriptionId(undefined);
     setAuthIntent(null);
     setAuthPendingAction(undefined);
     setAuthStatusMessage(undefined);
@@ -318,6 +358,8 @@ export function PricingPageContent({
           "MercadoPago no esta configurado correctamente todavia. Usa el preapproval_plan_id real del plan o el init_point completo, no un numero corto del panel.",
         missingProvider:
           "Este checkout todavia no esta conectado. Puedes usar Binance mientras configuramos este proveedor.",
+        popupBlocked:
+          "Leyendo no pudo abrir la pagina de pago en una nueva pestana. Permite popups para este sitio y vuelve a intentarlo.",
         paymentSuccess:
           "Pago aprobado. Entra a tu cuenta con el mismo email usado en el checkout. Leyendo confirmara cuando la suscripcion quede vinculada.",
         paymentNote:
@@ -360,6 +402,8 @@ export function PricingPageContent({
           "O MercadoPago ainda nao esta configurado corretamente. Use o preapproval_plan_id real do plano ou o init_point completo, e nao um numero curto do painel.",
         missingProvider:
           "Este checkout ainda nao esta conectado. Voce pode usar Binance enquanto este provedor e configurado.",
+        popupBlocked:
+          "O Leyendo nao conseguiu abrir a pagina de pagamento em uma nova aba. Permita popups para este site e tente novamente.",
         paymentSuccess:
           "Pagamento aprovado. Entre na sua conta com o mesmo email usado no checkout. O Leyendo vai confirmar quando a assinatura estiver vinculada.",
         paymentNote:
@@ -401,6 +445,8 @@ export function PricingPageContent({
         "MercadoPago is not configured correctly yet. Use the real preapproval_plan_id or the full init_point URL, not a short dashboard number.",
       missingProvider:
         "This checkout is not connected yet. You can use Binance while this provider is being configured.",
+      popupBlocked:
+        "Leyendo could not open the payment page in a new tab. Allow popups for this site and try again.",
       paymentSuccess:
         "Payment approved. Go to your account with the same email used in checkout. Leyendo will confirm when the subscription is linked.",
       paymentNote:
@@ -701,9 +747,17 @@ export function PricingPageContent({
   async function startProviderCheckout(
     planId: PaidPlanId,
     provider: HostedPaymentProvider,
+    checkoutWindow: Window | null = openHostedCheckoutWindow(),
   ) {
-    const checkoutWindow = window.open("", "_blank");
+    if (!checkoutWindow) {
+      setStatusMessage(copy.popupBlocked);
+      return;
+    }
+
     let providerUrl: string | undefined;
+    let providerSubscriptionId: string | undefined;
+
+    rememberPendingCheckoutSubscriptionId(undefined);
 
     if (provider === "lemonsqueezy") {
       try {
@@ -731,13 +785,6 @@ export function PricingPageContent({
         }
 
         providerUrl = payload.checkoutUrl;
-
-        if (checkoutWindow) {
-          checkoutWindow.opener = null;
-          checkoutWindow.location.href = providerUrl;
-        } else {
-          window.location.assign(providerUrl);
-        }
       } catch {
         checkoutWindow?.close();
         setStatusMessage(copy.missingProvider);
@@ -760,6 +807,7 @@ export function PricingPageContent({
         const payload = (await response.json().catch(() => null)) as {
           checkoutUrl?: string;
           error?: string;
+          providerSubscriptionId?: string;
         } | null;
 
         if (!response.ok || !payload?.checkoutUrl) {
@@ -769,6 +817,7 @@ export function PricingPageContent({
         }
 
         providerUrl = payload.checkoutUrl;
+        providerSubscriptionId = payload.providerSubscriptionId;
       } catch {
         checkoutWindow?.close();
         setStatusMessage(copy.invalidMercadoPagoProvider);
@@ -789,13 +838,8 @@ export function PricingPageContent({
     setStatusMessage(undefined);
     window.localStorage.setItem(paidSignupPlanStorageKey, planId);
     setReadySignupPlan(planId);
-
-    if (checkoutWindow) {
-      checkoutWindow.opener = null;
-      checkoutWindow.location.href = providerUrl;
-    } else {
-      window.location.assign(providerUrl);
-    }
+    rememberPendingCheckoutSubscriptionId(providerSubscriptionId);
+    checkoutWindow.location.href = providerUrl;
   }
 
   function handleProviderClick(
@@ -824,8 +868,14 @@ export function PricingPageContent({
       return;
     }
 
+    const checkoutWindow = openHostedCheckoutWindow();
+    if (!checkoutWindow) {
+      setStatusMessage(copy.popupBlocked);
+      return;
+    }
+
     clearPendingCheckout();
-    void startProviderCheckout(planId, provider);
+    void startProviderCheckout(planId, provider, checkoutWindow);
   }
 
   async function handleAuthSubmit() {

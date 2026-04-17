@@ -9,7 +9,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Think before acting. Read existing files before writing code.
 - Keep solutions efficient and direct over complicated and redundant. Be concise in output but thorough in reasoning.
 - Prefer editing over rewriting whole files.
-- Do not stop after editing code. Before finishing any code change, run the relevant validation needed to keep the repo deployable. Test your code before declaring done.
+- Do not stop after editing code. Before finishing any code change, run the relevant validation needed to keep the repo deployable. Test your code before declaring done. Once is done, provide a brief and clear summary of that change and why.
 - For changes that can affect production compilation, run `pnpm build` and fix resulting errors before concluding the task.
 - For smaller isolated changes, run the narrowest relevant test or lint step first, but if there is any doubt about deployability, fall back to `pnpm build`.
 - For visual or interaction bugs, reproduce and inspect the issue with available browser tooling such as Chrome DevTools MCP or Playwright/browser MCP instead of relying only on static code reading.

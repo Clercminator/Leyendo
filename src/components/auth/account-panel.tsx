@@ -33,6 +33,8 @@ import type {
 const modes = ["sign-in", "create-account", "magic-link"] as const;
 const avatarAccept =
   "image/*,.avif,.bmp,.gif,.heic,.heif,.ico,.jfif,.jpeg,.jpg,.png,.svg,.tif,.tiff,.webp";
+const pendingCheckoutSubscriptionIdStorageKey =
+  "leyendo_pending_checkout_subscription_id";
 
 type AuthMode = (typeof modes)[number];
 
@@ -954,9 +956,15 @@ export function AccountPanel({
     if (
       mercadoPagoConfirmationStartedRef.current ||
       !paidSignupPlan ||
-      !user ||
-      hasPaidAccountAccess
+      !user
     ) {
+      return;
+    }
+
+    if (hasPaidAccountAccess) {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(pendingCheckoutSubscriptionIdStorageKey);
+      }
       return;
     }
 
@@ -968,7 +976,10 @@ export function AccountPanel({
       currentUrl?.searchParams.get("authorized_payment_id");
     const subscriptionId =
       currentUrl?.searchParams.get("preapproval_id") ??
-      currentUrl?.searchParams.get("subscription_id");
+      currentUrl?.searchParams.get("subscription_id") ??
+      (typeof window === "undefined"
+        ? null
+        : window.localStorage.getItem(pendingCheckoutSubscriptionIdStorageKey));
 
     if (paidSignupProvider !== "mercadopago" && !paymentId && !subscriptionId) {
       return;
@@ -1014,6 +1025,11 @@ export function AccountPanel({
             "confirmed" in data &&
             data.confirmed === true
           ) {
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem(
+                pendingCheckoutSubscriptionIdStorageKey,
+              );
+            }
             setStatusMessage(helperCopy.mercadoPagoLinked);
             return;
           }
