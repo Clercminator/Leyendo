@@ -256,7 +256,7 @@ describe("PricingPageContent", () => {
     render(<PricingPageContent />);
 
     await waitFor(() => {
-      expect(openSpy).toHaveBeenCalledWith("", "_blank", "noopener,noreferrer");
+      expect(openSpy).toHaveBeenCalledWith("", "_blank");
     });
 
     expect(focusWindow.location.href).toBe(
@@ -332,24 +332,14 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(openSpy).toHaveBeenNthCalledWith(
-      1,
-      "",
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(openSpy).toHaveBeenNthCalledWith(1, "", "_blank");
     expect(focusWindow.location.href).toBe(
       "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
     );
 
     await user.click(screen.getByRole("button", { name: /get max/i }));
 
-    expect(openSpy).toHaveBeenNthCalledWith(
-      2,
-      "",
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(openSpy).toHaveBeenNthCalledWith(2, "", "_blank");
     expect(maxWindow.location.href).toBe(
       "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_max_1",
     );
@@ -400,7 +390,7 @@ describe("PricingPageContent", () => {
     );
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(openSpy).toHaveBeenCalledWith("", "_blank", "noopener,noreferrer");
+    expect(openSpy).toHaveBeenCalledWith("", "_blank");
     expect(
       (checkoutWindow as { close: ReturnType<typeof vi.fn> }).close,
     ).toHaveBeenCalled();
@@ -440,7 +430,7 @@ describe("PricingPageContent", () => {
 
     await user.click(screen.getByRole("button", { name: /get focus/i }));
 
-    expect(openSpy).toHaveBeenCalledWith("", "_blank", "noopener,noreferrer");
+    expect(openSpy).toHaveBeenCalledWith("", "_blank");
     await waitFor(() => {
       expect(checkoutWindow.location.href).toBe(
         "https://checkout.lemonsqueezy.com/buy/test-focus",

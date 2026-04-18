@@ -84,9 +84,13 @@ interface Copy {
   priceSuffix: string;
 }
 
-function detectInitialRegion(locale: "en" | "es" | "pt"): PaymentRegion {
+function getDefaultPaymentRegion(locale: "en" | "es" | "pt"): PaymentRegion {
+  return locale === "en" ? "global" : "latam";
+}
+
+function detectClientPaymentRegion(locale: "en" | "es" | "pt"): PaymentRegion {
   if (typeof window === "undefined") {
-    return locale === "en" ? "global" : "latam";
+    return getDefaultPaymentRegion(locale);
   }
 
   const storedRegion = window.localStorage.getItem(paymentRegionStorageKey);
@@ -101,7 +105,7 @@ function detectInitialRegion(locale: "en" | "es" | "pt"): PaymentRegion {
     return "latam";
   }
 
-  return locale === "en" ? "global" : "latam";
+  return getDefaultPaymentRegion(locale);
 }
 
 function cardClassName(planId: PlanId) {
@@ -197,7 +201,7 @@ export function PricingPageContent({
   const checkoutResumeStartedRef = useRef(false);
   const paymentReturnHandledRef = useRef(false);
   const [paymentRegion, setPaymentRegion] = useState<PaymentRegion>(() =>
-    detectInitialRegion(locale),
+    getDefaultPaymentRegion(locale),
   );
   const [statusMessage, setStatusMessage] = useState<string>();
   const [successMessage, setSuccessMessage] = useState<string>();
@@ -220,9 +224,7 @@ export function PricingPageContent({
   const [authStatusMessage, setAuthStatusMessage] = useState<string>();
 
   useEffect(() => {
-    setPaymentRegion(
-      (currentRegion) => currentRegion ?? detectInitialRegion(locale),
-    );
+    setPaymentRegion(detectClientPaymentRegion(locale));
   }, [locale]);
 
   useEffect(() => {
@@ -299,7 +301,7 @@ export function PricingPageContent({
       return null;
     }
 
-    const checkoutWindow = window.open("", "_blank", "noopener,noreferrer");
+    const checkoutWindow = window.open("", "_blank");
 
     if (checkoutWindow) {
       checkoutWindow.opener = null;
