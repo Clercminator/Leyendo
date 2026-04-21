@@ -30,6 +30,90 @@ If you only want the quick mental model, this is it:
 
 That is the whole architecture in one flow.
 
+## System Overview Maps
+
+This section is the fastest way to understand the whole product before reading the deeper sections later in the README.
+
+### Main flows at a glance
+
+| Flow                  | Trigger                                             | Main work                                                                         | Durable state                                          | Optional remote dependency       |
+| --------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------- |
+| Import and first open | Paste text or upload a supported file               | detect source, extract readable text, build `DocumentModel`, save initial session | IndexedDB document and session records                 | none                             |
+| Reopen and continue   | Open a saved document                               | load saved payload, derive runtime chunks, restore anchors and annotations        | IndexedDB sessions, bookmarks, highlights, preferences | none                             |
+| Account sync          | User signs in or keeps reading while signed in      | mirror local library records for cross-device resume                              | IndexedDB first, then Supabase mirror when configured  | Supabase                         |
+| Billing and access    | User opens pricing or provider sends renewal events | route checkout by region, receive webhooks, update subscription state             | Supabase billing tables and profile access fields      | LemonSqueezy or MercadoPago      |
+| Reader ad breaks      | Eligible reader session reaches a break interval    | track active reading, gate by consent and caps, show overlay, record analytics    | local reader-ad storage and analytics events           | IMA / Google demand when enabled |
+
+### Whole-system flow
+
+```mermaid
+flowchart LR
+  User[User] --> Intake[Paste text or upload file]
+  Intake --> Detect[Detect input kind]
+  Detect --> Extract[Extract readable text]
+  Extract --> Model[Build DocumentModel]
+  Model --> Local[(IndexedDB)]
+  Local --> Reader[Reader runtime]
+  Reader --> Progress[Progress bookmarks highlights preferences]
+  Progress --> Local
+
+  User --> SignIn[Optional sign in]
+  SignIn --> Sync[Library sync helpers]
+  Local <--> Sync
+  Sync <--> Supabase[(Supabase)]
+
+  User --> Pricing[Pricing page]
+  Pricing --> Billing[Checkout routing]
+  Billing --> Providers[LemonSqueezy or MercadoPago]
+  Providers --> Webhooks[Webhook sync]
+  Webhooks --> Supabase
+  Supabase --> Access[Plan access state]
+  Access --> Reader
+
+  Reader --> Ads[Optional ad scheduler]
+  Ads --> Overlay[Prompt consent playback]
+  Overlay --> Analytics[Analytics events]
+```
+
+### System mind map
+
+```mermaid
+mindmap
+  root((Leyendo))
+    Import
+      Paste text
+      Upload supported files
+      Detect source kind
+      Extract readable text
+      Build DocumentModel
+    Reader
+      Focus Word
+      Phrase Chunk
+      Guided Line
+      Classic Reader
+      Runtime chunk derivation
+    Persistence
+      IndexedDB documents
+      Sessions
+      Bookmarks
+      Highlights
+      Preferences
+    Sync
+      Optional sign in
+      Supabase mirror
+      Cross-device resume
+    Billing
+      Pricing route
+      LemonSqueezy
+      MercadoPago
+      Webhook plan sync
+    Ads
+      Optional overlay
+      Local frequency caps
+      Consent gating
+      Analytics
+```
+
 ## What Problem Leyendo Is Trying To Solve
 
 A lot of speed-reading products optimize for one thing only: showing words faster. Real reading is messier than that.
@@ -73,6 +157,31 @@ When Supabase is configured and the user signs in, Leyendo can also mirror these
 
 The cloud copy is there for cross-device resume. The import pipeline itself still runs locally in the browser.
 
+### Sync flow in one view
+
+| Sync scenario           | What happens locally first                                                     | What happens remotely                                  | User-visible result                                 |
+| ----------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------ | --------------------------------------------------- |
+| Guest import            | Browser extracts text, builds the model, and stores it in IndexedDB            | nothing                                                | document opens and stays on that device             |
+| Signed-in import        | Same local-first import path                                                   | document and reading state can be mirrored to Supabase | same-device use plus cross-device resume            |
+| Reading progress update | session, bookmarks, highlights, and preferences update locally                 | matching records can be mirrored for signed-in users   | resume stays resilient even if cloud sync lags      |
+| Open on another device  | nothing from the original file needs to be re-imported if mirrored data exists | Supabase provides the mirrored library state           | the second device can hydrate its own local library |
+
+```mermaid
+flowchart LR
+  User[Reader] --> Import[Import or read]
+  Import --> Browser[Browser local pipeline]
+  Browser --> LocalA[(IndexedDB on this device)]
+  LocalA --> ResumeA[Resume on same device]
+
+  SignedIn[Signed-in state] --> SyncLayer[Library sync helpers]
+  LocalA --> SyncLayer
+  SyncLayer <--> Cloud[(Supabase)]
+  Cloud --> DeviceB[Second signed-in device]
+  DeviceB --> Pull[Hydrate local library]
+  Pull --> LocalB[(IndexedDB on second device)]
+  LocalB --> ResumeB[Resume on second device]
+```
+
 ## Pricing Payments
 
 Leyendo's pricing page now routes recurring plan checkout by region:
@@ -84,6 +193,40 @@ Leyendo's pricing page now routes recurring plan checkout by region:
 The current product flow is still pay first, account second.
 
 Leyendo now includes the recurring billing storage and webhook handlers needed to keep `profiles.plan_tier`, `subscription_status`, `subscription_expires_at`, and `subscription_grace_until` synced from LemonSqueezy and MercadoPago events. The `?payment=success&plan=...` redirect still exists as the signup bootstrap, but renewals, cancellations, grace periods, and shared Max access now depend on the Supabase billing sync described below.
+
+### Billing flow map
+
+| Route or event                                | Provider path                        | Backend involvement                                                          | Source of truth after checkout or renewal                                   |
+| --------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| US and EU recurring checkout                  | LemonSqueezy checkout creator        | server-side route creates checkout                                           | Supabase billing subscription rows and synced profile access                |
+| LATAM recurring checkout                      | MercadoPago hosted subscription link | frontend opens hosted plan URL and Supabase webhook handles lifecycle events | Supabase billing subscription rows and synced profile access                |
+| Renewal, cancellation, grace, or expiry event | provider webhook                     | Supabase Edge Functions process the provider event                           | `billing_subscriptions` plus `profiles.plan_tier` and related status fields |
+| Manual fallback                               | Binance or manual handling           | outside the recurring webhook pipeline                                       | not automatically maintained by the recurring billing sync                  |
+
+```mermaid
+flowchart LR
+  User[User] --> PricingPage[Pricing page]
+  PricingPage --> Region{Region and checkout path}
+
+  Region -->|US or EU| LSRoute[Server checkout creator]
+  LSRoute --> LS[LemonSqueezy checkout]
+
+  Region -->|LATAM| MPLink[Hosted subscription link]
+  MPLink --> MP[MercadoPago checkout]
+
+  Region -->|Fallback| Manual[Manual payment path]
+
+  LS --> Return[Return URL bootstrap]
+  MP --> Return
+
+  LS --> LSWebhook[LemonSqueezy webhook]
+  MP --> MPWebhook[MercadoPago webhook]
+
+  LSWebhook --> BillingDB[(Supabase billing state)]
+  MPWebhook --> BillingDB
+  BillingDB --> Profile[Plan tier and subscription status]
+  Profile --> Access[Reader and account access]
+```
 
 ### Vercel environment variables
 
@@ -382,6 +525,32 @@ High-level flow:
 
 This is intentional: the Reader is never left in a stuck state just because the ad provider failed.
 
+### Reader ad break state map
+
+| Gate or phase    | What it checks or does                                                         | Effect                                              |
+| ---------------- | ------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Eligibility gate | ads enabled, eligible plan, visible tab, active reading, local cap not reached | only then can a break be scheduled                  |
+| `prompt`         | surface the sponsor break overlay                                              | pauses normal reading flow until the user acts      |
+| `consent`        | ask for consent only when live demand needs it in UK or EU regions             | prevents live demand from skipping the consent gate |
+| `loading`        | initialize IMA and request the ad                                              | transitions to playback or clean failure            |
+| `playing`        | run the ad break                                                               | completion or failure both unlock the Reader        |
+| `resume`         | record the outcome and restore the reading session                             | keeps the user from getting trapped by an ad error  |
+
+```mermaid
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Tracking: ads enabled and eligible
+  Tracking --> Prompt: interval reached and cap allows
+  Prompt --> Consent: live UK or EU demand
+  Prompt --> Loading: start sponsor break
+  Consent --> Loading: consent accepted
+  Loading --> Playing: ad loaded
+  Loading --> Resume: load failure
+  Playing --> Resume: ad completed
+  Playing --> Resume: ad failed or closed
+  Resume --> Tracking: reader unlocked
+```
+
 ### Analytics events
 
 The current analytics event names are:
@@ -470,10 +639,73 @@ That is the intended split: product integration first, real trafficking later.
 - `.rtf`,
 - `.pdf` with selectable text.
 
+### Format support matrix
+
+| Input               | What Leyendo accepts                                            | What Leyendo does with it                                                                                                                                                              | Main limitations                                                                                                                 |
+| ------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Pasted text         | Text pasted directly into the app                               | Normalizes the text, builds the shared `DocumentModel`, and saves it for reader resume                                                                                                 | No original file metadata, page mapping, or rich source structure                                                                |
+| `.txt`              | Plain text files detected as `.txt` or `text/plain`             | Reads the file directly in the browser, normalizes line endings, then builds the shared reading model                                                                                  | No rich formatting beyond the text itself                                                                                        |
+| `.md` / `.markdown` | Markdown files detected by extension or `text/markdown`         | Reads the raw Markdown as text, then recovers headings and list structure during block normalization                                                                                   | Preserves reading structure better than raw text, but does not try to render full Markdown or arbitrary embedded HTML            |
+| `.docx`             | Modern Word documents detected as `.docx`                       | Uses Mammoth in the browser to extract readable text, then pushes that text through the same model builder as every other format                                                       | Prioritizes readable text over exact Word layout, so complex tables, floating elements, and page-specific formatting may flatten |
+| `.rtf`              | RTF files detected as `.rtf` or one of the known RTF MIME types | Uses Leyendo's internal lightweight RTF parser to decode readable text, line breaks, tabs, and basic list markers in the browser                                                       | Rich styling, embedded objects, and full layout fidelity are not preserved                                                       |
+| `.pdf`              | PDFs with selectable text                                       | Uses `pdfjs-dist` to extract positioned text, then reconstructs paragraphs, headings, list markers, image placeholders, and source page hints before building the shared reading model | No OCR, no exact page-geometry preservation, and complex layouts can still import roughly                                        |
+
+All supported file inputs eventually converge on the same path after extraction: Leyendo builds one `DocumentModel`, stores it locally in IndexedDB, and derives the reader modes from that saved model instead of keeping per-format reader logic.
+
+### Ingest pipeline by source kind
+
+| Source kind | How it gets recognized                     | Extraction or normalization path | Extra structure work before model build                                                   | Output handed to the model builder       |
+| ----------- | ------------------------------------------ | -------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Pasted text | direct paste input, not file detection     | normalize pasted text            | none beyond text cleanup                                                                  | raw text                                 |
+| Plain text  | `.txt` extension or `text/plain`           | direct browser file read         | minimal newline normalization                                                             | raw text                                 |
+| Markdown    | `.md`, `.markdown`, or `text/markdown`     | direct browser file read         | recover headings and list structure during normalization                                  | raw text plus Markdown-derived structure |
+| DOCX        | `.docx` extension or Office DOCX MIME type | Mammoth browser extraction       | text cleanup after extraction                                                             | raw text                                 |
+| RTF         | `.rtf` extension or known RTF MIME type    | internal RTF parser              | recover line breaks, tabs, and basic list markers                                         | raw text                                 |
+| PDF         | `.pdf` extension or `application/pdf`      | `pdfjs-dist` extraction          | reconstruct paragraphs, headings, list markers, image placeholders, and source page hints | raw text plus source blocks              |
+
+```mermaid
+flowchart TD
+  Intake{Input path}
+
+  Intake -->|Paste text| Paste[Normalize pasted text]
+  Intake -->|Upload file| Detect{Detect source kind}
+
+  Detect -->|TXT| Txt[Read and normalize plain text]
+  Detect -->|Markdown| Md[Read Markdown and recover block structure]
+  Detect -->|DOCX| Docx[Mammoth extraction]
+  Detect -->|RTF| Rtf[Internal RTF parser]
+  Detect -->|PDF| PdfLimit{Under browser PDF size cap?}
+  Detect -->|Unsupported| Reject[Reject unsupported file]
+
+  PdfLimit -->|No| TooLarge[Reject or ask for a smaller PDF]
+  PdfLimit -->|Yes| PdfExtract[pdfjs-dist text extraction]
+  PdfExtract --> PdfStructure[Reconstruct reading structure]
+
+  Paste --> Build[Build DocumentModel]
+  Txt --> Build
+  Md --> Build
+  Docx --> Build
+  Rtf --> Build
+  PdfStructure --> Build
+
+  Build --> Save[Save document and initial session]
+  Save --> Reader[Open Reader]
+```
+
+### Why these formats and not others
+
+Leyendo is intentionally strict about ingest.
+
+- The current import pipeline only accepts formats that have both a known detector and a browser-local extraction path.
+- That design keeps the product local-first: import runs in the browser instead of depending on a server-side converter, upload queue, or OCR service.
+- The supported set today matches the extraction paths that exist in the repo: plain text, Markdown, DOCX through Mammoth, RTF through an internal parser, and selectable-text PDF through `pdfjs-dist`.
+- Anything without a dedicated parser and a known cleanup path is rejected on purpose rather than guessed at loosely.
+
 ### Not supported now
 
 - legacy `.doc` Word files,
 - scanned or image-only PDFs that require OCR,
+- other file formats without a dedicated ingest path yet, such as EPUB, ODT, HTML, or Apple Pages exports,
 - cloud import sources,
 - anonymous cloud import sources,
 - backup import and export.
@@ -1061,6 +1293,56 @@ This is the local-first storage model:
 - `bookmarks`: named saved anchors,
 - `highlights`: saved quotes and notes,
 - `preferences`: reader settings.
+
+### Local versus mirrored data map
+
+| Record type             | Stored locally in IndexedDB       | Mirrored to Supabase when configured and signed in | When the remote copy matters                                                                       |
+| ----------------------- | --------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `documents`             | yes                               | yes                                                | lets another signed-in device reopen imported content without reprocessing the original file first |
+| `sessions`              | yes                               | yes                                                | restores cross-device reading position and progress                                                |
+| `bookmarks`             | yes                               | yes                                                | keeps saved anchors available across devices                                                       |
+| `highlights`            | yes                               | yes                                                | keeps saved quotes and notes available across devices                                              |
+| `preferences`           | yes                               | not part of the main library mirror described here | stays device-local in the local-first model explained in this README                               |
+| lightweight profile row | not the main local library record | yes                                                | keeps the signed-in account self-healing and provides account-linked cloud state                   |
+
+The important architectural split is that Leyendo writes the working copy locally first. Supabase is a mirror for signed-in continuity, not the primary source that the reader depends on before it can work.
+
+```mermaid
+flowchart LR
+  subgraph DeviceA[Signed-in browser on device A]
+    ImportA[Import and reading actions]
+    LocalDocsA[(local documents)]
+    LocalSessionsA[(local sessions)]
+    LocalMarksA[(local bookmarks and highlights)]
+    LocalPrefsA[(local preferences)]
+    ImportA --> LocalDocsA
+    ImportA --> LocalSessionsA
+    ImportA --> LocalMarksA
+    ImportA --> LocalPrefsA
+  end
+
+  subgraph Cloud[Supabase mirror]
+    RemoteDocs[(document records)]
+    RemoteSessions[(reading sessions)]
+    RemoteMarks[(bookmarks and highlights)]
+    RemoteProfile[(profile row)]
+  end
+
+  LocalDocsA <--> RemoteDocs
+  LocalSessionsA <--> RemoteSessions
+  LocalMarksA <--> RemoteMarks
+
+  subgraph DeviceB[Another signed-in device]
+    Pull[Hydrate local library from mirror]
+    LocalB[(IndexedDB on device B)]
+  end
+
+  RemoteDocs --> Pull
+  RemoteSessions --> Pull
+  RemoteMarks --> Pull
+  RemoteProfile --> Pull
+  Pull --> LocalB
+```
 
 Why IndexedDB instead of `localStorage`:
 
