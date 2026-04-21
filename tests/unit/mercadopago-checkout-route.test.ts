@@ -6,10 +6,6 @@ const originalFocusPlanId = process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID;
 const originalFocusTestingId = process.env.MERCADOPAGO_FOCUS_ID_TESTING;
 const originalMaxPlanId = process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID;
 const originalMaxTestingId = process.env.MERCADOPAGO_MAX_ID_TESTING;
-const originalAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-const originalAccessTokenTesting =
-  process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT;
-const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalVercelEnv = process.env.VERCEL_ENV;
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -22,9 +18,6 @@ describe("MercadoPago checkout route", () => {
     process.env.MERCADOPAGO_FOCUS_ID_TESTING = "";
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID = "";
     process.env.MERCADOPAGO_MAX_ID_TESTING = "";
-    process.env.MERCADOPAGO_ACCESS_TOKEN = "";
-    process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT = "";
-    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.VERCEL_ENV = "";
   });
 
@@ -33,33 +26,15 @@ describe("MercadoPago checkout route", () => {
     process.env.MERCADOPAGO_FOCUS_ID_TESTING = originalFocusTestingId;
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID = originalMaxPlanId;
     process.env.MERCADOPAGO_MAX_ID_TESTING = originalMaxTestingId;
-    process.env.MERCADOPAGO_ACCESS_TOKEN = originalAccessToken;
-    process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT =
-      originalAccessTokenTesting;
-    process.env.NEXT_PUBLIC_SUPABASE_URL = originalSupabaseUrl;
     process.env.VERCEL_ENV = originalVercelEnv;
   });
 
-  it("creates a MercadoPago preapproval when access token and plan id are configured", async () => {
+  it("uses the hosted MercadoPago checkout even when an access token is configured", async () => {
     process.env.VERCEL_ENV = "preview";
     process.env.MERCADOPAGO_FOCUS_ID_TESTING =
       "5870237243d3400bacd2d236caae7a20";
     process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT =
       "mp_test_preview_token";
-
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          id: "preapproval_focus_1",
-          init_point:
-            "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
-        }),
-        {
-          status: 201,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
 
     const response = await POST(
       new Request("http://localhost/api/payments/mercadopago", {
@@ -74,47 +49,23 @@ describe("MercadoPago checkout route", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      checkoutUrl:
-        "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
-      providerSubscriptionId: "preapproval_focus_1",
-    });
+    const payload = (await response.json()) as { checkoutUrl: string };
+    const checkoutUrl = new URL(payload.checkoutUrl);
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.mercadopago.com/preapproval",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: "Bearer mp_test_preview_token",
-        }),
-        method: "POST",
-      }),
-    );
-
-    const payload = JSON.parse(
-      String(fetchMock.mock.calls[0]?.[1]?.body ?? "{}"),
-    ) as {
-      back_url?: string;
-      external_reference?: string;
-      notification_url?: string;
-      payer_email?: string;
-      preapproval_plan_id?: string;
-      reason?: string;
-      status?: string;
-    };
-
-    expect(payload.preapproval_plan_id).toBe(
+    expect(checkoutUrl.origin).toBe("https://www.mercadopago.com.ar");
+    expect(checkoutUrl.pathname).toBe("/subscriptions/checkout");
+    expect(checkoutUrl.searchParams.get("preapproval_plan_id")).toBe(
       "5870237243d3400bacd2d236caae7a20",
     );
-    expect(payload.back_url).toBe(
+    expect(checkoutUrl.searchParams.get("back_url")).toBe(
       "http://localhost/account?plan=focus&payment=success&provider=mercadopago",
     );
-    expect(payload.external_reference).toBe("user-123");
-    expect(payload.payer_email).toBe("reader@example.com");
-    expect(payload.notification_url).toBe(
-      "https://example.supabase.co/functions/v1/mercado-pago-webhook?source_news=webhooks",
+    expect(checkoutUrl.searchParams.get("external_reference")).toBe("user-123");
+    expect(checkoutUrl.searchParams.get("payer_email")).toBe(
+      "reader@example.com",
     );
-    expect(payload.reason).toBe("Leyendo Focus");
-    expect(payload.status).toBe("pending");
+    expect(checkoutUrl.searchParams.get("reason")).toBe("Leyendo Focus");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects MercadoPago checkout when no Leyendo user id is provided", async () => {

@@ -8,29 +8,19 @@ import {
 const MERCADOPAGO_ACCESS_TOKEN =
   Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")?.trim() ?? "";
 const MERCADOPAGO_ACCESS_TOKEN_PRUEBA =
-  (
-    Deno.env.get("MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT")
-  )?.trim() ?? "";
+  Deno.env.get("MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT")?.trim() ?? "";
 const MERCADOPAGO_WEBHOOK_SECRET =
   Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET")?.trim() ?? "";
 const MERCADOPAGO_WEBHOOK_SECRET_PRUEBA =
-  (
-    Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_TESTING_ACCOUNT")
-  )?.trim() ?? "";
+  Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_TESTING_ACCOUNT")?.trim() ?? "";
 const MERCADOPAGO_PLAN_FOCUS_ID =
-  (
-    Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID")
-  )?.trim() ?? "";
+  Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID")?.trim() ?? "";
 const MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA =
-  (
-    Deno.env.get("MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT")
-  )?.trim() ?? "";
+  Deno.env.get("MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT")?.trim() ?? "";
 const MERCADOPAGO_PLAN_MAX_ID =
   Deno.env.get("MERCADOPAGO_PLAN_MAX_ID")?.trim() ?? "";
 const MERCADOPAGO_PLAN_MAX_ID_PRUEBA =
-  (
-    Deno.env.get("MERCADOPAGO_MAX_ID_TESTING_ACCOUNT")
-  )?.trim() ?? "";
+  Deno.env.get("MERCADOPAGO_MAX_ID_TESTING_ACCOUNT")?.trim() ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -318,77 +308,6 @@ async function syncProfileSubscription(userId: string) {
   }
 }
 
-async function getExistingSubscriptionTier(
-  subscriptionId: string | null,
-): Promise<PaidTierId | null> {
-  if (!subscriptionId) {
-    return null;
-  }
-
-  const { data } = await supabase
-    .from("billing_subscriptions")
-    .select("tier")
-    .eq("provider", "mercadopago")
-    .eq("provider_subscription_id", subscriptionId)
-    .limit(1)
-    .maybeSingle();
-
-  return data?.tier === "focus" || data?.tier === "max" ? data.tier : null;
-}
-
-async function verifySignature(
-  req: Request,
-  webhookSecret: string,
-): Promise<boolean> {
-  if (!webhookSecret) {
-    return false;
-  }
-
-  const signatureHeader = req.headers.get("x-signature");
-  if (!signatureHeader) {
-    return false;
-  }
-
-  const parts = new Map<string, string>();
-  for (const chunk of signatureHeader.split(",")) {
-    const [key, value] = chunk.split("=", 2);
-    if (key && value) {
-      parts.set(key.trim(), value.trim());
-    }
-  }
-
-  const ts = parts.get("ts");
-  const v1 = parts.get("v1");
-  if (!ts || !v1) {
-    return false;
-  }
-
-  const manifest = buildMercadoPagoSignatureManifest({
-    requestId: req.headers.get("x-request-id"),
-    requestUrl: req.url,
-    timestamp: ts,
-  });
-
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(webhookSecret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(manifest),
-  );
-  const hex = Array.from(new Uint8Array(signature))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-
-  return hex === v1;
-}
-
 async function resolveMercadoPagoCredentials(
   req: Request,
 ): Promise<MercadoPagoCredentials[] | null> {
@@ -477,7 +396,8 @@ function inferTierFromSubscriptionRecord(
 async function searchLatestSubscriptionPreapproval(params: {
   credentialsCandidates: MercadoPagoCredentials[];
   plan: PaidTierId;
-  userEmail: string;
+  userEmail?: string | null;
+  userId: string;
 }): Promise<{
   credentials: MercadoPagoCredentials;
   subscription: Record<string, unknown>;
@@ -485,70 +405,94 @@ async function searchLatestSubscriptionPreapproval(params: {
   for (const credentials of params.credentialsCandidates) {
     const exactPlanId = getPlanIdForCredentials(credentials, params.plan);
     const searchPlanIds = exactPlanId ? [exactPlanId, null] : [null];
+    const searchVariants: Array<{
+      matchLabel: "external_reference" | "payer_email";
+      matchValue: string;
+    }> = [{ matchLabel: "external_reference", matchValue: params.userId }];
 
-    for (const searchPlanId of searchPlanIds) {
-      const searchParams = new URLSearchParams({
-        criteria: "desc",
-        limit: "10",
-        offset: "0",
-        payer_email: params.userEmail,
-        sort: "date_created",
+    const normalizedUserEmail = pickString(params.userEmail);
+    if (normalizedUserEmail) {
+      searchVariants.push({
+        matchLabel: "payer_email",
+        matchValue: normalizedUserEmail,
       });
+    }
 
-      if (searchPlanId) {
-        searchParams.set("preapproval_plan_id", searchPlanId);
-      }
+    for (const searchVariant of searchVariants) {
+      for (const searchPlanId of searchPlanIds) {
+        const searchParams = new URLSearchParams({
+          criteria: "desc",
+          limit:
+            searchVariant.matchLabel === "external_reference" ? "50" : "10",
+          offset: "0",
+          sort: "date_created",
+        });
 
-      const response = await fetch(
-        `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${credentials.accessToken}`,
-            Accept: "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        console.error(
-          "Failed to search MercadoPago subscriptions",
-          credentials.environment,
-          response.status,
-          await response.text(),
-        );
-        break;
-      }
-
-      const payload = (await response.json()) as {
-        results?: Array<Record<string, unknown>>;
-      };
-      const results = Array.isArray(payload.results) ? payload.results : [];
-      const matchingSubscription = results.find((subscription) => {
-        const subscriptionEmail = pickString(subscription.payer_email);
-        if (
-          subscriptionEmail &&
-          subscriptionEmail.toLowerCase() !== params.userEmail.toLowerCase()
-        ) {
-          return false;
-        }
+        searchParams.set(searchVariant.matchLabel, searchVariant.matchValue);
 
         if (searchPlanId) {
-          const subscriptionPlanId = pickString(
-            subscription.preapproval_plan_id,
-            subscription.preapproval_plan &&
-              typeof subscription.preapproval_plan === "object"
-              ? (subscription.preapproval_plan as Record<string, unknown>).id
-              : null,
-          );
-
-          return subscriptionPlanId === searchPlanId;
+          searchParams.set("preapproval_plan_id", searchPlanId);
         }
 
-        return inferTierFromSubscriptionRecord(subscription) === params.plan;
-      });
+        const response = await fetch(
+          `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${credentials.accessToken}`,
+              Accept: "application/json",
+            },
+          },
+        );
 
-      if (matchingSubscription) {
-        return { credentials, subscription: matchingSubscription };
+        if (!response.ok) {
+          console.error(
+            "Failed to search MercadoPago subscriptions",
+            credentials.environment,
+            response.status,
+            await response.text(),
+          );
+          break;
+        }
+
+        const payload = (await response.json()) as {
+          results?: Array<Record<string, unknown>>;
+        };
+        const results = Array.isArray(payload.results) ? payload.results : [];
+        const matchingSubscription = results.find((subscription) => {
+          if (searchVariant.matchLabel === "external_reference") {
+            if (pickString(subscription.external_reference) !== params.userId) {
+              return false;
+            }
+          } else {
+            const subscriptionEmail = pickString(subscription.payer_email);
+            if (
+              subscriptionEmail &&
+              normalizedUserEmail &&
+              subscriptionEmail.toLowerCase() !==
+                normalizedUserEmail.toLowerCase()
+            ) {
+              return false;
+            }
+          }
+
+          if (searchPlanId) {
+            const subscriptionPlanId = pickString(
+              subscription.preapproval_plan_id,
+              subscription.preapproval_plan &&
+                typeof subscription.preapproval_plan === "object"
+                ? (subscription.preapproval_plan as Record<string, unknown>).id
+                : null,
+            );
+
+            return subscriptionPlanId === searchPlanId;
+          }
+
+          return inferTierFromSubscriptionRecord(subscription) === params.plan;
+        });
+
+        if (matchingSubscription) {
+          return { credentials, subscription: matchingSubscription };
+        }
       }
     }
   }
@@ -931,6 +875,7 @@ async function handleReturnConfirmation(
     const latestSubscription = await searchLatestSubscriptionPreapproval({
       credentialsCandidates: mercadoPagoCredentials,
       plan: requestedPlan,
+      userId: authenticatedUser.id,
       userEmail: authenticatedUser.email,
     });
 
