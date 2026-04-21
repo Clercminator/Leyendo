@@ -1,38 +1,34 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+import {
+  buildMercadoPagoSignatureManifest,
+  resolveMercadoPagoWebhookResourceId,
+} from "./shared.ts";
+
 const MERCADOPAGO_ACCESS_TOKEN =
   Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")?.trim() ?? "";
 const MERCADOPAGO_ACCESS_TOKEN_PRUEBA =
   (
-    Deno.env.get("MERCADOPAGO_ACCESS_TOKEN_PRUEBA") ??
     Deno.env.get("MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT")
   )?.trim() ?? "";
 const MERCADOPAGO_WEBHOOK_SECRET =
   Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET")?.trim() ?? "";
 const MERCADOPAGO_WEBHOOK_SECRET_PRUEBA =
   (
-    Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_PRUEBA") ??
-    Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_TESTING_ACCOUNT") ??
-    Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_TESTING_ACCOUT")
+    Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_TESTING_ACCOUNT")
   )?.trim() ?? "";
 const MERCADOPAGO_PLAN_FOCUS_ID =
   (
-    Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID") ??
-    Deno.env.get("MERCADOPAGO_PLAN_STANDARD_ID") ??
-    Deno.env.get("MERCADOPAGO_PLAN_BUILDER_ID")
+    Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID")
   )?.trim() ?? "";
 const MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA =
   (
-    Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA") ??
-    Deno.env.get("MERCADOPAGO_PLAN_STANDARD_ID_PRUEBA") ??
-    Deno.env.get("MERCADOPAGO_PLAN_BUILDER_ID_PRUEBA") ??
     Deno.env.get("MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT")
   )?.trim() ?? "";
 const MERCADOPAGO_PLAN_MAX_ID =
   Deno.env.get("MERCADOPAGO_PLAN_MAX_ID")?.trim() ?? "";
 const MERCADOPAGO_PLAN_MAX_ID_PRUEBA =
   (
-    Deno.env.get("MERCADOPAGO_PLAN_MAX_ID_PRUEBA") ??
     Deno.env.get("MERCADOPAGO_MAX_ID_TESTING_ACCOUNT")
   )?.trim() ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -156,13 +152,6 @@ function pickString(...values: unknown[]): string | null {
     }
   }
   return null;
-}
-
-function getWebhookQueryResourceId(url: URL): string | null {
-  return pickString(
-    url.searchParams.get("data.id"),
-    url.searchParams.get("id"),
-  );
 }
 
 function titleCase(value: string | null) {
@@ -349,7 +338,6 @@ async function getExistingSubscriptionTier(
 
 async function verifySignature(
   req: Request,
-  body: WebhookBody,
   webhookSecret: string,
 ): Promise<boolean> {
   if (!webhookSecret) {
@@ -375,19 +363,11 @@ async function verifySignature(
     return false;
   }
 
-  const url = new URL(req.url);
-  const dataId =
-    asString(url.searchParams.get("data.id"))?.toLowerCase() ?? null;
-  const requestId = req.headers.get("x-request-id");
-  const manifestParts: string[] = [];
-
-  if (dataId) {
-    manifestParts.push(`id:${dataId};`);
-  }
-  if (requestId) {
-    manifestParts.push(`request-id:${requestId};`);
-  }
-  manifestParts.push(`ts:${ts};`);
+  const manifest = buildMercadoPagoSignatureManifest({
+    requestId: req.headers.get("x-request-id"),
+    requestUrl: req.url,
+    timestamp: ts,
+  });
 
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -400,7 +380,7 @@ async function verifySignature(
   const signature = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(manifestParts.join("")),
+    encoder.encode(manifest),
   );
   const hex = Array.from(new Uint8Array(signature))
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -411,7 +391,6 @@ async function verifySignature(
 
 async function resolveMercadoPagoCredentials(
   req: Request,
-  body: WebhookBody,
 ): Promise<MercadoPagoCredentials[] | null> {
   const credentialsWithSecret = mercadoPagoCredentials.filter((credentials) =>
     Boolean(credentials.webhookSecret),
@@ -423,7 +402,7 @@ async function resolveMercadoPagoCredentials(
 
   const matchingCredentials: MercadoPagoCredentials[] = [];
   for (const credentials of credentialsWithSecret) {
-    if (await verifySignature(req, body, credentials.webhookSecret)) {
+    if (await verifySignature(req, credentials.webhookSecret)) {
       matchingCredentials.push(credentials);
     }
   }
@@ -466,6 +445,35 @@ function getPlanIdForCredentials(
   return plan === "max" ? credentials.maxPlanId : credentials.focusPlanId;
 }
 
+function inferTierFromSubscriptionRecord(
+  subscription: Record<string, unknown>,
+): PaidTierId {
+  const planId = pickString(
+    subscription.preapproval_plan_id,
+    subscription.preapproval_plan &&
+      typeof subscription.preapproval_plan === "object"
+      ? (subscription.preapproval_plan as Record<string, unknown>).id
+      : null,
+  );
+  const reason = pickString(
+    subscription.reason,
+    subscription.description,
+    subscription.summarized,
+  );
+  const autoRecurring =
+    typeof subscription.auto_recurring === "object" &&
+    subscription.auto_recurring !== null
+      ? (subscription.auto_recurring as Record<string, unknown>)
+      : null;
+  const amount = asNumber(autoRecurring?.transaction_amount);
+
+  return (
+    inferTierFromPlanId(planId) ??
+    inferTierFromText(reason, planId) ??
+    inferTierFromAmount(amount)
+  );
+}
+
 async function searchLatestSubscriptionPreapproval(params: {
   credentialsCandidates: MercadoPagoCredentials[];
   plan: PaidTierId;
@@ -475,65 +483,73 @@ async function searchLatestSubscriptionPreapproval(params: {
   subscription: Record<string, unknown>;
 } | null> {
   for (const credentials of params.credentialsCandidates) {
-    const searchParams = new URLSearchParams({
-      criteria: "desc",
-      limit: "10",
-      offset: "0",
-      payer_email: params.userEmail,
-      sort: "date_created",
-    });
-    const planId = getPlanIdForCredentials(credentials, params.plan);
+    const exactPlanId = getPlanIdForCredentials(credentials, params.plan);
+    const searchPlanIds = exactPlanId ? [exactPlanId, null] : [null];
 
-    if (planId) {
-      searchParams.set("preapproval_plan_id", planId);
-    }
+    for (const searchPlanId of searchPlanIds) {
+      const searchParams = new URLSearchParams({
+        criteria: "desc",
+        limit: "10",
+        offset: "0",
+        payer_email: params.userEmail,
+        sort: "date_created",
+      });
 
-    const response = await fetch(
-      `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${credentials.accessToken}`,
-          Accept: "application/json",
-        },
-      },
-    );
-
-    if (!response.ok) {
-      console.error(
-        "Failed to search MercadoPago subscriptions",
-        credentials.environment,
-        response.status,
-        await response.text(),
-      );
-      continue;
-    }
-
-    const payload = (await response.json()) as {
-      results?: Array<Record<string, unknown>>;
-    };
-    const results = Array.isArray(payload.results) ? payload.results : [];
-    const matchingSubscription = results.find((subscription) => {
-      const subscriptionEmail = pickString(subscription.payer_email);
-      if (
-        subscriptionEmail &&
-        subscriptionEmail.toLowerCase() !== params.userEmail.toLowerCase()
-      ) {
-        return false;
+      if (searchPlanId) {
+        searchParams.set("preapproval_plan_id", searchPlanId);
       }
 
-      const subscriptionPlanId = pickString(
-        subscription.preapproval_plan_id,
-        subscription.preapproval_plan &&
-          typeof subscription.preapproval_plan === "object"
-          ? (subscription.preapproval_plan as Record<string, unknown>).id
-          : null,
+      const response = await fetch(
+        `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${credentials.accessToken}`,
+            Accept: "application/json",
+          },
+        },
       );
 
-      return !planId || subscriptionPlanId === planId;
-    });
+      if (!response.ok) {
+        console.error(
+          "Failed to search MercadoPago subscriptions",
+          credentials.environment,
+          response.status,
+          await response.text(),
+        );
+        break;
+      }
 
-    if (matchingSubscription) {
-      return { credentials, subscription: matchingSubscription };
+      const payload = (await response.json()) as {
+        results?: Array<Record<string, unknown>>;
+      };
+      const results = Array.isArray(payload.results) ? payload.results : [];
+      const matchingSubscription = results.find((subscription) => {
+        const subscriptionEmail = pickString(subscription.payer_email);
+        if (
+          subscriptionEmail &&
+          subscriptionEmail.toLowerCase() !== params.userEmail.toLowerCase()
+        ) {
+          return false;
+        }
+
+        if (searchPlanId) {
+          const subscriptionPlanId = pickString(
+            subscription.preapproval_plan_id,
+            subscription.preapproval_plan &&
+              typeof subscription.preapproval_plan === "object"
+              ? (subscription.preapproval_plan as Record<string, unknown>).id
+              : null,
+          );
+
+          return subscriptionPlanId === searchPlanId;
+        }
+
+        return inferTierFromSubscriptionRecord(subscription) === params.plan;
+      });
+
+      if (matchingSubscription) {
+        return { credentials, subscription: matchingSubscription };
+      }
     }
   }
 
@@ -762,10 +778,6 @@ async function handleSubscriptionPreapprovalNotification(
     credentialsCandidates,
   );
   if (!subscriptionResult) {
-    console.warn("MercadoPago subscription webhook resource not found", {
-      credentials: credentialsCandidates.map(({ environment }) => environment),
-      subscriptionId,
-    });
     return okResponse();
   }
 
@@ -782,12 +794,6 @@ async function handleSubscriptionPreapprovalNotification(
     userId: targetUserId,
   });
 
-  console.log("MercadoPago subscription synced", {
-    environment: subscriptionResult.credentials.environment,
-    subscriptionId,
-    userId: targetUserId,
-  });
-
   return okResponse();
 }
 
@@ -801,10 +807,6 @@ async function handleSubscriptionAuthorizedPaymentNotification(
     credentialsCandidates,
   );
   if (!authorizedPaymentResult) {
-    console.warn("MercadoPago authorized payment webhook resource not found", {
-      authorizedPaymentId,
-      credentials: credentialsCandidates.map(({ environment }) => environment),
-    });
     return okResponse();
   }
 
@@ -898,13 +900,6 @@ async function handleSubscriptionAuthorizedPaymentNotification(
     await syncProfileSubscription(targetUserId);
   }
 
-  console.log("MercadoPago recurring payment recorded", {
-    authorizedPaymentId,
-    environment: credentials.environment,
-    subscriptionId,
-    userId: targetUserId,
-  });
-
   return okResponse();
 }
 
@@ -982,23 +977,9 @@ async function handleWebhook(req: Request): Promise<Response> {
       return await handleReturnConfirmation(req, body);
     }
 
-    const credentialsCandidates = await resolveMercadoPagoCredentials(
-      req,
-      body,
-    );
+    const credentialsCandidates = await resolveMercadoPagoCredentials(req);
 
     if (!credentialsCandidates?.length) {
-      const url = new URL(req.url);
-      console.warn("MercadoPago webhook rejected invalid signature", {
-        bodyResourceId: pickString(body.data?.id),
-        bodyTopic: pickString(body.type, body.topic),
-        queryResourceId: getWebhookQueryResourceId(url),
-        queryTopic: pickString(
-          url.searchParams.get("topic"),
-          url.searchParams.get("type"),
-        ),
-        requestId: req.headers.get("x-request-id"),
-      });
       return jsonResponse({ error: "Invalid signature" }, 401);
     }
 
@@ -1009,35 +990,13 @@ async function handleWebhook(req: Request): Promise<Response> {
       url.searchParams.get("topic"),
       url.searchParams.get("type"),
     );
-    const queryResourceId = getWebhookQueryResourceId(url);
-    const bodyResourceId = pickString(body.data?.id);
-    const resourceId = pickString(queryResourceId, bodyResourceId);
+    const resourceId = resolveMercadoPagoWebhookResourceId({
+      bodyDataId: body.data?.id,
+      requestUrl: req.url,
+    });
     const action = asString(body.action);
 
-    if (
-      queryResourceId &&
-      bodyResourceId &&
-      queryResourceId !== bodyResourceId
-    ) {
-      console.warn("MercadoPago webhook resource id mismatch", {
-        bodyResourceId,
-        queryResourceId,
-        requestId: req.headers.get("x-request-id"),
-        topic,
-      });
-    }
-
     if (!topic || !resourceId) {
-      console.warn("MercadoPago webhook ignored incomplete payload", {
-        action,
-        bodyResourceId,
-        bodyTopic: pickString(body.type, body.topic),
-        queryResourceId,
-        queryTopic: pickString(
-          url.searchParams.get("topic"),
-          url.searchParams.get("type"),
-        ),
-      });
       return okResponse();
     }
 
@@ -1055,12 +1014,6 @@ async function handleWebhook(req: Request): Promise<Response> {
         credentialsCandidates,
       );
     }
-
-    console.log("MercadoPago webhook ignored unsupported topic", {
-      action,
-      resourceId,
-      topic,
-    });
 
     return okResponse();
   } catch (error) {

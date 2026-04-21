@@ -27,6 +27,8 @@ const paymentRegionStorageKey = "leyendo_payment_region";
 const paidSignupPlanStorageKey = "leyendo_paid_signup_plan";
 const pendingCheckoutPlanStorageKey = "leyendo_pending_checkout_plan";
 const pendingCheckoutProviderStorageKey = "leyendo_pending_checkout_provider";
+const pendingCheckoutSubscriptionIdStorageKey =
+  "leyendo_pending_checkout_subscription_id";
 const latamCountryCodes = new Set([
   "AR",
   "BO",
@@ -264,6 +266,24 @@ export function PricingPageContent({
     window.localStorage.setItem(pendingCheckoutProviderStorageKey, provider);
   };
 
+  const rememberPendingCheckoutSubscriptionId = (
+    subscriptionId: string | undefined,
+  ) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (subscriptionId?.trim()) {
+      window.localStorage.setItem(
+        pendingCheckoutSubscriptionIdStorageKey,
+        subscriptionId.trim(),
+      );
+      return;
+    }
+
+    window.localStorage.removeItem(pendingCheckoutSubscriptionIdStorageKey);
+  };
+
   const clearPendingCheckout = () => {
     if (typeof window === "undefined") {
       return;
@@ -271,6 +291,7 @@ export function PricingPageContent({
 
     window.localStorage.removeItem(pendingCheckoutPlanStorageKey);
     window.localStorage.removeItem(pendingCheckoutProviderStorageKey);
+    window.localStorage.removeItem(pendingCheckoutSubscriptionIdStorageKey);
   };
 
   const closeAuthModal = () => {
@@ -679,18 +700,18 @@ export function PricingPageContent({
     return locale === "es"
       ? [
           "Abre tu cuenta Basic Reader.",
-          "Entra con el mismo email usado antes del pago.",
+          "Entra en la misma cuenta de Leyendo que uso el checkout.",
           "Espera el mensaje Subscription linked.",
         ]
       : locale === "pt"
         ? [
             "Abra sua conta Basic Reader.",
-            "Entre com o mesmo email usado antes do pagamento.",
+            "Entre na mesma conta do Leyendo que iniciou o checkout.",
             "Espere a mensagem Subscription linked.",
           ]
         : [
             "Open your Basic Reader account.",
-            "Sign in with the same email you used before payment.",
+            "Sign in to the same Leyendo account that started checkout.",
             "Wait for the Subscription linked message.",
           ];
   }, [locale, user]);
@@ -704,6 +725,7 @@ export function PricingPageContent({
   ) {
     const checkoutWindow = window.open("", "_blank");
     let providerUrl: string | undefined;
+    let providerSubscriptionId: string | undefined;
 
     if (provider === "lemonsqueezy") {
       try {
@@ -722,6 +744,7 @@ export function PricingPageContent({
         const payload = (await response.json().catch(() => null)) as {
           checkoutUrl?: string;
           error?: string;
+          providerSubscriptionId?: string;
         } | null;
 
         if (!response.ok || !payload?.checkoutUrl) {
@@ -760,6 +783,7 @@ export function PricingPageContent({
         const payload = (await response.json().catch(() => null)) as {
           checkoutUrl?: string;
           error?: string;
+          providerSubscriptionId?: string;
         } | null;
 
         if (!response.ok || !payload?.checkoutUrl) {
@@ -769,6 +793,7 @@ export function PricingPageContent({
         }
 
         providerUrl = payload.checkoutUrl;
+        providerSubscriptionId = payload.providerSubscriptionId;
       } catch {
         checkoutWindow?.close();
         setStatusMessage(copy.invalidMercadoPagoProvider);
@@ -789,6 +814,7 @@ export function PricingPageContent({
     setStatusMessage(undefined);
     window.localStorage.setItem(paidSignupPlanStorageKey, planId);
     setReadySignupPlan(planId);
+    rememberPendingCheckoutSubscriptionId(providerSubscriptionId);
 
     if (checkoutWindow) {
       checkoutWindow.opener = null;
