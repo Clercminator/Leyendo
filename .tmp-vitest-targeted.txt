@@ -1,0 +1,177 @@
+
+[1m[46m RUN [49m[22m [36mv4.1.1 [39m[90mC:/Users/clerc/Documents/Lee Project[39m
+
+ [32mΓ£ô[39m tests/unit/mercadopago-checkout-route.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mΓ£ô[39m tests/component/pricing-page-content.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[33m 2501[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m lets a guest create a Basic Reader account inside the pricing modal [33m 1030[2mms[22m[39m
+ [31mΓ¥»[39m tests/component/account-panel.test.tsx [2m([22m[2m13 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 3537[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m lets a signed-in user save a display name [33m 472[2mms[22m[39m
+     [32mΓ£ô[39m shows the last sync result and keeps the manual sync action wired[32m 125[2mms[22m[39m
+     [32mΓ£ô[39m spells out that synced documents can be reopened without uploading again[32m 21[2mms[22m[39m
+[31m     [31m├ù[31m shows an explicit subscription linked confirmation and billing status after a paid checkout returns[39m[32m 24[2mms[22m[39m
+     [32mΓ£ô[39m shows exact activation steps for a paid checkout before the user signs in[32m 13[2mms[22m[39m
+     [32mΓ£ô[39m sends a signed-in user back to pricing to resume checkout[32m 14[2mms[22m[39m
+     [32mΓ£ô[39m warns when the signed-in account does not match the new paid subscription yet[32m 21[2mms[22m[39m
+     [32mΓ£ô[39m confirms MercadoPago returns for the signed-in payment account[32m 35[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m lets a Focus user save a word to the dictionary [33m 1722[2mms[22m[39m
+     [32mΓ£ô[39m lets a paid user remove a saved word[32m 128[2mms[22m[39m
+     [32mΓ£ô[39m offers GitHub auth and explains the email link flow[32m 171[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m lets users create a free Basic Reader account before choosing a paid plan [33m 782[2mms[22m[39m
+     [32mΓ£ô[39m keeps the guest auth card compact without the old why sign in block[32m 8[2mms[22m[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 1 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  tests/component/account-panel.test.tsx > AccountPanel > shows an explicit subscription linked confirmation and billing status after a paid checkout returns
+TestingLibraryElementError: Unable to find an element with the text: /subscription linked/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]"
+    >
+      <article
+        class="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl"
+      >
+        <div
+          class="mb-6 rounded-[1.75rem] border border-amber-300/30 bg-amber-500/10 px-5 py-4"
+        >
+          <p
+            class="text-xs font-semibold tracking-[0.18em] text-amber-100 uppercase"
+          >
+            One step left
+          </p>
+          <h3
+            class="mt-2 text-xl font-semibold text-white"
+          >
+            This signed-in account is not linked to the new payment yet.
+          </h3>
+          <p
+            class="mt-2 text-sm leading-7 text-amber-50/90"
+          >
+            If you paid with a different email, sign out and use the same email as the payment account. If you already used the same email, wait a moment and reload this page.
+          </p>
+        </div>
+        <input
+          accept="image/*,.avif,.bmp,.gif,.heic,.heif,.ico,.jfif,.jpeg,.jpg,.png,.svg,.tif,.tiff,.webp"
+          aria-label="Profile photo"
+          class="sr-only"
+          title="Profile photo"
+          type="file"
+        />
+        <div
+          class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between"
+        >
+          <div>
+            <p
+              class="editorial-kicker text-(--accent-sky)"
+            >
+              Upgrade required
+            </p>
+            <h2
+              class="font-heading mt-4 text-4xl font-semibold text-(--text-strong)"
+            >
+              Lee Reader
+            </h2>
+            <p
+              class="mt-3 text-sm text-(--text-muted)"
+            >
+              reader@example.com
+            </p>
+            <p
+              class="mt-4 max-w-3xl text-base leading-8 text-(--text-muted)"
+            >
+              Cross-device sync, cloud backup, and the saved-word dictionary only unlock on Focus or Max.
+            </p>
+          </div>
+          <div
+            class="flex flex-col gap-3 lg:items-end"
+          >
+            <div
+              class="flex items-center gap-4"
+            >
+              <div
+                class="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[2rem] border border-(--border-soft) bg-(--surface-soft) text-lg font-semibold text-(--text-strong)"
+              >
+                <span>
+                  LR
+                </span>
+              </div>
+              <div
+                class="flex flex-col gap-2"
+              >
+                <button
+                  class="group/button inline-flex shrink-0 cursor-pointer items-center justify-center border bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 gap-1.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 h-11 rounded-full px-5"
+                  data-slot="button"
+                  tabindex="0"
+                  type="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-image-plus h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M16 5h6"
+                    />
+                    <path
+                      d="M19 2v6"
+                    />
+                    <path
+                      d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"
+                    />
+                    <path
+                      d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"
+                    />
+                    <circle
+                      cx="9"
+                      cy="9"
+                      r="2"
+                    />
+                  </svg>
+                  Upload photo
+                </button>
+              </div>
+            </div>
+            <p
+              class="max-w-xs text-right text-xs leading-6 text-(--text-muted)"
+            >
+              The photo is stored on this account and can be replaced whenever you want.
+            </p>
+          </div>
+        </div>
+        <div
+          class="mt-8 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) p-5"
+        >
+          <p
+            class="editorial-kicker text-(--accent-sky)"
+          >
+            Subscription stat...
+ Γ¥» Object.getElementError node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ Γ¥» node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ Γ¥» node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ Γ¥» tests/component/account-panel.test.tsx:297:19
+    295|     render(<AccountPanel paidSignupPlan="focus" />);
+    296|
+    297|     expect(screen.getByText(/subscription linked/i)).toBeInTheDocumentΓÇª
+       |                   ^
+    298|     expect(
+    299|       screen.getByText(/focus is active on this account/i),
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m30 passed[39m[22m[90m (31)[39m
+[2m   Start at [22m 20:12:22
+[2m   Duration [22m 6.13s[2m (transform 502ms, setup 477ms, import 1.45s, tests 6.06s, environment 4.58s)[22m
+

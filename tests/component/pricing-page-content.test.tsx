@@ -87,20 +87,7 @@ describe("PricingPageContent", () => {
         return new Response(
           JSON.stringify({
             checkoutUrl:
-              "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
-            providerSubscriptionId: "preapproval_focus_1",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      if (typeof input === "string" && input === "/api/payments/lemonsqueezy") {
-        return new Response(
-          JSON.stringify({
-            checkoutUrl: "https://checkout.lemonsqueezy.com/buy/test-focus",
+              "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
           }),
           {
             status: 200,
@@ -243,8 +230,7 @@ describe("PricingPageContent", () => {
       new Response(
         JSON.stringify({
           checkoutUrl:
-            "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
-          providerSubscriptionId: "preapproval_focus_1",
+            "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
         }),
         {
           status: 200,
@@ -260,7 +246,7 @@ describe("PricingPageContent", () => {
     });
 
     expect(focusWindow.location.href).toBe(
-      "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
+      "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
     );
     expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/pricing");
 
@@ -302,8 +288,7 @@ describe("PricingPageContent", () => {
         new Response(
           JSON.stringify({
             checkoutUrl:
-              "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
-            providerSubscriptionId: "preapproval_focus_1",
+              "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
           }),
           {
             status: 200,
@@ -315,8 +300,7 @@ describe("PricingPageContent", () => {
         new Response(
           JSON.stringify({
             checkoutUrl:
-              "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_max_1",
-            providerSubscriptionId: "preapproval_max_1",
+              "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=9f0352ccb88840e38f5241214e548df4",
           }),
           {
             status: 200,
@@ -334,14 +318,14 @@ describe("PricingPageContent", () => {
 
     expect(openSpy).toHaveBeenNthCalledWith(1, "", "_blank");
     expect(focusWindow.location.href).toBe(
-      "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_focus_1",
+      "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=b9ee7e5887ba41608dbceb39a152073b",
     );
 
     await user.click(screen.getByRole("button", { name: /get max/i }));
 
     expect(openSpy).toHaveBeenNthCalledWith(2, "", "_blank");
     expect(maxWindow.location.href).toBe(
-      "https://www.mercadopago.com.ar/subscriptions/checkout/start?preapproval_id=preapproval_max_1",
+      "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=9f0352ccb88840e38f5241214e548df4",
     );
 
     openSpy.mockRestore();
@@ -397,75 +381,8 @@ describe("PricingPageContent", () => {
     expect(
       screen.getByText(/mercadopago is not configured correctly yet/i),
     ).toBeInTheDocument();
-    expect(
-      window.localStorage.getItem("leyendo_pending_checkout_subscription_id"),
-    ).toBeNull();
 
     openSpy.mockRestore();
-  });
-
-  it("opens LemonSqueezy checkout in a new tab for signed-in global users", async () => {
-    const user = userEvent.setup();
-    const checkoutWindow = {
-      location: { href: "" },
-      opener: null as Window | null,
-    } as unknown as Window;
-    const openSpy = vi.spyOn(window, "open").mockReturnValue(checkoutWindow);
-
-    useSupabaseAuth.mockReturnValue({
-      isConfigured: true,
-      isLoading: false,
-      signIn: vi.fn(),
-      signInWithGitHub: vi.fn(),
-      signInWithGoogle: vi.fn(),
-      signInWithMagicLink: vi.fn(),
-      signUp: vi.fn(),
-      user: {
-        email: "reader@example.com",
-        id: "user-1",
-      },
-    });
-
-    render(<PricingPageContent />);
-
-    await user.click(screen.getByRole("button", { name: /get focus/i }));
-
-    expect(openSpy).toHaveBeenCalledWith("", "_blank");
-    await waitFor(() => {
-      expect(checkoutWindow.location.href).toBe(
-        "https://checkout.lemonsqueezy.com/buy/test-focus",
-      );
-    });
-
-    openSpy.mockRestore();
-  });
-
-  it("shows a popup-blocked message instead of falling back to same-tab checkout", async () => {
-    const user = userEvent.setup();
-    vi.spyOn(window, "open").mockReturnValue(null);
-
-    useSupabaseAuth.mockReturnValue({
-      isConfigured: true,
-      isLoading: false,
-      signIn: vi.fn(),
-      signInWithGitHub: vi.fn(),
-      signInWithGoogle: vi.fn(),
-      signInWithMagicLink: vi.fn(),
-      signUp: vi.fn(),
-      user: {
-        email: "reader@example.com",
-        id: "user-1",
-      },
-    });
-
-    render(<PricingPageContent />);
-
-    await user.click(screen.getByRole("button", { name: /get focus/i }));
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(
-      screen.getByText(/leyendo could not open the payment page in a new tab/i),
-    ).toBeInTheDocument();
   });
 
   it("switches payment region and opens the Binance dialog", async () => {
