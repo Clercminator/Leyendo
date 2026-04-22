@@ -142,7 +142,9 @@ describe("ClassicReaderView", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("reader-mermaid-diagram")).toBeVisible();
-      expect(container.querySelector('[data-mermaid-diagram="true"]')).toBeTruthy();
+      expect(
+        container.querySelector('[data-mermaid-diagram="true"]'),
+      ).toBeTruthy();
     });
   });
 });

@@ -26,9 +26,7 @@ function configureMermaid() {
   hasConfiguredMermaid = true;
 }
 
-export function MarkdownMermaidDiagram({
-  chart,
-}: MarkdownMermaidDiagramProps) {
+export function MarkdownMermaidDiagram({ chart }: MarkdownMermaidDiagramProps) {
   const { locale } = useLocale();
   const diagramId = useId().replace(/[:]/g, "");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,7 +80,10 @@ export function MarkdownMermaidDiagram({
   }, [chart, diagramId, locale]);
 
   return (
-    <figure className="reader-mermaid-figure" data-testid="reader-mermaid-diagram">
+    <figure
+      className="reader-mermaid-figure"
+      data-testid="reader-mermaid-diagram"
+    >
       <div
         ref={containerRef}
         className="reader-mermaid-diagram"

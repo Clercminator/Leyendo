@@ -172,7 +172,10 @@ function extractMermaidChart(children: ReactNode) {
 
   const className = children.props.className;
 
-  if (typeof className !== "string" || !className.includes("language-mermaid")) {
+  if (
+    typeof className !== "string" ||
+    !className.includes("language-mermaid")
+  ) {
     return undefined;
   }
 
