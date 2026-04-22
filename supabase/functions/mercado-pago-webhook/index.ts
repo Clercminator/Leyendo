@@ -7,20 +7,45 @@ import {
 
 const MERCADOPAGO_ACCESS_TOKEN =
   Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")?.trim() ?? "";
-const MERCADOPAGO_ACCESS_TOKEN_PRUEBA =
-  Deno.env.get("MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT")?.trim() ?? "";
+function pickEnv(...names: string[]) {
+  for (const name of names) {
+    const value = Deno.env.get(name)?.trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+const MERCADOPAGO_ACCESS_TOKEN_PRUEBA = pickEnv(
+  "MERCADOPAGO_ACCESS_TOKEN_PRUEBA",
+  "MERCADOPAGO_ACCESS_TOKEN_TESTING",
+  "MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT",
+);
 const MERCADOPAGO_WEBHOOK_SECRET =
   Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET")?.trim() ?? "";
-const MERCADOPAGO_WEBHOOK_SECRET_PRUEBA =
-  Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET_TESTING_ACCOUNT")?.trim() ?? "";
+const MERCADOPAGO_WEBHOOK_SECRET_PRUEBA = pickEnv(
+  "MERCADOPAGO_WEBHOOK_SECRET_PRUEBA",
+  "MERCADOPAGO_WEBHOOK_SECRET_TESTING_ACCOUNT",
+  "MERCADOPAGO_WEBHOOK_SECRET_TESTING_ACCOUT",
+);
 const MERCADOPAGO_PLAN_FOCUS_ID =
   Deno.env.get("MERCADOPAGO_PLAN_FOCUS_ID")?.trim() ?? "";
-const MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA =
-  Deno.env.get("MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT")?.trim() ?? "";
+const MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA = pickEnv(
+  "MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA",
+  "MERCADOPAGO_FOCUS_ID_TESTING",
+  "MERCADOPAGO_PLAN_FOCUS_ID_TESTING",
+  "MERCADOPAGO_FOCUS_ID_TESTING_ACCOUNT",
+);
 const MERCADOPAGO_PLAN_MAX_ID =
   Deno.env.get("MERCADOPAGO_PLAN_MAX_ID")?.trim() ?? "";
-const MERCADOPAGO_PLAN_MAX_ID_PRUEBA =
-  Deno.env.get("MERCADOPAGO_MAX_ID_TESTING_ACCOUNT")?.trim() ?? "";
+const MERCADOPAGO_PLAN_MAX_ID_PRUEBA = pickEnv(
+  "MERCADOPAGO_PLAN_MAX_ID_PRUEBA",
+  "MERCADOPAGO_MAX_ID_TESTING",
+  "MERCADOPAGO_PLAN_MAX_ID_TESTING",
+  "MERCADOPAGO_MAX_ID_TESTING_ACCOUNT",
+);
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -279,6 +304,7 @@ async function findUserIdBySubscriptionId(
 
 async function resolveTargetUserId(options: {
   explicitUserId?: unknown;
+  fallbackUserId?: unknown;
   subscriptionId?: string | null;
   userEmail?: string | null;
 }): Promise<string | null> {
@@ -292,6 +318,11 @@ async function resolveTargetUserId(options: {
   );
   if (bySubscription) {
     return bySubscription;
+  }
+
+  const fallbackUserId = asString(options.fallbackUserId);
+  if (fallbackUserId) {
+    return fallbackUserId;
   }
 
   return findUserIdByEmail(options.userEmail ?? null);
@@ -620,7 +651,11 @@ async function fetchMercadoPagoJson(
       status: response.status,
     };
 
-    if (response.status !== 404) {
+    if (
+      response.status !== 401 &&
+      response.status !== 403 &&
+      response.status !== 404
+    ) {
       return failure;
     }
 
@@ -777,6 +812,7 @@ async function syncMercadoPagoSubscription(params: {
 async function handleSubscriptionPreapprovalNotification(
   subscriptionId: string,
   credentialsCandidates: MercadoPagoCredentials[],
+  fallbackUserId?: string | null,
 ): Promise<Response> {
   const subscriptionResult = await fetchSubscriptionPreapproval(
     subscriptionId,
@@ -790,6 +826,7 @@ async function handleSubscriptionPreapprovalNotification(
 
   const targetUserId = await resolveTargetUserId({
     explicitUserId: subscription.external_reference,
+    fallbackUserId,
     subscriptionId,
     userEmail: pickString(subscription.payer_email),
   });
@@ -806,6 +843,7 @@ async function handleSubscriptionAuthorizedPaymentNotification(
   authorizedPaymentId: string,
   action: string | null,
   credentialsCandidates: MercadoPagoCredentials[],
+  fallbackUserId?: string | null,
 ): Promise<Response> {
   const authorizedPaymentResult = await fetchAuthorizedPayment(
     authorizedPaymentId,
@@ -852,6 +890,7 @@ async function handleSubscriptionAuthorizedPaymentNotification(
       authorizedPayment.external_reference,
       subscription?.external_reference,
     ),
+    fallbackUserId,
     subscriptionId,
     userEmail,
   });
@@ -922,6 +961,7 @@ async function handleReturnConfirmation(
       paymentId,
       "confirm_return",
       mercadoPagoCredentials,
+      authenticatedUser?.id ?? null,
     );
   }
 
@@ -929,6 +969,7 @@ async function handleReturnConfirmation(
     await handleSubscriptionPreapprovalNotification(
       subscriptionId,
       mercadoPagoCredentials,
+      authenticatedUser?.id ?? null,
     );
   }
 
