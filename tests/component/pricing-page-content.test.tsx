@@ -419,7 +419,9 @@ describe("PricingPageContent", () => {
     );
 
     expect(
-      screen.getByText(/payment approved\. go to your account/i),
+      screen.getByText(
+        /payment approved\. go to the same leyendo account that started checkout/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/wait for the subscription linked message/i),

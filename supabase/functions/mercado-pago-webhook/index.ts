@@ -308,6 +308,77 @@ async function syncProfileSubscription(userId: string) {
   }
 }
 
+async function getExistingSubscriptionTier(
+  subscriptionId: string | null,
+): Promise<PaidTierId | null> {
+  if (!subscriptionId) {
+    return null;
+  }
+
+  const { data } = await supabase
+    .from("billing_subscriptions")
+    .select("tier")
+    .eq("provider", "mercadopago")
+    .eq("provider_subscription_id", subscriptionId)
+    .limit(1)
+    .maybeSingle();
+
+  return data?.tier === "focus" || data?.tier === "max" ? data.tier : null;
+}
+
+async function verifySignature(
+  req: Request,
+  webhookSecret: string,
+): Promise<boolean> {
+  if (!webhookSecret) {
+    return false;
+  }
+
+  const signatureHeader = req.headers.get("x-signature");
+  if (!signatureHeader) {
+    return false;
+  }
+
+  const parts = new Map<string, string>();
+  for (const chunk of signatureHeader.split(",")) {
+    const [key, value] = chunk.split("=", 2);
+    if (key && value) {
+      parts.set(key.trim(), value.trim());
+    }
+  }
+
+  const ts = parts.get("ts");
+  const v1 = parts.get("v1");
+  if (!ts || !v1) {
+    return false;
+  }
+
+  const manifest = buildMercadoPagoSignatureManifest({
+    requestId: req.headers.get("x-request-id"),
+    requestUrl: req.url,
+    timestamp: ts,
+  });
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(webhookSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(manifest),
+  );
+  const hex = Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+
+  return hex === v1;
+}
+
 async function resolveMercadoPagoCredentials(
   req: Request,
 ): Promise<MercadoPagoCredentials[] | null> {
@@ -397,7 +468,7 @@ async function searchLatestSubscriptionPreapproval(params: {
   credentialsCandidates: MercadoPagoCredentials[];
   plan: PaidTierId;
   userEmail?: string | null;
-  userId: string;
+  userId?: string | null;
 }): Promise<{
   credentials: MercadoPagoCredentials;
   subscription: Record<string, unknown>;
@@ -405,94 +476,81 @@ async function searchLatestSubscriptionPreapproval(params: {
   for (const credentials of params.credentialsCandidates) {
     const exactPlanId = getPlanIdForCredentials(credentials, params.plan);
     const searchPlanIds = exactPlanId ? [exactPlanId, null] : [null];
-    const searchVariants: Array<{
-      matchLabel: "external_reference" | "payer_email";
-      matchValue: string;
-    }> = [{ matchLabel: "external_reference", matchValue: params.userId }];
 
-    const normalizedUserEmail = pickString(params.userEmail);
-    if (normalizedUserEmail) {
-      searchVariants.push({
-        matchLabel: "payer_email",
-        matchValue: normalizedUserEmail,
+    for (const searchPlanId of searchPlanIds) {
+      const searchParams = new URLSearchParams({
+        criteria: "desc",
+        limit: params.userId ? "50" : "10",
+        offset: "0",
+        sort: "date_created",
       });
-    }
 
-    for (const searchVariant of searchVariants) {
-      for (const searchPlanId of searchPlanIds) {
-        const searchParams = new URLSearchParams({
-          criteria: "desc",
-          limit:
-            searchVariant.matchLabel === "external_reference" ? "50" : "10",
-          offset: "0",
-          sort: "date_created",
-        });
+      if (!params.userId && params.userEmail) {
+        searchParams.set("payer_email", params.userEmail);
+      }
 
-        searchParams.set(searchVariant.matchLabel, searchVariant.matchValue);
+      if (searchPlanId) {
+        searchParams.set("preapproval_plan_id", searchPlanId);
+      }
+
+      const response = await fetch(
+        `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${credentials.accessToken}`,
+            Accept: "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        console.error(
+          "Failed to search MercadoPago subscriptions",
+          credentials.environment,
+          response.status,
+          await response.text(),
+        );
+        break;
+      }
+
+      const payload = (await response.json()) as {
+        results?: Array<Record<string, unknown>>;
+      };
+      const results = Array.isArray(payload.results) ? payload.results : [];
+      const matchingSubscription = results.find((subscription) => {
+        if (params.userId) {
+          return pickString(subscription.external_reference) === params.userId;
+        }
+
+        if (!params.userEmail) {
+          return false;
+        }
+
+        const subscriptionEmail = pickString(subscription.payer_email);
+        if (
+          subscriptionEmail &&
+          subscriptionEmail.toLowerCase() !== params.userEmail.toLowerCase()
+        ) {
+          return false;
+        }
 
         if (searchPlanId) {
-          searchParams.set("preapproval_plan_id", searchPlanId);
-        }
-
-        const response = await fetch(
-          `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${credentials.accessToken}`,
-              Accept: "application/json",
-            },
-          },
-        );
-
-        if (!response.ok) {
-          console.error(
-            "Failed to search MercadoPago subscriptions",
-            credentials.environment,
-            response.status,
-            await response.text(),
+          const subscriptionPlanId = pickString(
+            subscription.preapproval_plan_id,
+            subscription.preapproval_plan &&
+              typeof subscription.preapproval_plan === "object"
+              ? (subscription.preapproval_plan as Record<string, unknown>).id
+              : null,
           );
-          break;
+
+          return subscriptionPlanId === searchPlanId;
         }
 
-        const payload = (await response.json()) as {
-          results?: Array<Record<string, unknown>>;
-        };
-        const results = Array.isArray(payload.results) ? payload.results : [];
-        const matchingSubscription = results.find((subscription) => {
-          if (searchVariant.matchLabel === "external_reference") {
-            if (pickString(subscription.external_reference) !== params.userId) {
-              return false;
-            }
-          } else {
-            const subscriptionEmail = pickString(subscription.payer_email);
-            if (
-              subscriptionEmail &&
-              normalizedUserEmail &&
-              subscriptionEmail.toLowerCase() !==
-                normalizedUserEmail.toLowerCase()
-            ) {
-              return false;
-            }
-          }
+        return inferTierFromSubscriptionRecord(subscription) === params.plan;
+      });
 
-          if (searchPlanId) {
-            const subscriptionPlanId = pickString(
-              subscription.preapproval_plan_id,
-              subscription.preapproval_plan &&
-                typeof subscription.preapproval_plan === "object"
-                ? (subscription.preapproval_plan as Record<string, unknown>).id
-                : null,
-            );
-
-            return subscriptionPlanId === searchPlanId;
-          }
-
-          return inferTierFromSubscriptionRecord(subscription) === params.plan;
-        });
-
-        if (matchingSubscription) {
-          return { credentials, subscription: matchingSubscription };
-        }
+      if (matchingSubscription) {
+        return { credentials, subscription: matchingSubscription };
       }
     }
   }

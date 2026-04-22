@@ -27,8 +27,6 @@ const paymentRegionStorageKey = "leyendo_payment_region";
 const paidSignupPlanStorageKey = "leyendo_paid_signup_plan";
 const pendingCheckoutPlanStorageKey = "leyendo_pending_checkout_plan";
 const pendingCheckoutProviderStorageKey = "leyendo_pending_checkout_provider";
-const pendingCheckoutSubscriptionIdStorageKey =
-  "leyendo_pending_checkout_subscription_id";
 const latamCountryCodes = new Set([
   "AR",
   "BO",
@@ -266,24 +264,6 @@ export function PricingPageContent({
     window.localStorage.setItem(pendingCheckoutProviderStorageKey, provider);
   };
 
-  const rememberPendingCheckoutSubscriptionId = (
-    subscriptionId: string | undefined,
-  ) => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (subscriptionId?.trim()) {
-      window.localStorage.setItem(
-        pendingCheckoutSubscriptionIdStorageKey,
-        subscriptionId.trim(),
-      );
-      return;
-    }
-
-    window.localStorage.removeItem(pendingCheckoutSubscriptionIdStorageKey);
-  };
-
   const clearPendingCheckout = () => {
     if (typeof window === "undefined") {
       return;
@@ -291,7 +271,6 @@ export function PricingPageContent({
 
     window.localStorage.removeItem(pendingCheckoutPlanStorageKey);
     window.localStorage.removeItem(pendingCheckoutProviderStorageKey);
-    window.localStorage.removeItem(pendingCheckoutSubscriptionIdStorageKey);
   };
 
   const closeAuthModal = () => {
@@ -423,7 +402,7 @@ export function PricingPageContent({
       missingProvider:
         "This checkout is not connected yet. You can use Binance while this provider is being configured.",
       paymentSuccess:
-        "Payment approved. Go to your account with the same email used in checkout. Leyendo will confirm when the subscription is linked.",
+        "Payment approved. Go to the same Leyendo account that started checkout. Leyendo will confirm when the subscription is linked.",
       paymentNote:
         "Card payments are routed by region. Binance stays available as a manual fallback.",
       priceSuffix: "/month",
@@ -700,18 +679,18 @@ export function PricingPageContent({
     return locale === "es"
       ? [
           "Abre tu cuenta Basic Reader.",
-          "Entra en la misma cuenta de Leyendo que uso el checkout.",
+          "Entra con el mismo email usado antes del pago.",
           "Espera el mensaje Subscription linked.",
         ]
       : locale === "pt"
         ? [
             "Abra sua conta Basic Reader.",
-            "Entre na mesma conta do Leyendo que iniciou o checkout.",
+            "Entre com o mesmo email usado antes do pagamento.",
             "Espere a mensagem Subscription linked.",
           ]
         : [
             "Open your Basic Reader account.",
-            "Sign in to the same Leyendo account that started checkout.",
+            "Sign in with the same email you used before payment.",
             "Wait for the Subscription linked message.",
           ];
   }, [locale, user]);
@@ -725,7 +704,6 @@ export function PricingPageContent({
   ) {
     const checkoutWindow = window.open("", "_blank");
     let providerUrl: string | undefined;
-    let providerSubscriptionId: string | undefined;
 
     if (provider === "lemonsqueezy") {
       try {
@@ -744,7 +722,6 @@ export function PricingPageContent({
         const payload = (await response.json().catch(() => null)) as {
           checkoutUrl?: string;
           error?: string;
-          providerSubscriptionId?: string;
         } | null;
 
         if (!response.ok || !payload?.checkoutUrl) {
@@ -783,7 +760,6 @@ export function PricingPageContent({
         const payload = (await response.json().catch(() => null)) as {
           checkoutUrl?: string;
           error?: string;
-          providerSubscriptionId?: string;
         } | null;
 
         if (!response.ok || !payload?.checkoutUrl) {
@@ -793,7 +769,6 @@ export function PricingPageContent({
         }
 
         providerUrl = payload.checkoutUrl;
-        providerSubscriptionId = payload.providerSubscriptionId;
       } catch {
         checkoutWindow?.close();
         setStatusMessage(copy.invalidMercadoPagoProvider);
@@ -814,7 +789,6 @@ export function PricingPageContent({
     setStatusMessage(undefined);
     window.localStorage.setItem(paidSignupPlanStorageKey, planId);
     setReadySignupPlan(planId);
-    rememberPendingCheckoutSubscriptionId(providerSubscriptionId);
 
     if (checkoutWindow) {
       checkoutWindow.opener = null;

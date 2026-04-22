@@ -6,6 +6,10 @@ const originalFocusPlanId = process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID;
 const originalFocusTestingId = process.env.MERCADOPAGO_FOCUS_ID_TESTING;
 const originalMaxPlanId = process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID;
 const originalMaxTestingId = process.env.MERCADOPAGO_MAX_ID_TESTING;
+const originalAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+const originalAccessTokenTesting =
+  process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT;
+const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalVercelEnv = process.env.VERCEL_ENV;
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -18,6 +22,9 @@ describe("MercadoPago checkout route", () => {
     process.env.MERCADOPAGO_FOCUS_ID_TESTING = "";
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID = "";
     process.env.MERCADOPAGO_MAX_ID_TESTING = "";
+    process.env.MERCADOPAGO_ACCESS_TOKEN = "";
+    process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT = "";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.VERCEL_ENV = "";
   });
 
@@ -26,10 +33,14 @@ describe("MercadoPago checkout route", () => {
     process.env.MERCADOPAGO_FOCUS_ID_TESTING = originalFocusTestingId;
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID = originalMaxPlanId;
     process.env.MERCADOPAGO_MAX_ID_TESTING = originalMaxTestingId;
+    process.env.MERCADOPAGO_ACCESS_TOKEN = originalAccessToken;
+    process.env.MERCADOPAGO_ACCESS_TOKEN_TESTING_ACCOUNT =
+      originalAccessTokenTesting;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = originalSupabaseUrl;
     process.env.VERCEL_ENV = originalVercelEnv;
   });
 
-  it("uses the hosted MercadoPago checkout even when an access token is configured", async () => {
+  it("uses the hosted MercadoPago subscription link even when access token and plan id are configured", async () => {
     process.env.VERCEL_ENV = "preview";
     process.env.MERCADOPAGO_FOCUS_ID_TESTING =
       "5870237243d3400bacd2d236caae7a20";

@@ -39,7 +39,6 @@ vi.mock("@/lib/supabase/client", () => ({
 describe("AccountPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    window.localStorage.clear();
     getSupabaseBrowserClient.mockReturnValue(null);
     useRouter.mockReturnValue({
       push: vi.fn(),
@@ -547,89 +546,6 @@ describe("AccountPanel", () => {
     expect(
       screen.getByText(/mercadopago payment confirmed/i),
     ).toBeInTheDocument();
-  });
-
-  it("uses the saved MercadoPago preapproval id when the return URL has no ids", async () => {
-    const invoke = vi.fn().mockResolvedValue({
-      data: { confirmed: true },
-      error: null,
-    });
-    const refreshProfile = vi.fn().mockResolvedValue(undefined);
-
-    getSupabaseBrowserClient.mockReturnValue({
-      functions: {
-        invoke,
-      },
-    });
-    window.localStorage.setItem(
-      "leyendo_pending_checkout_subscription_id",
-      "preapproval_focus_1",
-    );
-    window.history.replaceState(
-      {},
-      "",
-      "/account?payment=success&plan=focus&provider=mercadopago",
-    );
-    useSupabaseAuth.mockReturnValue({
-      errorMessage: undefined,
-      guestLibrarySummary: {
-        bookmarks: 0,
-        documents: 0,
-        highlights: 0,
-        sessions: 0,
-      },
-      isConfigured: true,
-      isLoading: false,
-      isProfileSaving: false,
-      lastSyncedAt: undefined,
-      lastSyncSummary: undefined,
-      profile: {
-        createdAt: "2026-04-14T10:00:00.000Z",
-        displayName: "Lee Reader",
-        fileUploadCount: 0,
-        marketingConsent: false,
-        planTier: "basic",
-        updatedAt: "2026-04-14T10:00:00.000Z",
-        userId: "user-1",
-      },
-      refreshProfile,
-      session: null,
-      signIn: vi.fn(),
-      signInWithGitHub: vi.fn(),
-      signInWithGoogle: vi.fn(),
-      signInWithMagicLink: vi.fn(),
-      signOut: vi.fn(),
-      signUp: vi.fn(),
-      syncLocalLibraryToCloud: vi.fn(),
-      syncStatus: "idle",
-      syncWithCloud: vi.fn(),
-      updateProfile: vi.fn(),
-      user: {
-        email: "reader@example.com",
-        id: "user-1",
-      },
-    });
-
-    render(
-      <AccountPanel paidSignupPlan="focus" paidSignupProvider="mercadopago" />,
-    );
-
-    await waitFor(() => {
-      expect(invoke).toHaveBeenCalledWith("mercado-pago-webhook", {
-        body: {
-          action: "confirm_return",
-          paymentId: null,
-          plan: "focus",
-          subscriptionId: "preapproval_focus_1",
-        },
-      });
-    });
-
-    await waitFor(() => {
-      expect(
-        window.localStorage.getItem("leyendo_pending_checkout_subscription_id"),
-      ).toBeNull();
-    });
   });
 
   it("lets a Focus user save a word to the dictionary", async () => {

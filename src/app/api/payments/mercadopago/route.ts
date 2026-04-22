@@ -17,17 +17,6 @@ interface CheckoutRequestBody {
   userId?: string;
 }
 
-function pickFirstNonEmpty(...values: Array<string | undefined>) {
-  for (const value of values) {
-    const normalized = value?.trim();
-    if (normalized) {
-      return normalized;
-    }
-  }
-
-  return undefined;
-}
-
 function normalizeMercadoPagoPlanId(value: string | undefined) {
   const planId = value?.trim();
 
@@ -37,6 +26,7 @@ function normalizeMercadoPagoPlanId(value: string | undefined) {
 
   return MERCADOPAGO_PLAN_ID_PATTERN.test(planId) ? planId : undefined;
 }
+
 function getMercadoPagoEnvAliases(planTier: "focus" | "max") {
   if (planTier === "focus") {
     return {
