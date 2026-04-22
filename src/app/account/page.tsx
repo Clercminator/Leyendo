@@ -68,9 +68,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       }
     : paidSignupPlan
       ? {
-          en: "Payment is approved. Open this account with the same checkout email to confirm the upgraded plan.",
-          es: "El pago esta aprobado. Abre esta cuenta con el mismo email del checkout para confirmar el plan mejorado.",
-          pt: "O pagamento foi aprovado. Abra esta conta com o mesmo email do checkout para confirmar o plano atualizado.",
+          en: "Payment is approved. Open the same Leyendo account that started checkout to confirm the upgraded plan.",
+          es: "El pago esta aprobado. Abre la misma cuenta de Leyendo que inicio el checkout para confirmar el plan mejorado.",
+          pt: "O pagamento foi aprovado. Abra a mesma conta do Leyendo que iniciou o checkout para confirmar o plano atualizado.",
         }
       : {
           en: "Basic Reader is free. Sign in now and upgrade later if you want cloud sync and saved words.",

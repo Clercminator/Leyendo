@@ -299,7 +299,7 @@ export function PricingPageContent({
         comparisonEyebrow: "Planes",
         continueToAccount: "Continuar con la cuenta pagada",
         continueToAccountHint:
-          "Tu pago ya esta aprobado. Termina la cuenta con el mismo email usado en el checkout para activar sincronizacion y palabras guardadas.",
+          "Tu pago ya esta aprobado. Termina la misma cuenta de Leyendo que inicio el checkout para activar sincronizacion y palabras guardadas.",
         contactDavid: "Abrir pagina de contacto",
         focusCta: "Obtener Focus",
         focusDescription:
@@ -319,7 +319,7 @@ export function PricingPageContent({
         missingProvider:
           "Este checkout todavia no esta conectado. Puedes usar Binance mientras configuramos este proveedor.",
         paymentSuccess:
-          "Pago aprobado. Entra a tu cuenta con el mismo email usado en el checkout. Leyendo confirmara cuando la suscripcion quede vinculada.",
+          "Pago aprobado. Entra en la misma cuenta de Leyendo que inicio el checkout. Leyendo confirmara cuando la suscripcion quede vinculada.",
         paymentNote:
           "Las tarjetas se enrutan segun tu region. Binance siempre queda disponible como alternativa manual.",
         priceSuffix: "/mes",
@@ -341,7 +341,7 @@ export function PricingPageContent({
         comparisonEyebrow: "Planos",
         continueToAccount: "Continuar com a conta paga",
         continueToAccountHint:
-          "Seu pagamento ja foi aprovado. Conclua a conta com o mesmo email usado no checkout para ativar sincronizacao e palavras salvas.",
+          "Seu pagamento ja foi aprovado. Conclua a mesma conta do Leyendo que iniciou o checkout para ativar sincronizacao e palavras salvas.",
         contactDavid: "Abrir pagina de contato",
         focusCta: "Obter Focus",
         focusDescription:
@@ -361,7 +361,7 @@ export function PricingPageContent({
         missingProvider:
           "Este checkout ainda nao esta conectado. Voce pode usar Binance enquanto este provedor e configurado.",
         paymentSuccess:
-          "Pagamento aprovado. Entre na sua conta com o mesmo email usado no checkout. O Leyendo vai confirmar quando a assinatura estiver vinculada.",
+          "Pagamento aprovado. Entre na mesma conta do Leyendo que iniciou o checkout. O Leyendo vai confirmar quando a assinatura estiver vinculada.",
         paymentNote:
           "Cartoes sao roteados pela sua regiao. Binance continua disponivel como alternativa manual.",
         priceSuffix: "/mes",
@@ -382,7 +382,7 @@ export function PricingPageContent({
       comparisonEyebrow: "Plans",
       continueToAccount: "Continue to paid account setup",
       continueToAccountHint:
-        "Your payment is approved. Finish the account with the same email used in checkout to unlock sync and the saved-word dictionary.",
+        "Your payment is approved. Finish the same Leyendo account that started checkout to unlock sync and the saved-word dictionary.",
       contactDavid: "Open contact page",
       focusCta: "Get Focus",
       focusDescription:

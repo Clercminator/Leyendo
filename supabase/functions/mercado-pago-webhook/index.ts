@@ -48,7 +48,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, x-signature, x-request-id",
+    "Content-Type, Authorization, apikey, x-client-info, x-signature, x-request-id, x-supabase-api-version",
 };
 
 interface WebhookBody {
@@ -74,22 +74,24 @@ interface MercadoPagoCredentials {
   webhookSecret: string;
 }
 
-const mercadoPagoCredentials: MercadoPagoCredentials[] = [
+const mercadoPagoCredentials = [
   {
     accessToken: MERCADOPAGO_ACCESS_TOKEN,
     environment: "live",
     focusPlanId: MERCADOPAGO_PLAN_FOCUS_ID,
     maxPlanId: MERCADOPAGO_PLAN_MAX_ID,
     webhookSecret: MERCADOPAGO_WEBHOOK_SECRET,
-  },
+  } satisfies MercadoPagoCredentials,
   {
     accessToken: MERCADOPAGO_ACCESS_TOKEN_PRUEBA,
     environment: "test",
     focusPlanId: MERCADOPAGO_PLAN_FOCUS_ID_PRUEBA,
     maxPlanId: MERCADOPAGO_PLAN_MAX_ID_PRUEBA,
     webhookSecret: MERCADOPAGO_WEBHOOK_SECRET_PRUEBA,
-  },
-].filter((credentials) => Boolean(credentials.accessToken));
+  } satisfies MercadoPagoCredentials,
+].filter((credentials): credentials is MercadoPagoCredentials =>
+  Boolean(credentials.accessToken),
+);
 
 function jsonResponse(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -250,7 +252,8 @@ async function findUserIdByEmail(
   }
 
   const match = data.users.find(
-    (user) => user.email?.toLowerCase() === userEmail.toLowerCase(),
+    (user: { email?: string | null; id: string }) =>
+      user.email?.toLowerCase() === userEmail.toLowerCase(),
   );
 
   return match?.id ?? null;

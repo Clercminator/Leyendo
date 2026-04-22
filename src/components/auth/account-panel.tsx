@@ -62,6 +62,39 @@ function createEmptyDictionaryFormState(): DictionaryFormState {
   };
 }
 
+function decodeSearchValue(rawValue: string) {
+  try {
+    return decodeURIComponent(rawValue.replace(/\+/g, "%20"));
+  } catch {
+    return rawValue;
+  }
+}
+
+function getReturnUrlParam(
+  currentUrl: URL | null,
+  rawHref: string | null,
+  keys: string[],
+) {
+  for (const key of keys) {
+    const directValue = currentUrl?.searchParams.get(key)?.trim();
+    if (directValue) {
+      return directValue;
+    }
+
+    if (!rawHref) {
+      continue;
+    }
+
+    const match = rawHref.match(new RegExp(`[?&]${key}=([^&#]+)`, "i"));
+    const fallbackValue = match?.[1]?.trim();
+    if (fallbackValue) {
+      return decodeSearchValue(fallbackValue);
+    }
+  }
+
+  return null;
+}
+
 function formatDate(
   date: string | undefined,
   options?: Intl.DateTimeFormatOptions,
@@ -889,10 +922,10 @@ export function AccountPanel({
         : "Esta conta conectada ainda nao esta vinculada ao novo pagamento.";
   const subscriptionPendingDescription =
     locale === "en"
-      ? "If you paid with a different email, sign out and use the same email as the payment account. If you already used the same email, wait a moment and reload this page."
+      ? "Stay signed into the Leyendo account that started checkout. If you returned to a different Leyendo account, sign out and use the original one, then wait a moment and reload this page."
       : locale === "es"
-        ? "Si pagaste con otro email, cierra sesion y usa el mismo email de la cuenta de pago. Si ya usaste ese mismo email, espera un momento y vuelve a cargar esta pagina."
-        : "Se voce pagou com outro email, saia e use o mesmo email da conta de pagamento. Se ja usou esse mesmo email, espere um momento e recarregue esta pagina.";
+        ? "Sigue dentro de la cuenta de Leyendo que inicio el checkout. Si volviste con otra cuenta de Leyendo, cierra sesion y usa la original, luego espera un momento y recarga esta pagina."
+        : "Permaneça na conta do Leyendo que iniciou o checkout. Se voce voltou com outra conta do Leyendo, saia e use a original, depois espere um momento e recarregue esta pagina.";
   const activationSteps = isPreCheckoutFlow
     ? locale === "en"
       ? [
@@ -914,28 +947,28 @@ export function AccountPanel({
     : paidSignupPlan
       ? locale === "en"
         ? [
-            "If you already had a Leyendo account for the payment email, switch to Sign in.",
-            "If you did not have one yet, keep Create account selected and finish registration with that same email.",
+            "Sign in with the Leyendo account that started this checkout.",
+            "If you still need to create that account, finish registration for the account you want linked to this subscription.",
             "Wait for the Subscription linked confirmation before using sync, cloud books, or saved words.",
           ]
         : locale === "es"
           ? [
-              "Si ya tenias cuenta en Leyendo para el email del pago, cambia a Entrar.",
-              "Si todavia no la tenias, deja Crear cuenta seleccionado y termina el registro con ese mismo email.",
+              "Entra con la cuenta de Leyendo que inicio este checkout.",
+              "Si todavia necesitas crearla, termina el registro de la cuenta que quieres vincular a esta suscripcion.",
               "Espera la confirmacion Subscription linked antes de usar sincronizacion, libros en la nube o palabras guardadas.",
             ]
           : [
-              "Se voce ja tinha conta no Leyendo para o email do pagamento, troque para Entrar.",
-              "Se ainda nao tinha, deixe Criar conta selecionado e conclua o cadastro com esse mesmo email.",
+              "Entre na conta do Leyendo que iniciou este checkout.",
+              "Se ainda precisar cria-la, conclua o cadastro da conta que voce quer vincular a esta assinatura.",
               "Espere a confirmacao Subscription linked antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
             ]
       : [];
   const paymentEmailHint =
     locale === "en"
-      ? "Use the same email as the payment so Leyendo can link the subscription automatically."
+      ? "Use the same Leyendo account that started checkout so the subscription can link automatically."
       : locale === "es"
-        ? "Usa el mismo email del pago para que Leyendo pueda vincular la suscripcion automaticamente."
-        : "Use o mesmo email do pagamento para que o Leyendo possa vincular a assinatura automaticamente.";
+        ? "Usa la misma cuenta de Leyendo que inicio el checkout para que la suscripcion se vincule automaticamente."
+        : "Use a mesma conta do Leyendo que iniciou o checkout para que a assinatura seja vinculada automaticamente.";
 
   const syncCopy =
     syncStatus === "syncing"
@@ -960,15 +993,17 @@ export function AccountPanel({
       return;
     }
 
-    const currentUrl =
-      typeof window === "undefined" ? null : new URL(window.location.href);
-    const paymentId =
-      currentUrl?.searchParams.get("collection_id") ??
-      currentUrl?.searchParams.get("payment_id") ??
-      currentUrl?.searchParams.get("authorized_payment_id");
-    const subscriptionId =
-      currentUrl?.searchParams.get("preapproval_id") ??
-      currentUrl?.searchParams.get("subscription_id");
+    const rawHref = typeof window === "undefined" ? null : window.location.href;
+    const currentUrl = rawHref ? new URL(rawHref) : null;
+    const paymentId = getReturnUrlParam(currentUrl, rawHref, [
+      "collection_id",
+      "payment_id",
+      "authorized_payment_id",
+    ]);
+    const subscriptionId = getReturnUrlParam(currentUrl, rawHref, [
+      "preapproval_id",
+      "subscription_id",
+    ]);
 
     if (paidSignupProvider !== "mercadopago" && !paymentId && !subscriptionId) {
       return;

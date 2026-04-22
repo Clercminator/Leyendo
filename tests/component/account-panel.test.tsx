@@ -348,12 +348,12 @@ describe("AccountPanel", () => {
     expect(screen.getByText(/exact next steps/i)).toBeInTheDocument();
     expect(
       screen.getByText(
-        /if you already had a leyendo account for the payment email/i,
+        /sign in with the leyendo account that started this checkout/i,
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /use the same email as the payment so leyendo can link/i,
+        /use the same leyendo account that started checkout so the subscription can link automatically/i,
       ),
     ).toBeInTheDocument();
   });
@@ -546,6 +546,81 @@ describe("AccountPanel", () => {
     expect(
       screen.getByText(/mercadopago payment confirmed/i),
     ).toBeInTheDocument();
+  });
+
+  it("parses MercadoPago subscription ids from malformed return URLs", async () => {
+    const invoke = vi.fn().mockResolvedValue({
+      data: { confirmed: true },
+      error: null,
+    });
+    const refreshProfile = vi.fn().mockResolvedValue(undefined);
+
+    getSupabaseBrowserClient.mockReturnValue({
+      functions: {
+        invoke,
+      },
+    });
+    window.history.replaceState(
+      {},
+      "",
+      "/account?payment=success&plan=max&provider=mercadopago&mp=1?preapproval_id=47e33a6b354149b88fe29fea643e7dd8",
+    );
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: undefined,
+      lastSyncSummary: undefined,
+      profile: {
+        createdAt: "2026-04-14T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 0,
+        marketingConsent: false,
+        planTier: "basic",
+        updatedAt: "2026-04-14T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile,
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "idle",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<AccountPanel paidSignupPlan="max" paidSignupProvider="mercadopago" />);
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith("mercado-pago-webhook", {
+        body: {
+          action: "confirm_return",
+          paymentId: null,
+          plan: "max",
+          subscriptionId: "47e33a6b354149b88fe29fea643e7dd8",
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(refreshProfile).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("lets a Focus user save a word to the dictionary", async () => {
