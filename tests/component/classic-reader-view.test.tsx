@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -79,5 +79,39 @@ describe("ClassicReaderView", () => {
       ) as HTMLElement,
     );
     expect(onJumpToToken).toHaveBeenCalledWith(0);
+  });
+
+  it("renders clean markdown in classic mode like a markdown preview", () => {
+    const documentModel = buildDocumentModel({
+      title: "Markdown sample",
+      rawText:
+        "# Optiland AI Agent - Comprehensive Documentation\n\n## Table of Contents\n\n- [Buyer Handoff Snapshot](#buyer-handoff-snapshot)\n- [Quick Start Guide](#quick-start-guide)\n  - [For Complete Beginners](#for-complete-beginners)\n\nParagraph with **bold** text.",
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const chunk = deriveRuntimeChunks(documentModel, 3)[0];
+
+    render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        reduceMotion
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: /optiland ai agent - comprehensive documentation/i,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: /table of contents/i }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /buyer handoff snapshot/i }),
+    ).toHaveAttribute("href", "#buyer-handoff-snapshot");
+    expect(screen.getByText(/for complete beginners/i)).toBeVisible();
+    expect(screen.getByText(/paragraph with/i)).toBeVisible();
   });
 });

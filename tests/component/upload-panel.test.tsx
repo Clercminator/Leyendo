@@ -271,10 +271,10 @@ describe("UploadPanel", () => {
       screen.getByText(/review this import carefully/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/fenced code blocks are signposted in clean view/i),
+      screen.getByText(/classic reader renders fenced code blocks as code/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/mermaid diagrams are signposted in clean view/i),
+      screen.getByText(/classic reader shows mermaid source as a code block/i),
     ).toBeInTheDocument();
   });
 
