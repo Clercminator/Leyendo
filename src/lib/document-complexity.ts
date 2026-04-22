@@ -70,9 +70,9 @@ export function createDocumentComplexityNotice(
           });
         case "markdown-mermaid-diagrams":
           return getLocalizedCopy(locale, {
-            en: "Classic Reader shows Mermaid source as a code block. Other reading modes may still simplify it, and Literal text remains the raw fallback.",
-            es: "El Lector clasico muestra la fuente Mermaid como un bloque de codigo. Otros modos de lectura aun pueden simplificarla, y el texto literal sigue siendo el fallback bruto.",
-            pt: "O Leitor classico mostra a fonte Mermaid como um bloco de codigo. Outros modos de leitura ainda podem simplifica-la, e o texto literal continua sendo o fallback bruto.",
+            en: "Classic Reader renders Mermaid diagrams inline when possible. Other reading modes may still simplify them, and Literal text remains the raw fallback.",
+            es: "El Lector clasico renderiza diagramas Mermaid en linea cuando es posible. Otros modos de lectura aun pueden simplificarlos, y el texto literal sigue siendo el fallback bruto.",
+            pt: "O Leitor classico renderiza diagramas Mermaid em linha quando possivel. Outros modos de leitura ainda podem simplifica-los, e o texto literal continua sendo o fallback bruto.",
           });
         case "markdown-tables":
           return getLocalizedCopy(locale, {

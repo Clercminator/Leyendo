@@ -17,6 +17,7 @@ import { unified } from "unified";
 
 import { buildTokenRuns } from "@/components/reader/build-token-runs";
 import { useLocale } from "@/components/layout/locale-provider";
+import { MarkdownMermaidDiagram } from "@/components/reader/markdown-mermaid-diagram";
 import { getLocalizedCopy } from "@/lib/locale";
 import type { Chunk, DocumentModel, Token } from "@/types/document";
 
@@ -162,6 +163,21 @@ function createHeadingRenderer(
       </TagName>
     );
   };
+}
+
+function extractMermaidChart(children: ReactNode) {
+  if (!isValidElement<{ children?: ReactNode; className?: string }>(children)) {
+    return undefined;
+  }
+
+  const className = children.props.className;
+
+  if (typeof className !== "string" || !className.includes("language-mermaid")) {
+    return undefined;
+  }
+
+  const chart = getReactNodeText(children.props.children).replace(/\n$/, "");
+  return chart.trim() ? chart : undefined;
 }
 
 function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
@@ -465,6 +481,15 @@ export function ClassicReaderView({
           <table {...props} />
         </div>
       ),
+      pre: ({ children, ...props }: ComponentPropsWithoutRef<"pre">) => {
+        const mermaidChart = extractMermaidChart(children);
+
+        if (mermaidChart) {
+          return <MarkdownMermaidDiagram chart={mermaidChart} />;
+        }
+
+        return <pre {...props}>{children}</pre>;
+      },
     }),
     [reduceMotion],
   );

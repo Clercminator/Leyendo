@@ -274,7 +274,7 @@ describe("UploadPanel", () => {
       screen.getByText(/classic reader renders fenced code blocks as code/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/classic reader shows mermaid source as a code block/i),
+      screen.getByText(/classic reader renders mermaid diagrams inline/i),
     ).toBeInTheDocument();
   });
 

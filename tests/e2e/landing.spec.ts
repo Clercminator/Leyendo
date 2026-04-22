@@ -593,7 +593,7 @@ test("clean markdown view signals fenced code and mermaid blocks", async ({
     page.getByText(/classic reader renders fenced code blocks as code/i),
   ).toBeVisible();
   await expect(
-    page.getByText(/classic reader shows mermaid source as a code block/i),
+    page.getByText(/classic reader renders mermaid diagrams inline/i),
   ).toBeVisible();
 
   await page.getByRole("button", { name: /open in reader/i }).click();
@@ -609,7 +609,9 @@ test("clean markdown view signals fenced code and mermaid blocks", async ({
   await expect(classicDocument.locator("pre").nth(0)).toContainText(
     "const answer = 42;",
   );
-  await expect(classicDocument.locator("pre").nth(1)).toContainText("graph TD");
+  await expect(
+    classicDocument.locator('[data-mermaid-diagram="true"]').first(),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: /change text view/i }).click();
   await page.getByRole("button", { name: /^literal text$/i }).click();

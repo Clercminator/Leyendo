@@ -912,6 +912,47 @@
     max-width: 100%;
   }
 
+  .reader-mermaid-figure {
+    margin: 0 0 1.15em;
+  }
+
+  .reader-mermaid-diagram {
+    overflow: auto;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    background: rgba(4, 8, 18, 0.72);
+    padding: 1rem;
+  }
+
+  .reader-mermaid-diagram svg {
+    display: block;
+    height: auto;
+    margin: 0 auto;
+    max-width: none;
+  }
+
+  .reader-mermaid-source {
+    margin-top: 0.75rem;
+  }
+
+  .reader-mermaid-source summary {
+    cursor: pointer;
+    color: color-mix(in srgb, var(--reader-accent) 88%, white 10%);
+    font-size: 0.95rem;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  .reader-mermaid-source pre {
+    margin-top: 0.7rem;
+  }
+
+  .reader-mermaid-error {
+    color: color-mix(in srgb, var(--reader-muted) 88%, white 12%);
+    font-size: 0.95rem;
+    margin-top: 0.75rem;
+  }
+
   .reader-markdown-preview input[type="checkbox"] {
     accent-color: var(--reader-accent);
     margin-right: 0.55em;

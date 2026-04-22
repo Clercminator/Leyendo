@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,6 +11,15 @@ vi.mock("@/components/layout/locale-provider", () => ({
     locale: "en",
     setLocale: vi.fn(),
   }),
+}));
+vi.mock("mermaid", () => ({
+  default: {
+    initialize: vi.fn(),
+    render: vi.fn(async (_id: string, chart: string) => ({
+      svg: `<svg data-mermaid-diagram="true"><text>${chart}</text></svg>`,
+      bindFunctions: undefined,
+    })),
+  },
 }));
 
 describe("ClassicReaderView", () => {
@@ -113,5 +122,27 @@ describe("ClassicReaderView", () => {
     ).toHaveAttribute("href", "#buyer-handoff-snapshot");
     expect(screen.getByText(/for complete beginners/i)).toBeVisible();
     expect(screen.getByText(/paragraph with/i)).toBeVisible();
+  });
+  it("renders mermaid fences as in-app diagrams in classic markdown view", async () => {
+    const documentModel = buildDocumentModel({
+      title: "Markdown mermaid sample",
+      rawText: "# Heading\n\n```mermaid\ngraph TD\nA-->B\n```",
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const chunk = deriveRuntimeChunks(documentModel, 2)[0];
+
+    const { container } = render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        reduceMotion
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("reader-mermaid-diagram")).toBeVisible();
+      expect(container.querySelector('[data-mermaid-diagram="true"]')).toBeTruthy();
+    });
   });
 });
