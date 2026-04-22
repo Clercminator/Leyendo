@@ -493,10 +493,113 @@ test("classic reader keeps controls visible while the document scrolls inside th
   await expect
     .poll(async () => viewport.evaluate((element) => element.scrollTop))
     .toBeGreaterThan(0);
-
   await expect(nextButton).toBeVisible();
   await expect(remainingTimeButton).toBeVisible();
 
   await nextButton.click();
   await expect(remainingTimeButton).not.toHaveText(initialRemainingTime ?? "");
+});
+
+test("user can paste markdown and open a clean reader view", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page
+    .getByRole("textbox", { name: /^paste text$/i })
+    .fill("# Heading\n\n- Bullet item\n\nParagraph with **bold** text.");
+  await page.getByRole("radio", { name: /clean markdown/i }).click();
+  await page.getByRole("button", { name: /open in reader/i }).click();
+
+  await expect(page).toHaveURL(/\/reader\?document=/);
+
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^classic reader$/i }).click();
+
+  const classicDocument = page.getByLabel(/classic reader document/i);
+
+  await expect(classicDocument).toBeVisible();
+  await expect(classicDocument.locator("h3")).toContainText("Heading");
+  await expect(classicDocument).toContainText("Bullet item");
+  await expect(classicDocument).toContainText("Paragraph with bold text.");
+  await expect(classicDocument).not.toContainText("# Heading");
+  await expect(classicDocument).not.toContainText("**bold**");
+});
+
+test("reader can switch a saved markdown document between clean and literal views", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page
+    .getByRole("textbox", { name: /^paste text$/i })
+    .fill("# Heading\n\n- Bullet item\n\nParagraph with **bold** text.");
+  await page.getByRole("radio", { name: /clean markdown/i }).click();
+  await page.getByRole("button", { name: /open in reader/i }).click();
+
+  await expect(page).toHaveURL(/\/reader\?document=/);
+
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^classic reader$/i }).click();
+
+  const classicDocument = page.getByLabel(/classic reader document/i);
+
+  await expect(classicDocument).not.toContainText("# Heading");
+  await expect(classicDocument).not.toContainText("**bold**");
+
+  await page.getByRole("button", { name: /change text view/i }).click();
+  await page.getByRole("button", { name: /^literal text$/i }).click();
+
+  await expect(classicDocument).toContainText("# Heading");
+  await expect(classicDocument).toContainText("**bold**");
+
+  await page.getByRole("button", { name: /change text view/i }).click();
+  await page.getByRole("button", { name: /^clean markdown$/i }).click();
+
+  await expect(classicDocument).not.toContainText("# Heading");
+  await expect(classicDocument).not.toContainText("**bold**");
+});
+
+test("clean markdown view signals fenced code and mermaid blocks", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page
+    .getByRole("textbox", { name: /^paste text$/i })
+    .fill(
+      "# Heading\n\n```ts\nconst answer = 42;\n```\n\n```mermaid\ngraph TD\nA-->B\n```",
+    );
+  await page.getByRole("radio", { name: /clean markdown/i }).click();
+
+  await expect(page.getByText(/review this import carefully/i)).toBeVisible();
+  await expect(
+    page.getByText(/fenced code blocks are signposted in clean view/i),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/mermaid diagrams are signposted in clean view/i),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: /open in reader/i }).click();
+
+  await expect(page).toHaveURL(/\/reader\?document=/);
+  await expect(page.getByText(/review this import carefully/i)).toBeVisible();
+
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^classic reader$/i }).click();
+
+  const classicDocument = page.getByLabel(/classic reader document/i);
+
+  await expect(classicDocument).toContainText(
+    "Code snippet included in this section.",
+  );
+  await expect(classicDocument).toContainText(
+    "Mermaid diagram included in this section.",
+  );
+
+  await page.getByRole("button", { name: /change text view/i }).click();
+  await page.getByRole("button", { name: /^literal text$/i }).click();
+
+  await expect(classicDocument).toContainText("const answer = 42;");
+  await expect(classicDocument).toContainText("graph TD");
 });

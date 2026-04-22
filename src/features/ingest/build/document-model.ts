@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 
+import { deriveDocumentComplexityHints } from "@/features/ingest/build/document-complexity-hints";
 import { normalizeText } from "@/lib/text/normalize-text";
 import type {
   Block,
@@ -90,6 +91,10 @@ export function buildDocumentModel({
     sourceBlocks,
     chunkSize,
   }).filter((block) => block.text.trim().length > 0);
+  const complexityHints = deriveDocumentComplexityHints({
+    rawText,
+    sourceKind,
+  });
   const normalizedText = resolvedBlocks.map((block) => block.text).join("\n\n");
   const excerpt = normalizedText.slice(0, 180);
 
@@ -243,6 +248,8 @@ export function buildDocumentModel({
     sourceKind,
     createdAt: timestamp,
     updatedAt: timestamp,
+    rawText,
+    complexityHints,
     text: normalizedText,
     excerpt,
     pages: [],

@@ -32,6 +32,8 @@ import { useReaderAdBreaks } from "@/components/reader/use-reader-ad-breaks";
 import { useReaderDocument } from "@/components/reader/use-reader-document";
 import { useReaderPersistence } from "@/components/reader/use-reader-persistence";
 import { useReaderPlayback } from "@/components/reader/use-reader-playback";
+import { buildDocumentModel } from "@/features/ingest/build/document-model";
+import { deriveDocumentComplexityHints } from "@/features/ingest/build/document-complexity-hints";
 import {
   clampChunkIndex,
   deriveReaderProgress,
@@ -49,10 +51,17 @@ import {
   resolveSourcePageIndexForAnchor,
 } from "@/features/reader/pdf/navigation";
 import { isCatalogDocumentId, toCatalogOwnerId } from "@/lib/catalog";
+import { createDocumentComplexityNotice } from "@/lib/document-complexity";
 import { getLocalizedCopy } from "@/lib/locale";
 import { getEffectivePlanTier, hasPlanAccess } from "@/lib/plans";
 import { useReaderStore } from "@/state/reader-store";
-import type { Bookmark, ReaderMode, ReaderPreferences } from "@/types/reader";
+import type { Chunk, DocumentModel, TextPresentation } from "@/types/document";
+import type {
+  Bookmark,
+  Highlight,
+  ReaderMode,
+  ReaderPreferences,
+} from "@/types/reader";
 import { readerModes, readerPresets } from "@/types/reader";
 
 interface ReaderWorkspaceProps {
@@ -122,6 +131,95 @@ function formatRemainingTimeAnnouncement(args: {
   }
 }
 
+function normalizeChunkText(value: string) {
+  return value.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function findChunkIndexByText(
+  chunks: Chunk[],
+  anchorText: string | undefined,
+  preferredIndex: number,
+) {
+  if (!anchorText) {
+    return undefined;
+  }
+
+  const normalizedAnchor = normalizeChunkText(anchorText);
+  if (!normalizedAnchor) {
+    return undefined;
+  }
+
+  const matches: number[] = [];
+
+  chunks.forEach((chunk, index) => {
+    if (normalizeChunkText(chunk.text) === normalizedAnchor) {
+      matches.push(index);
+    }
+  });
+
+  if (matches.length === 0) {
+    return undefined;
+  }
+
+  return matches.reduce((bestIndex, currentIndex) => {
+    return Math.abs(currentIndex - preferredIndex) <
+      Math.abs(bestIndex - preferredIndex)
+      ? currentIndex
+      : bestIndex;
+  });
+}
+
+function mapChunkIndexBetweenChunks(args: {
+  anchorText?: string;
+  currentChunkIndex: number;
+  sourceChunks: Chunk[];
+  targetChunks: Chunk[];
+}) {
+  const { anchorText, currentChunkIndex, sourceChunks, targetChunks } = args;
+
+  if (targetChunks.length === 0) {
+    return 0;
+  }
+
+  const progressRatio =
+    sourceChunks.length <= 1
+      ? 0
+      : Math.max(0, currentChunkIndex) / (sourceChunks.length - 1);
+  const preferredIndex =
+    targetChunks.length <= 1
+      ? 0
+      : Math.round(progressRatio * (targetChunks.length - 1));
+  const matchedIndex = findChunkIndexByText(
+    targetChunks,
+    anchorText,
+    preferredIndex,
+  );
+
+  return clampChunkIndex(targetChunks.length, matchedIndex ?? preferredIndex);
+}
+
+function rebuildStoredTextDocument(
+  document: DocumentModel,
+  sourceKind: Extract<DocumentModel["sourceKind"], "markdown" | "plain-text">,
+) {
+  const rawText = document.rawText?.trim() ? document.rawText : document.text;
+  const rebuilt = buildDocumentModel({
+    title: document.title,
+    rawText,
+    sourceKind,
+  });
+
+  return {
+    ...rebuilt,
+    id: document.id,
+    title: document.title,
+    createdAt: document.createdAt,
+    updatedAt: document.updatedAt,
+    pages: document.pages,
+    rawText,
+  } satisfies DocumentModel;
+}
+
 export function ReaderWorkspace({
   documentId,
   bookmarkId,
@@ -166,6 +264,9 @@ export function ReaderWorkspace({
     { nonce: number; pageIndex: number } | undefined
   >();
   const [statusMessage, setStatusMessage] = useState("");
+  const [textPresentationOverride, setTextPresentationOverride] = useState<
+    TextPresentation | undefined
+  >();
   const hasHydratedSessionRef = useRef(false);
   const lastAnchorTokenRef = useRef<number | undefined>(undefined);
   const {
@@ -189,7 +290,24 @@ export function ReaderWorkspace({
   });
 
   const payload = document?.payload;
-  const runtimeChunks = useMemo(
+  const canToggleTextPresentation = Boolean(
+    payload?.sourceKind === "markdown" && payload.rawText?.trim().length,
+  );
+  const textPresentation = canToggleTextPresentation
+    ? (textPresentationOverride ?? savedSession?.textPresentation ?? "clean")
+    : undefined;
+  const literalPayload = useMemo(() => {
+    if (!payload || !canToggleTextPresentation) {
+      return undefined;
+    }
+
+    return rebuildStoredTextDocument(payload, "plain-text");
+  }, [canToggleTextPresentation, payload]);
+  const activePayload =
+    canToggleTextPresentation && textPresentation === "literal"
+      ? (literalPayload ?? payload)
+      : payload;
+  const cleanRuntimeChunks = useMemo(
     () =>
       payload
         ? deriveRuntimeChunks(payload, {
@@ -200,13 +318,41 @@ export function ReaderWorkspace({
         : [],
     [payload, preferences.chunkSize, preferences.focusWindow, preferences.mode],
   );
+  const literalRuntimeChunks = useMemo(
+    () =>
+      literalPayload
+        ? deriveRuntimeChunks(literalPayload, {
+            mode: preferences.mode,
+            chunkSize: preferences.chunkSize,
+            focusWindow: preferences.focusWindow,
+          })
+        : [],
+    [
+      literalPayload,
+      preferences.chunkSize,
+      preferences.focusWindow,
+      preferences.mode,
+    ],
+  );
+  const runtimeChunks = useMemo(
+    () =>
+      canToggleTextPresentation && textPresentation === "literal"
+        ? literalRuntimeChunks
+        : cleanRuntimeChunks,
+    [
+      canToggleTextPresentation,
+      cleanRuntimeChunks,
+      literalRuntimeChunks,
+      textPresentation,
+    ],
+  );
   const resolvedChunkIndex = runtimeChunks.length
     ? clampChunkIndex(runtimeChunks.length, currentChunkIndex)
     : 0;
   const activeChunk = runtimeChunks[resolvedChunkIndex];
   const currentParagraph =
-    payload && activeChunk
-      ? payload.blocks[activeChunk.paragraphIndex]
+    activePayload && activeChunk
+      ? activePayload.blocks[activeChunk.paragraphIndex]
       : undefined;
   const progress = runtimeChunks.length
     ? deriveReaderProgress({ chunks: runtimeChunks }, resolvedChunkIndex)
@@ -237,7 +383,26 @@ export function ReaderWorkspace({
     return formatRemainingTimeLabel(remainingTimeMs, locale);
   }, [locale, remainingTimeMs]);
   const hasExtractedText = Boolean(
-    payload && payload.tokens.length > 0 && payload.text.trim().length > 0,
+    activePayload &&
+    activePayload.tokens.length > 0 &&
+    activePayload.text.trim().length > 0,
+  );
+  const documentComplexityHints = useMemo(() => {
+    if (!payload) {
+      return [];
+    }
+
+    return (
+      payload.complexityHints ??
+      deriveDocumentComplexityHints({
+        rawText: payload.rawText,
+        sourceKind: payload.sourceKind,
+      })
+    );
+  }, [payload]);
+  const documentComplexityNotice = useMemo(
+    () => createDocumentComplexityNotice(locale, documentComplexityHints),
+    [documentComplexityHints, locale],
   );
   const canUsePdfPageMode =
     payload?.sourceKind === "pdf" && pdfAssetState === "present";
@@ -284,11 +449,34 @@ export function ReaderWorkspace({
     ownerKey: userId ?? "guest",
     planTier: activePlanTier,
     readerMode: canvasMode,
-    readerReady: Boolean(payload && (activeChunk || isPdfPageMode)),
+    readerReady: Boolean(activePayload && (activeChunk || isPdfPageMode)),
     setPlaying,
   });
 
+  useEffect(() => {
+    setTextPresentationOverride(undefined);
+  }, [document?.id]);
+
+  const getRuntimeChunksForPresentation = useCallback(
+    (presentation: TextPresentation | undefined) => {
+      if (!canToggleTextPresentation) {
+        return runtimeChunks;
+      }
+
+      return presentation === "literal"
+        ? literalRuntimeChunks
+        : cleanRuntimeChunks;
+    },
+    [
+      canToggleTextPresentation,
+      cleanRuntimeChunks,
+      literalRuntimeChunks,
+      runtimeChunks,
+    ],
+  );
+
   useReaderPersistence({
+    anchorText: activeChunk?.text,
     document,
     activeChunk,
     currentChunkIndex: resolvedChunkIndex,
@@ -297,6 +485,7 @@ export function ReaderWorkspace({
     profileReaderPreferences: profile?.readerPreferences,
     runtimeChunks,
     syncReaderPreferences,
+    textPresentation,
     userId: canSyncDocumentState ? userId : undefined,
     updatePreferences,
   });
@@ -501,7 +690,9 @@ export function ReaderWorkspace({
       tokenIndex: activeChunk.anchorTokenIndex,
       paragraphIndex: activeChunk.paragraphIndex,
       sectionIndex: activeChunk.sectionIndex,
+      anchorText: activeChunk.text,
       syncState: canSyncDocumentState ? "synced" : undefined,
+      textPresentation,
     });
 
     prependBookmark(bookmark);
@@ -517,6 +708,7 @@ export function ReaderWorkspace({
     prependBookmark,
     queueBookmarkUpsert,
     resolvedChunkIndex,
+    textPresentation,
     canSyncDocumentState,
     localDocumentOwnerId,
   ]);
@@ -588,6 +780,7 @@ export function ReaderWorkspace({
       paragraphIndex: activeChunk.paragraphIndex,
       sectionIndex: activeChunk.sectionIndex,
       syncState: canSyncDocumentState ? "synced" : undefined,
+      textPresentation,
     });
 
     prependHighlight(highlight);
@@ -605,6 +798,7 @@ export function ReaderWorkspace({
     prependHighlight,
     queueHighlightUpsert,
     resolvedChunkIndex,
+    textPresentation,
     canSyncDocumentState,
     localDocumentOwnerId,
   ]);
@@ -704,11 +898,29 @@ export function ReaderWorkspace({
   );
 
   const jumpToAnchor = useCallback(
-    (anchor: { chunkIndex: number; tokenIndex: number }) => {
-      const nextChunkIndex = resolveSessionChunkIndex(runtimeChunks, {
-        currentChunkIndex: anchor.chunkIndex,
-        currentTokenIndex: anchor.tokenIndex,
-      });
+    (anchor: {
+      anchorText?: string;
+      chunkIndex: number;
+      quote?: string;
+      textPresentation?: TextPresentation;
+      tokenIndex: number;
+    }) => {
+      const anchorPresentation = canToggleTextPresentation
+        ? (anchor.textPresentation ?? "clean")
+        : undefined;
+      const targetChunks = getRuntimeChunksForPresentation(textPresentation);
+      const nextChunkIndex =
+        canToggleTextPresentation && anchorPresentation !== textPresentation
+          ? mapChunkIndexBetweenChunks({
+              anchorText: anchor.anchorText ?? anchor.quote,
+              currentChunkIndex: anchor.chunkIndex,
+              sourceChunks: getRuntimeChunksForPresentation(anchorPresentation),
+              targetChunks,
+            })
+          : resolveSessionChunkIndex(targetChunks, {
+              currentChunkIndex: anchor.chunkIndex,
+              currentTokenIndex: anchor.tokenIndex,
+            });
 
       moveToChunk(nextChunkIndex);
 
@@ -721,14 +933,26 @@ export function ReaderWorkspace({
         setPdfPageJumpRequest({ nonce: Date.now(), pageIndex });
       }
     },
-    [isPdfPageMode, moveToChunk, payload, runtimeChunks],
+    [
+      canToggleTextPresentation,
+      getRuntimeChunksForPresentation,
+      isPdfPageMode,
+      moveToChunk,
+      payload,
+      textPresentation,
+    ],
   );
 
   const jumpToBookmark = useCallback(
     (
       bookmark: Pick<
         Bookmark,
-        "chunkIndex" | "label" | "sourcePageIndex" | "tokenIndex"
+        | "anchorText"
+        | "chunkIndex"
+        | "label"
+        | "sourcePageIndex"
+        | "textPresentation"
+        | "tokenIndex"
       >,
     ) => {
       if (
@@ -753,7 +977,12 @@ export function ReaderWorkspace({
   );
 
   const jumpToHighlight = useCallback(
-    (highlight: { chunkIndex: number; tokenIndex: number; label: string }) => {
+    (
+      highlight: Pick<
+        Highlight,
+        "chunkIndex" | "label" | "quote" | "textPresentation" | "tokenIndex"
+      >,
+    ) => {
       jumpToAnchor(highlight);
       announce(`${highlight.label} loaded.`);
     },
@@ -767,8 +996,48 @@ export function ReaderWorkspace({
     },
     [jumpToAnchor, runtimeChunks],
   );
+
+  const handleTextPresentationSelection = useCallback(
+    (nextPresentation: TextPresentation) => {
+      if (
+        !canToggleTextPresentation ||
+        textPresentation === nextPresentation ||
+        runtimeChunks.length === 0
+      ) {
+        return;
+      }
+
+      const targetChunks = getRuntimeChunksForPresentation(nextPresentation);
+      const nextChunkIndex = mapChunkIndexBetweenChunks({
+        anchorText: activeChunk?.text,
+        currentChunkIndex: resolvedChunkIndex,
+        sourceChunks: runtimeChunks,
+        targetChunks,
+      });
+
+      setTextPresentationOverride(nextPresentation);
+      startTransition(() => {
+        setChunkIndex(nextChunkIndex);
+      });
+      announce(
+        nextPresentation === "literal"
+          ? "Literal text view enabled."
+          : "Clean Markdown view enabled.",
+      );
+    },
+    [
+      activeChunk?.text,
+      announce,
+      canToggleTextPresentation,
+      getRuntimeChunksForPresentation,
+      resolvedChunkIndex,
+      runtimeChunks,
+      setChunkIndex,
+      textPresentation,
+    ],
+  );
   const renderModeView = () => {
-    if (!payload || !activeChunk) {
+    if (!activePayload || !activeChunk) {
       return null;
     }
 
@@ -776,7 +1045,7 @@ export function ReaderWorkspace({
       case "classic-reader":
         return (
           <ClassicReaderView
-            document={payload}
+            document={activePayload}
             chunk={activeChunk}
             onJumpToToken={jumpToToken}
             reduceMotion={preferences.reduceMotion}
@@ -785,7 +1054,7 @@ export function ReaderWorkspace({
       case "phrase-chunk":
         return (
           <PhraseChunkView
-            document={payload}
+            document={activePayload}
             chunk={activeChunk}
             chunks={runtimeChunks}
           />
@@ -793,7 +1062,7 @@ export function ReaderWorkspace({
       case "guided-line":
         return (
           <GuidedLineView
-            document={payload}
+            document={activePayload}
             chunk={activeChunk}
             chunks={runtimeChunks}
             focusWindow={preferences.focusWindow}
@@ -801,7 +1070,7 @@ export function ReaderWorkspace({
           />
         );
       default:
-        return <FocusWordView document={payload} chunk={activeChunk} />;
+        return <FocusWordView document={activePayload} chunk={activeChunk} />;
     }
   };
 
@@ -1102,7 +1371,12 @@ export function ReaderWorkspace({
     );
   }
 
-  if (error || !payload || (!activeChunk && !isPdfPageMode)) {
+  if (
+    !document ||
+    error ||
+    !activePayload ||
+    (!activeChunk && !isPdfPageMode)
+  ) {
     return (
       <section className="editorial-panel fade-rise rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-10 text-center shadow-[0_20px_80px_rgba(20,26,56,0.12)] backdrop-blur-xl">
         <p className="editorial-kicker text-(--accent-amber)">
@@ -1138,6 +1412,24 @@ export function ReaderWorkspace({
       data-reader-font-scale={preferences.fontScale.toFixed(1)}
       data-reader-line-height={preferences.lineHeight.toFixed(1)}
     >
+      {!isPdfPageMode && documentComplexityNotice ? (
+        <div className="rounded-[1.5rem] border border-amber-300/30 bg-amber-500/10 px-4 py-4 shadow-[0_14px_40px_rgba(20,26,56,0.08)]">
+          <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-amber) uppercase">
+            {documentComplexityNotice.title}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-(--text-muted)">
+            {documentComplexityNotice.description}
+          </p>
+          <ul className="mt-3 space-y-2 text-sm leading-6 text-(--text-muted)">
+            {documentComplexityNotice.items.map((item) => (
+              <li key={item} className="flex gap-2">
+                <span className="text-(--accent-amber)">*</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {mobileSidebarSection}
       <div className="fade-rise-delayed relative z-20">
         <p className="sr-only" role="status" aria-live="polite">
@@ -1199,7 +1491,7 @@ export function ReaderWorkspace({
             modeView={renderModeView()}
             remainingTimeLabel={remainingTimeLabel}
             preferences={preferences}
-            sentenceCount={payload.sentences.length}
+            sentenceCount={activePayload.sentences.length}
             onAnnounceRemainingTime={announceRemainingTime}
             onChangeFontScale={handleFontScaleChange}
             onChangeLineHeight={handleLineHeightChange}
@@ -1235,11 +1527,17 @@ export function ReaderWorkspace({
             }}
             onSelectMode={handleModeSelection}
             onSelectPreset={handlePresetSelection}
+            onSelectTextPresentation={
+              canToggleTextPresentation
+                ? handleTextPresentationSelection
+                : undefined
+            }
             onSelectTheme={handleThemeSelection}
             onToggleNaturalPauses={handleNaturalPausesToggle}
             onTogglePlayback={handlePlaybackToggle}
             onToggleReduceMotion={handleReduceMotionToggle}
             progress={progress}
+            textPresentation={textPresentation}
           />
         )}
       </div>

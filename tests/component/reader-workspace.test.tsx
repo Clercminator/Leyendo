@@ -64,8 +64,32 @@ const { ClassicReaderViewMock, GuidedLineViewMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/components/reader/reader-canvas", () => ({
-  ReaderCanvas: ({ modeView }: { modeView: React.ReactNode }) => (
-    <div data-testid="reader-canvas">{modeView}</div>
+  ReaderCanvas: ({
+    modeView,
+    onSelectTextPresentation,
+    textPresentation,
+  }: {
+    modeView: React.ReactNode;
+    onSelectTextPresentation?: (presentation: "clean" | "literal") => void;
+    textPresentation?: "clean" | "literal";
+  }) => (
+    <div data-testid="reader-canvas">
+      {onSelectTextPresentation && textPresentation ? (
+        <button
+          type="button"
+          onClick={() => {
+            onSelectTextPresentation(
+              textPresentation === "literal" ? "clean" : "literal",
+            );
+          }}
+        >
+          {textPresentation === "literal"
+            ? "Switch to clean markdown"
+            : "Switch to literal text"}
+        </button>
+      ) : null}
+      {modeView}
+    </div>
   ),
 }));
 
@@ -336,5 +360,88 @@ describe("ReaderWorkspace PDF gating", () => {
       ClassicReaderViewMock.mock.calls.at(-1)?.[0] ?? {};
 
     expect(classicReaderProps.onJumpToToken).toEqual(expect.any(Function));
+  });
+
+  it("lets saved markdown documents switch between clean and literal views", async () => {
+    const documentModel = buildDocumentModel({
+      title: "Markdown sample",
+      rawText: "# Heading\n\n- Bullet item\n\nParagraph with **bold** text.",
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+
+    useReaderStore.mockReturnValue({
+      currentChunkIndex: 0,
+      isPlaying: false,
+      preferences: {
+        ...defaultReaderPreferences,
+        mode: "classic-reader",
+      },
+      setActiveDocument: vi.fn(),
+      setChunkIndex: vi.fn(),
+      setMode: vi.fn(),
+      setPlaying: vi.fn(),
+      updatePreferences: vi.fn(),
+    });
+
+    useReaderDocument.mockReturnValue({
+      bookmarks: [],
+      document: {
+        createdAt: "2026-03-30T10:00:00.000Z",
+        excerpt: documentModel.excerpt,
+        id: "markdown-doc",
+        payload: documentModel,
+        sourceKind: "markdown",
+        title: documentModel.title,
+        totalChunks: documentModel.chunks.length,
+        totalSections: documentModel.sections.length,
+        updatedAt: "2026-03-30T10:00:00.000Z",
+      },
+      error: undefined,
+      highlights: [],
+      isLoading: false,
+      prependBookmark: vi.fn(),
+      prependHighlight: vi.fn(),
+      removeBookmark: vi.fn(),
+      removeHighlight: vi.fn(),
+      savedSession: undefined,
+    });
+
+    render(<ReaderWorkspace documentId="markdown-doc" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("classic-reader-view")).toBeInTheDocument();
+    });
+
+    expect(
+      ClassicReaderViewMock.mock.calls.at(-1)?.[0]?.document.sourceKind,
+    ).toBe("markdown");
+    expect(
+      ClassicReaderViewMock.mock.calls.at(-1)?.[0]?.document.text,
+    ).not.toContain("# Heading");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /switch to literal text/i }),
+    );
+
+    await waitFor(() => {
+      expect(
+        ClassicReaderViewMock.mock.calls.at(-1)?.[0]?.document.sourceKind,
+      ).toBe("plain-text");
+    });
+
+    expect(
+      ClassicReaderViewMock.mock.calls.at(-1)?.[0]?.document.text,
+    ).toContain("# Heading");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /switch to clean markdown/i }),
+    );
+
+    await waitFor(() => {
+      expect(
+        ClassicReaderViewMock.mock.calls.at(-1)?.[0]?.document.sourceKind,
+      ).toBe("markdown");
+    });
   });
 });

@@ -1,8 +1,13 @@
 import type { DocumentBlockInput } from "@/types/document";
 
-const markdownFencePattern = /^(```|~~~)/;
+const markdownFencePattern = /^(```|~~~)\s*([A-Za-z0-9_-]+)?\s*$/;
 const markdownHeadingPattern = /^#{1,6}\s+(.+?)\s*#*\s*$/;
 const markdownListItemPattern = /^\s*(?:[-*+]|\d+\.)\s+(?:\[[ xX]\]\s+)?(.+)$/;
+
+interface ActiveFence {
+  delimiter: "```" | "~~~";
+  language?: string;
+}
 
 function normalizeMarkdownInlineText(text: string) {
   return text
@@ -35,25 +40,53 @@ function flushMarkdownParagraph(
   paragraphLines.length = 0;
 }
 
+function flushMarkdownFence(
+  activeFence: ActiveFence | undefined,
+  blocks: DocumentBlockInput[],
+) {
+  if (!activeFence) {
+    return;
+  }
+
+  if (activeFence.language === "mermaid") {
+    blocks.push({
+      kind: "paragraph",
+      text: "Mermaid diagram included in this section. Switch to Literal text to inspect the diagram source.",
+    });
+    return;
+  }
+
+  blocks.push({
+    kind: "paragraph",
+    text: "Code snippet included in this section. Switch to Literal text to inspect the code.",
+  });
+}
+
 export function extractMarkdownBlocks(markdown: string): DocumentBlockInput[] {
   const blocks: DocumentBlockInput[] = [];
   const paragraphLines: string[] = [];
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
-  let isInFence = false;
+  let activeFence: ActiveFence | undefined;
 
   lines.forEach((line) => {
     const trimmed = line.trim();
 
-    if (markdownFencePattern.test(trimmed)) {
-      flushMarkdownParagraph(blocks, paragraphLines);
-      isInFence = !isInFence;
+    if (activeFence) {
+      if (trimmed.startsWith(activeFence.delimiter)) {
+        flushMarkdownFence(activeFence, blocks);
+        activeFence = undefined;
+      }
+
       return;
     }
 
-    if (isInFence) {
-      if (trimmed) {
-        paragraphLines.push(trimmed);
-      }
+    const fenceMatch = trimmed.match(markdownFencePattern);
+    if (fenceMatch) {
+      flushMarkdownParagraph(blocks, paragraphLines);
+      activeFence = {
+        delimiter: (fenceMatch[1] as "```" | "~~~") ?? "```",
+        language: fenceMatch[2]?.toLowerCase(),
+      };
       return;
     }
 
@@ -85,6 +118,7 @@ export function extractMarkdownBlocks(markdown: string): DocumentBlockInput[] {
     paragraphLines.push(trimmed);
   });
 
+  flushMarkdownFence(activeFence, blocks);
   flushMarkdownParagraph(blocks, paragraphLines);
 
   return blocks;

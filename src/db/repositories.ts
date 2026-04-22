@@ -279,7 +279,9 @@ export function buildInitialSession(document: DocumentModel): ReadingSession {
     currentTokenIndex: 0,
     currentParagraphIndex: 0,
     currentSectionIndex: 0,
+    anchorText: document.chunks[0]?.text,
     percentComplete: 0,
+    textPresentation: document.sourceKind === "markdown" ? "clean" : undefined,
     updatedAt: new Date().toISOString(),
   };
 }

@@ -192,6 +192,13 @@ describe("UploadPanel", () => {
       expect(ensureProfile).toHaveBeenCalledWith(supabaseClient, "user-1");
     });
 
+    expect(buildDocumentModelAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rawText: "Imported from file.",
+        sourceKind: "plain-text",
+      }),
+    );
+
     expect(upsertCloudDocuments).toHaveBeenCalledWith(
       supabaseClient,
       "user-1",
@@ -211,6 +218,64 @@ describe("UploadPanel", () => {
       }),
     ]);
     expect(push).toHaveBeenCalledWith("/reader?document=doc-cloud-sync");
+  });
+
+  it("lets pasted markdown open in the clean markdown view instead of literal text", async () => {
+    const user = userEvent.setup();
+
+    buildDocumentModelAsync.mockResolvedValue({
+      document: {
+        blocks: [{ text: "Heading" }],
+        chunks: [{ index: 0 }],
+        createdAt: "2026-03-27T00:00:00.000Z",
+        excerpt: "Heading",
+        id: "doc-markdown",
+        sections: [{ index: 0 }],
+        sourceKind: "markdown" satisfies DocumentSourceKind,
+        title: "Heading",
+        updatedAt: "2026-03-27T00:00:00.000Z",
+      },
+    });
+
+    render(<UploadPanel />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: /^paste text$/i }),
+      "# Heading\n\n- Bullet item",
+    );
+    await user.click(screen.getByRole("radio", { name: /clean markdown/i }));
+    await user.click(screen.getByRole("button", { name: /open in reader/i }));
+
+    await waitFor(() => {
+      expect(buildDocumentModelAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rawText: "# Heading\n\n- Bullet item",
+          sourceKind: "markdown",
+        }),
+      );
+    });
+  });
+
+  it("warns when clean markdown includes advanced structures that may be simplified", async () => {
+    const user = userEvent.setup();
+
+    render(<UploadPanel />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: /^paste text$/i }),
+      "```ts\nconst answer = 42;\n```\n\n```mermaid\ngraph TD\nA-->B\n```",
+    );
+    await user.click(screen.getByRole("radio", { name: /clean markdown/i }));
+
+    expect(
+      screen.getByText(/review this import carefully/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/fenced code blocks are signposted in clean view/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/mermaid diagrams are signposted in clean view/i),
+    ).toBeInTheDocument();
   });
 
   it("shows a clear error for unsupported formats", async () => {

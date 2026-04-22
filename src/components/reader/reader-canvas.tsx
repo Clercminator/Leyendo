@@ -23,6 +23,7 @@ import {
 import { useLocale } from "@/components/layout/locale-provider";
 import { getLocalizedCopy } from "@/lib/locale";
 import { cn } from "@/lib/utils";
+import type { TextPresentation } from "@/types/document";
 import {
   readerModes,
   readerPresets,
@@ -58,11 +59,13 @@ interface ReaderCanvasProps {
   onSaveHighlight: () => void;
   onSelectMode: (mode: (typeof readerModes)[number]) => void;
   onSelectPreset: (presetId: (typeof readerPresets)[number]["id"]) => void;
+  onSelectTextPresentation?: (presentation: TextPresentation) => void;
   onSelectTheme: (theme: ReaderPreferences["theme"]) => void;
   onToggleNaturalPauses: () => void;
   onTogglePlayback: () => void;
   onToggleReduceMotion: () => void;
   progress: number;
+  textPresentation?: TextPresentation;
 }
 
 const themeLabels: Record<
@@ -180,17 +183,20 @@ export function ReaderCanvas({
   onSaveHighlight,
   onSelectMode,
   onSelectPreset,
+  onSelectTextPresentation,
   onSelectTheme,
   onToggleNaturalPauses,
   onTogglePlayback,
   onToggleReduceMotion,
   progress,
+  textPresentation,
 }: ReaderCanvasProps) {
   const { locale } = useLocale();
   const canvasRef = useRef<HTMLElement>(null);
   const [openMenu, setOpenMenu] = useState<
     | "mode"
     | "preset"
+    | "text-presentation"
     | "theme"
     | "save"
     | "font-scale"
@@ -205,6 +211,7 @@ export function ReaderCanvas({
   const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const presetMenuRef = useRef<HTMLDivElement>(null);
+  const textPresentationMenuRef = useRef<HTMLDivElement>(null);
   const saveMenuRef = useRef<HTMLDivElement>(null);
   const themeMenuRef = useRef<HTMLDivElement>(null);
   const fontScaleMenuRef = useRef<HTMLDivElement>(null);
@@ -280,6 +287,7 @@ export function ReaderCanvas({
       if (
         modeMenuRef.current?.contains(target) ||
         presetMenuRef.current?.contains(target) ||
+        textPresentationMenuRef.current?.contains(target) ||
         saveMenuRef.current?.contains(target) ||
         themeMenuRef.current?.contains(target) ||
         fontScaleMenuRef.current?.contains(target) ||
@@ -490,6 +498,11 @@ export function ReaderCanvas({
       es: "Cambiar ajuste",
       pt: "Mudar ajuste",
     }),
+    changeTextView: getLocalizedCopy(locale, {
+      en: "Change text view",
+      es: "Cambiar vista del texto",
+      pt: "Mudar visualizacao do texto",
+    }),
     playbackSettings: getLocalizedCopy(locale, {
       en: "Playback settings",
       es: "Ajustes de reproduccion",
@@ -539,6 +552,26 @@ export function ReaderCanvas({
       en: "Appearance",
       es: "Apariencia",
       pt: "Aparencia",
+    }),
+    textView: getLocalizedCopy(locale, {
+      en: "Text view",
+      es: "Vista del texto",
+      pt: "Visualizacao do texto",
+    }),
+    textViewMenu: getLocalizedCopy(locale, {
+      en: "Text rendering",
+      es: "Renderizado del texto",
+      pt: "Renderizacao do texto",
+    }),
+    cleanMarkdown: getLocalizedCopy(locale, {
+      en: "Clean Markdown",
+      es: "Markdown limpio",
+      pt: "Markdown limpo",
+    }),
+    literalText: getLocalizedCopy(locale, {
+      en: "Literal text",
+      es: "Texto literal",
+      pt: "Texto literal",
     }),
     changeTheme: getLocalizedCopy(locale, {
       en: "Change theme",
@@ -831,6 +864,60 @@ export function ReaderCanvas({
                 </div>
               ) : null}
             </div>
+            {onSelectTextPresentation && textPresentation ? (
+              <div ref={textPresentationMenuRef} className="relative z-40">
+                <button
+                  type="button"
+                  aria-label={copy.changeTextView}
+                  onClick={() => {
+                    setOpenMenu((current) =>
+                      current === "text-presentation"
+                        ? null
+                        : "text-presentation",
+                    );
+                  }}
+                  className={topControlButtonClass}
+                >
+                  {textPresentation === "literal"
+                    ? copy.literalText
+                    : copy.cleanMarkdown}
+                  <ChevronDown
+                    className={`h-4 w-4 transition ${openMenu === "text-presentation" ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {openMenu === "text-presentation" ? (
+                  <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                    <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                      {copy.textViewMenu}
+                    </p>
+                    <div className="mt-3 grid gap-2">
+                      {(
+                        [
+                          { label: copy.cleanMarkdown, value: "clean" },
+                          { label: copy.literalText, value: "literal" },
+                        ] as const
+                      ).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            onSelectTextPresentation(option.value);
+                            setOpenMenu(null);
+                          }}
+                          className={`rounded-full border px-3 py-2 text-left text-sm transition ${
+                            textPresentation === option.value
+                              ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                              : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             {!isCompactReaderChrome ? (
               <div ref={themeMenuRef} className="relative z-40">
                 <button
@@ -1576,6 +1663,37 @@ export function ReaderCanvas({
                   </button>
                 </div>
               </section>
+
+              {onSelectTextPresentation && textPresentation ? (
+                <section className={mobileToolsSectionClass}>
+                  <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
+                    {copy.textView}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        { label: copy.cleanMarkdown, value: "clean" },
+                        { label: copy.literalText, value: "literal" },
+                      ] as const
+                    ).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          onSelectTextPresentation(option.value);
+                        }}
+                        className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
+                          textPresentation === option.value
+                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                            : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               <section className={mobileToolsSectionClass}>
                 <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">

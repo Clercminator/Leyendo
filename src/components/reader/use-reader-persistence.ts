@@ -11,10 +11,11 @@ import {
 import { deriveReaderProgress } from "@/features/reader/engine/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { upsertCloudSessions } from "@/lib/supabase/library-sync";
-import type { Chunk, DocumentRecord } from "@/types/document";
+import type { Chunk, DocumentRecord, TextPresentation } from "@/types/document";
 import type { ReaderPreferences } from "@/types/reader";
 
 interface UseReaderPersistenceOptions {
+  anchorText?: string;
   document?: DocumentRecord;
   activeChunk?: Chunk;
   currentChunkIndex: number;
@@ -23,6 +24,7 @@ interface UseReaderPersistenceOptions {
   profileReaderPreferences?: ReaderPreferences;
   runtimeChunks: Chunk[];
   syncReaderPreferences?: (preferences: ReaderPreferences) => Promise<void>;
+  textPresentation?: TextPresentation;
   userId?: string;
   updatePreferences: (changes: Partial<ReaderPreferences>) => void;
 }
@@ -35,6 +37,7 @@ function getSessionProgressBucket(percentComplete: number) {
 }
 
 export function useReaderPersistence({
+  anchorText,
   document,
   activeChunk,
   currentChunkIndex,
@@ -43,6 +46,7 @@ export function useReaderPersistence({
   profileReaderPreferences,
   runtimeChunks,
   syncReaderPreferences,
+  textPresentation,
   userId,
   updatePreferences,
 }: UseReaderPersistenceOptions) {
@@ -80,6 +84,7 @@ export function useReaderPersistence({
       pendingSession.currentChunkIndex,
       pendingSession.currentParagraphIndex,
       pendingSession.currentTokenIndex,
+      pendingSession.textPresentation ?? "default",
       pendingSession.percentComplete,
     ].join(":");
 
@@ -109,6 +114,7 @@ export function useReaderPersistence({
         pendingSession.currentChunkIndex,
         pendingSession.currentParagraphIndex,
         pendingSession.currentTokenIndex,
+        pendingSession.textPresentation ?? "default",
         pendingSession.percentComplete,
       ].join(":");
 
@@ -217,12 +223,14 @@ export function useReaderPersistence({
       currentTokenIndex: activeChunk?.anchorTokenIndex ?? 0,
       currentParagraphIndex: activeChunk?.paragraphIndex ?? 0,
       currentSectionIndex: activeChunk?.sectionIndex ?? 0,
+      anchorText: anchorText ?? activeChunk?.text,
       ownerId: document.ownerId,
       percentComplete: deriveReaderProgress(
         { chunks: runtimeChunks },
         currentChunkIndex,
       ),
       syncState: document.syncState,
+      textPresentation,
       updatedAt: new Date().toISOString(),
     };
 
@@ -252,12 +260,14 @@ export function useReaderPersistence({
       window.clearTimeout(timeoutId);
     };
   }, [
+    anchorText,
     activeChunk,
     currentChunkIndex,
     document,
     flushPendingSession,
     isPlaying,
     runtimeChunks,
+    textPresentation,
   ]);
 
   useEffect(() => {

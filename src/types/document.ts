@@ -7,6 +7,21 @@ export type DocumentSourceKind =
   | "markdown"
   | "plain-text";
 
+export type TextPresentation = "clean" | "literal";
+
+export type DocumentComplexityHint =
+  | "docx-rich-content"
+  | "rtf-rich-content"
+  | "markdown-advanced-content"
+  | "markdown-code-blocks"
+  | "markdown-mermaid-diagrams"
+  | "markdown-tables"
+  | "markdown-task-lists"
+  | "markdown-images"
+  | "markdown-html"
+  | "markdown-math"
+  | "markdown-footnotes";
+
 export type BlockKind = "heading" | "paragraph" | "list-item";
 
 export type BlockAlignment = "left" | "center";
@@ -85,6 +100,8 @@ export interface DocumentModel {
   sourceKind: DocumentSourceKind;
   createdAt: string;
   updatedAt: string;
+  rawText?: string;
+  complexityHints?: DocumentComplexityHint[];
   text: string;
   excerpt: string;
   pages: SourcePage[];

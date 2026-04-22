@@ -1,3 +1,4 @@
+import type { TextPresentation } from "@/types/document";
 import type { SyncOwnedRecord } from "@/types/sync";
 
 export const readerModes = [
@@ -65,7 +66,9 @@ export interface ReadingSession extends SyncOwnedRecord {
   currentTokenIndex: number;
   currentParagraphIndex: number;
   currentSectionIndex: number;
+  anchorText?: string;
   percentComplete: number;
+  textPresentation?: TextPresentation;
   updatedAt: string;
 }
 
@@ -78,7 +81,9 @@ export interface Bookmark extends SyncOwnedRecord {
   tokenIndex: number;
   paragraphIndex: number;
   sectionIndex: number;
+  anchorText?: string;
   sourcePageIndex?: number;
+  textPresentation?: TextPresentation;
   createdAt: string;
 }
 
@@ -92,6 +97,7 @@ export interface Highlight extends SyncOwnedRecord {
   tokenIndex: number;
   paragraphIndex: number;
   sectionIndex: number;
+  textPresentation?: TextPresentation;
   createdAt: string;
 }
 

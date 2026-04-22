@@ -181,6 +181,11 @@ export function useReaderDocument({
               currentTokenIndex: targetAnchor.tokenIndex,
               currentParagraphIndex: targetAnchor.paragraphIndex,
               currentSectionIndex: targetAnchor.sectionIndex,
+              anchorText:
+                "quote" in targetAnchor
+                  ? targetAnchor.quote
+                  : targetAnchor.anchorText,
+              textPresentation: targetAnchor.textPresentation,
             }
           : (session ?? buildInitialSession(record.payload)),
       );

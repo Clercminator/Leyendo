@@ -1,6 +1,13 @@
 "use client";
 
-import { startTransition, useEffect, useId, useRef, useState } from "react";
+import {
+  startTransition,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -30,12 +37,14 @@ import {
   buildDocumentModelAsync,
   shouldOffloadDocumentBuild,
 } from "@/features/ingest/build/document-model-client";
+import { deriveDocumentComplexityHints } from "@/features/ingest/build/document-complexity-hints";
 import {
   extractDocumentFromFileAsync,
   isPdfTooLargeForBrowser,
   MAX_BROWSER_PDF_BYTES,
   shouldOffloadPdfExtraction,
 } from "@/features/ingest/extract/file-text-client";
+import { createDocumentComplexityNotice } from "@/lib/document-complexity";
 import { getLocalizedCopy } from "@/lib/locale";
 import {
   freeFileUploadLimit,
@@ -169,6 +178,47 @@ interface SelectedFileSummary {
   size: number;
   sourceKind: DocumentSourceKind;
 }
+
+type PasteSourceKind = Extract<DocumentSourceKind, "plain-text" | "markdown">;
+
+const pasteFormatLabelCopy = {
+  en: "Open pasted text as",
+  es: "Abrir el texto pegado como",
+  pt: "Abrir o texto colado como",
+};
+
+const pasteFormatOptions: Array<{
+  value: PasteSourceKind;
+  title: { en: string; es: string; pt: string };
+  description: { en: string; es: string; pt: string };
+}> = [
+  {
+    value: "plain-text",
+    title: {
+      en: "Literal text",
+      es: "Texto literal",
+      pt: "Texto literal",
+    },
+    description: {
+      en: "Keep Markdown symbols like #, **, and links visible in the reader.",
+      es: "Mantiene visibles en el lector simbolos como #, ** y los enlaces de Markdown.",
+      pt: "Mantem visiveis no leitor simbolos como #, ** e links de Markdown.",
+    },
+  },
+  {
+    value: "markdown",
+    title: {
+      en: "Clean Markdown",
+      es: "Markdown limpio",
+      pt: "Markdown limpo",
+    },
+    description: {
+      en: "Turn headings, lists, and inline emphasis into a cleaner reading layout.",
+      es: "Convierte encabezados, listas y enfasis en una vista de lectura mas limpia.",
+      pt: "Transforma titulos, listas e enfase inline em uma leitura mais limpa.",
+    },
+  },
+];
 
 function formatFileSize(bytes: number) {
   if (bytes >= 1_000_000) {
@@ -1143,6 +1193,8 @@ export function UploadPanel() {
   const [inputMode, setInputMode] = useState<"paste" | "file">("paste");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [pasteSourceKind, setPasteSourceKind] =
+    useState<PasteSourceKind>("plain-text");
   const [selectedFile, setSelectedFile] = useState<SelectedFileSummary>();
   const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(
     null,
@@ -1391,7 +1443,7 @@ export function UploadPanel() {
 
     try {
       const sourceKind =
-        inputMode === "file" ? selectedSourceKind : "plain-text";
+        inputMode === "file" ? selectedSourceKind : pasteSourceKind;
       const willOffloadBuild = shouldOffloadDocumentBuild(trimmed);
       const waitEstimate = estimateDocumentReadyWait({
         fileSize: selectedFile?.size,
@@ -1437,9 +1489,12 @@ export function UploadPanel() {
         currentTokenIndex: 0,
         currentParagraphIndex: 0,
         currentSectionIndex: 0,
+        anchorText: document.chunks[0]?.text,
         ownerId,
         percentComplete: 0,
         syncState: ownerId ? ("synced" as const) : undefined,
+        textPresentation:
+          sourceKind === "markdown" ? ("clean" as const) : undefined,
         updatedAt: new Date().toISOString(),
       };
 
@@ -1543,6 +1598,23 @@ export function UploadPanel() {
     inputMode === "file" &&
     selectedSourceKind === "pdf" &&
     content.trim().length > 0;
+
+  const previewSourceKind =
+    inputMode === "file" ? selectedSourceKind : pasteSourceKind;
+  const previewComplexityHints = useMemo(() => {
+    if (!content.trim()) {
+      return [];
+    }
+
+    return deriveDocumentComplexityHints({
+      rawText: content,
+      sourceKind: previewSourceKind,
+    });
+  }, [content, previewSourceKind]);
+  const previewComplexityNotice = useMemo(
+    () => createDocumentComplexityNotice(locale, previewComplexityHints),
+    [locale, previewComplexityHints],
+  );
 
   const showFileTitleField =
     inputMode === "paste" || Boolean(selectedFile) || content.trim().length > 0;
@@ -1806,6 +1878,48 @@ export function UploadPanel() {
             </div>
           ) : null}
 
+          {inputMode === "paste" ? (
+            <div className="grid gap-3">
+              <p className="text-sm font-medium text-(--text-strong)">
+                {getLocalizedCopy(locale, pasteFormatLabelCopy)}
+              </p>
+              <div
+                className="grid gap-3 sm:grid-cols-2"
+                role="radiogroup"
+                aria-label={getLocalizedCopy(locale, pasteFormatLabelCopy)}
+              >
+                {pasteFormatOptions.map(({ value, title, description }) => (
+                  <label
+                    key={value}
+                    className={`relative cursor-pointer rounded-[1.35rem] border p-4 text-left transition ${
+                      pasteSourceKind === value
+                        ? "border-(--accent-sky) bg-[linear-gradient(180deg,rgba(95,119,215,0.14),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(95,119,215,0.12)]"
+                        : "border-(--border-soft) bg-(--surface-soft) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paste-source-kind"
+                      value={value}
+                      checked={pasteSourceKind === value}
+                      disabled={isBusy}
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      onChange={() => {
+                        setPasteSourceKind(value);
+                      }}
+                    />
+                    <span className="text-sm font-semibold text-(--text-strong)">
+                      {getLocalizedCopy(locale, title)}
+                    </span>
+                    <span className="mt-2 block text-sm leading-6 text-(--text-muted)">
+                      {getLocalizedCopy(locale, description)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {showFileTitleField ? (
             <label
               className="grid gap-2 text-sm text-(--text-strong)"
@@ -1887,6 +2001,25 @@ export function UploadPanel() {
               <p className="mt-2 text-sm leading-6 text-(--text-muted)">
                 {getLocalizedCopy(locale, pdfFormattingNoteCopy)}
               </p>
+            </div>
+          ) : null}
+
+          {previewComplexityNotice ? (
+            <div className="rounded-[1.4rem] border border-amber-300/30 bg-amber-500/10 px-4 py-4">
+              <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-amber) uppercase">
+                {previewComplexityNotice.title}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-(--text-muted)">
+                {previewComplexityNotice.description}
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-(--text-muted)">
+                {previewComplexityNotice.items.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="text-(--accent-amber)">*</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
 
