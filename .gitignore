@@ -46,6 +46,8 @@ next-env.d.ts
 /.playwright-mcp/
 /account-page-before.md
 
+/tests
+/test-results
 
 .vercel
 .env*.local
