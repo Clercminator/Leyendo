@@ -147,4 +147,50 @@ describe("ClassicReaderView", () => {
       ).toBeTruthy();
     });
   });
+
+  it("simplifies oversized markdown and renders only a bounded window", () => {
+    const rawText = Array.from({ length: 80 }, (_, index) => {
+      return `## Section ${index + 1}\n\nParagraph ${index + 1} with enough content to exercise the reader fast path.`;
+    }).join("\n\n");
+    const documentModel = buildDocumentModel({
+      title: "Large markdown sample",
+      rawText,
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const targetBlock =
+      documentModel.blocks.find(
+        (block) => block.kind === "heading" && block.index >= 60,
+      ) ?? documentModel.blocks.at(-1);
+    const chunk = deriveRuntimeChunks(documentModel, 3).find(
+      (candidate) => candidate.paragraphIndex === targetBlock?.index,
+    );
+
+    const { container } = render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        reduceMotion
+        simplifyMarkdownPreview
+      />,
+    );
+
+    expect(
+      container.querySelector('[data-reader-window-sentinel="before"]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelector('[data-reader-window-sentinel="after"]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelectorAll("[data-reader-paragraph-index]").length,
+    ).toBeLessThan(documentModel.blocks.length);
+    expect(
+      container.querySelector("[data-reader-markdown-block-index]"),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector(
+        `[data-reader-paragraph-index="${targetBlock?.index}"]`,
+      ),
+    ).toBeTruthy();
+  });
 });

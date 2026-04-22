@@ -24,6 +24,7 @@ import type { Chunk, DocumentModel, Token } from "@/types/document";
 interface ClassicReaderViewProps {
   document: DocumentModel;
   chunk: Chunk;
+  simplifyMarkdownPreview?: boolean;
   onJumpToToken?: (tokenIndex: number) => void;
   reduceMotion: boolean;
 }
@@ -35,7 +36,46 @@ interface MarkdownPreviewBlock {
   tokenStart?: number;
 }
 
+interface RenderedBlockWindow {
+  end: number;
+  hiddenAfterCount: number;
+  hiddenBeforeCount: number;
+  start: number;
+}
+
 const inactiveTokenIndexes = new Set<number>();
+const LARGE_MARKDOWN_VISIBLE_BLOCKS = 36;
+
+function buildRenderedBlockWindow(args: {
+  activeParagraphIndex: number;
+  maxVisibleBlocks: number;
+  totalBlocks: number;
+}): RenderedBlockWindow {
+  const { activeParagraphIndex, maxVisibleBlocks, totalBlocks } = args;
+
+  if (totalBlocks <= maxVisibleBlocks) {
+    return {
+      end: totalBlocks,
+      hiddenAfterCount: 0,
+      hiddenBeforeCount: 0,
+      start: 0,
+    };
+  }
+
+  const halfWindow = Math.floor(maxVisibleBlocks / 2);
+  let start = Math.max(0, activeParagraphIndex - halfWindow);
+  let end = Math.min(totalBlocks, start + maxVisibleBlocks);
+
+  start = Math.max(0, end - maxVisibleBlocks);
+  end = Math.min(totalBlocks, start + maxVisibleBlocks);
+
+  return {
+    end,
+    hiddenAfterCount: Math.max(0, totalBlocks - end),
+    hiddenBeforeCount: start,
+    start,
+  };
+}
 
 function isNodeRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -309,10 +349,15 @@ function renderToken(args: {
 
 function renderTokens(args: {
   activeIndexes: Set<number>;
+  renderPlainText?: boolean;
   onJumpToToken?: (tokenIndex: number) => void;
   tokens: Token[];
 }) {
-  const { activeIndexes, onJumpToToken, tokens } = args;
+  const { activeIndexes, onJumpToToken, renderPlainText = false, tokens } = args;
+
+  if (renderPlainText) {
+    return tokens.map((token) => token.value).join(" ");
+  }
 
   return buildTokenRuns(tokens, activeIndexes).map((run) => {
     if (!run.active) {
@@ -340,19 +385,48 @@ function renderTokens(args: {
 export function ClassicReaderView({
   document: documentModel,
   chunk,
+  simplifyMarkdownPreview = false,
   onJumpToToken,
   reduceMotion,
 }: ClassicReaderViewProps) {
   const { locale } = useLocale();
   const activeParagraphRef = useRef<HTMLElement | null>(null);
   const activeIndexes = useMemo(() => new Set(chunk.tokenIndexes), [chunk]);
+  const isSimplifiedMarkdownPreview =
+    documentModel.sourceKind === "markdown" && simplifyMarkdownPreview;
   const usesMarkdownPreview = Boolean(
-    documentModel.sourceKind === "markdown" && documentModel.rawText?.trim(),
+    documentModel.sourceKind === "markdown" &&
+      documentModel.rawText?.trim() &&
+      !isSimplifiedMarkdownPreview,
   );
+  const renderableBlocks = useMemo(
+    () =>
+      documentModel.blocks.filter((block) => block.tokenEnd >= block.tokenStart),
+    [documentModel.blocks],
+  );
+  const renderedBlockWindow = useMemo(() => {
+    if (!isSimplifiedMarkdownPreview) {
+      return buildRenderedBlockWindow({
+        activeParagraphIndex: 0,
+        maxVisibleBlocks: renderableBlocks.length,
+        totalBlocks: renderableBlocks.length,
+      });
+    }
+
+    const activeBlockIndex = renderableBlocks.findIndex(
+      (block) => block.index === chunk.paragraphIndex,
+    );
+
+    return buildRenderedBlockWindow({
+      activeParagraphIndex: activeBlockIndex >= 0 ? activeBlockIndex : 0,
+      maxVisibleBlocks: LARGE_MARKDOWN_VISIBLE_BLOCKS,
+      totalBlocks: renderableBlocks.length,
+    });
+  }, [chunk.paragraphIndex, isSimplifiedMarkdownPreview, renderableBlocks]);
   const renderedBlocks = useMemo(
     () =>
-      documentModel.blocks
-        .filter((block) => block.tokenEnd >= block.tokenStart)
+      renderableBlocks
+        .slice(renderedBlockWindow.start, renderedBlockWindow.end)
         .map((block) => {
           const blockTokens = documentModel.tokens.slice(
             block.tokenStart,
@@ -372,8 +446,10 @@ export function ClassicReaderView({
     [
       activeIndexes,
       chunk.paragraphIndex,
-      documentModel.blocks,
       documentModel.tokens,
+      renderableBlocks,
+      renderedBlockWindow.end,
+      renderedBlockWindow.start,
     ],
   );
   const markdownPreviewBlocks = useMemo(
@@ -423,6 +499,14 @@ export function ClassicReaderView({
     },
     [onJumpToToken],
   );
+  const previousHiddenBlockTokenStart =
+    renderedBlockWindow.hiddenBeforeCount > 0
+      ? renderableBlocks[renderedBlockWindow.start - 1]?.tokenStart
+      : undefined;
+  const nextHiddenBlockTokenStart =
+    renderedBlockWindow.hiddenAfterCount > 0
+      ? renderableBlocks[renderedBlockWindow.end]?.tokenStart
+      : undefined;
 
   const markdownComponents = useMemo(
     () => ({
@@ -546,11 +630,34 @@ export function ClassicReaderView({
           </div>
         ) : (
           <div className="space-y-3 pb-3 md:space-y-4 md:pb-4">
+            {isSimplifiedMarkdownPreview &&
+            renderedBlockWindow.hiddenBeforeCount > 0 ? (
+              <button
+                type="button"
+                data-reader-window-sentinel="before"
+                className="reader-muted w-full rounded-[1.15rem] border border-white/8 bg-white/4 px-4 py-3 text-left text-sm transition hover:border-white/15 hover:bg-white/6 md:rounded-[1.35rem] md:px-5 md:py-4"
+                onClick={() => {
+                  if (typeof previousHiddenBlockTokenStart === "number") {
+                    handleJumpToToken(previousHiddenBlockTokenStart);
+                  }
+                }}
+              >
+                {getLocalizedCopy(locale, {
+                  en: `${renderedBlockWindow.hiddenBeforeCount} earlier sections hidden to keep large Markdown responsive.`,
+                  es: `${renderedBlockWindow.hiddenBeforeCount} secciones anteriores ocultas para mantener rapido el Markdown grande.`,
+                  pt: `${renderedBlockWindow.hiddenBeforeCount} secoes anteriores ocultas para manter o Markdown grande rapido.`,
+                })}
+              </button>
+            ) : null}
             {renderedBlocks.map(
               ({ activeTokenIndexes, block, isActive, tokens }) => {
                 const body = renderTokens({
                   activeIndexes: activeTokenIndexes,
-                  onJumpToToken: handleJumpToToken,
+                  onJumpToToken:
+                    isSimplifiedMarkdownPreview && !isActive
+                      ? undefined
+                      : handleJumpToToken,
+                  renderPlainText: isSimplifiedMarkdownPreview && !isActive,
                   tokens,
                 });
                 const isCentered = block.alignment === "center";
@@ -608,6 +715,25 @@ export function ClassicReaderView({
                 );
               },
             )}
+            {isSimplifiedMarkdownPreview &&
+            renderedBlockWindow.hiddenAfterCount > 0 ? (
+              <button
+                type="button"
+                data-reader-window-sentinel="after"
+                className="reader-muted w-full rounded-[1.15rem] border border-white/8 bg-white/4 px-4 py-3 text-left text-sm transition hover:border-white/15 hover:bg-white/6 md:rounded-[1.35rem] md:px-5 md:py-4"
+                onClick={() => {
+                  if (typeof nextHiddenBlockTokenStart === "number") {
+                    handleJumpToToken(nextHiddenBlockTokenStart);
+                  }
+                }}
+              >
+                {getLocalizedCopy(locale, {
+                  en: `${renderedBlockWindow.hiddenAfterCount} later sections hidden to keep large Markdown responsive.`,
+                  es: `${renderedBlockWindow.hiddenAfterCount} secciones posteriores ocultas para mantener rapido el Markdown grande.`,
+                  pt: `${renderedBlockWindow.hiddenAfterCount} secoes posteriores ocultas para manter o Markdown grande rapido.`,
+                })}
+              </button>
+            ) : null}
           </div>
         )}
       </div>

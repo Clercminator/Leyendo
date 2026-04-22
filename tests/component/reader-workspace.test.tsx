@@ -5,6 +5,8 @@ import { ReaderWorkspace } from "@/components/reader/reader-workspace";
 import { buildDocumentModel } from "@/features/ingest/build/document-model";
 import { defaultReaderPreferences } from "@/types/reader";
 
+import { createLargeDocumentText } from "../fixtures/large-document";
+
 vi.mock("next/link", () => ({
   default: ({
     children,
@@ -443,5 +445,64 @@ describe("ReaderWorkspace PDF gating", () => {
         ClassicReaderViewMock.mock.calls.at(-1)?.[0]?.document.sourceKind,
       ).toBe("markdown");
     });
+  });
+
+  it("simplifies large markdown documents in classic reader mode", async () => {
+    const documentModel = buildDocumentModel({
+      title: "Large markdown sample",
+      rawText: createLargeDocumentText(720, 32)
+        .split("\n\n")
+        .map((paragraph, index) => `## Section ${index + 1}\n\n${paragraph}`)
+        .join("\n\n"),
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+
+    useReaderStore.mockReturnValue({
+      currentChunkIndex: 0,
+      isPlaying: false,
+      preferences: {
+        ...defaultReaderPreferences,
+        mode: "classic-reader",
+      },
+      setActiveDocument: vi.fn(),
+      setChunkIndex: vi.fn(),
+      setMode: vi.fn(),
+      setPlaying: vi.fn(),
+      updatePreferences: vi.fn(),
+    });
+
+    useReaderDocument.mockReturnValue({
+      bookmarks: [],
+      document: {
+        createdAt: "2026-03-30T10:00:00.000Z",
+        excerpt: documentModel.excerpt,
+        id: "large-markdown-doc",
+        payload: documentModel,
+        sourceKind: "markdown",
+        title: documentModel.title,
+        totalChunks: documentModel.chunks.length,
+        totalSections: documentModel.sections.length,
+        updatedAt: "2026-03-30T10:00:00.000Z",
+      },
+      error: undefined,
+      highlights: [],
+      isLoading: false,
+      prependBookmark: vi.fn(),
+      prependHighlight: vi.fn(),
+      removeBookmark: vi.fn(),
+      removeHighlight: vi.fn(),
+      savedSession: undefined,
+    });
+
+    render(<ReaderWorkspace documentId="large-markdown-doc" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("classic-reader-view")).toBeInTheDocument();
+    });
+
+    expect(
+      ClassicReaderViewMock.mock.calls.at(-1)?.[0]?.simplifyMarkdownPreview,
+    ).toBe(true);
   });
 });

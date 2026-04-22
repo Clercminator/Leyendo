@@ -220,6 +220,30 @@ function rebuildStoredTextDocument(
   } satisfies DocumentModel;
 }
 
+const LARGE_MARKDOWN_RAW_TEXT_THRESHOLD = 80_000;
+const LARGE_MARKDOWN_BLOCK_THRESHOLD = 400;
+const LARGE_MARKDOWN_SENTENCE_THRESHOLD = 2_000;
+const LARGE_MARKDOWN_TOKEN_THRESHOLD = 20_000;
+
+function shouldSimplifyClassicMarkdown(
+  document: DocumentModel | undefined,
+): boolean {
+  if (
+    !document ||
+    document.sourceKind !== "markdown" ||
+    !document.rawText?.trim()
+  ) {
+    return false;
+  }
+
+  return (
+    document.rawText.length >= LARGE_MARKDOWN_RAW_TEXT_THRESHOLD ||
+    document.blocks.length >= LARGE_MARKDOWN_BLOCK_THRESHOLD ||
+    document.sentences.length >= LARGE_MARKDOWN_SENTENCE_THRESHOLD ||
+    document.tokens.length >= LARGE_MARKDOWN_TOKEN_THRESHOLD
+  );
+}
+
 export function ReaderWorkspace({
   documentId,
   bookmarkId,
@@ -424,6 +448,10 @@ export function ReaderWorkspace({
     : preferences.mode === "pdf-page"
       ? "classic-reader"
       : preferences.mode;
+  const simplifyClassicMarkdownPreview = useMemo(
+    () => shouldSimplifyClassicMarkdown(activePayload),
+    [activePayload],
+  );
   const modeLabel = {
     "pdf-page": { en: "Standard", es: "Standard", pt: "Standard" },
     "focus-word": { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
@@ -1049,6 +1077,7 @@ export function ReaderWorkspace({
             chunk={activeChunk}
             onJumpToToken={jumpToToken}
             reduceMotion={preferences.reduceMotion}
+            simplifyMarkdownPreview={simplifyClassicMarkdownPreview}
           />
         );
       case "phrase-chunk":
