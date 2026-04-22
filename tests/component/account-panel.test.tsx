@@ -605,7 +605,9 @@ describe("AccountPanel", () => {
       },
     });
 
-    render(<AccountPanel paidSignupPlan="max" paidSignupProvider="mercadopago" />);
+    render(
+      <AccountPanel paidSignupPlan="max" paidSignupProvider="mercadopago" />,
+    );
 
     await waitFor(() => {
       expect(invoke).toHaveBeenCalledWith("mercado-pago-webhook", {
