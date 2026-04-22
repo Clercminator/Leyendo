@@ -727,6 +727,196 @@
     line-height: var(--reader-line-height, 1.6);
   }
 
+  .reader-markdown-preview {
+    font-size: calc(1.1rem * var(--reader-font-scale, 1));
+    line-height: var(--reader-line-height, 1.6);
+  }
+
+  .reader-markdown-preview > :first-child {
+    margin-top: 0;
+  }
+
+  .reader-markdown-preview > :last-child {
+    margin-bottom: 0;
+  }
+
+  .reader-markdown-heading {
+    color: white;
+    font-family: var(--font-heading), Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.16;
+    margin: 0 0 0.85em;
+    scroll-margin-top: 1.5rem;
+  }
+
+  .reader-markdown-h1 {
+    font-size: calc(2.4rem * var(--reader-font-scale, 1));
+  }
+
+  .reader-markdown-h2 {
+    font-size: calc(1.95rem * var(--reader-font-scale, 1));
+  }
+
+  .reader-markdown-h3 {
+    font-size: calc(1.58rem * var(--reader-font-scale, 1));
+  }
+
+  .reader-markdown-h4 {
+    font-size: calc(1.32rem * var(--reader-font-scale, 1));
+  }
+
+  .reader-markdown-h5,
+  .reader-markdown-h6 {
+    font-size: calc(1.14rem * var(--reader-font-scale, 1));
+  }
+
+  .reader-markdown-preview p,
+  .reader-markdown-preview ul,
+  .reader-markdown-preview ol,
+  .reader-markdown-preview pre,
+  .reader-markdown-preview blockquote,
+  .reader-markdown-preview table,
+  .reader-markdown-preview hr {
+    margin: 0 0 1.15em;
+  }
+
+  .reader-markdown-preview strong {
+    color: white;
+    font-weight: 650;
+  }
+
+  .reader-markdown-preview em {
+    color: color-mix(in srgb, white 88%, var(--reader-muted));
+    font-style: italic;
+  }
+
+  .reader-markdown-link {
+    color: color-mix(in srgb, var(--reader-accent) 88%, white 10%);
+    text-decoration: underline;
+    text-decoration-color: color-mix(
+      in srgb,
+      var(--reader-accent) 72%,
+      transparent
+    );
+    text-underline-offset: 0.16em;
+  }
+
+  .reader-markdown-link:hover {
+    color: white;
+  }
+
+  .reader-markdown-preview ul,
+  .reader-markdown-preview ol {
+    padding-left: 1.45em;
+  }
+
+  .reader-markdown-preview ul {
+    list-style: disc;
+  }
+
+  .reader-markdown-preview ul ul {
+    list-style: circle;
+    margin-top: 0.5em;
+  }
+
+  .reader-markdown-preview ol {
+    list-style: decimal;
+  }
+
+  .reader-markdown-preview li + li {
+    margin-top: 0.45em;
+  }
+
+  .reader-markdown-preview li > ul,
+  .reader-markdown-preview li > ol {
+    margin-bottom: 0;
+    margin-top: 0.55em;
+  }
+
+  .reader-markdown-preview code {
+    font-family: var(--font-geist-mono), "SFMono-Regular", Consolas, monospace;
+    font-size: 0.94em;
+  }
+
+  .reader-markdown-preview p code,
+  .reader-markdown-preview li code,
+  .reader-markdown-preview td code,
+  .reader-markdown-preview th code {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.45rem;
+    color: white;
+    padding: 0.14em 0.35em;
+  }
+
+  .reader-markdown-preview pre {
+    background: rgba(4, 8, 18, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    color: #eaf0ff;
+    overflow-x: auto;
+    padding: 1rem 1.1rem;
+  }
+
+  .reader-markdown-preview pre code {
+    background: transparent;
+    border: none;
+    color: inherit;
+    display: block;
+    padding: 0;
+    white-space: pre;
+  }
+
+  .reader-markdown-preview blockquote {
+    border-left: 3px solid
+      color-mix(in srgb, var(--reader-accent) 70%, transparent);
+    color: color-mix(in srgb, var(--reader-muted) 88%, white 12%);
+    margin-left: 0;
+    padding-left: 1rem;
+  }
+
+  .reader-markdown-table-wrap {
+    margin-bottom: 1.15em;
+    overflow-x: auto;
+  }
+
+  .reader-markdown-table-wrap table {
+    border-collapse: collapse;
+    min-width: min(100%, 32rem);
+    width: max-content;
+  }
+
+  .reader-markdown-table-wrap th,
+  .reader-markdown-table-wrap td {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.65rem 0.8rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .reader-markdown-table-wrap th {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    font-weight: 600;
+  }
+
+  .reader-markdown-preview hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .reader-markdown-preview img {
+    border-radius: 1rem;
+    height: auto;
+    max-width: 100%;
+  }
+
+  .reader-markdown-preview input[type="checkbox"] {
+    accent-color: var(--reader-accent);
+    margin-right: 0.55em;
+  }
+
   .reader-guided-body {
     font-size: calc(1.15rem * var(--reader-font-scale, 1));
     line-height: calc(var(--reader-line-height, 1.6) * 1.35);

@@ -58,21 +58,21 @@ export function createDocumentComplexityNotice(
           });
         case "markdown-advanced-content":
           return getLocalizedCopy(locale, {
-            en: "This Markdown may include advanced blocks that clean view simplifies. Literal text is safer when something looks flattened.",
-            es: "Este Markdown puede incluir bloques avanzados que la vista limpia simplifica. El texto literal es mas seguro cuando algo se ve aplanado.",
-            pt: "Este Markdown pode incluir blocos avancados que a visualizacao limpa simplifica. O texto literal e mais seguro quando algo parece achatado.",
+            en: "Classic Reader shows the closest Markdown preview, but other reading modes can still simplify advanced blocks. Literal text remains the source-of-truth fallback.",
+            es: "El Lector clasico muestra la vista Markdown mas fiel, pero otros modos de lectura aun pueden simplificar bloques avanzados. El texto literal sigue siendo la referencia mas segura.",
+            pt: "O Leitor classico mostra a visualizacao Markdown mais fiel, mas outros modos de leitura ainda podem simplificar blocos avancados. O texto literal continua sendo o fallback mais seguro.",
           });
         case "markdown-code-blocks":
           return getLocalizedCopy(locale, {
-            en: "Fenced code blocks are signposted in clean view instead of rendered as formatted code.",
-            es: "Los bloques de codigo con cercas se senalan en la vista limpia en lugar de renderizarse como codigo formateado.",
-            pt: "Blocos de codigo cercados sao sinalizados na visualizacao limpa em vez de renderizados como codigo formatado.",
+            en: "Classic Reader renders fenced code blocks as code, but other reading modes may still simplify them.",
+            es: "El Lector clasico renderiza los bloques de codigo con cercas como codigo, pero otros modos de lectura aun pueden simplificarlos.",
+            pt: "O Leitor classico renderiza blocos de codigo cercados como codigo, mas outros modos de leitura ainda podem simplifica-los.",
           });
         case "markdown-mermaid-diagrams":
           return getLocalizedCopy(locale, {
-            en: "Mermaid diagrams are signposted in clean view; Literal text shows the diagram source.",
-            es: "Los diagramas Mermaid se senalan en la vista limpia; el texto literal muestra la fuente del diagrama.",
-            pt: "Diagramas Mermaid sao sinalizados na visualizacao limpa; o texto literal mostra a fonte do diagrama.",
+            en: "Classic Reader shows Mermaid source as a code block. Other reading modes may still simplify it, and Literal text remains the raw fallback.",
+            es: "El Lector clasico muestra la fuente Mermaid como un bloque de codigo. Otros modos de lectura aun pueden simplificarla, y el texto literal sigue siendo el fallback bruto.",
+            pt: "O Leitor classico mostra a fonte Mermaid como um bloco de codigo. Outros modos de leitura ainda podem simplifica-la, e o texto literal continua sendo o fallback bruto.",
           });
         case "markdown-tables":
           return getLocalizedCopy(locale, {

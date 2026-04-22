@@ -1,6 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  Children,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+} from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
 
 import { buildTokenRuns } from "@/components/reader/build-token-runs";
 import { useLocale } from "@/components/layout/locale-provider";
@@ -14,7 +27,221 @@ interface ClassicReaderViewProps {
   reduceMotion: boolean;
 }
 
+interface MarkdownPreviewBlock {
+  key: string;
+  markdown: string;
+  paragraphIndexes: number[];
+  tokenStart?: number;
+}
+
 const inactiveTokenIndexes = new Set<number>();
+
+function isNodeRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getNodeType(node: unknown) {
+  return isNodeRecord(node) && typeof node.type === "string"
+    ? node.type
+    : undefined;
+}
+
+function getNodeChildren(node: unknown) {
+  return isNodeRecord(node) && Array.isArray(node.children)
+    ? node.children
+    : [];
+}
+
+function getNodeValue(node: unknown) {
+  return isNodeRecord(node) && typeof node.value === "string"
+    ? node.value
+    : undefined;
+}
+
+function getNodePositionOffsets(node: unknown) {
+  if (!isNodeRecord(node) || !isNodeRecord(node.position)) {
+    return {};
+  }
+
+  const start =
+    isNodeRecord(node.position.start) &&
+    typeof node.position.start.offset === "number"
+      ? node.position.start.offset
+      : undefined;
+  const end =
+    isNodeRecord(node.position.end) &&
+    typeof node.position.end.offset === "number"
+      ? node.position.end.offset
+      : undefined;
+
+  return { end, start };
+}
+
+function extractMarkdownText(node: unknown): string {
+  const nodeType = getNodeType(node);
+
+  if (
+    nodeType === "text" ||
+    nodeType === "inlineCode" ||
+    nodeType === "code" ||
+    nodeType === "html"
+  ) {
+    return getNodeValue(node) ?? "";
+  }
+
+  if (nodeType === "image") {
+    return isNodeRecord(node) && typeof node.alt === "string" ? node.alt : "";
+  }
+
+  if (nodeType === "break") {
+    return " ";
+  }
+
+  return getNodeChildren(node)
+    .map((child) => extractMarkdownText(child))
+    .join(" ");
+}
+
+function normalizeMarkdownComparisonText(text: string) {
+  return text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function getCodeFencePlaceholder(node: unknown) {
+  if (!isNodeRecord(node) || typeof node.lang !== "string") {
+    return "Code snippet included in this section. Switch to Literal text to inspect the code.";
+  }
+
+  return node.lang.toLowerCase() === "mermaid"
+    ? "Mermaid diagram included in this section. Switch to Literal text to inspect the diagram source."
+    : "Code snippet included in this section. Switch to Literal text to inspect the code.";
+}
+
+function getReactNodeText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map((child) => getReactNodeText(child)).join(" ");
+  }
+
+  if (isValidElement<{ children?: ReactNode }>(node)) {
+    return getReactNodeText(node.props.children);
+  }
+
+  return "";
+}
+
+function slugifyHeading(text: string) {
+  return normalizeMarkdownComparisonText(text).replace(/\s+/g, "-");
+}
+
+function createHeadingRenderer(
+  tagName: "h1" | "h2" | "h3" | "h4" | "h5" | "h6",
+  className: string,
+) {
+  return function Heading({
+    children,
+    ...props
+  }: ComponentPropsWithoutRef<"h1">) {
+    const id = slugifyHeading(getReactNodeText(children));
+    const TagName = tagName;
+
+    return (
+      <TagName id={id || undefined} className={className} {...props}>
+        {children}
+      </TagName>
+    );
+  };
+}
+
+function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
+  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown) as {
+    children?: unknown[];
+  };
+  const nodes = Array.isArray(tree.children) ? tree.children : [];
+  const normalizedDocumentBlocks = document.blocks.map((block) =>
+    normalizeMarkdownComparisonText(block.text),
+  );
+  let blockCursor = 0;
+
+  return nodes.flatMap((node, index) => {
+    const { end, start } = getNodePositionOffsets(node);
+    const markdownSource =
+      typeof start === "number" && typeof end === "number"
+        ? markdown.slice(start, end).trim()
+        : "";
+
+    if (!markdownSource) {
+      return [];
+    }
+
+    const nodeType = getNodeType(node);
+    const matchText = normalizeMarkdownComparisonText(
+      nodeType === "code"
+        ? getCodeFencePlaceholder(node)
+        : extractMarkdownText(node),
+    );
+    const paragraphIndexes: number[] = [];
+    let scanCursor = blockCursor;
+
+    while (scanCursor < normalizedDocumentBlocks.length) {
+      const documentBlockText = normalizedDocumentBlocks[scanCursor];
+
+      if (!documentBlockText) {
+        scanCursor += 1;
+        continue;
+      }
+
+      const matches =
+        matchText.length > 0 &&
+        (matchText.includes(documentBlockText) ||
+          documentBlockText.includes(matchText));
+
+      if (paragraphIndexes.length === 0) {
+        if (!matches) {
+          break;
+        }
+
+        paragraphIndexes.push(scanCursor);
+        scanCursor += 1;
+        continue;
+      }
+
+      if (!matches) {
+        break;
+      }
+
+      paragraphIndexes.push(scanCursor);
+      scanCursor += 1;
+    }
+
+    if (paragraphIndexes.length > 0) {
+      blockCursor = scanCursor;
+    }
+
+    return [
+      {
+        key: `${index}-${start ?? 0}-${end ?? 0}`,
+        markdown: markdownSource,
+        paragraphIndexes,
+        tokenStart:
+          paragraphIndexes.length > 0
+            ? document.blocks[paragraphIndexes[0]]?.tokenStart
+            : undefined,
+      } satisfies MarkdownPreviewBlock,
+    ];
+  });
+}
 
 function renderToken(args: {
   isActive: boolean;
@@ -92,7 +319,7 @@ function renderTokens(args: {
 }
 
 export function ClassicReaderView({
-  document,
+  document: documentModel,
   chunk,
   onJumpToToken,
   reduceMotion,
@@ -100,12 +327,15 @@ export function ClassicReaderView({
   const { locale } = useLocale();
   const activeParagraphRef = useRef<HTMLElement | null>(null);
   const activeIndexes = useMemo(() => new Set(chunk.tokenIndexes), [chunk]);
+  const usesMarkdownPreview = Boolean(
+    documentModel.sourceKind === "markdown" && documentModel.rawText?.trim(),
+  );
   const renderedBlocks = useMemo(
     () =>
-      document.blocks
+      documentModel.blocks
         .filter((block) => block.tokenEnd >= block.tokenStart)
         .map((block) => {
-          const blockTokens = document.tokens.slice(
+          const blockTokens = documentModel.tokens.slice(
             block.tokenStart,
             block.tokenEnd + 1,
           );
@@ -120,8 +350,33 @@ export function ClassicReaderView({
             tokens: blockTokens,
           };
         }),
-    [activeIndexes, chunk.paragraphIndex, document.blocks, document.tokens],
+    [
+      activeIndexes,
+      chunk.paragraphIndex,
+      documentModel.blocks,
+      documentModel.tokens,
+    ],
   );
+  const markdownPreviewBlocks = useMemo(
+    () =>
+      usesMarkdownPreview && documentModel.rawText
+        ? buildMarkdownPreviewBlocks(documentModel.rawText, documentModel)
+        : [],
+    [documentModel, usesMarkdownPreview],
+  );
+  const activeMarkdownBlockIndex = useMemo(() => {
+    for (let index = 0; index < markdownPreviewBlocks.length; index += 1) {
+      if (
+        markdownPreviewBlocks[index]?.paragraphIndexes.includes(
+          chunk.paragraphIndex,
+        )
+      ) {
+        return index;
+      }
+    }
+
+    return -1;
+  }, [chunk.paragraphIndex, markdownPreviewBlocks]);
 
   useEffect(() => {
     activeParagraphRef.current?.scrollIntoView({
@@ -150,6 +405,70 @@ export function ClassicReaderView({
     [onJumpToToken],
   );
 
+  const markdownComponents = useMemo(
+    () => ({
+      a: ({ children, href, ...props }: ComponentPropsWithoutRef<"a">) => {
+        const isInternalLink = typeof href === "string" && href.startsWith("#");
+
+        return (
+          <a
+            {...props}
+            href={href}
+            className="reader-markdown-link"
+            rel={isInternalLink ? undefined : "noreferrer noopener"}
+            target={isInternalLink ? undefined : "_blank"}
+            onClick={(event) => {
+              event.stopPropagation();
+              props.onClick?.(event);
+
+              if (!isInternalLink || !href) {
+                return;
+              }
+
+              event.preventDefault();
+              window.document.getElementById(href.slice(1))?.scrollIntoView({
+                behavior: reduceMotion ? "auto" : "smooth",
+                block: "start",
+              });
+            }}
+          >
+            {children}
+          </a>
+        );
+      },
+      h1: createHeadingRenderer(
+        "h1",
+        "reader-markdown-heading reader-markdown-h1",
+      ),
+      h2: createHeadingRenderer(
+        "h2",
+        "reader-markdown-heading reader-markdown-h2",
+      ),
+      h3: createHeadingRenderer(
+        "h3",
+        "reader-markdown-heading reader-markdown-h3",
+      ),
+      h4: createHeadingRenderer(
+        "h4",
+        "reader-markdown-heading reader-markdown-h4",
+      ),
+      h5: createHeadingRenderer(
+        "h5",
+        "reader-markdown-heading reader-markdown-h5",
+      ),
+      h6: createHeadingRenderer(
+        "h6",
+        "reader-markdown-heading reader-markdown-h6",
+      ),
+      table: (props: ComponentPropsWithoutRef<"table">) => (
+        <div className="reader-markdown-table-wrap">
+          <table {...props} />
+        </div>
+      ),
+    }),
+    [reduceMotion],
+  );
+
   return (
     <div className="reader-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/10 px-4 py-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:rounded-[1.65rem] md:px-7 md:py-7 lg:rounded-[1.75rem] lg:px-10 lg:py-10">
       <div className="shrink-0">
@@ -161,70 +480,108 @@ export function ClassicReaderView({
         aria-label={viewportLabel}
         className="mt-4 flex-1 overflow-y-auto overscroll-contain pr-1.5 md:mt-5 md:pr-3 lg:pr-4"
       >
-        <div className="space-y-3 pb-3 md:space-y-4 md:pb-4">
-          {renderedBlocks.map(
-            ({ activeTokenIndexes, block, isActive, tokens }) => {
-              const body = renderTokens({
-                activeIndexes: activeTokenIndexes,
-                onJumpToToken: handleJumpToToken,
-                tokens,
-              });
-              const isCentered = block.alignment === "center";
-              const listMarker = block.marker ? (
-                <span className="reader-accent pt-[0.1em] font-medium tabular-nums">
-                  {block.marker}
-                </span>
-              ) : (
-                <span className="reader-accent mt-[0.85em] h-2 w-2 shrink-0 rounded-full bg-current" />
-              );
+        {usesMarkdownPreview ? (
+          <div className="space-y-4 pb-4 md:space-y-5 md:pb-5">
+            {markdownPreviewBlocks.map((block, index) => {
+              const isActive = index === activeMarkdownBlockIndex;
+              const tokenStart = block.tokenStart;
 
               return (
                 <article
-                  key={block.index}
+                  key={block.key}
                   ref={isActive ? activeParagraphRef : null}
                   data-reader-classic-active={isActive ? "true" : undefined}
-                  data-reader-paragraph-index={block.index}
-                  className={`scroll-mt-4 rounded-[1.15rem] transition md:scroll-mt-6 md:rounded-[1.35rem] ${
-                    isActive
-                      ? "px-4 py-3 md:px-5 md:py-4"
-                      : block.kind === "heading"
-                        ? "px-1 py-1.5 md:px-2 md:py-2"
-                        : "px-1 py-2 md:px-2 md:py-3"
+                  data-reader-markdown-block-index={index}
+                  className={`reader-markdown-block scroll-mt-4 rounded-[1.15rem] px-4 py-3 transition md:scroll-mt-6 md:rounded-[1.35rem] md:px-5 md:py-4 ${
+                    isActive ? "reader-active-paragraph" : ""
                   }`}
                   onClick={
-                    onJumpToToken
+                    onJumpToToken && typeof tokenStart === "number"
                       ? (event) => {
                           event.stopPropagation();
-                          handleJumpToToken(block.tokenStart);
+                          handleJumpToToken(tokenStart);
                         }
                       : undefined
                   }
                 >
-                  {block.kind === "heading" ? (
-                    <h3
-                      className={`font-heading text-2xl font-semibold tracking-tight text-white md:text-3xl lg:text-4xl ${
-                        isCentered ? "text-center" : "text-left"
-                      }`}
+                  <div className="reader-markdown-preview reader-muted">
+                    <ReactMarkdown
+                      components={markdownComponents}
+                      remarkPlugins={[remarkGfm]}
                     >
-                      {body}
-                    </h3>
-                  ) : block.kind === "list-item" ? (
-                    <p className="reader-body reader-muted grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-                      {listMarker}
-                      <span>{body}</span>
-                    </p>
-                  ) : (
-                    <p
-                      className={`reader-body reader-muted ${isCentered ? "text-center" : "text-left"}`}
-                    >
-                      {body}
-                    </p>
-                  )}
+                      {block.markdown}
+                    </ReactMarkdown>
+                  </div>
                 </article>
               );
-            },
-          )}
-        </div>
+            })}
+          </div>
+        ) : (
+          <div className="space-y-3 pb-3 md:space-y-4 md:pb-4">
+            {renderedBlocks.map(
+              ({ activeTokenIndexes, block, isActive, tokens }) => {
+                const body = renderTokens({
+                  activeIndexes: activeTokenIndexes,
+                  onJumpToToken: handleJumpToToken,
+                  tokens,
+                });
+                const isCentered = block.alignment === "center";
+                const listMarker = block.marker ? (
+                  <span className="reader-accent pt-[0.1em] font-medium tabular-nums">
+                    {block.marker}
+                  </span>
+                ) : (
+                  <span className="reader-accent mt-[0.85em] h-2 w-2 shrink-0 rounded-full bg-current" />
+                );
+
+                return (
+                  <article
+                    key={block.index}
+                    ref={isActive ? activeParagraphRef : null}
+                    data-reader-classic-active={isActive ? "true" : undefined}
+                    data-reader-paragraph-index={block.index}
+                    className={`scroll-mt-4 rounded-[1.15rem] transition md:scroll-mt-6 md:rounded-[1.35rem] ${
+                      isActive
+                        ? "px-4 py-3 md:px-5 md:py-4"
+                        : block.kind === "heading"
+                          ? "px-1 py-1.5 md:px-2 md:py-2"
+                          : "px-1 py-2 md:px-2 md:py-3"
+                    }`}
+                    onClick={
+                      onJumpToToken
+                        ? (event) => {
+                            event.stopPropagation();
+                            handleJumpToToken(block.tokenStart);
+                          }
+                        : undefined
+                    }
+                  >
+                    {block.kind === "heading" ? (
+                      <h3
+                        className={`font-heading text-2xl font-semibold tracking-tight text-white md:text-3xl lg:text-4xl ${
+                          isCentered ? "text-center" : "text-left"
+                        }`}
+                      >
+                        {body}
+                      </h3>
+                    ) : block.kind === "list-item" ? (
+                      <p className="reader-body reader-muted grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+                        {listMarker}
+                        <span>{body}</span>
+                      </p>
+                    ) : (
+                      <p
+                        className={`reader-body reader-muted ${isCentered ? "text-center" : "text-left"}`}
+                      >
+                        {body}
+                      </p>
+                    )}
+                  </article>
+                );
+              },
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

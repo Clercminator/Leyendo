@@ -507,7 +507,9 @@ test("user can paste markdown and open a clean reader view", async ({
 
   await page
     .getByRole("textbox", { name: /^paste text$/i })
-    .fill("# Heading\n\n- Bullet item\n\nParagraph with **bold** text.");
+    .fill(
+      "# Optiland AI Agent - Comprehensive Documentation\n\n## Table of Contents\n\n- [Buyer Handoff Snapshot](#buyer-handoff-snapshot)\n\n1. [Quick Start Guide](#quick-start-guide)\n   - [For Complete Beginners](#for-complete-beginners)\n\nParagraph with **bold** text.",
+    );
   await page.getByRole("radio", { name: /clean markdown/i }).click();
   await page.getByRole("button", { name: /open in reader/i }).click();
 
@@ -519,10 +521,24 @@ test("user can paste markdown and open a clean reader view", async ({
   const classicDocument = page.getByLabel(/classic reader document/i);
 
   await expect(classicDocument).toBeVisible();
-  await expect(classicDocument.locator("h3")).toContainText("Heading");
-  await expect(classicDocument).toContainText("Bullet item");
+  await expect(
+    classicDocument.getByRole("heading", {
+      level: 1,
+      name: /optiland ai agent - comprehensive documentation/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    classicDocument.getByRole("heading", {
+      level: 2,
+      name: /table of contents/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    classicDocument.getByRole("link", { name: /buyer handoff snapshot/i }),
+  ).toBeVisible();
+  await expect(classicDocument).toContainText("For Complete Beginners");
   await expect(classicDocument).toContainText("Paragraph with bold text.");
-  await expect(classicDocument).not.toContainText("# Heading");
+  await expect(classicDocument).not.toContainText("## Table of Contents");
   await expect(classicDocument).not.toContainText("**bold**");
 });
 
@@ -574,10 +590,10 @@ test("clean markdown view signals fenced code and mermaid blocks", async ({
 
   await expect(page.getByText(/review this import carefully/i)).toBeVisible();
   await expect(
-    page.getByText(/fenced code blocks are signposted in clean view/i),
+    page.getByText(/classic reader renders fenced code blocks as code/i),
   ).toBeVisible();
   await expect(
-    page.getByText(/mermaid diagrams are signposted in clean view/i),
+    page.getByText(/classic reader shows mermaid source as a code block/i),
   ).toBeVisible();
 
   await page.getByRole("button", { name: /open in reader/i }).click();
@@ -590,12 +606,10 @@ test("clean markdown view signals fenced code and mermaid blocks", async ({
 
   const classicDocument = page.getByLabel(/classic reader document/i);
 
-  await expect(classicDocument).toContainText(
-    "Code snippet included in this section.",
+  await expect(classicDocument.locator("pre").nth(0)).toContainText(
+    "const answer = 42;",
   );
-  await expect(classicDocument).toContainText(
-    "Mermaid diagram included in this section.",
-  );
+  await expect(classicDocument.locator("pre").nth(1)).toContainText("graph TD");
 
   await page.getByRole("button", { name: /change text view/i }).click();
   await page.getByRole("button", { name: /^literal text$/i }).click();
