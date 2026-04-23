@@ -123,6 +123,38 @@ describe("ClassicReaderView", () => {
     expect(screen.getByText(/for complete beginners/i)).toBeVisible();
     expect(screen.getByText(/paragraph with/i)).toBeVisible();
   });
+
+  it("jumps to GitHub-style TOC anchors in simplified markdown preview", async () => {
+    const user = userEvent.setup();
+    const onJumpToToken = vi.fn();
+    const documentModel = buildDocumentModel({
+      title: "Markdown TOC sample",
+      rawText:
+        "# Sample Document\n\n## Table of Contents\n\n1. [Overview & Purpose](#overview--purpose)\n2. [Wrap-up](#wrap-up)\n\n## Overview & Purpose\n\nThis section explains the overall shape.\n\n## Wrap-up\n\nThis section closes the sample.",
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const overviewHeading = documentModel.blocks.find(
+      (block) => block.kind === "heading" && block.text === "Overview & Purpose",
+    );
+
+    expect(overviewHeading?.tokenStart).toBeTypeOf("number");
+
+    render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={documentModel.chunks[0]!}
+        onJumpToToken={onJumpToToken}
+        reduceMotion
+        simplifyMarkdownPreview
+      />,
+    );
+
+    await user.click(screen.getByRole("link", { name: "Overview & Purpose" }));
+
+    expect(onJumpToToken).toHaveBeenCalledWith(overviewHeading?.tokenStart);
+  });
+
   it("renders mermaid fences as in-app diagrams in classic markdown view", async () => {
     const documentModel = buildDocumentModel({
       title: "Markdown mermaid sample",
@@ -182,14 +214,16 @@ describe("ClassicReaderView", () => {
       container.querySelector('[data-reader-window-sentinel="after"]'),
     ).toBeTruthy();
     expect(
-      container.querySelectorAll("[data-reader-paragraph-index]").length,
+      container.querySelectorAll("[data-reader-markdown-block-index]").length,
     ).toBeLessThan(documentModel.blocks.length);
     expect(
-      container.querySelector("[data-reader-markdown-block-index]"),
+      container.querySelector("[data-reader-paragraph-index]"),
     ).not.toBeInTheDocument();
     expect(
       container.querySelector(
-        `[data-reader-paragraph-index="${targetBlock?.index}"]`,
+        `[data-reader-markdown-block-index]#section-${
+          targetBlock?.text.split(" ").at(-1) ?? ""
+        }`,
       ),
     ).toBeTruthy();
   });

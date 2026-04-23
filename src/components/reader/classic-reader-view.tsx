@@ -7,9 +7,11 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type ComponentPropsWithoutRef,
   type ReactNode,
 } from "react";
+import GithubSlugger from "github-slugger";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
@@ -33,6 +35,7 @@ interface MarkdownPreviewBlock {
   key: string;
   markdown: string;
   paragraphIndexes: number[];
+  headingId?: string;
   tokenStart?: number;
 }
 
@@ -182,27 +185,56 @@ function getReactNodeText(node: ReactNode): string {
   return "";
 }
 
-function slugifyHeading(text: string) {
-  return normalizeMarkdownComparisonText(text).replace(/\s+/g, "-");
-}
-
 function createHeadingRenderer(
   tagName: "h1" | "h2" | "h3" | "h4" | "h5" | "h6",
   className: string,
 ) {
   return function Heading({
     children,
+    className: inheritedClassName,
     ...props
   }: ComponentPropsWithoutRef<"h1">) {
-    const id = slugifyHeading(getReactNodeText(children));
     const TagName = tagName;
+    const combinedClassName = inheritedClassName
+      ? `${className} ${inheritedClassName}`
+      : className;
 
     return (
-      <TagName id={id || undefined} className={className} {...props}>
+      <TagName {...props} className={combinedClassName}>
         {children}
       </TagName>
     );
   };
+}
+
+function decodeMarkdownAnchor(anchor: string) {
+  try {
+    return decodeURIComponent(anchor);
+  } catch {
+    return anchor;
+  }
+}
+
+function getExpectedBlockKinds(
+  nodeType: string | undefined,
+): ReadonlySet<DocumentModel["blocks"][number]["kind"]> | undefined {
+  switch (nodeType) {
+    case "heading":
+      return new Set<DocumentModel["blocks"][number]["kind"]>(["heading"]);
+    case "list":
+      return new Set<DocumentModel["blocks"][number]["kind"]>([
+        "list-item",
+      ]);
+    case "paragraph":
+    case "code":
+    case "html":
+    case "table":
+      return new Set<DocumentModel["blocks"][number]["kind"]>([
+        "paragraph",
+      ]);
+    default:
+      return undefined;
+  }
 }
 
 function extractMermaidChart(children: ReactNode) {
@@ -228,9 +260,11 @@ function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
     children?: unknown[];
   };
   const nodes = Array.isArray(tree.children) ? tree.children : [];
-  const normalizedDocumentBlocks = document.blocks.map((block) =>
-    normalizeMarkdownComparisonText(block.text),
-  );
+  const normalizedDocumentBlocks = document.blocks.map((block) => ({
+    kind: block.kind,
+    text: normalizeMarkdownComparisonText(block.text),
+  }));
+  const headingSlugger = new GithubSlugger();
   let blockCursor = 0;
 
   return nodes.flatMap((node, index) => {
@@ -245,6 +279,10 @@ function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
     }
 
     const nodeType = getNodeType(node);
+    const headingText =
+      nodeType === "heading" ? extractMarkdownText(node).trim() : "";
+    const headingId = headingText ? headingSlugger.slug(headingText) : undefined;
+    const expectedBlockKinds = getExpectedBlockKinds(nodeType);
     const matchText = normalizeMarkdownComparisonText(
       nodeType === "code"
         ? getCodeFencePlaceholder(node)
@@ -254,7 +292,10 @@ function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
     let scanCursor = blockCursor;
 
     while (scanCursor < normalizedDocumentBlocks.length) {
-      const documentBlockText = normalizedDocumentBlocks[scanCursor];
+      const documentBlock = normalizedDocumentBlocks[scanCursor];
+      const kindMatches =
+        !expectedBlockKinds || expectedBlockKinds.has(documentBlock.kind);
+      const documentBlockText = documentBlock.text;
 
       if (!documentBlockText) {
         scanCursor += 1;
@@ -262,6 +303,7 @@ function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
       }
 
       const matches =
+        kindMatches &&
         matchText.length > 0 &&
         (matchText.includes(documentBlockText) ||
           documentBlockText.includes(matchText));
@@ -293,6 +335,7 @@ function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
         key: `${index}-${start ?? 0}-${end ?? 0}`,
         markdown: markdownSource,
         paragraphIndexes,
+        headingId,
         tokenStart:
           paragraphIndexes.length > 0
             ? document.blocks[paragraphIndexes[0]]?.tokenStart
@@ -391,14 +434,15 @@ export function ClassicReaderView({
 }: ClassicReaderViewProps) {
   const { locale } = useLocale();
   const activeParagraphRef = useRef<HTMLElement | null>(null);
+  const [manualActiveMarkdownBlockIndex, setManualActiveMarkdownBlockIndex] =
+    useState<number>();
   const activeIndexes = useMemo(() => new Set(chunk.tokenIndexes), [chunk]);
-  const isSimplifiedMarkdownPreview =
-    documentModel.sourceKind === "markdown" && simplifyMarkdownPreview;
-  const usesMarkdownPreview = Boolean(
-    documentModel.sourceKind === "markdown" &&
-      documentModel.rawText?.trim() &&
-      !isSimplifiedMarkdownPreview,
+  const hasMarkdownPreviewSource = Boolean(
+    documentModel.sourceKind === "markdown" && documentModel.rawText?.trim(),
   );
+  const isSimplifiedMarkdownPreview =
+    hasMarkdownPreviewSource && simplifyMarkdownPreview;
+  const usesMarkdownPreview = hasMarkdownPreviewSource;
   const renderableBlocks = useMemo(
     () =>
       documentModel.blocks.filter((block) => block.tokenEnd >= block.tokenStart),
@@ -472,6 +516,70 @@ export function ClassicReaderView({
 
     return -1;
   }, [chunk.paragraphIndex, markdownPreviewBlocks]);
+  const effectiveActiveMarkdownBlockIndex =
+    manualActiveMarkdownBlockIndex ?? activeMarkdownBlockIndex;
+  const renderedMarkdownWindow = useMemo(() => {
+    if (!isSimplifiedMarkdownPreview) {
+      return buildRenderedBlockWindow({
+        activeParagraphIndex: 0,
+        maxVisibleBlocks: markdownPreviewBlocks.length,
+        totalBlocks: markdownPreviewBlocks.length,
+      });
+    }
+
+    return buildRenderedBlockWindow({
+      activeParagraphIndex:
+        effectiveActiveMarkdownBlockIndex >= 0
+          ? effectiveActiveMarkdownBlockIndex
+          : 0,
+      maxVisibleBlocks: LARGE_MARKDOWN_VISIBLE_BLOCKS,
+      totalBlocks: markdownPreviewBlocks.length,
+    });
+  }, [
+    effectiveActiveMarkdownBlockIndex,
+    isSimplifiedMarkdownPreview,
+    markdownPreviewBlocks.length,
+  ]);
+  const renderedMarkdownBlocks = useMemo(
+    () =>
+      markdownPreviewBlocks
+        .slice(renderedMarkdownWindow.start, renderedMarkdownWindow.end)
+        .map((block, offset) => ({
+          block,
+          index: renderedMarkdownWindow.start + offset,
+        })),
+    [
+      markdownPreviewBlocks,
+      renderedMarkdownWindow.end,
+      renderedMarkdownWindow.start,
+    ],
+  );
+  const markdownHeadingTargets = useMemo(() => {
+    const targets = new Map<string, number>();
+
+    for (const block of markdownPreviewBlocks) {
+      if (block.headingId && typeof block.tokenStart === "number") {
+        targets.set(block.headingId, block.tokenStart);
+      }
+    }
+
+    return targets;
+  }, [markdownPreviewBlocks]);
+  const markdownHeadingIndexes = useMemo(() => {
+    const indexes = new Map<string, number>();
+
+    markdownPreviewBlocks.forEach((block, index) => {
+      if (block.headingId) {
+        indexes.set(block.headingId, index);
+      }
+    });
+
+    return indexes;
+  }, [markdownPreviewBlocks]);
+
+  useEffect(() => {
+    setManualActiveMarkdownBlockIndex(undefined);
+  }, [chunk.paragraphIndex]);
 
   useEffect(() => {
     activeParagraphRef.current?.scrollIntoView({
@@ -479,7 +587,7 @@ export function ClassicReaderView({
       block: "nearest",
       inline: "nearest",
     });
-  }, [chunk.paragraphIndex, reduceMotion]);
+  }, [chunk.paragraphIndex, effectiveActiveMarkdownBlockIndex, reduceMotion]);
 
   const classicReaderLabel = getLocalizedCopy(locale, {
     en: "Classic Reader",
@@ -499,6 +607,43 @@ export function ClassicReaderView({
     },
     [onJumpToToken],
   );
+  const handleMarkdownAnchorNavigation = useCallback(
+    (href: string) => {
+      const targetId = decodeMarkdownAnchor(href.slice(1));
+
+      if (!targetId) {
+        return;
+      }
+
+      const targetMarkdownBlockIndex =
+        markdownHeadingIndexes.get(targetId) ??
+        markdownHeadingIndexes.get(targetId.toLowerCase());
+
+      if (typeof targetMarkdownBlockIndex === "number") {
+        setManualActiveMarkdownBlockIndex(targetMarkdownBlockIndex);
+      }
+
+      const targetTokenStart =
+        markdownHeadingTargets.get(targetId) ??
+        markdownHeadingTargets.get(targetId.toLowerCase());
+
+      if (typeof targetTokenStart === "number") {
+        handleJumpToToken(targetTokenStart);
+        return;
+      }
+
+      window.document.getElementById(targetId)?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    },
+    [
+      handleJumpToToken,
+      markdownHeadingIndexes,
+      markdownHeadingTargets,
+      reduceMotion,
+    ],
+  );
   const previousHiddenBlockTokenStart =
     renderedBlockWindow.hiddenBeforeCount > 0
       ? renderableBlocks[renderedBlockWindow.start - 1]?.tokenStart
@@ -506,6 +651,14 @@ export function ClassicReaderView({
   const nextHiddenBlockTokenStart =
     renderedBlockWindow.hiddenAfterCount > 0
       ? renderableBlocks[renderedBlockWindow.end]?.tokenStart
+      : undefined;
+  const previousHiddenMarkdownTokenStart =
+    renderedMarkdownWindow.hiddenBeforeCount > 0
+      ? markdownPreviewBlocks[renderedMarkdownWindow.start - 1]?.tokenStart
+      : undefined;
+  const nextHiddenMarkdownTokenStart =
+    renderedMarkdownWindow.hiddenAfterCount > 0
+      ? markdownPreviewBlocks[renderedMarkdownWindow.end]?.tokenStart
       : undefined;
 
   const markdownComponents = useMemo(
@@ -529,10 +682,7 @@ export function ClassicReaderView({
               }
 
               event.preventDefault();
-              window.document.getElementById(href.slice(1))?.scrollIntoView({
-                behavior: reduceMotion ? "auto" : "smooth",
-                block: "start",
-              });
+              handleMarkdownAnchorNavigation(href);
             }}
           >
             {children}
@@ -578,7 +728,7 @@ export function ClassicReaderView({
         return <pre {...props}>{children}</pre>;
       },
     }),
-    [reduceMotion],
+    [handleMarkdownAnchorNavigation],
   );
 
   return (
@@ -594,13 +744,33 @@ export function ClassicReaderView({
       >
         {usesMarkdownPreview ? (
           <div className="space-y-4 pb-4 md:space-y-5 md:pb-5">
-            {markdownPreviewBlocks.map((block, index) => {
-              const isActive = index === activeMarkdownBlockIndex;
+            {isSimplifiedMarkdownPreview &&
+            renderedMarkdownWindow.hiddenBeforeCount > 0 ? (
+              <button
+                type="button"
+                data-reader-window-sentinel="before"
+                className="reader-muted w-full rounded-[1.15rem] border border-white/8 bg-white/4 px-4 py-3 text-left text-sm transition hover:border-white/15 hover:bg-white/6 md:rounded-[1.35rem] md:px-5 md:py-4"
+                onClick={() => {
+                  if (typeof previousHiddenMarkdownTokenStart === "number") {
+                    handleJumpToToken(previousHiddenMarkdownTokenStart);
+                  }
+                }}
+              >
+                {getLocalizedCopy(locale, {
+                  en: `${renderedMarkdownWindow.hiddenBeforeCount} earlier sections hidden to keep large Markdown responsive.`,
+                  es: `${renderedMarkdownWindow.hiddenBeforeCount} secciones anteriores ocultas para mantener rapido el Markdown grande.`,
+                  pt: `${renderedMarkdownWindow.hiddenBeforeCount} secoes anteriores ocultas para manter o Markdown grande rapido.`,
+                })}
+              </button>
+            ) : null}
+            {renderedMarkdownBlocks.map(({ block, index }) => {
+              const isActive = index === effectiveActiveMarkdownBlockIndex;
               const tokenStart = block.tokenStart;
 
               return (
                 <article
                   key={block.key}
+                  id={block.headingId}
                   ref={isActive ? activeParagraphRef : null}
                   data-reader-classic-active={isActive ? "true" : undefined}
                   data-reader-markdown-block-index={index}
@@ -627,6 +797,25 @@ export function ClassicReaderView({
                 </article>
               );
             })}
+            {isSimplifiedMarkdownPreview &&
+            renderedMarkdownWindow.hiddenAfterCount > 0 ? (
+              <button
+                type="button"
+                data-reader-window-sentinel="after"
+                className="reader-muted w-full rounded-[1.15rem] border border-white/8 bg-white/4 px-4 py-3 text-left text-sm transition hover:border-white/15 hover:bg-white/6 md:rounded-[1.35rem] md:px-5 md:py-4"
+                onClick={() => {
+                  if (typeof nextHiddenMarkdownTokenStart === "number") {
+                    handleJumpToToken(nextHiddenMarkdownTokenStart);
+                  }
+                }}
+              >
+                {getLocalizedCopy(locale, {
+                  en: `${renderedMarkdownWindow.hiddenAfterCount} later sections hidden to keep large Markdown responsive.`,
+                  es: `${renderedMarkdownWindow.hiddenAfterCount} secciones posteriores ocultas para mantener rapido el Markdown grande.`,
+                  pt: `${renderedMarkdownWindow.hiddenAfterCount} secoes posteriores ocultas para manter o Markdown grande rapido.`,
+                })}
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="space-y-3 pb-3 md:space-y-4 md:pb-4">
