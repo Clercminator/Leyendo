@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 
 import { SupabaseProvider } from "@/components/auth/supabase-provider";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
+import { ChatwootWidget } from "@/components/layout/chatwoot-widget";
 import { LocaleProvider } from "@/components/layout/locale-provider";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import {
@@ -117,6 +118,7 @@ export default function RootLayout({
           <LocaleProvider>
             <SupabaseProvider>
               {children}
+              <ChatwootWidget />
               <FeedbackButton />
               <Analytics />
             </SupabaseProvider>
