@@ -29,15 +29,15 @@ const aboutEyebrow = {
 };
 
 const aboutTitle = {
-  en: "Why Leyendo exists and who is building it.",
-  es: "Por que existe Leyendo y quien lo esta construyendo.",
-  pt: "Por que o Leyendo existe e quem o esta construindo.",
+  en: "Why Leyendo exists and why it is built around real documents.",
+  es: "Por que existe Leyendo y por que esta construido alrededor de documentos reales.",
+  pt: "Por que o Leyendo existe e por que ele foi construido em torno de documentos reais.",
 };
 
 const aboutDescription = {
-  en: "Leyendo is a calm reading studio for people who want better reading speed, clearer focus, and easier recovery when a dense document starts fighting back.",
-  es: "Leyendo es un estudio de lectura sereno para personas que quieren mejor velocidad de lectura, mas foco y mejor recuperacion cuando un documento denso empieza a cansar.",
-  pt: "Leyendo e um estudio de leitura mais sereno para quem quer melhor velocidade de leitura, mais foco e recuperacao mais facil quando um documento denso comeca a cobrar demais.",
+  en: "Leyendo is a reading workspace for people who need more control over dense material: faster pace when the text allows it, calmer recovery when the document pushes back.",
+  es: "Leyendo es un espacio de lectura para quienes necesitan mas control sobre material denso: mas ritmo cuando el texto lo permite y recuperacion mas calmada cuando el documento se pone dificil.",
+  pt: "O Leyendo e um espaco de leitura para quem precisa de mais controle sobre material denso: mais ritmo quando o texto permite e retomada mais calma quando o documento aperta.",
 };
 
 const sectionCopy = {
@@ -47,9 +47,9 @@ const sectionCopy = {
     pt: "O que e o Leyendo",
   },
   purposeBody: {
-    en: "Leyendo is not another generic speed reading promise. It is a practical reading workspace for PDFs and real documents, built to help you read faster with less friction, stronger focus, and better control over pace, recovery, and context.",
-    es: "Leyendo no es otra promesa generica de lectura rapida. Es un espacio practico para leer PDF y documentos reales, pensado para ayudarte a leer mas rapido con menos friccion, mas foco y mejor control sobre ritmo, recuperacion y contexto.",
-    pt: "Leyendo nao e mais uma promessa generica de leitura rapida. E um espaco pratico para PDF e documentos reais, pensado para ajudar voce a ler mais rapido com menos friccao, mais foco e melhor controle sobre ritmo, retomada e contexto.",
+    en: "Leyendo is not built around reading hacks. It is built around the real moment when a chapter, report, article, or PDF starts costing too much attention. The product gives you a calmer way to push pace, recover context, and stay inside the same document instead of bouncing between disconnected tools.",
+    es: "Leyendo no esta construido alrededor de trucos de lectura. Esta construido alrededor del momento real en que un capitulo, informe, articulo o PDF empieza a costarte demasiada atencion. El producto te da una forma mas serena de acelerar, recuperar contexto y seguir dentro del mismo documento en vez de saltar entre herramientas desconectadas.",
+    pt: "O Leyendo nao foi construido em torno de truques de leitura. Ele foi construido em torno do momento real em que um capitulo, relatorio, artigo ou PDF passa a cobrar atencao demais. O produto oferece um jeito mais calmo de acelerar, recuperar contexto e continuar no mesmo documento em vez de pular entre ferramentas desconectadas.",
   },
   differenceTitle: {
     en: "How it differs from generic fast-reading advice",
@@ -57,9 +57,9 @@ const sectionCopy = {
     pt: "Como ele se diferencia do conselho generico sobre leitura rapida",
   },
   differenceBody: {
-    en: "Most fast reading content stops at vague tips. Leyendo turns those ideas into an actual product: visible controls, multiple reading modes, a fallback classic view, local-first behavior, and progress that stays with the document instead of disappearing between sessions.",
-    es: "La mayoria del contenido sobre leer rapido se queda en consejos vagos. Leyendo convierte esas ideas en un producto real: controles visibles, varios modos de lectura, una vista clasica de respaldo, comportamiento local-first y progreso que se queda con el documento en vez de perderse entre sesiones.",
-    pt: "Grande parte do conteudo sobre leitura rapida para em dicas vagas. Leyendo transforma essas ideias em um produto real: controles visiveis, varios modos de leitura, uma vista classica de reserva, comportamento local-first e progresso que acompanha o documento em vez de sumir entre sessoes.",
+    en: "Most fast-reading advice stays abstract. Leyendo turns it into operating behavior: mode switching without losing place, a classic fallback when speed is no longer helping, progress that stays attached to the document, and local-first reading before any account is required.",
+    es: "La mayoria de los consejos sobre leer rapido se queda en lo abstracto. Leyendo lo convierte en comportamiento operativo: cambio de modo sin perder el lugar, una vista clasica de respaldo cuando la velocidad deja de ayudar, progreso unido al documento y lectura local antes de pedirte una cuenta.",
+    pt: "Grande parte do conselho sobre leitura rapida fica no abstrato. O Leyendo transforma isso em comportamento real: troca de modo sem perder o lugar, uma vista classica de reserva quando a velocidade para de ajudar, progresso ligado ao documento e leitura local antes de exigir conta.",
   },
   founderTitle: {
     en: "About the developer",
@@ -67,9 +67,9 @@ const sectionCopy = {
     pt: "Sobre o desenvolvedor",
   },
   founderBody: {
-    en: `${founderName} built ${siteName} to make reading speed training feel grounded in real work instead of gimmicks. The product direction is shaped by long-form reading, practical AI, and the frustration of trying to read dense material with tools that treat every text like a toy demo.`,
-    es: `${founderName} creo ${siteName} para que entrenar velocidad de lectura se sienta conectado con trabajo real y no con gimmicks. La direccion del producto nace de la lectura larga, la IA practica y la frustracion de intentar leer material denso con herramientas que tratan cada texto como una demo liviana.`,
-    pt: `${founderName} criou ${siteName} para que treinar velocidade de leitura ficasse ligado ao trabalho real, e nao a gimmicks. A direcao do produto vem da leitura longa, da IA pratica e da frustracao de tentar ler material denso com ferramentas que tratam todo texto como uma demonstracao superficial.`,
+    en: `${founderName} built ${siteName} from the frustration of reading dense material with tools that were either too passive, too gimmicky, or too detached from real work. The product direction comes from long-form reading, practical AI, and the belief that control and recovery matter as much as raw pace.`,
+    es: `${founderName} creo ${siteName} desde la frustracion de leer material denso con herramientas demasiado pasivas, demasiado gimmicky o demasiado alejadas del trabajo real. La direccion del producto nace de la lectura larga, la IA practica y la idea de que el control y la recuperacion importan tanto como la velocidad.`,
+    pt: `${founderName} criou o ${siteName} a partir da frustracao de ler material denso com ferramentas passivas demais, apelativas demais ou distantes demais do trabalho real. A direcao do produto vem da leitura longa, da IA pratica e da ideia de que controle e retomada importam tanto quanto a velocidade.`,
   },
 };
 
@@ -93,9 +93,9 @@ const publicGuidesCopy = {
     pt: "Caminhos publicos de leitura",
   },
   title: {
-    en: "Read the guide layer behind the product.",
-    es: "Lee la capa de guias que acompana al producto.",
-    pt: "Leia a camada de guias que acompanha o produto.",
+    en: "Read the operating philosophy behind the product.",
+    es: "Lee la filosofia operativa detras del producto.",
+    pt: "Leia a filosofia operacional por tras do produto.",
   },
   body: {
     en: "The public guides explain how Leyendo approaches pace, comprehension, and recovery on real documents without forcing users through a single landing page.",

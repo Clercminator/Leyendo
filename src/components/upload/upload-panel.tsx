@@ -29,6 +29,10 @@ import {
 } from "@/db/repositories";
 import { useLocale } from "@/components/layout/locale-provider";
 import {
+  getRecommendedMode,
+  getRecommendedPreferences,
+} from "@/features/reader/engine/presets";
+import {
   detectDocumentSourceKind,
   isLegacyWordDocument,
 } from "@/features/ingest/detect/file-kind";
@@ -61,6 +65,7 @@ import {
   upsertCloudDocuments,
   upsertCloudSessions,
 } from "@/lib/supabase/library-sync";
+import { useReaderStore } from "@/state/reader-store";
 import type { DocumentBlockInput, DocumentSourceKind } from "@/types/document";
 
 const supportedTypes = [
@@ -1187,6 +1192,9 @@ export function UploadPanel() {
   const router = useRouter();
   const { locale } = useLocale();
   const { profile, refreshProfile, user } = useSupabaseAuth();
+  const savedReadingGoal = useReaderStore(
+    (state) => state.preferences.readingGoal,
+  );
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1260,6 +1268,81 @@ export function UploadPanel() {
   };
 
   const isBusy = isReadingFile || isSubmitting;
+  const recommendedReaderStart = useMemo(() => {
+    if (!savedReadingGoal) {
+      return undefined;
+    }
+
+    const recommendedMode = getRecommendedMode(savedReadingGoal);
+    const recommendedPreferences = getRecommendedPreferences(savedReadingGoal);
+    const goalLabel = getLocalizedCopy(locale, {
+      en:
+        savedReadingGoal === "study-carefully"
+          ? "Study carefully"
+          : savedReadingGoal === "read-faster"
+            ? "Read faster"
+            : savedReadingGoal === "skim-overview"
+              ? "Skim for overview"
+              : "Practice focus",
+      es:
+        savedReadingGoal === "study-carefully"
+          ? "Estudiar con calma"
+          : savedReadingGoal === "read-faster"
+            ? "Leer mas rapido"
+            : savedReadingGoal === "skim-overview"
+              ? "Explorar panorama"
+              : "Practicar enfoque",
+      pt:
+        savedReadingGoal === "study-carefully"
+          ? "Estudar com calma"
+          : savedReadingGoal === "read-faster"
+            ? "Ler mais rapido"
+            : savedReadingGoal === "skim-overview"
+              ? "Ler por panorama"
+              : "Praticar foco",
+    });
+    const modeLabel = getLocalizedCopy(locale, {
+      en:
+        recommendedMode === "pdf-page"
+          ? "Standard PDF"
+          : recommendedMode === "focus-word"
+            ? "Focus Word"
+            : recommendedMode === "phrase-chunk"
+              ? "Phrase Chunk"
+              : recommendedMode === "guided-line"
+                ? "Guided Line"
+                : "Classic Reader",
+      es:
+        recommendedMode === "pdf-page"
+          ? "PDF standard"
+          : recommendedMode === "focus-word"
+            ? "Palabra foco"
+            : recommendedMode === "phrase-chunk"
+              ? "Bloques de frases"
+              : recommendedMode === "guided-line"
+                ? "Linea guiada"
+                : "Lector clasico",
+      pt:
+        recommendedMode === "pdf-page"
+          ? "PDF standard"
+          : recommendedMode === "focus-word"
+            ? "Palavra foco"
+            : recommendedMode === "phrase-chunk"
+              ? "Blocos de frases"
+              : recommendedMode === "guided-line"
+                ? "Linha guiada"
+                : "Leitor classico",
+    });
+
+    return {
+      goalLabel,
+      modeLabel,
+      wordsPerMinute: recommendedPreferences.wordsPerMinute,
+    };
+  }, [locale, savedReadingGoal]);
+  const showRecommendedReaderStart = Boolean(
+    recommendedReaderStart && (content.trim().length > 0 || selectedFile),
+  );
   const activePlanTier = getEffectivePlanTier(profile);
   const fileUploadPlanTier = user ? activePlanTier : "basic";
   const usedFileUploads = user
@@ -2183,6 +2266,28 @@ export function UploadPanel() {
                     ? "Cambiar archivo"
                     : "Trocar arquivo"}
               </button>
+            </div>
+          ) : null}
+
+          {showRecommendedReaderStart ? (
+            <div className="rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-4">
+              <p className="text-xs tracking-[0.18em] text-(--accent-sky) uppercase">
+                {locale === "en"
+                  ? "Recommended start"
+                  : locale === "es"
+                    ? "Inicio recomendado"
+                    : "Inicio recomendado"}
+              </p>
+              <p className="mt-2 text-sm font-medium text-(--text-strong)">
+                {recommendedReaderStart?.goalLabel}: {recommendedReaderStart?.modeLabel} · {recommendedReaderStart?.wordsPerMinute} WPM
+              </p>
+              <p className="mt-2 text-sm leading-7 text-(--text-muted)">
+                {locale === "en"
+                  ? "This goal is already saved. Open the reader and you can still switch modes or pacing whenever the document demands it."
+                  : locale === "es"
+                    ? "Este objetivo ya esta guardado. Abre el lector y aun podras cambiar modo o ritmo cuando el documento lo pida."
+                    : "Este objetivo ja esta salvo. Abra o leitor e ainda sera possivel trocar modo ou ritmo quando o documento pedir."}
+              </p>
             </div>
           ) : null}
 

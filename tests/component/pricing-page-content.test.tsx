@@ -135,6 +135,15 @@ describe("PricingPageContent", () => {
         /paid checkout starts with a free basic reader account/i,
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/prove the workflow on one device before you pay for continuity/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/keep your personal reading system intact when the same documents follow you to another device/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/support a heavier reading workflow when your backlog, private shelf, and follow-on work all grow together/i),
+    ).toBeInTheDocument();
   });
 
   it("opens a clean auth modal for guests before starting MercadoPago checkout", async () => {

@@ -128,10 +128,6 @@ function primaryButtonClass(planId: PlanId) {
   return "flex min-h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#2c2d33] px-5 py-4 text-sm font-bold text-white transition-all hover:scale-[1.02] hover:bg-[#35363d] active:scale-[0.98]";
 }
 
-function cryptoButtonClass() {
-  return "flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#d8a11c]/55 px-4 py-3 text-sm font-medium text-[#f4b722] transition-colors hover:bg-[#f4b722]/10";
-}
-
 function topBadgeClass(planId: PlanId) {
   if (planId === "basic") {
     return "bg-[#2f80ff] text-white";
@@ -288,7 +284,7 @@ export function PricingPageContent({
       return {
         basicCta: "Empezar gratis",
         basicDescription:
-          "Lectura local en un dispositivo con hasta 3 cargas de archivos y tu progreso guardado en este equipo.",
+          "Quedate en un solo dispositivo, conserva tu lugar de forma local y prueba el flujo antes de pagar por continuidad.",
         basicTag: "Empieza aqui",
         bestValue: "Mas elegido",
         binanceCta: "Pagar con Binance",
@@ -303,17 +299,17 @@ export function PricingPageContent({
         contactDavid: "Abrir pagina de contacto",
         focusCta: "Obtener Focus",
         focusDescription:
-          "Para lectores que quieren hasta 15 cargas de archivos, sincronizacion, vocabulario guardado y tres libros PDF incluidos.",
+          "Haz que tu biblioteca personal, tu vocabulario guardado y tu progreso te acompanen entre dispositivos.",
         globalState: "Mostrando pago US/EU (LemonSqueezy)",
         globalSwitch: "Pagas desde LATAM? Cambiar",
         heroDescription:
-          "Elige el nivel de sincronizacion, soporte de vocabulario y acceso a biblioteca que necesitas.",
-        heroTitle: "Planes de lectura transparentes",
+          "Elige cuanta continuidad quieres alrededor de tus documentos: lectura local simple, sincronizacion entre dispositivos o una biblioteca privada mas amplia.",
+        heroTitle: "Planes claros para un lector de documentos reales",
         latamState: "Mostrando pago LATAM (MercadoPago)",
         latamSwitch: "Pagas desde US/EU? Cambiar",
         maxCta: "Obtener Max",
         maxDescription:
-          "Todo Focus mas cargas ilimitadas, 100+ libros en la nube y acceso incluido a Vector Max.",
+          "Maneja un flujo mas profundo de documentos con cargas ilimitadas, una estanteria privada mas amplia y acceso incluido a Vector Max.",
         invalidMercadoPagoProvider:
           "MercadoPago no esta configurado correctamente todavia. Usa el preapproval_plan_id real del plan o el init_point completo, no un numero corto del panel.",
         missingProvider:
@@ -321,7 +317,7 @@ export function PricingPageContent({
         paymentSuccess:
           "Pago aprobado. Entra en la misma cuenta de Leyendo que inicio el checkout. Leyendo confirmara cuando la suscripcion quede vinculada.",
         paymentNote:
-          "Las tarjetas se enrutan segun tu region. Binance siempre queda disponible como alternativa manual.",
+          "Las tarjetas se enrutan segun tu region. El pago manual queda como respaldo cuando no quieras usar el checkout alojado.",
         priceSuffix: "/mes",
       };
     }
@@ -330,7 +326,7 @@ export function PricingPageContent({
       return {
         basicCta: "Comecar gratis",
         basicDescription:
-          "Leitura local em um unico dispositivo com ate 3 uploads de arquivo e seu progresso guardado neste aparelho.",
+          "Fique em um unico dispositivo, mantenha seu lugar localmente e prove o fluxo antes de pagar por continuidade.",
         basicTag: "Comece aqui",
         bestValue: "Mais escolhido",
         binanceCta: "Pagar com Binance",
@@ -345,17 +341,17 @@ export function PricingPageContent({
         contactDavid: "Abrir pagina de contato",
         focusCta: "Obter Focus",
         focusDescription:
-          "Para leitores que querem ate 15 uploads de arquivo, sincronizacao, vocabulario salvo e tres livros PDF incluidos.",
+          "Faca sua biblioteca pessoal, seu vocabulario salvo e seu progresso acompanharem voce entre dispositivos.",
         globalState: "Mostrando pagamento US/EU (LemonSqueezy)",
         globalSwitch: "Paga da LATAM? Trocar",
         heroDescription:
-          "Escolha o nivel de sincronizacao, suporte de vocabulario e acesso a biblioteca que voce precisa.",
-        heroTitle: "Planos de leitura transparentes",
+          "Escolha quanta continuidade voce quer ao redor dos seus documentos: leitura local simples, sincronizacao entre dispositivos ou uma biblioteca privada maior.",
+        heroTitle: "Planos claros para um leitor de documentos reais",
         latamState: "Mostrando pagamento LATAM (MercadoPago)",
         latamSwitch: "Paga dos EUA/Europa? Trocar",
         maxCta: "Obter Max",
         maxDescription:
-          "Tudo do Focus mais uploads ilimitados, 100+ livros na nuvem e acesso incluido ao Vector Max.",
+          "Toque um fluxo mais profundo de documentos com uploads ilimitados, uma estante privada maior e acesso incluido ao Vector Max.",
         invalidMercadoPagoProvider:
           "O MercadoPago ainda nao esta configurado corretamente. Use o preapproval_plan_id real do plano ou o init_point completo, e nao um numero curto do painel.",
         missingProvider:
@@ -363,7 +359,7 @@ export function PricingPageContent({
         paymentSuccess:
           "Pagamento aprovado. Entre na mesma conta do Leyendo que iniciou o checkout. O Leyendo vai confirmar quando a assinatura estiver vinculada.",
         paymentNote:
-          "Cartoes sao roteados pela sua regiao. Binance continua disponivel como alternativa manual.",
+          "Os cartoes sao roteados pela sua regiao. O pagamento manual fica como reserva quando voce nao quiser usar o checkout hospedado.",
         priceSuffix: "/mes",
       };
     }
@@ -371,7 +367,7 @@ export function PricingPageContent({
     return {
       basicCta: "Start free",
       basicDescription:
-        "Local reading on one device with up to 3 file uploads and your progress stored on this device.",
+        "Stay on one device, keep your place locally, and prove the workflow before paying for continuity.",
       basicTag: "Start here",
       bestValue: "Most chosen",
       binanceCta: "Pay with Binance",
@@ -386,17 +382,17 @@ export function PricingPageContent({
       contactDavid: "Open contact page",
       focusCta: "Get Focus",
       focusDescription:
-        "For readers who want up to 15 file uploads, synced reading, saved vocabulary, and 3 included PDF books.",
+        "Keep your personal library, saved vocabulary, and reading progress moving with you across devices.",
       globalState: "Showing US/EU payment (LemonSqueezy)",
       globalSwitch: "Paying from LATAM? Switch",
       heroDescription:
-        "Choose the level of sync, vocabulary support, and private library access you need.",
-      heroTitle: "Transparent Reading Plans",
+        "Choose how much continuity you want around your documents: simple local reading, cross-device sync, or a larger private library layer.",
+      heroTitle: "Clear plans for a real-document reader",
       latamState: "Showing LATAM payment (MercadoPago)",
       latamSwitch: "Paying from US/EU? Switch",
       maxCta: "Get Max",
       maxDescription:
-        "Everything in Focus plus unlimited file uploads, 100+ cloud books, and bundled Vector Max access.",
+        "Run a deeper document workflow with unlimited uploads, a larger private shelf, and bundled Vector Max access.",
       invalidMercadoPagoProvider:
         "MercadoPago is not configured correctly yet. Use the real preapproval_plan_id or the full init_point URL, not a short dashboard number.",
       missingProvider:
@@ -404,7 +400,7 @@ export function PricingPageContent({
       paymentSuccess:
         "Payment approved. Go to the same Leyendo account that started checkout. Leyendo will confirm when the subscription is linked.",
       paymentNote:
-        "Card payments are routed by region. Binance stays available as a manual fallback.",
+        "Card payments are routed by region. Manual payment stays available only as a fallback when you do not want the hosted checkout.",
       priceSuffix: "/month",
     };
   }, [locale]);
@@ -555,6 +551,33 @@ export function PricingPageContent({
       {
         id: "basic" as const,
         cta: copy.basicCta,
+        bestFor:
+          locale === "en"
+            ? "Best for local reading on one device and occasional imports."
+            : locale === "es"
+              ? "Ideal para lectura local en un solo dispositivo e importaciones ocasionales."
+              : "Ideal para leitura local em um so dispositivo e importacoes ocasionais.",
+        outcomeSummary:
+          locale === "en"
+            ? "Prove the workflow on one device before you pay for continuity."
+            : locale === "es"
+              ? "Comprueba el flujo en un solo dispositivo antes de pagar por continuidad."
+              : "Comprove o fluxo em um unico dispositivo antes de pagar por continuidade.",
+        outcomes:
+          locale === "en"
+            ? [
+                "Finish with local progress, highlights, and bookmarks still attached to the document.",
+                "Learn which modes and pacing actually help before you invest in sync.",
+              ]
+            : locale === "es"
+              ? [
+                  "Terminas con progreso, destacados y marcadores todavia unidos al documento.",
+                  "Descubres que modos y ritmos te ayudan de verdad antes de invertir en sincronizacion.",
+                ]
+              : [
+                  "Voce termina com progresso, destaques e marcadores ainda ligados ao documento.",
+                  "Descobre quais modos e ritmos realmente ajudam antes de investir em sincronizacao.",
+                ],
         description: copy.basicDescription,
         features:
           locale === "en"
@@ -588,6 +611,33 @@ export function PricingPageContent({
       {
         id: "focus" as const,
         cta: copy.focusCta,
+        bestFor:
+          locale === "en"
+            ? "Best for readers building a personal library that should follow them across devices."
+            : locale === "es"
+              ? "Ideal para lectores que estan construyendo una biblioteca personal que debe seguirlos entre dispositivos."
+              : "Ideal para leitores que estao montando uma biblioteca pessoal que precisa acompanhar varios dispositivos.",
+        outcomeSummary:
+          locale === "en"
+            ? "Keep your personal reading system intact when the same documents follow you to another device."
+            : locale === "es"
+              ? "Mantiene tu sistema personal de lectura intacto cuando los mismos documentos te siguen a otro dispositivo."
+              : "Mantem seu sistema pessoal de leitura intacto quando os mesmos documentos seguem para outro dispositivo.",
+        outcomes:
+          locale === "en"
+            ? [
+                "Your uploads, saved words, highlights, and progress stop being trapped on one machine.",
+                "Dense reading becomes a repeatable cross-device habit instead of a one-off session you rebuild.",
+              ]
+            : locale === "es"
+              ? [
+                  "Tus archivos, palabras guardadas, destacados y progreso dejan de quedar atrapados en una sola maquina.",
+                  "La lectura densa se vuelve un habito repetible entre dispositivos y no una sesion aislada que reconstruyes.",
+                ]
+              : [
+                  "Seus arquivos, palavras salvas, destaques e progresso deixam de ficar presos em uma unica maquina.",
+                  "A leitura densa vira um habito repetivel entre dispositivos e nao uma sessao isolada que voce reconstrui.",
+                ],
         description: copy.focusDescription,
         features:
           locale === "en"
@@ -622,6 +672,33 @@ export function PricingPageContent({
       {
         id: "max" as const,
         cta: copy.maxCta,
+        bestFor:
+          locale === "en"
+            ? "Best for heavy document work, broader private library access, and a deeper reading stack."
+            : locale === "es"
+              ? "Ideal para trabajo intenso con documentos, acceso a una biblioteca privada mas amplia y una pila de lectura mas profunda."
+              : "Ideal para trabalho intenso com documentos, acesso a uma biblioteca privada maior e uma pilha de leitura mais profunda.",
+        outcomeSummary:
+          locale === "en"
+            ? "Support a heavier reading workflow when your backlog, private shelf, and follow-on work all grow together."
+            : locale === "es"
+              ? "Sostiene un flujo de lectura mas pesado cuando crecen a la vez tu backlog, tu estanteria privada y el trabajo que sigue."
+              : "Sustenta um fluxo de leitura mais pesado quando backlog, estante privada e trabalho seguinte crescem juntos.",
+        outcomes:
+          locale === "en"
+            ? [
+                "You stop rationing uploads and can keep long-running reading projects inside one stack.",
+                "Your private Leyendo library and Vector Max stay close when reading turns into planning or execution.",
+              ]
+            : locale === "es"
+              ? [
+                  "Dejas de racionar cargas y puedes mantener proyectos largos de lectura dentro de una sola pila.",
+                  "Tu biblioteca privada de Leyendo y Vector Max quedan cerca cuando leer pasa a ser planificacion o ejecucion.",
+                ]
+              : [
+                  "Voce para de racionar uploads e consegue manter projetos longos de leitura dentro de uma unica pilha.",
+                  "Sua biblioteca privada do Leyendo e o Vector Max ficam por perto quando ler vira planejamento ou execucao.",
+                ],
         description: copy.maxDescription,
         features:
           locale === "en"
@@ -993,6 +1070,29 @@ export function PricingPageContent({
                 <p className="mt-5 text-sm leading-8 text-[#94a3b8]">
                   {plan.description}
                 </p>
+                <p className="mt-4 text-sm leading-7 text-white/88">
+                  {plan.bestFor}
+                </p>
+                <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-black/16 px-4 py-4">
+                  <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+                    {locale === "en"
+                      ? "What changes"
+                      : locale === "es"
+                        ? "Lo que cambia"
+                        : "O que muda"}
+                  </p>
+                  <p className="mt-2 text-sm leading-7 text-white/92">
+                    {plan.outcomeSummary}
+                  </p>
+                  <ul className="mt-3 space-y-2 text-sm leading-7 text-[#c6d1e3]">
+                    {plan.outcomes.map((outcome) => (
+                      <li key={outcome} className="flex gap-3">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f4b722]" />
+                        <span>{outcome}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
 
               <ul className="mb-8 grow space-y-4 text-sm leading-8 text-[#d0d4dd]">
@@ -1024,17 +1124,26 @@ export function PricingPageContent({
                       <CreditCard className="h-4 w-4" />
                       {plan.cta}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStatusMessage(undefined);
-                        setBinancePlanId(plan.id);
-                      }}
-                      className={cryptoButtonClass()}
-                    >
-                      <Coins className="h-4 w-4" />
-                      {copy.binanceCta}
-                    </button>
+                    <div className="rounded-[1rem] border border-white/10 bg-white/4 px-4 py-3 text-left">
+                      <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+                        {locale === "en"
+                          ? "Manual fallback"
+                          : locale === "es"
+                            ? "Respaldo manual"
+                            : "Reserva manual"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusMessage(undefined);
+                          setBinancePlanId(plan.id);
+                        }}
+                        className="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#f4b722] transition hover:text-[#ffd176]"
+                      >
+                        <Coins className="h-4 w-4" />
+                        {copy.binanceCta}
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
@@ -1188,7 +1297,7 @@ export function PricingPageContent({
                   href={founderLinkedInUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className={cryptoButtonClass()}
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#d8a11c]/55 px-4 py-3 text-sm font-medium text-[#f4b722] transition-colors hover:bg-[#f4b722]/10"
                 >
                   LinkedIn
                 </a>
@@ -1196,7 +1305,7 @@ export function PricingPageContent({
                   href={founderGitHubUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className={cryptoButtonClass()}
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#d8a11c]/55 px-4 py-3 text-sm font-medium text-[#f4b722] transition-colors hover:bg-[#f4b722]/10"
                 >
                   GitHub
                 </a>

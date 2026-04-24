@@ -27,6 +27,7 @@ import {
   deriveRemainingPlaybackMs,
 } from "@/features/reader/engine/timing";
 import { getLocalizedCopy } from "@/lib/locale";
+import { useReaderStore } from "@/state/reader-store";
 import {
   readerPresets,
   type ReaderMode,
@@ -86,9 +87,9 @@ const demoTitle = {
 };
 
 const demoDescription = {
-  en: "This built-in demo opens immediately, so you can compare Focus Word, Phrase Chunk, Guided Line, and Classic Reader before committing your own material.",
-  es: "Esta demo integrada se abre al instante para que compares Palabra foco, Bloques de frases, Linea guiada y Lector clasico antes de usar tu propio material.",
-  pt: "Esta demonstracao integrada abre na hora para que voce compare Palavra foco, Blocos de frases, Linha guiada e Leitor classico antes de usar seu proprio material.",
+  en: "This built-in demo opens immediately, so you can test the assistive text modes before committing your own material. The saved reading goal above also changes the recommended starting setup here.",
+  es: "Esta demo integrada se abre al instante para que pruebes los modos asistidos de texto antes de usar tu propio material. El objetivo de lectura guardado arriba tambien cambia el inicio recomendado aqui.",
+  pt: "Esta demonstracao integrada abre na hora para que voce teste os modos assistidos de texto antes de usar seu proprio material. O objetivo de leitura salvo acima tambem muda o inicio recomendado aqui.",
 };
 
 const demoTipsTitle = {
@@ -116,9 +117,9 @@ const demoTips = {
 };
 
 const demoPdfNote = {
-  en: "Standard PDF mode is not part of this sample because it needs the original PDF file and page assets. You will see it after importing a real PDF and opening it in the reader.",
-  es: "El modo Standard PDF no forma parte de esta muestra porque necesita el archivo PDF original y sus paginas. Lo veras despues de importar un PDF real y abrirlo en el lector.",
-  pt: "O modo Standard PDF nao faz parte desta amostra porque precisa do arquivo PDF original e de suas paginas. Voce vai ve-lo depois de importar um PDF real e abri-lo no leitor.",
+  en: "Standard PDF mode is not part of this sample because it needs the original PDF file and page assets. After import, that mode keeps the page layout, while the text modes trade layout fidelity for more pacing help.",
+  es: "El modo Standard PDF no forma parte de esta muestra porque necesita el archivo PDF original y sus paginas. Despues de importar, ese modo conserva la pagina, mientras los modos de texto cambian fidelidad de layout por mas ayuda de ritmo.",
+  pt: "O modo Standard PDF nao faz parte desta amostra porque precisa do arquivo PDF original e de suas paginas. Depois da importacao, esse modo preserva a pagina, enquanto os modos de texto trocam fidelidade de layout por mais ajuda de ritmo.",
 };
 
 const demoStatusIdle = {
@@ -133,10 +134,10 @@ const demoRecommendedStart = {
   pt: "Inicio recomendado",
 };
 
-const demoRecommendedPreset = {
-  en: "Phrase Chunk at 320 WPM",
-  es: "Bloques de frases a 320 WPM",
-  pt: "Blocos de frases a 320 WPM",
+const demoGoalLabel = {
+  en: "Goal shaping this demo",
+  es: "Objetivo que guia esta demo",
+  pt: "Objetivo que guia esta demo",
 };
 
 const demoStructureSummary = {
@@ -234,16 +235,46 @@ Ler melhor e mais rapido nao serve apenas para terminar antes. Isso tambem abre 
 
 export function LandingReaderDemo() {
   const { locale } = useLocale();
+  const savedReadingGoal = useReaderStore(
+    (state) => state.preferences.readingGoal,
+  );
+  const demoGoal = savedReadingGoal ?? "read-faster";
+  const recommendedDemoPreferences = useMemo(
+    () => getRecommendedPreferences(demoGoal),
+    [demoGoal],
+  );
+  const localizedDemoGoalLabel = getLocalizedCopy(locale, {
+    en:
+      demoGoal === "study-carefully"
+        ? "Study carefully"
+        : demoGoal === "read-faster"
+          ? "Read faster"
+          : demoGoal === "skim-overview"
+            ? "Skim for overview"
+            : "Practice focus",
+    es:
+      demoGoal === "study-carefully"
+        ? "Estudiar con calma"
+        : demoGoal === "read-faster"
+          ? "Leer mas rapido"
+          : demoGoal === "skim-overview"
+            ? "Explorar panorama"
+            : "Practicar enfoque",
+    pt:
+      demoGoal === "study-carefully"
+        ? "Estudar com calma"
+        : demoGoal === "read-faster"
+          ? "Ler mais rapido"
+          : demoGoal === "skim-overview"
+            ? "Ler por panorama"
+            : "Praticar foco",
+  });
   const [preferences, setPreferences] = useState<ReaderPreferences>(() => ({
-    ...getRecommendedPreferences("read-faster"),
-    chunkSize: 3,
+    ...recommendedDemoPreferences,
     fontScale: 1,
     lineHeight: 1.6,
-    mode: "phrase-chunk" as ReaderMode,
-    readingGoal: "read-faster" as const,
-    smartPacing: true,
+    readingGoal: demoGoal,
     theme: "ember" as const,
-    wordsPerMinute: 320,
   }));
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -255,6 +286,16 @@ export function LandingReaderDemo() {
   useEffect(() => {
     setStatusMessage(getLocalizedCopy(locale, demoStatusIdle));
   }, [locale]);
+
+  useEffect(() => {
+    setPreferences((currentPreferences) => ({
+      ...currentPreferences,
+      ...recommendedDemoPreferences,
+      readingGoal: demoGoal,
+    }));
+    setCurrentChunkIndex(0);
+    setIsPlaying(false);
+  }, [demoGoal, recommendedDemoPreferences]);
 
   const document = useMemo(
     () =>
@@ -374,6 +415,40 @@ export function LandingReaderDemo() {
             ? "Linha guiada"
             : "Leitor classico",
   });
+  const recommendedStartLabel = useMemo(() => {
+    const recommendedModeLabel = getLocalizedCopy(locale, {
+      en:
+        recommendedDemoPreferences.mode === "focus-word"
+          ? "Focus Word"
+          : recommendedDemoPreferences.mode === "phrase-chunk"
+            ? "Phrase Chunk"
+            : recommendedDemoPreferences.mode === "guided-line"
+              ? "Guided Line"
+              : "Classic Reader",
+      es:
+        recommendedDemoPreferences.mode === "focus-word"
+          ? "Palabra foco"
+          : recommendedDemoPreferences.mode === "phrase-chunk"
+            ? "Bloques de frases"
+            : recommendedDemoPreferences.mode === "guided-line"
+              ? "Linea guiada"
+              : "Lector clasico",
+      pt:
+        recommendedDemoPreferences.mode === "focus-word"
+          ? "Palavra foco"
+          : recommendedDemoPreferences.mode === "phrase-chunk"
+            ? "Blocos de frases"
+            : recommendedDemoPreferences.mode === "guided-line"
+              ? "Linha guiada"
+              : "Leitor classico",
+    });
+
+    return locale === "en"
+      ? `${recommendedModeLabel} at ${recommendedDemoPreferences.wordsPerMinute} WPM`
+      : locale === "es"
+        ? `${recommendedModeLabel} a ${recommendedDemoPreferences.wordsPerMinute} WPM`
+        : `${recommendedModeLabel} a ${recommendedDemoPreferences.wordsPerMinute} WPM`;
+  }, [locale, recommendedDemoPreferences.mode, recommendedDemoPreferences.wordsPerMinute]);
 
   const modeView = useMemo(() => {
     if (!activeChunk) {
@@ -464,13 +539,21 @@ export function LandingReaderDemo() {
               </p>
             </div>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="rounded-[1.2rem] border border-(--border-soft) bg-(--surface-card) px-4 py-4">
               <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
                 {getLocalizedCopy(locale, demoRecommendedStart)}
               </p>
               <p className="mt-2 text-lg font-semibold text-(--text-strong)">
-                {getLocalizedCopy(locale, demoRecommendedPreset)}
+                {recommendedStartLabel}
+              </p>
+            </div>
+            <div className="rounded-[1.2rem] border border-(--border-soft) bg-(--surface-card) px-4 py-4">
+              <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                {getLocalizedCopy(locale, demoGoalLabel)}
+              </p>
+              <p className="mt-2 text-lg font-semibold text-(--text-strong)">
+                {localizedDemoGoalLabel}
               </p>
             </div>
             <div className="rounded-[1.2rem] border border-(--border-soft) bg-(--surface-card) px-4 py-4">
@@ -523,11 +606,7 @@ export function LandingReaderDemo() {
           {statusMessage}
         </p>
         <ReaderCanvas
-          activeGoalLabel={getLocalizedCopy(locale, {
-            en: "Read faster",
-            es: "Leer mas rapido",
-            pt: "Ler mais rapido",
-          })}
+          activeGoalLabel={localizedDemoGoalLabel}
           availableModes={[
             "focus-word",
             "phrase-chunk",

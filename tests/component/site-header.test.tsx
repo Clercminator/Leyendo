@@ -121,6 +121,10 @@ describe("SiteHeader", () => {
     expect(
       screen.queryByRole("button", { name: /^menu$/i }),
     ).not.toBeInTheDocument();
+    expect(screen.getByAltText(/leyendo logo/i)).toHaveAttribute(
+      "loading",
+      "eager",
+    );
   });
 
   it("keeps language and theme controls visible outside the compact menu", async () => {

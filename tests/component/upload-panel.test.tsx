@@ -20,6 +20,14 @@ vi.mock("@/components/layout/locale-provider", () => ({
   }),
 }));
 
+const { useReaderStore } = vi.hoisted(() => ({
+  useReaderStore: vi.fn(),
+}));
+
+vi.mock("@/state/reader-store", () => ({
+  useReaderStore,
+}));
+
 const push = vi.fn();
 
 vi.mock("next/navigation", () => ({
@@ -130,6 +138,18 @@ function uploadFileInput() {
 describe("UploadPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useReaderStore.mockImplementation(
+      (
+        selector: (state: {
+          preferences: { readingGoal?: string };
+        }) => unknown,
+      ) =>
+        selector({
+          preferences: {
+            readingGoal: undefined,
+          },
+        }),
+    );
     useSupabaseAuth.mockReturnValue({
       user: null,
     });
@@ -152,6 +172,35 @@ describe("UploadPanel", () => {
       },
       processingMode: "main-thread",
     });
+  });
+
+  it("shows the saved goal as a recommended start before opening the reader", async () => {
+    const user = userEvent.setup();
+
+    useReaderStore.mockImplementation(
+      (
+        selector: (state: {
+          preferences: { readingGoal?: string };
+        }) => unknown,
+      ) =>
+        selector({
+          preferences: {
+            readingGoal: "practice-focus",
+          },
+        }),
+    );
+
+    render(<UploadPanel />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: /^paste text$/i }),
+      "Dense reading rewards a calmer interface.",
+    );
+
+    expect(screen.getByText(/recommended start/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/practice focus: focus word · 260 wpm/i),
+    ).toBeInTheDocument();
   });
 
   it("syncs a signed-in import to Supabase so the document can reappear on another device", async () => {

@@ -45,7 +45,10 @@ import {
   restartParagraphChunkIndex,
 } from "@/features/reader/engine/navigation";
 import { deriveRemainingPlaybackMs } from "@/features/reader/engine/timing";
-import { getMatchingReadingGoal } from "@/features/reader/engine/presets";
+import {
+  getMatchingReadingGoal,
+  getRecommendedPreferences,
+} from "@/features/reader/engine/presets";
 import {
   resolvePdfSelectionAnchor,
   resolveSourcePageIndexForAnchor,
@@ -1127,6 +1130,210 @@ export function ReaderWorkspace({
         },
       }[preferences.readingGoal][locale]
     : undefined;
+  const recommendedGoalPreferences = useMemo(
+    () =>
+      preferences.readingGoal
+        ? getRecommendedPreferences(preferences.readingGoal)
+        : undefined,
+    [preferences.readingGoal],
+  );
+  const recommendedModeLabel = useMemo(() => {
+    if (!recommendedGoalPreferences) {
+      return undefined;
+    }
+
+    return getLocalizedCopy(locale, {
+      en:
+        recommendedGoalPreferences.mode === "pdf-page"
+          ? "Standard PDF"
+          : recommendedGoalPreferences.mode === "focus-word"
+            ? "Focus Word"
+            : recommendedGoalPreferences.mode === "phrase-chunk"
+              ? "Phrase Chunk"
+              : recommendedGoalPreferences.mode === "guided-line"
+                ? "Guided Line"
+                : "Classic Reader",
+      es:
+        recommendedGoalPreferences.mode === "pdf-page"
+          ? "PDF standard"
+          : recommendedGoalPreferences.mode === "focus-word"
+            ? "Palabra foco"
+            : recommendedGoalPreferences.mode === "phrase-chunk"
+              ? "Bloques de frases"
+              : recommendedGoalPreferences.mode === "guided-line"
+                ? "Linea guiada"
+                : "Lector clasico",
+      pt:
+        recommendedGoalPreferences.mode === "pdf-page"
+          ? "PDF standard"
+          : recommendedGoalPreferences.mode === "focus-word"
+            ? "Palavra foco"
+            : recommendedGoalPreferences.mode === "phrase-chunk"
+              ? "Blocos de frases"
+              : recommendedGoalPreferences.mode === "guided-line"
+                ? "Linha guiada"
+                : "Leitor classico",
+    });
+  }, [locale, recommendedGoalPreferences]);
+  const modeAvailabilityNote = useMemo(() => {
+    if (payload?.sourceKind !== "pdf") {
+      return undefined;
+    }
+
+    if (canUsePdfPageMode && !hasExtractedText) {
+      return locale === "en"
+        ? "This PDF can stay in Standard view, but the faster text modes need selectable text or OCR before they can help."
+        : locale === "es"
+          ? "Este PDF puede quedarse en vista Standard, pero los modos rapidos de texto necesitan texto seleccionable u OCR antes de poder ayudar."
+          : "Este PDF pode ficar na vista Standard, mas os modos rapidos de texto precisam de texto selecionavel ou OCR antes de conseguir ajudar.";
+    }
+
+    if (!canUsePdfPageMode && hasExtractedText) {
+      return locale === "en"
+        ? "Text modes are available, but the original PDF pages are missing on this device, so Standard view cannot open right now."
+        : locale === "es"
+          ? "Los modos de texto estan disponibles, pero las paginas originales del PDF faltan en este dispositivo, asi que la vista Standard no puede abrirse ahora mismo."
+          : "Os modos de texto estao disponiveis, mas as paginas originais do PDF faltam neste dispositivo, entao a vista Standard nao pode abrir agora.";
+    }
+
+    if (canUsePdfPageMode && hasExtractedText) {
+      return locale === "en"
+        ? "This PDF supports both Standard page view and the text-based speed modes, so you can trade layout fidelity for pacing help whenever needed."
+        : locale === "es"
+          ? "Este PDF admite tanto la vista Standard por paginas como los modos rapidos de texto, asi que puedes cambiar fidelidad de layout por ayuda de ritmo cuando haga falta."
+          : "Este PDF suporta tanto a vista Standard por paginas quanto os modos rapidos de texto, entao voce pode trocar fidelidade de layout por ajuda de ritmo quando precisar.";
+    }
+
+    return undefined;
+  }, [canUsePdfPageMode, hasExtractedText, locale, payload?.sourceKind]);
+  const sessionFeedbackCards = useMemo(() => {
+    const paceDelta = recommendedGoalPreferences
+      ? preferences.wordsPerMinute - recommendedGoalPreferences.wordsPerMinute
+      : 0;
+    const paceTitle = activeGoalLabel
+      ? paceDelta >= 45
+        ? locale === "en"
+          ? `Above your saved ${activeGoalLabel.toLowerCase()} pace`
+          : locale === "es"
+            ? `Por encima de tu ritmo guardado para ${activeGoalLabel.toLowerCase()}`
+            : `Acima do ritmo salvo para ${activeGoalLabel.toLowerCase()}`
+        : paceDelta <= -45
+          ? locale === "en"
+            ? `Below your saved ${activeGoalLabel.toLowerCase()} pace`
+            : locale === "es"
+              ? `Por debajo de tu ritmo guardado para ${activeGoalLabel.toLowerCase()}`
+              : `Abaixo do ritmo salvo para ${activeGoalLabel.toLowerCase()}`
+          : locale === "en"
+            ? `Near your saved ${activeGoalLabel.toLowerCase()} pace`
+            : locale === "es"
+              ? `Cerca de tu ritmo guardado para ${activeGoalLabel.toLowerCase()}`
+              : `Perto do ritmo salvo para ${activeGoalLabel.toLowerCase()}`
+      : locale === "en"
+        ? "Current session pace"
+        : locale === "es"
+          ? "Ritmo actual de la sesion"
+          : "Ritmo atual da sessao";
+    const paceDescription = activeGoalLabel && recommendedGoalPreferences
+      ? locale === "en"
+        ? `${preferences.wordsPerMinute} WPM in ${modeLabel}. Saved goal: ${activeGoalLabel}. Recommended start for that goal is ${recommendedGoalPreferences.wordsPerMinute} WPM in ${recommendedModeLabel}.`
+        : locale === "es"
+          ? `${preferences.wordsPerMinute} WPM en ${modeLabel}. Objetivo guardado: ${activeGoalLabel}. El inicio recomendado para ese objetivo es ${recommendedGoalPreferences.wordsPerMinute} WPM en ${recommendedModeLabel}.`
+          : `${preferences.wordsPerMinute} WPM em ${modeLabel}. Objetivo salvo: ${activeGoalLabel}. O inicio recomendado para esse objetivo e ${recommendedGoalPreferences.wordsPerMinute} WPM em ${recommendedModeLabel}.`
+      : locale === "en"
+        ? `${preferences.wordsPerMinute} WPM in ${modeLabel}. Save a reading goal to compare this session against a recommended starting pace.`
+        : locale === "es"
+          ? `${preferences.wordsPerMinute} WPM en ${modeLabel}. Guarda un objetivo de lectura para comparar esta sesion con un ritmo recomendado de inicio.`
+          : `${preferences.wordsPerMinute} WPM em ${modeLabel}. Salve um objetivo de leitura para comparar esta sessao com um ritmo inicial recomendado.`;
+
+    const checkNextDescription = preferences.readingGoal === "study-carefully"
+      ? locale === "en"
+        ? "Before raising speed, can you explain the last section in one sentence without looking back?"
+        : locale === "es"
+          ? "Antes de subir la velocidad, puedes explicar la ultima seccion en una sola frase sin mirar atras?"
+          : "Antes de aumentar a velocidade, voce consegue explicar a ultima secao em uma frase sem olhar para tras?"
+      : preferences.readingGoal === "skim-overview"
+        ? locale === "en"
+          ? "Before slowing down, can you name the document structure so far: setup, argument, evidence, or conclusion?"
+          : locale === "es"
+            ? "Antes de bajar el ritmo, puedes nombrar la estructura del documento hasta ahora: apertura, argumento, evidencia o conclusion?"
+            : "Antes de diminuir o ritmo, voce consegue nomear a estrutura do documento ate aqui: abertura, argumento, evidencia ou conclusao?"
+        : preferences.readingGoal === "practice-focus"
+          ? locale === "en"
+            ? "Did attention drift in the last paragraph, or can you recall it cleanly before touching the controls?"
+            : locale === "es"
+              ? "Se desvio tu atencion en el ultimo parrafo, o puedes recordarlo con claridad antes de tocar los controles?"
+              : "Sua atencao se desviou no ultimo paragrafo, ou voce consegue recorda-lo com clareza antes de mexer nos controles?"
+          : locale === "en"
+            ? "Before raising pace again, can you say what the last section just did: define, compare, argue, or conclude?"
+            : locale === "es"
+              ? "Antes de volver a subir el ritmo, puedes decir que hizo la ultima seccion: definir, comparar, argumentar o concluir?"
+              : "Antes de aumentar o ritmo de novo, voce consegue dizer o que a ultima secao acabou de fazer: definir, comparar, argumentar ou concluir?";
+
+    return [
+      {
+        key: "benchmark",
+        eyebrow:
+          locale === "en"
+            ? "Pace benchmark"
+            : locale === "es"
+              ? "Benchmark de ritmo"
+              : "Benchmark de ritmo",
+        title: paceTitle,
+        description: paceDescription,
+      },
+      {
+        key: "snapshot",
+        eyebrow:
+          locale === "en"
+            ? "Session snapshot"
+            : locale === "es"
+              ? "Resumen de sesion"
+              : "Resumo da sessao",
+        title:
+          locale === "en"
+            ? `${progress}% complete · ${remainingWords} words left`
+            : locale === "es"
+              ? `${progress}% completado · ${remainingWords} palabras por delante`
+              : `${progress}% concluido · ${remainingWords} palavras pela frente`,
+        description:
+          locale === "en"
+            ? `${remainingTimeLabel} in ${modeLabel}. ${activePayload?.sections.length ?? 0} ${(activePayload?.sections.length ?? 0) === 1 ? "section" : "sections"} in this document.`
+            : locale === "es"
+              ? `${remainingTimeLabel} en ${modeLabel}. ${activePayload?.sections.length ?? 0} ${(activePayload?.sections.length ?? 0) === 1 ? "seccion" : "secciones"} en este documento.`
+              : `${remainingTimeLabel} em ${modeLabel}. ${activePayload?.sections.length ?? 0} ${(activePayload?.sections.length ?? 0) === 1 ? "secao" : "secoes"} neste documento.`,
+      },
+      {
+        key: "check-next",
+        eyebrow:
+          locale === "en"
+            ? "Check before changing pace"
+            : locale === "es"
+              ? "Comprueba antes de cambiar el ritmo"
+              : "Confira antes de mudar o ritmo",
+        title:
+          locale === "en"
+            ? "Comprehension prompt"
+            : locale === "es"
+              ? "Pregunta de comprension"
+              : "Pergunta de compreensao",
+        description: checkNextDescription,
+        note: modeAvailabilityNote,
+      },
+    ];
+  }, [
+    activeGoalLabel,
+    activePayload?.sections.length,
+    locale,
+    modeAvailabilityNote,
+    modeLabel,
+    preferences.readingGoal,
+    preferences.wordsPerMinute,
+    progress,
+    recommendedGoalPreferences,
+    recommendedModeLabel,
+    remainingTimeLabel,
+    remainingWords,
+  ]);
   const sidebarToggleLabel = getLocalizedCopy(locale, {
     en: "Notes, highlights, and bookmarks",
     es: "Notas, destacados y marcadores",
@@ -1459,6 +1666,29 @@ export function ReaderWorkspace({
           </ul>
         </div>
       ) : null}
+      <div className="grid gap-3 lg:grid-cols-3">
+        {sessionFeedbackCards.map((card) => (
+          <div
+            key={card.key}
+            className="rounded-[1.35rem] border border-(--border-soft) bg-(--surface-card) px-4 py-4 shadow-[0_14px_40px_rgba(20,26,56,0.08)]"
+          >
+            <p className="text-xs tracking-[0.18em] text-(--accent-sky) uppercase">
+              {card.eyebrow}
+            </p>
+            <h2 className="mt-2 text-base font-semibold text-(--text-strong)">
+              {card.title}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-(--text-muted)">
+              {card.description}
+            </p>
+            {card.note ? (
+              <p className="mt-3 text-sm leading-6 text-(--accent-amber)">
+                {card.note}
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
       {mobileSidebarSection}
       <div className="fade-rise-delayed relative z-20">
         <p className="sr-only" role="status" aria-live="polite">

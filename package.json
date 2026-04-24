@@ -6,7 +6,7 @@
     "sync:pdf-assets": "node ./scripts/sync-pdfjs-assets.mjs",
     "predev": "pnpm sync:pdf-assets",
     "dev": "next dev",
-    "prebuild": "pnpm sync:pdf-assets",
+    "prebuild": "node ./scripts/clean-next-dev.mjs && pnpm sync:pdf-assets",
     "build": "next build",
     "prestart": "pnpm sync:pdf-assets",
     "start": "next start",

@@ -437,6 +437,8 @@ export function SiteHeader() {
                 alt="Leyendo logo"
                 width={44}
                 height={44}
+                loading="eager"
+                fetchPriority="high"
                 className="h-9 w-9 shrink-0 sm:h-11 sm:w-11"
               />
             </span>
