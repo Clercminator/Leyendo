@@ -17,7 +17,7 @@ declare global {
 
 let chatwootInjectPromise: Promise<void> | null = null;
 
-function getChatwootConfig() {
+export function getChatwootConfig() {
   const baseUrl = process.env.NEXT_PUBLIC_CHATWOOT_BASE_URL?.trim();
   const websiteToken = process.env.NEXT_PUBLIC_CHATWOOT_WEBSITE_TOKEN?.trim();
 

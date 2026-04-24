@@ -211,6 +211,9 @@ export function PricingPageContent({
   const [authPassword, setAuthPassword] = useState("");
   const [authPendingAction, setAuthPendingAction] = useState<string>();
   const [authStatusMessage, setAuthStatusMessage] = useState<string>();
+  const [selectedPlanId, setSelectedPlanId] = useState<PlanId>(() =>
+    isPaidPlanId(initialPlanId) ? initialPlanId : "max",
+  );
 
   useEffect(() => {
     setPaymentRegion(
@@ -772,8 +775,71 @@ export function PricingPageContent({
           ];
   }, [locale, user]);
 
-  const primaryProvider =
-    paymentRegion === "latam" ? "mercadopago" : "lemonsqueezy";
+    const selectedPlan =
+      plans.find((plan) => plan.id === selectedPlanId) ??
+      plans.find((plan) => plan.id === "max") ??
+      plans[0];
+    const pricingPanelCopy =
+      locale === "es"
+        ? {
+            bestFit: "Mejor para",
+            compareHint:
+              "Manten la vista general en las tarjetas y revisa abajo un plan completo a la vez.",
+            detailsActive: "Detalle mostrado abajo",
+            fullBreakdown: "Detalle completo del plan",
+            included: "Todo lo que incluye",
+            manualFallback: "Respaldo manual",
+            manualFallbackDetail:
+              "Binance Pay sigue disponible si no quieres usar el checkout alojado.",
+            paymentRoute: "Como se activa",
+            viewDetails: "Ver detalle completo",
+            whatChanges: "Lo que cambia",
+          }
+        : locale === "pt"
+          ? {
+              bestFit: "Melhor para",
+              compareHint:
+                "Mantenha a visao geral nos cards e revise abaixo um plano completo de cada vez.",
+              detailsActive: "Detalhe mostrado abaixo",
+              fullBreakdown: "Detalhe completo do plano",
+              included: "Tudo o que inclui",
+              manualFallback: "Reserva manual",
+              manualFallbackDetail:
+                "O Binance Pay continua disponivel se voce nao quiser usar o checkout hospedado.",
+              paymentRoute: "Como se ativa",
+              viewDetails: "Ver detalhe completo",
+              whatChanges: "O que muda",
+            }
+          : {
+              bestFit: "Best for",
+              compareHint:
+                "Keep the card overview visible, then inspect one full plan at a time below.",
+              detailsActive: "Details shown below",
+              fullBreakdown: "Full plan breakdown",
+              included: "Everything included",
+              manualFallback: "Manual fallback",
+              manualFallbackDetail:
+                "Binance Pay stays available if you do not want the hosted checkout.",
+              paymentRoute: "How it unlocks",
+              viewDetails: "View full details",
+              whatChanges: "What changes",
+            };
+    const primaryProvider =
+      paymentRegion === "latam" ? "mercadopago" : "lemonsqueezy";
+    const primaryProviderLabel =
+      primaryProvider === "mercadopago" ? "MercadoPago" : "LemonSqueezy";
+    const primaryProviderDetail =
+      paymentRegion === "latam"
+        ? locale === "es"
+          ? "Este plan usa MercadoPago como checkout principal para tarjetas en LATAM."
+          : locale === "pt"
+            ? "Este plano usa MercadoPago como checkout principal para cartoes na LATAM."
+            : "This plan uses MercadoPago as the primary card checkout in LATAM."
+        : locale === "es"
+          ? "Este plan usa LemonSqueezy como checkout principal para tarjetas en US/EU."
+          : locale === "pt"
+            ? "Este plano usa LemonSqueezy como checkout principal para cartoes em US/EU."
+            : "This plan uses LemonSqueezy as the primary card checkout in US/EU.";
 
   async function startProviderCheckout(
     planId: PaidPlanId,
@@ -1040,8 +1106,18 @@ export function PricingPageContent({
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3 xl:gap-8">
-          {plans.map((plan) => (
-            <article key={plan.id} className={cardClassName(plan.id)}>
+          {plans.map((plan) => {
+            const isSelected = selectedPlan.id === plan.id;
+
+            return (
+            <article
+              key={plan.id}
+              className={`${cardClassName(plan.id)} ${
+                isSelected
+                  ? "shadow-[0_24px_64px_rgba(0,0,0,0.38)] ring-2 ring-[#d49a61]/50"
+                  : "hover:-translate-y-1"
+              }`}
+            >
               {plan.id === "basic" || plan.id === "max" ? (
                 <div
                   className={`absolute -top-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-[10px] font-bold tracking-widest uppercase ${topBadgeClass(plan.id)}`}
@@ -1073,38 +1149,25 @@ export function PricingPageContent({
                 <p className="mt-4 text-sm leading-7 text-white/88">
                   {plan.bestFor}
                 </p>
-                <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-black/16 px-4 py-4">
-                  <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
-                    {locale === "en"
-                      ? "What changes"
-                      : locale === "es"
-                        ? "Lo que cambia"
-                        : "O que muda"}
-                  </p>
-                  <p className="mt-2 text-sm leading-7 text-white/92">
-                    {plan.outcomeSummary}
-                  </p>
-                  <ul className="mt-3 space-y-2 text-sm leading-7 text-[#c6d1e3]">
-                    {plan.outcomes.map((outcome) => (
-                      <li key={outcome} className="flex gap-3">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f4b722]" />
-                        <span>{outcome}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
               </div>
 
-              <ul className="mb-8 grow space-y-4 text-sm leading-8 text-[#d0d4dd]">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex gap-3">
-                    <Check className="mt-1 h-4 w-4 shrink-0 text-[#22c55e]" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
               <div className="mt-auto space-y-3">
+                <button
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    setSelectedPlanId(plan.id);
+                  }}
+                  className={`inline-flex min-h-11 w-full items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium transition ${
+                    isSelected
+                      ? "border-[#d49a61]/55 bg-[#2a1a12] text-[#ffd7ab]"
+                      : "border-white/10 bg-white/4 text-[#d0d4dd] hover:border-white/18 hover:bg-white/8"
+                  }`}
+                >
+                  {isSelected
+                    ? pricingPanelCopy.detailsActive
+                    : pricingPanelCopy.viewDetails}
+                </button>
                 {plan.id === "basic" ? (
                   <Link
                     href={plan.href}
@@ -1124,31 +1187,129 @@ export function PricingPageContent({
                       <CreditCard className="h-4 w-4" />
                       {plan.cta}
                     </button>
-                    <div className="rounded-[1rem] border border-white/10 bg-white/4 px-4 py-3 text-left">
-                      <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
-                        {locale === "en"
-                          ? "Manual fallback"
-                          : locale === "es"
-                            ? "Respaldo manual"
-                            : "Reserva manual"}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStatusMessage(undefined);
-                          setBinancePlanId(plan.id);
-                        }}
-                        className="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#f4b722] transition hover:text-[#ffd176]"
-                      >
-                        <Coins className="h-4 w-4" />
-                        {copy.binanceCta}
-                      </button>
-                    </div>
                   </>
                 )}
               </div>
             </article>
-          ))}
+            );
+          })}
+        </div>
+
+        <div className="mt-8 rounded-[2rem] border border-white/10 bg-[rgba(16,18,25,0.92)] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)] lg:p-8">
+          <div className="flex flex-col gap-5 border-b border-white/10 pb-6 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-[0.68rem] font-bold tracking-[0.28em] text-[#d49a61] uppercase">
+                {pricingPanelCopy.fullBreakdown}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <span
+                  className={`inline-flex rounded-full px-4 py-1 text-[10px] font-bold tracking-widest uppercase ${topBadgeClass(selectedPlan.id)}`}
+                >
+                  {selectedPlan.label}
+                </span>
+                <span className="text-4xl font-bold tracking-tight text-white">
+                  {selectedPlan.price === 0
+                    ? "$0"
+                    : `$${selectedPlan.price.toFixed(2)}`}
+                </span>
+                {selectedPlan.price > 0 ? (
+                  <span className="text-sm text-[#7d8598]">
+                    ({copy.priceSuffix})
+                  </span>
+                ) : null}
+                <span className="inline-flex rounded-full border border-[#d49a61]/35 bg-[#26170f] px-4 py-2 text-sm font-semibold text-[#ffd7ab] shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+                  {selectedPlan.uploadCapLabel}
+                </span>
+              </div>
+              <p className="mt-4 max-w-3xl text-base leading-8 text-[#c6d1e3]">
+                {selectedPlan.description}
+              </p>
+              <div className="mt-4 rounded-[1.35rem] border border-white/10 bg-black/16 px-4 py-4">
+                <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+                  {pricingPanelCopy.bestFit}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-white/92">
+                  {selectedPlan.bestFor}
+                </p>
+              </div>
+            </div>
+            <p className="max-w-sm text-sm leading-7 text-[#8f97ab]">
+              {pricingPanelCopy.compareHint}
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+            <div className="rounded-[1.5rem] border border-white/10 bg-black/18 px-5 py-5">
+              <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+                {pricingPanelCopy.whatChanges}
+              </p>
+              <p className="mt-2 text-sm leading-7 text-white/92">
+                {selectedPlan.outcomeSummary}
+              </p>
+              <ul className="mt-4 space-y-3 text-sm leading-7 text-[#c6d1e3]">
+                {selectedPlan.outcomes.map((outcome) => (
+                  <li key={outcome} className="flex gap-3">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f4b722]" />
+                    <span>{outcome}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="space-y-5">
+              <div className="rounded-[1.5rem] border border-white/10 bg-black/18 px-5 py-5">
+                <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+                  {pricingPanelCopy.included}
+                </p>
+                <ul className="mt-4 space-y-4 text-sm leading-8 text-[#d0d4dd]">
+                  {selectedPlan.features.map((feature) => (
+                    <li key={feature} className="flex gap-3">
+                      <Check className="mt-1 h-4 w-4 shrink-0 text-[#22c55e]" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {selectedPlan.id !== "basic" ? (
+                <div className="rounded-[1.5rem] border border-white/10 bg-black/18 px-5 py-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+                        {pricingPanelCopy.paymentRoute}
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-white/92">
+                        {primaryProviderDetail}
+                      </p>
+                    </div>
+                    <span className="inline-flex rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-semibold text-white/82">
+                      {primaryProviderLabel}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 rounded-[1.2rem] border border-white/10 bg-white/4 px-4 py-4">
+                    <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+                      {pricingPanelCopy.manualFallback}
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-[#c6d1e3]">
+                      {pricingPanelCopy.manualFallbackDetail}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStatusMessage(undefined);
+                        setBinancePlanId(selectedPlan.id);
+                      }}
+                      className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#f4b722] transition hover:text-[#ffd176]"
+                    >
+                      <Coins className="h-4 w-4" />
+                      {copy.binanceCta}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         {!user ? (

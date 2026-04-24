@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -111,16 +111,20 @@ describe("PricingPageContent", () => {
       originalMercadoPagoMaxPlanId;
   });
 
-  it("renders the three pricing plans and defaults to the global payment option in English", () => {
+  it("renders the three pricing plans and defaults to the global payment option in English", async () => {
+    const user = userEvent.setup();
+
     render(<PricingPageContent />);
 
     const basicHeading = screen.getByRole("heading", { name: /basic reader/i });
+    const focusHeading = screen.getByRole("heading", { name: /^focus$/i });
+    const maxHeading = screen.getByRole("heading", { name: /^max$/i });
+    const basicCard = basicHeading.closest("article");
+    const focusCard = focusHeading.closest("article");
 
     expect(basicHeading).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /^focus$/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^max$/i })).toBeInTheDocument();
+    expect(focusHeading).toBeInTheDocument();
+    expect(maxHeading).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /get focus/i }),
     ).toBeInTheDocument();
@@ -136,14 +140,47 @@ describe("PricingPageContent", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/prove the workflow on one device before you pay for continuity/i),
+      screen.getByText(
+        /support a heavier reading workflow when your backlog, private shelf, and follow-on work all grow together/i,
+      ),
+    ).toBeInTheDocument();
+
+    expect(basicCard).not.toBeNull();
+    expect(focusCard).not.toBeNull();
+
+    await user.click(
+      within(basicCard as HTMLElement).getByRole("button", {
+        name: /view full details/i,
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        /prove the workflow on one device before you pay for continuity/i,
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/keep your personal reading system intact when the same documents follow you to another device/i),
+      screen.queryByText(
+        /support a heavier reading workflow when your backlog, private shelf, and follow-on work all grow together/i,
+      ),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(focusCard as HTMLElement).getByRole("button", {
+        name: /view full details/i,
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        /keep your personal reading system intact when the same documents follow you to another device/i,
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/support a heavier reading workflow when your backlog, private shelf, and follow-on work all grow together/i),
-    ).toBeInTheDocument();
+      screen.queryByText(
+        /prove the workflow on one device before you pay for continuity/i,
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("opens a clean auth modal for guests before starting MercadoPago checkout", async () => {
