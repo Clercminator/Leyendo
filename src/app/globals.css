@@ -503,6 +503,11 @@
     --reader-paragraph-active-bg: rgba(255, 255, 255, 0.085);
     --reader-paragraph-active-border: rgba(255, 255, 255, 0.12);
     --reader-paragraph-active-shadow: rgba(8, 12, 28, 0.18);
+    --reader-markdown-emphasis: #dce4f2;
+    --reader-markdown-link: #9ec1ff;
+    --reader-markdown-link-underline: rgba(142, 181, 255, 0.72);
+    --reader-markdown-blockquote-border: rgba(142, 181, 255, 0.7);
+    --reader-markdown-blockquote-text: #b6c3da;
   }
 
   [data-reader-theme="ember"] {
@@ -530,6 +535,11 @@
     --reader-paragraph-active-bg: rgba(255, 179, 106, 0.08);
     --reader-paragraph-active-border: rgba(255, 179, 106, 0.12);
     --reader-paragraph-active-shadow: rgba(20, 8, 4, 0.18);
+    --reader-markdown-emphasis: #f5dcc5;
+    --reader-markdown-link: #ffc182;
+    --reader-markdown-link-underline: rgba(255, 179, 106, 0.72);
+    --reader-markdown-blockquote-border: rgba(255, 179, 106, 0.7);
+    --reader-markdown-blockquote-text: #f0cfb2;
   }
 
   [data-reader-theme="indigo"] {
@@ -553,6 +563,11 @@
     --reader-paragraph-active-bg: rgba(184, 192, 255, 0.07);
     --reader-paragraph-active-border: rgba(184, 192, 255, 0.11);
     --reader-paragraph-active-shadow: rgba(8, 12, 28, 0.18);
+    --reader-markdown-emphasis: #dde2fb;
+    --reader-markdown-link: #c7ceff;
+    --reader-markdown-link-underline: rgba(184, 192, 255, 0.72);
+    --reader-markdown-blockquote-border: rgba(184, 192, 255, 0.7);
+    --reader-markdown-blockquote-text: #ccd2e6;
   }
 
   [data-reader-theme="high-contrast"] {
@@ -580,6 +595,11 @@
     --reader-paragraph-active-bg: rgba(255, 255, 255, 0.1);
     --reader-paragraph-active-border: rgba(255, 255, 255, 0.16);
     --reader-paragraph-active-shadow: rgba(0, 0, 0, 0.22);
+    --reader-markdown-emphasis: #f3f4f6;
+    --reader-markdown-link: #ffffff;
+    --reader-markdown-link-underline: rgba(248, 250, 252, 0.72);
+    --reader-markdown-blockquote-border: rgba(248, 250, 252, 0.72);
+    --reader-markdown-blockquote-text: #e5e7eb;
   }
 
   [data-reader-font-scale="0.8"] {
@@ -787,18 +807,14 @@
   }
 
   .reader-markdown-preview em {
-    color: color-mix(in srgb, white 88%, var(--reader-muted));
+    color: var(--reader-markdown-emphasis);
     font-style: italic;
   }
 
   .reader-markdown-link {
-    color: color-mix(in srgb, var(--reader-accent) 88%, white 10%);
+    color: var(--reader-markdown-link);
     text-decoration: underline;
-    text-decoration-color: color-mix(
-      in srgb,
-      var(--reader-accent) 72%,
-      transparent
-    );
+    text-decoration-color: var(--reader-markdown-link-underline);
     text-underline-offset: 0.16em;
   }
 
@@ -869,9 +885,8 @@
   }
 
   .reader-markdown-preview blockquote {
-    border-left: 3px solid
-      color-mix(in srgb, var(--reader-accent) 70%, transparent);
-    color: color-mix(in srgb, var(--reader-muted) 88%, white 12%);
+    border-left: 3px solid var(--reader-markdown-blockquote-border);
+    color: var(--reader-markdown-blockquote-text);
     margin-left: 0;
     padding-left: 1rem;
   }
@@ -937,7 +952,7 @@
 
   .reader-mermaid-source summary {
     cursor: pointer;
-    color: color-mix(in srgb, var(--reader-accent) 88%, white 10%);
+    color: var(--reader-markdown-link);
     font-size: 0.95rem;
     text-decoration: underline;
     text-underline-offset: 0.15em;
@@ -948,7 +963,7 @@
   }
 
   .reader-mermaid-error {
-    color: color-mix(in srgb, var(--reader-muted) 88%, white 12%);
+    color: var(--reader-markdown-blockquote-text);
     font-size: 0.95rem;
     margin-top: 0.75rem;
   }

@@ -435,7 +435,13 @@ export function ClassicReaderView({
   const { locale } = useLocale();
   const activeParagraphRef = useRef<HTMLElement | null>(null);
   const [manualActiveMarkdownBlockIndex, setManualActiveMarkdownBlockIndex] =
-    useState<number>();
+    useState<{
+      paragraphIndex: number;
+      value: number | undefined;
+    }>({
+      paragraphIndex: chunk.paragraphIndex,
+      value: undefined,
+    });
   const activeIndexes = useMemo(() => new Set(chunk.tokenIndexes), [chunk]);
   const hasMarkdownPreviewSource = Boolean(
     documentModel.sourceKind === "markdown" && documentModel.rawText?.trim(),
@@ -517,7 +523,9 @@ export function ClassicReaderView({
     return -1;
   }, [chunk.paragraphIndex, markdownPreviewBlocks]);
   const effectiveActiveMarkdownBlockIndex =
-    manualActiveMarkdownBlockIndex ?? activeMarkdownBlockIndex;
+    (manualActiveMarkdownBlockIndex.paragraphIndex === chunk.paragraphIndex
+      ? manualActiveMarkdownBlockIndex.value
+      : undefined) ?? activeMarkdownBlockIndex;
   const renderedMarkdownWindow = useMemo(() => {
     if (!isSimplifiedMarkdownPreview) {
       return buildRenderedBlockWindow({
@@ -578,10 +586,6 @@ export function ClassicReaderView({
   }, [markdownPreviewBlocks]);
 
   useEffect(() => {
-    setManualActiveMarkdownBlockIndex(undefined);
-  }, [chunk.paragraphIndex]);
-
-  useEffect(() => {
     activeParagraphRef.current?.scrollIntoView({
       behavior: reduceMotion ? "auto" : "smooth",
       block: "nearest",
@@ -620,7 +624,10 @@ export function ClassicReaderView({
         markdownHeadingIndexes.get(targetId.toLowerCase());
 
       if (typeof targetMarkdownBlockIndex === "number") {
-        setManualActiveMarkdownBlockIndex(targetMarkdownBlockIndex);
+        setManualActiveMarkdownBlockIndex({
+          paragraphIndex: chunk.paragraphIndex,
+          value: targetMarkdownBlockIndex,
+        });
       }
 
       const targetTokenStart =
@@ -638,6 +645,7 @@ export function ClassicReaderView({
       });
     },
     [
+      chunk.paragraphIndex,
       handleJumpToToken,
       markdownHeadingIndexes,
       markdownHeadingTargets,

@@ -314,13 +314,102 @@ describe("AccountPanel", () => {
       screen.getByRole("button", { name: /show audience profile/i }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("button", { name: /show audience profile/i }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
       screen.getByRole("button", { name: /show saved-word dictionary/i }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("button", { name: /show saved-word dictionary/i }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
       screen.getByRole("button", { name: /show cloud activity/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /show cloud activity/i }),
+    ).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByLabelText(/country/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/uploaded from this device/i)).not.toBeInTheDocument();
+  });
+
+  it("updates expanded state on optional account sections", async () => {
+    const user = userEvent.setup();
+
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 1,
+        documents: 2,
+        highlights: 1,
+        sessions: 1,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: "2026-04-05T10:00:00.000Z",
+      lastSyncSummary: {
+        bookmarks: 3,
+        documents: 4,
+        finishedAt: "2026-04-05T10:00:00.000Z",
+        highlights: 2,
+        sessions: 5,
+        uploadedDocuments: 1,
+      },
+      profile: {
+        createdAt: "2026-03-30T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 4,
+        marketingConsent: false,
+        planTier: "focus",
+        savedWords: [
+          {
+            createdAt: "2026-04-01T10:00:00.000Z",
+            meaning: "pleasant surprise",
+            note: "from a paper",
+            word: "serendipity",
+          },
+        ],
+        updatedAt: "2026-04-05T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "synced",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<AccountPanel />);
+
+    const profileButton = screen.getByRole("button", {
+      name: /show audience profile/i,
+    });
+    const dictionaryButton = screen.getByRole("button", {
+      name: /show saved-word dictionary/i,
+    });
+    const cloudButton = screen.getByRole("button", {
+      name: /show cloud activity/i,
+    });
+
+    await user.click(profileButton);
+    expect(profileButton).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(dictionaryButton);
+    expect(dictionaryButton).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(cloudButton);
+    expect(cloudButton).toHaveAttribute("aria-expanded", "true");
   });
 
   it("shows an explicit subscription linked confirmation and billing status after a paid checkout returns", () => {

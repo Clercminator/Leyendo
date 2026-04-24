@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   Cloud,
@@ -388,6 +389,9 @@ export function AccountPanel({
   const [pendingAction, setPendingAction] = useState<string>();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const mercadoPagoConfirmationStartedRef = useRef(false);
+  const profileDetailsSectionId = useId();
+  const dictionarySectionId = useId();
+  const cloudActivitySectionId = useId();
 
   const guestDocuments = guestLibrarySummary.documents;
   const lastSyncedLabel = formatDate(lastSyncedAt);
@@ -1605,17 +1609,33 @@ export function AccountPanel({
                   {helperCopy.personalInfoIntro}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setProfileDetailsOpen((current) => !current);
-                }}
-                aria-expanded={profileDetailsOpen}
-                aria-label={`${profileDetailsOpen ? toggleOpenLabel : toggleClosedLabel} ${helperCopy.personalInfoTitle}`}
-                className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-              >
-                {profileDetailsOpen ? toggleOpenLabel : toggleClosedLabel}
-              </button>
+              {profileDetailsOpen ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileDetailsOpen((current) => !current);
+                  }}
+                  aria-controls={profileDetailsSectionId}
+                  aria-expanded="true"
+                  aria-label={`${toggleOpenLabel} ${helperCopy.personalInfoTitle}`}
+                  className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                >
+                  {toggleOpenLabel}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileDetailsOpen((current) => !current);
+                  }}
+                  aria-controls={profileDetailsSectionId}
+                  aria-expanded="false"
+                  aria-label={`${toggleClosedLabel} ${helperCopy.personalInfoTitle}`}
+                  className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                >
+                  {toggleClosedLabel}
+                </button>
+              )}
             </div>
 
             {!profileDetailsOpen ? (
@@ -1623,7 +1643,11 @@ export function AccountPanel({
                 {optionalSectionLabel}
               </p>
             ) : (
-              <>
+              <div
+                id={profileDetailsSectionId}
+                role="region"
+                aria-label={helperCopy.personalInfoTitle}
+              >
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
                 <span>{helperCopy.birthYearLabel}</span>
@@ -1735,18 +1759,18 @@ export function AccountPanel({
                 </span>
               </label>
             </div>
-              </>
+              </div>
             )}
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
             {!hasPaidAccountAccess ? (
-              <a
-                href="/pricing"
+              <Link
+                href={getLocalizedPublicPath("/pricing", locale)}
                 className="inline-flex h-11 items-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
               >
                 {helperCopy.accountUpgradeCta}
-              </a>
+              </Link>
             ) : null}
             <Button
               variant="ghost"
@@ -1824,21 +1848,41 @@ export function AccountPanel({
                       {dictionarySummary}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDictionarySectionOpen((current) => !current);
-                    }}
-                    aria-expanded={dictionarySectionOpen}
-                    aria-label={`${dictionarySectionOpen ? toggleOpenLabel : toggleClosedLabel} ${helperCopy.dictionaryTitle}`}
-                    className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    {dictionarySectionOpen ? toggleOpenLabel : toggleClosedLabel}
-                  </button>
+                  {dictionarySectionOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDictionarySectionOpen((current) => !current);
+                      }}
+                      aria-controls={dictionarySectionId}
+                      aria-expanded="true"
+                      aria-label={`${toggleOpenLabel} ${helperCopy.dictionaryTitle}`}
+                      className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      {toggleOpenLabel}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDictionarySectionOpen((current) => !current);
+                      }}
+                      aria-controls={dictionarySectionId}
+                      aria-expanded="false"
+                      aria-label={`${toggleClosedLabel} ${helperCopy.dictionaryTitle}`}
+                      className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      {toggleClosedLabel}
+                    </button>
+                  )}
                 </div>
 
                 {dictionarySectionOpen ? (
-                  <>
+                  <div
+                    id={dictionarySectionId}
+                    role="region"
+                    aria-label={helperCopy.dictionaryTitle}
+                  >
                 <p className="mt-3 text-sm leading-7 text-(--text-muted)">
                   {helperCopy.dictionaryIntro}
                 </p>
@@ -1950,7 +1994,7 @@ export function AccountPanel({
                     {helperCopy.dictionaryEmpty}
                   </p>
                 )}
-                  </>
+                  </div>
                 ) : null}
               </div>
 
@@ -1964,21 +2008,41 @@ export function AccountPanel({
                       {cloudActivitySummary}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCloudActivityOpen((current) => !current);
-                    }}
-                    aria-expanded={cloudActivityOpen}
-                    aria-label={`${cloudActivityOpen ? toggleOpenLabel : toggleClosedLabel} ${cloudActivityTitle}`}
-                    className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                  >
-                    {cloudActivityOpen ? toggleOpenLabel : toggleClosedLabel}
-                  </button>
+                  {cloudActivityOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCloudActivityOpen((current) => !current);
+                      }}
+                      aria-controls={cloudActivitySectionId}
+                      aria-expanded="true"
+                      aria-label={`${toggleOpenLabel} ${cloudActivityTitle}`}
+                      className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      {toggleOpenLabel}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCloudActivityOpen((current) => !current);
+                      }}
+                      aria-controls={cloudActivitySectionId}
+                      aria-expanded="false"
+                      aria-label={`${toggleClosedLabel} ${cloudActivityTitle}`}
+                      className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                    >
+                      {toggleClosedLabel}
+                    </button>
+                  )}
                 </div>
 
                 {cloudActivityOpen ? (
-                  <>
+                  <div
+                    id={cloudActivitySectionId}
+                    role="region"
+                    aria-label={cloudActivityTitle}
+                  >
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
                     {helperCopy.syncResultTitle}
@@ -2081,7 +2145,7 @@ export function AccountPanel({
                   </Button>
                 </div>
               ) : null}
-                  </>
+                  </div>
                 ) : null}
               </div>
             </>
@@ -2127,12 +2191,12 @@ export function AccountPanel({
                 </p>
               </div>
 
-              <a
-                href="/pricing"
+              <Link
+                href={getLocalizedPublicPath("/pricing", locale)}
                 className="mt-6 inline-flex h-11 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
               >
                 {helperCopy.accountUpgradeCta}
-              </a>
+              </Link>
             </>
           )}
 

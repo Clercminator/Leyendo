@@ -290,12 +290,17 @@ export function ReaderWorkspace({
   const [pdfPageJumpRequest, setPdfPageJumpRequest] = useState<
     { nonce: number; pageIndex: number } | undefined
   >();
-  const [statusMessage, setStatusMessage] = useState("");
-  const [textPresentationOverride, setTextPresentationOverride] = useState<
-    TextPresentation | undefined
-  >();
+  const [textPresentationOverride, setTextPresentationOverride] = useState<{
+    documentId: string | undefined;
+    value: TextPresentation | undefined;
+  }>({
+    documentId: undefined,
+    value: undefined,
+  });
   const hasHydratedSessionRef = useRef(false);
   const lastAnchorTokenRef = useRef<number | undefined>(undefined);
+  const liveStatusRegionRef = useRef<HTMLParagraphElement | null>(null);
+  const liveStatusTimeoutRef = useRef<number | undefined>(undefined);
   const {
     document,
     savedSession,
@@ -321,7 +326,11 @@ export function ReaderWorkspace({
     payload?.sourceKind === "markdown" && payload.rawText?.trim().length,
   );
   const textPresentation = canToggleTextPresentation
-    ? (textPresentationOverride ?? savedSession?.textPresentation ?? "clean")
+    ? ((textPresentationOverride.documentId === document?.id
+        ? textPresentationOverride.value
+        : undefined) ??
+        savedSession?.textPresentation ??
+        "clean")
     : undefined;
   const literalPayload = useMemo(() => {
     if (!payload || !canToggleTextPresentation) {
@@ -483,10 +492,6 @@ export function ReaderWorkspace({
     readerReady: Boolean(activePayload && (activeChunk || isPdfPageMode)),
     setPlaying,
   });
-
-  useEffect(() => {
-    setTextPresentationOverride(undefined);
-  }, [document?.id]);
 
   const getRuntimeChunksForPresentation = useCallback(
     (presentation: TextPresentation | undefined) => {
@@ -671,10 +676,33 @@ export function ReaderWorkspace({
   );
 
   const announce = useCallback((message: string) => {
-    setStatusMessage("");
-    window.setTimeout(() => {
-      setStatusMessage(message);
+    const liveRegion = liveStatusRegionRef.current;
+
+    if (!liveRegion || typeof window === "undefined") {
+      return;
+    }
+
+    liveRegion.textContent = "";
+
+    if (liveStatusTimeoutRef.current !== undefined) {
+      window.clearTimeout(liveStatusTimeoutRef.current);
+    }
+
+    liveStatusTimeoutRef.current = window.setTimeout(() => {
+      if (liveStatusRegionRef.current) {
+        liveStatusRegionRef.current.textContent = message;
+      }
+
+      liveStatusTimeoutRef.current = undefined;
     }, 0);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (liveStatusTimeoutRef.current !== undefined) {
+        window.clearTimeout(liveStatusTimeoutRef.current);
+      }
+    };
   }, []);
 
   const announceRemainingTime = useCallback(() => {
@@ -1046,7 +1074,10 @@ export function ReaderWorkspace({
         targetChunks,
       });
 
-      setTextPresentationOverride(nextPresentation);
+      setTextPresentationOverride({
+        documentId: document?.id,
+        value: nextPresentation,
+      });
       startTransition(() => {
         setChunkIndex(nextChunkIndex);
       });
@@ -1060,10 +1091,12 @@ export function ReaderWorkspace({
       activeChunk?.text,
       announce,
       canToggleTextPresentation,
+      document?.id,
       getRuntimeChunksForPresentation,
       resolvedChunkIndex,
       runtimeChunks,
       setChunkIndex,
+      setTextPresentationOverride,
       textPresentation,
     ],
   );
@@ -1510,14 +1543,26 @@ export function ReaderWorkspace({
     announce(isPlaying ? "Playback paused." : "Playback resumed.");
   }, [activeChunk, announce, isPdfPageMode, isPlaying, setPlaying]);
 
+  const lastAnnouncedAdPhaseRef = useRef<typeof readerAds.phase | undefined>(
+    undefined,
+  );
+
   useEffect(() => {
     if (!readerAds.shouldRender) {
+      lastAnnouncedAdPhaseRef.current = undefined;
       return;
     }
 
     if (readerAds.phase === "idle") {
+      lastAnnouncedAdPhaseRef.current = readerAds.phase;
       return;
     }
+
+    if (lastAnnouncedAdPhaseRef.current === readerAds.phase) {
+      return;
+    }
+
+    lastAnnouncedAdPhaseRef.current = readerAds.phase;
 
     if (readerAds.phase === "playing") {
       announce(
@@ -1691,9 +1736,12 @@ export function ReaderWorkspace({
       </div>
       {mobileSidebarSection}
       <div className="fade-rise-delayed relative z-20">
-        <p className="sr-only" role="status" aria-live="polite">
-          {statusMessage}
-        </p>
+        <p
+          ref={liveStatusRegionRef}
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+        />
 
         {isPdfPageMode ? (
           <PdfReaderWorkspace

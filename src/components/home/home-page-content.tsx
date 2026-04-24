@@ -251,10 +251,10 @@ export function HomePageContent() {
             <p className="editorial-kicker text-(--accent-amber)">
               {getLocalizedCopy(locale, firstSessionProofEyebrow)}
             </p>
-            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-(--text-strong) lg:text-[3rem] lg:text-justify">
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-balance text-(--text-strong) lg:text-[3rem]">
               {getLocalizedCopy(locale, firstSessionProofTitle)}
             </h2>
-            <p className="mt-4 text-base leading-8 text-(--text-muted) lg:text-justify">
+            <p className="mt-4 text-base leading-8 text-(--text-muted)">
               {getLocalizedCopy(locale, firstSessionProofDescription)}
             </p>
           </div>
@@ -292,7 +292,7 @@ export function HomePageContent() {
             <p className="editorial-kicker text-(--accent-sky)">
               {getLocalizedCopy(locale, modesEyebrow)}
             </p>
-            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-(--text-strong) lg:text-[3rem] lg:text-justify">
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-balance text-(--text-strong) lg:text-[3rem]">
               {getLocalizedCopy(locale, modesTitle)}
             </h2>
           </div>
@@ -333,10 +333,10 @@ export function HomePageContent() {
             <p className="editorial-kicker text-(--accent-sky)">
               {getLocalizedCopy(locale, guidesEyebrow)}
             </p>
-            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-(--text-strong) lg:text-[3rem] lg:text-justify">
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-balance text-(--text-strong) lg:text-[3rem]">
               {getLocalizedCopy(locale, guidesTitle)}
             </h2>
-            <p className="mt-4 text-base leading-8 text-(--text-muted) lg:text-justify">
+            <p className="mt-4 text-base leading-8 text-(--text-muted)">
               {getLocalizedCopy(locale, guidesDescription)}
             </p>
           </div>

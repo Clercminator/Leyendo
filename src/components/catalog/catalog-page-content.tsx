@@ -72,9 +72,13 @@ function formatCountLabel(count: number, singular: string, plural: string) {
 export function CatalogPageContent() {
   const { locale } = useLocale();
   const { isConfigured, profile, user } = useSupabaseAuth();
-  const [books, setBooks] = useState<CatalogBook[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string>();
+  const [catalogState, setCatalogState] = useState<{
+    books: CatalogBook[];
+    errorMessage?: string;
+    requestKey?: string;
+  }>({
+    books: [],
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<
     CatalogCategoryKey | "all"
@@ -84,6 +88,8 @@ export function CatalogPageContent() {
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const canAccessCatalog = hasPlanAccess(profile, "max");
+  const catalogRequestKey =
+    isConfigured && canAccessCatalog && user ? user.id : undefined;
 
   const copy = useMemo<CatalogCopy>(() => {
     if (locale === "es") {
@@ -235,9 +241,7 @@ export function CatalogPageContent() {
   }, [locale]);
 
   useEffect(() => {
-    if (!isConfigured || !user || !canAccessCatalog) {
-      setBooks([]);
-      setIsLoading(false);
+    if (!catalogRequestKey) {
       return;
     }
 
@@ -247,32 +251,41 @@ export function CatalogPageContent() {
     }
 
     let cancelled = false;
-    setIsLoading(true);
-    setErrorMessage(undefined);
 
     void listCatalogBooks(supabase)
       .then((catalogBooks) => {
         if (!cancelled) {
-          setBooks(catalogBooks);
+          setCatalogState({
+            books: catalogBooks,
+            requestKey: catalogRequestKey,
+          });
         }
       })
       .catch((error) => {
         if (!cancelled) {
-          setErrorMessage(
-            error instanceof Error ? error.message : copy.loadError,
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
+          setCatalogState({
+            books: [],
+            errorMessage:
+              error instanceof Error ? error.message : copy.loadError,
+            requestKey: catalogRequestKey,
+          });
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [canAccessCatalog, copy.loadError, isConfigured, user]);
+  }, [catalogRequestKey, copy.loadError]);
+
+  const books =
+    catalogState.requestKey === catalogRequestKey ? catalogState.books : [];
+  const errorMessage =
+    catalogState.requestKey === catalogRequestKey
+      ? catalogState.errorMessage
+      : undefined;
+  const isLoading = Boolean(
+    catalogRequestKey && catalogState.requestKey !== catalogRequestKey,
+  );
 
   const catalogEntries = useMemo(
     () =>

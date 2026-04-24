@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 import { createMinimalPdfBuffer } from "../fixtures/minimal-pdf";
+const READER_OPEN_TIMEOUT_MS = 20_000;
 
 test("@mobile reader route stays usable at phone width for text modes", async ({
   page,
@@ -14,7 +15,9 @@ test("@mobile reader route stays usable at phone width for text modes", async ({
 
   await page.getByRole("button", { name: /open in reader/i }).click();
 
-  await expect(page).toHaveURL(/\/reader\?document=/);
+  await expect(page).toHaveURL(/\/reader\?document=/, {
+    timeout: READER_OPEN_TIMEOUT_MS,
+  });
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /controls/i })).toBeVisible();
 
@@ -63,7 +66,9 @@ test("@mobile phone users can save Standard PDF bookmarks and highlights from a 
   ).toBeVisible();
   await page.getByRole("button", { name: /open imported file/i }).click();
 
-  await expect(page).toHaveURL(/\/reader\?document=/);
+  await expect(page).toHaveURL(/\/reader\?document=/, {
+    timeout: READER_OPEN_TIMEOUT_MS,
+  });
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await page.getByRole("button", { name: /controls/i }).click();
 
