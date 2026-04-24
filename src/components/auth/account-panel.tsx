@@ -381,6 +381,9 @@ export function AccountPanel({
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string>();
   const [avatarRenderFailed, setAvatarRenderFailed] = useState(false);
   const [removeStoredAvatar, setRemoveStoredAvatar] = useState(false);
+  const [profileDetailsOpen, setProfileDetailsOpen] = useState(false);
+  const [dictionarySectionOpen, setDictionarySectionOpen] = useState(false);
+  const [cloudActivityOpen, setCloudActivityOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>();
   const [pendingAction, setPendingAction] = useState<string>();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -978,6 +981,37 @@ export function AccountPanel({
         : syncStatus === "error"
           ? helperCopy.syncError
           : helperCopy.syncIdle;
+  const toggleClosedLabel =
+    locale === "en" ? "Show" : locale === "es" ? "Ver" : "Ver";
+  const toggleOpenLabel =
+    locale === "en" ? "Hide" : locale === "es" ? "Ocultar" : "Ocultar";
+  const optionalSectionLabel =
+    locale === "en"
+      ? "Optional details"
+      : locale === "es"
+        ? "Detalles opcionales"
+        : "Detalhes opcionais";
+  const cloudActivityTitle =
+    locale === "en"
+      ? "Cloud activity"
+      : locale === "es"
+        ? "Actividad en la nube"
+        : "Atividade na nuvem";
+  const dictionarySummary =
+    savedWords.length > 0
+      ? locale === "en"
+        ? `${savedWords.length} saved word${savedWords.length === 1 ? "" : "s"}`
+        : locale === "es"
+          ? `${savedWords.length} palabra${savedWords.length === 1 ? "" : "s"} guardada${savedWords.length === 1 ? "" : "s"}`
+          : `${savedWords.length} palavra${savedWords.length === 1 ? "" : "s"} salva${savedWords.length === 1 ? "" : "s"}`
+      : helperCopy.dictionaryEmpty;
+  const cloudActivitySummary = lastSyncSummary
+    ? locale === "en"
+      ? `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sessions · ${lastSyncResultLabel ?? "recent sync"}`
+      : locale === "es"
+        ? `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sesiones · ${lastSyncResultLabel ?? "sincronizacion reciente"}`
+        : `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sessoes · ${lastSyncResultLabel ?? "sincronizacao recente"}`
+    : syncCopy;
 
   useEffect(() => {
     mercadoPagoConfirmationStartedRef.current = false;
@@ -1351,7 +1385,7 @@ export function AccountPanel({
 
   if (user) {
     return (
-      <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
           {showSubscriptionLinkedNotice ? (
             <div className="mb-6 rounded-[1.75rem] border border-emerald-400/30 bg-emerald-500/10 px-5 py-4">
@@ -1520,7 +1554,8 @@ export function AccountPanel({
             </div>
           ) : null}
 
-          <div className="mt-8 grid gap-3">
+          <div className="mt-8 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) p-5">
+            <div className="grid gap-3">
             <label
               className="text-sm font-medium text-(--text-strong)"
               htmlFor="profile-display-name"
@@ -1557,16 +1592,38 @@ export function AccountPanel({
                 {helperCopy.profileSaveLabel}
               </Button>
             </div>
+            </div>
           </div>
 
           <div className="mt-8 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) p-5">
-            <p className="editorial-kicker text-(--accent-amber)">
-              {helperCopy.personalInfoTitle}
-            </p>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-(--text-muted)">
-              {helperCopy.personalInfoIntro}
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-3xl">
+                <p className="editorial-kicker text-(--accent-amber)">
+                  {helperCopy.personalInfoTitle}
+                </p>
+                <p className="mt-4 text-sm leading-7 text-(--text-muted)">
+                  {helperCopy.personalInfoIntro}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileDetailsOpen((current) => !current);
+                }}
+                aria-expanded={profileDetailsOpen}
+                aria-label={`${profileDetailsOpen ? toggleOpenLabel : toggleClosedLabel} ${helperCopy.personalInfoTitle}`}
+                className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                {profileDetailsOpen ? toggleOpenLabel : toggleClosedLabel}
+              </button>
+            </div>
 
+            {!profileDetailsOpen ? (
+              <p className="mt-4 text-sm leading-7 text-(--text-muted)">
+                {optionalSectionLabel}
+              </p>
+            ) : (
+              <>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
                 <span>{helperCopy.birthYearLabel}</span>
@@ -1678,51 +1735,19 @@ export function AccountPanel({
                 </span>
               </label>
             </div>
+              </>
+            )}
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            {hasPaidAccountAccess ? (
-              <>
-                <Button
-                  className="h-11 rounded-full px-5"
-                  disabled={
-                    pendingAction === "sync" || syncStatus === "syncing"
-                  }
-                  onClick={() => {
-                    void handleRefreshSync();
-                  }}
-                >
-                  {pendingAction === "sync" || syncStatus === "syncing" ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Cloud className="h-4 w-4" />
-                  )}
-                  {helperCopy.refreshSync}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-11 rounded-full px-5"
-                  disabled={pendingAction === "backup" || guestDocuments === 0}
-                  onClick={() => {
-                    void handleBackup();
-                  }}
-                >
-                  {pendingAction === "backup" ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CloudUpload className="h-4 w-4" />
-                  )}
-                  {helperCopy.backupAction}
-                </Button>
-              </>
-            ) : (
+            {!hasPaidAccountAccess ? (
               <a
                 href="/pricing"
                 className="inline-flex h-11 items-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
               >
                 {helperCopy.accountUpgradeCta}
               </a>
-            )}
+            ) : null}
             <Button
               variant="ghost"
               className="h-11 rounded-full px-5"
@@ -1742,15 +1767,34 @@ export function AccountPanel({
         <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
           {hasPaidAccountAccess ? (
             <>
-              <p className="editorial-kicker text-(--accent-amber)">
-                {helperCopy.deviceBackup}
-              </p>
-              <h2 className="font-heading mt-4 text-3xl font-semibold text-(--text-strong)">
-                {helperCopy.syncedLibraryTitle}
-              </h2>
-              <p className="mt-4 text-base leading-8 text-(--text-muted)">
-                {helperCopy.accountSync}
-              </p>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="max-w-3xl">
+                  <p className="editorial-kicker text-(--accent-amber)">
+                    {helperCopy.deviceBackup}
+                  </p>
+                  <h2 className="font-heading mt-4 text-3xl font-semibold text-(--text-strong)">
+                    {helperCopy.syncedLibraryTitle}
+                  </h2>
+                  <p className="mt-4 text-base leading-8 text-(--text-muted)">
+                    {helperCopy.accountSync}
+                  </p>
+                </div>
+
+                <Button
+                  className="h-11 rounded-full px-5"
+                  disabled={pendingAction === "sync" || syncStatus === "syncing"}
+                  onClick={() => {
+                    void handleRefreshSync();
+                  }}
+                >
+                  {pendingAction === "sync" || syncStatus === "syncing" ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Cloud className="h-4 w-4" />
+                  )}
+                  {helperCopy.refreshSync}
+                </Button>
+              </div>
 
               <ul className="mt-6 space-y-3 text-sm leading-7 text-(--text-muted)">
                 {helperCopy.syncChecklist.map((item) => (
@@ -1771,14 +1815,30 @@ export function AccountPanel({
               </div>
 
               <div className="mt-4 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                    {helperCopy.dictionaryTitle}
-                  </p>
-                  <p className="text-xs text-(--text-muted)">
-                    {savedWords.length}
-                  </p>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="max-w-3xl">
+                    <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                      {helperCopy.dictionaryTitle}
+                    </p>
+                    <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+                      {dictionarySummary}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDictionarySectionOpen((current) => !current);
+                    }}
+                    aria-expanded={dictionarySectionOpen}
+                    aria-label={`${dictionarySectionOpen ? toggleOpenLabel : toggleClosedLabel} ${helperCopy.dictionaryTitle}`}
+                    className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  >
+                    {dictionarySectionOpen ? toggleOpenLabel : toggleClosedLabel}
+                  </button>
                 </div>
+
+                {dictionarySectionOpen ? (
+                  <>
                 <p className="mt-3 text-sm leading-7 text-(--text-muted)">
                   {helperCopy.dictionaryIntro}
                 </p>
@@ -1890,10 +1950,36 @@ export function AccountPanel({
                     {helperCopy.dictionaryEmpty}
                   </p>
                 )}
+                  </>
+                ) : null}
               </div>
 
               <div className="mt-4 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="max-w-3xl">
+                    <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
+                      {cloudActivityTitle}
+                    </p>
+                    <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+                      {cloudActivitySummary}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCloudActivityOpen((current) => !current);
+                    }}
+                    aria-expanded={cloudActivityOpen}
+                    aria-label={`${cloudActivityOpen ? toggleOpenLabel : toggleClosedLabel} ${cloudActivityTitle}`}
+                    className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  >
+                    {cloudActivityOpen ? toggleOpenLabel : toggleClosedLabel}
+                  </button>
+                </div>
+
+                {cloudActivityOpen ? (
+                  <>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
                     {helperCopy.syncResultTitle}
                   </p>
@@ -1944,8 +2030,6 @@ export function AccountPanel({
                     {helperCopy.syncResultEmpty}
                   </p>
                 )}
-              </div>
-
               <div className="mt-4 grid gap-4 sm:grid-cols-3">
                 <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
                   <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
@@ -1976,6 +2060,29 @@ export function AccountPanel({
                     {lastSyncedLabel ?? "-"}
                   </p>
                 </div>
+              </div>
+
+              {guestDocuments > 0 ? (
+                <div className="mt-4 flex justify-start">
+                  <Button
+                    variant="outline"
+                    className="h-11 rounded-full px-5"
+                    disabled={pendingAction === "backup"}
+                    onClick={() => {
+                      void handleBackup();
+                    }}
+                  >
+                    {pendingAction === "backup" ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CloudUpload className="h-4 w-4" />
+                    )}
+                    {helperCopy.backupAction}
+                  </Button>
+                </div>
+              ) : null}
+                  </>
+                ) : null}
               </div>
             </>
           ) : (

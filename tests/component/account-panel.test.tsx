@@ -92,6 +92,10 @@ describe("AccountPanel", () => {
 
     render(<AccountPanel />);
 
+    await user.click(
+      screen.getByRole("button", { name: /show audience profile/i }),
+    );
+
     fireEvent.change(screen.getByLabelText(/display name/i), {
       target: { value: "Lee Reader" },
     });
@@ -182,6 +186,10 @@ describe("AccountPanel", () => {
 
     render(<AccountPanel />);
 
+    await user.click(
+      screen.getByRole("button", { name: /show cloud activity/i }),
+    );
+
     expect(screen.getByText(/last sync result/i)).toBeInTheDocument();
     expect(screen.getByText(/uploaded from this device/i)).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
@@ -242,6 +250,77 @@ describe("AccountPanel", () => {
         /bookmarks and highlights return without uploading the same file again/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("keeps optional profile, dictionary, and cloud details collapsed by default", () => {
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 1,
+        documents: 2,
+        highlights: 1,
+        sessions: 1,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: "2026-04-05T10:00:00.000Z",
+      lastSyncSummary: {
+        bookmarks: 3,
+        documents: 4,
+        finishedAt: "2026-04-05T10:00:00.000Z",
+        highlights: 2,
+        sessions: 5,
+        uploadedDocuments: 1,
+      },
+      profile: {
+        createdAt: "2026-03-30T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 4,
+        marketingConsent: false,
+        planTier: "focus",
+        savedWords: [
+          {
+            createdAt: "2026-04-01T10:00:00.000Z",
+            meaning: "pleasant surprise",
+            note: "from a paper",
+            word: "serendipity",
+          },
+        ],
+        updatedAt: "2026-04-05T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "synced",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<AccountPanel />);
+
+    expect(
+      screen.getByRole("button", { name: /show audience profile/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /show saved-word dictionary/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /show cloud activity/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/country/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/uploaded from this device/i)).not.toBeInTheDocument();
   });
 
   it("shows an explicit subscription linked confirmation and billing status after a paid checkout returns", () => {
@@ -672,6 +751,10 @@ describe("AccountPanel", () => {
 
     render(<AccountPanel />);
 
+    await user.click(
+      screen.getByRole("button", { name: /show saved-word dictionary/i }),
+    );
+
     await user.type(screen.getByLabelText(/^word$/i), "serendipity");
     await user.type(
       screen.getByLabelText(/^meaning$/i),
@@ -753,6 +836,10 @@ describe("AccountPanel", () => {
     });
 
     render(<AccountPanel />);
+
+    await user.click(
+      screen.getByRole("button", { name: /show saved-word dictionary/i }),
+    );
 
     await user.click(screen.getByRole("button", { name: /remove/i }));
 

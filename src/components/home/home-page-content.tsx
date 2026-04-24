@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { ArrowRight, FileStack, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, FileStack } from "lucide-react";
 
 import { useLocale } from "@/components/layout/locale-provider";
 import { AppShell } from "@/components/layout/app-shell";
@@ -14,75 +14,6 @@ import { getFeaturedGuidesForLocale } from "@/lib/guides";
 import { getLocalizedCopy } from "@/lib/locale";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
 import { absoluteUrl, siteDescription, siteName, siteUrl } from "@/lib/site";
-
-const heroBadge = {
-  en: "Paste or upload. Read with control.",
-  es: "Pega o sube. Lee con control.",
-  pt: "Cole ou envie. Leia com controle.",
-};
-
-const heroTitle = {
-  en: "Read dense documents with calmer control and less friction.",
-  es: "Lee documentos densos con mas control sereno y menos friccion.",
-  pt: "Leia documentos densos com mais controle calmo e menos friccao.",
-};
-
-const heroDescription = {
-  en: "Import the article, chapter, report, or PDF that is slowing you down, then move between guided, phrase, classic, and focus views without losing your place, notes, or recovery path.",
-  es: "Importa el articulo, capitulo, informe o PDF que te esta frenando y cambia entre vistas guiadas, por frases, clasicas y de foco sin perder tu lugar, tus notas ni tu capacidad de retomar.",
-  pt: "Importe o artigo, capitulo, relatorio ou PDF que esta travando seu ritmo e alterne entre vistas guiadas, por frases, classicas e de foco sem perder seu lugar, suas notas nem a retomada.",
-};
-
-const quickStartTitle = {
-  en: "What Leyendo changes after import",
-  es: "Lo que Leyendo cambia despues de importar",
-  pt: "O que o Leyendo muda depois da importacao",
-};
-
-const quickStartItems = {
-  en: [
-    "Open the same document in a reader built for pace, chunking, and recovery",
-    "Move between faster modes and full-context reading without restarting your mental map",
-    "Return later from the library with progress, bookmarks, and highlights still attached",
-    "Keep everything local by default, then add sync only when you want it",
-  ],
-  es: [
-    "Abre el mismo documento en un lector pensado para ritmo, bloques y recuperacion",
-    "Muevete entre modos rapidos y lectura con contexto completo sin reiniciar tu mapa mental",
-    "Vuelve despues desde la biblioteca con progreso, marcadores y destacados todavia unidos al documento",
-    "Todo se queda local por defecto y solo agregas sincronizacion cuando la necesitas",
-  ],
-  pt: [
-    "Abra o mesmo documento em um leitor feito para ritmo, blocos e retomada",
-    "Alterne entre modos mais rapidos e leitura com contexto total sem reiniciar seu mapa mental",
-    "Volte depois pela biblioteca com progresso, marcadores e destaques ainda ligados ao documento",
-    "Tudo fica local por padrao e a sincronizacao entra so quando fizer sentido",
-  ],
-};
-
-const workflowLabel = {
-  en: "Three-step flow",
-  es: "Flujo en tres pasos",
-  pt: "Fluxo em tres etapas",
-};
-
-const workflowSteps = {
-  en: [
-    ["1", "Paste text or upload a file"],
-    ["2", "Choose the pace you need right now"],
-    ["3", "Open the reader and keep context when you switch modes"],
-  ],
-  es: [
-    ["1", "Pega texto o sube un archivo"],
-    ["2", "Elige el ritmo que necesitas ahora"],
-    ["3", "Abre el lector y conserva el contexto al cambiar de modo"],
-  ],
-  pt: [
-    ["1", "Cole texto ou envie um arquivo"],
-    ["2", "Escolha o ritmo que voce precisa agora"],
-    ["3", "Abra o leitor e mantenha o contexto ao trocar de modo"],
-  ],
-};
 
 const modesEyebrow = {
   en: "Reading modes",
@@ -245,18 +176,6 @@ const browseGuidesLabel = {
   pt: "Ver todas as guias",
 };
 
-const importDocumentLabel = {
-  en: "Import a document",
-  es: "Importar documento",
-  pt: "Importar documento",
-};
-
-const openLibraryLabel = {
-  en: "Open library",
-  es: "Abrir biblioteca",
-  pt: "Abrir biblioteca",
-};
-
 export function HomePageContent() {
   const { locale } = useLocale();
   const featuredGuides = getFeaturedGuidesForLocale(locale);
@@ -327,85 +246,15 @@ export function HomePageContent() {
 
         <LandingReaderDemo />
 
-        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="editorial-panel hover-lift fade-rise relative overflow-hidden rounded-[2rem] border border-(--border-soft) bg-(--surface-strong) p-8 shadow-[0_28px_120px_rgba(20,26,56,0.16)]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,rgba(95,119,215,0.22),transparent_68%)] dark:bg-[radial-gradient(circle_at_top,rgba(91,111,255,0.18),transparent_68%)]" />
-            <div className="relative inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-muted)">
-              <Sparkles className="h-4 w-4 text-(--accent-amber)" />
-              {getLocalizedCopy(locale, heroBadge)}
-            </div>
-
-            <h2 className="font-heading relative mt-8 max-w-3xl text-4xl leading-[0.96] font-semibold tracking-[-0.04em] text-balance text-(--text-strong) sm:text-5xl xl:text-6xl">
-              {getLocalizedCopy(locale, heroTitle)}
-            </h2>
-
-            <p className="relative mt-6 max-w-2xl text-base leading-8 text-(--text-muted) sm:text-lg">
-              {getLocalizedCopy(locale, heroDescription)}
-            </p>
-
-            <div className="editorial-rule relative mt-8" />
-
-            <div className="relative mt-8 flex flex-wrap gap-3">
-              <Link
-                href="#upload-panel"
-                className="group inline-flex min-h-16 items-center gap-3 rounded-[1.35rem] bg-[linear-gradient(135deg,var(--accent-sky),color-mix(in_srgb,var(--accent-sky)_72%,var(--accent-amber)))] px-7 py-4 text-base font-semibold text-white shadow-[0_22px_50px_rgba(95,119,215,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_rgba(95,119,215,0.34)]"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/16">
-                  <ArrowRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
-                </span>
-                {getLocalizedCopy(locale, importDocumentLabel)}
-              </Link>
-              <Link
-                href="/library"
-                className="inline-flex min-h-16 items-center gap-2 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-6 py-4 text-base text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-              >
-                <FileStack className="h-4 w-4 text-(--accent-sky)" />
-                {getLocalizedCopy(locale, openLibraryLabel)}
-              </Link>
-            </div>
-          </div>
-
-          <div className="editorial-panel hover-lift fade-rise-delayed rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_70px_rgba(20,26,56,0.1)] backdrop-blur-xl">
-            <p className="editorial-kicker text-(--accent-sky)">
-              {getLocalizedCopy(locale, workflowLabel)}
-            </p>
-            <h2 className="font-heading mt-5 text-3xl leading-tight font-semibold text-(--text-strong)">
-              {getLocalizedCopy(locale, quickStartTitle)}
-            </h2>
-            <ul className="mt-6 space-y-4 text-sm leading-7 text-(--text-muted)">
-              {workflowSteps[locale].map(([step, text]) => (
-                <li
-                  key={step}
-                  className="flex items-start gap-4 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-4"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-(--surface-chip) text-sm font-semibold text-(--text-strong)">
-                    {step}
-                  </span>
-                  <span className="pt-1 text-(--text-strong)">{text}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="editorial-rule mt-7" />
-            <ul className="mt-7 space-y-4 text-sm leading-7 text-(--text-muted)">
-              {quickStartItems[locale].map((item) => (
-                <li key={item} className="flex gap-3">
-                  <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-(--accent-amber)" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
         <section className="fade-rise-delayed space-y-5">
-          <div className="max-w-3xl">
+          <div className="w-full">
             <p className="editorial-kicker text-(--accent-amber)">
               {getLocalizedCopy(locale, firstSessionProofEyebrow)}
             </p>
-            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-(--text-strong)">
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-(--text-strong) lg:text-[3rem] lg:text-justify">
               {getLocalizedCopy(locale, firstSessionProofTitle)}
             </h2>
-            <p className="mt-4 text-base leading-8 text-(--text-muted)">
+            <p className="mt-4 text-base leading-8 text-(--text-muted) lg:text-justify">
               {getLocalizedCopy(locale, firstSessionProofDescription)}
             </p>
           </div>
@@ -439,11 +288,11 @@ export function HomePageContent() {
         </section>
 
         <section className="fade-rise-delayed space-y-5">
-          <div className="max-w-2xl">
+          <div className="w-full">
             <p className="editorial-kicker text-(--accent-sky)">
               {getLocalizedCopy(locale, modesEyebrow)}
             </p>
-            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-(--text-strong)">
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-(--text-strong) lg:text-[3rem] lg:text-justify">
               {getLocalizedCopy(locale, modesTitle)}
             </h2>
           </div>
@@ -480,14 +329,14 @@ export function HomePageContent() {
         </section>
 
         <section className="fade-rise-delayed space-y-5">
-          <div className="max-w-3xl">
+          <div className="w-full">
             <p className="editorial-kicker text-(--accent-sky)">
               {getLocalizedCopy(locale, guidesEyebrow)}
             </p>
-            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-(--text-strong)">
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-(--text-strong) lg:text-[3rem] lg:text-justify">
               {getLocalizedCopy(locale, guidesTitle)}
             </h2>
-            <p className="mt-4 text-base leading-8 text-(--text-muted)">
+            <p className="mt-4 text-base leading-8 text-(--text-muted) lg:text-justify">
               {getLocalizedCopy(locale, guidesDescription)}
             </p>
           </div>
