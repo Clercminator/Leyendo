@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
+import {
+  putBookmark,
+  putHighlight,
+  savePendingCloudDelete,
+} from "@/db/repositories";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
-  deleteCloudBookmarks,
-  deleteCloudHighlights,
+  flushPendingCloudDeletes,
   upsertCloudBookmarks,
   upsertCloudHighlights,
 } from "@/lib/supabase/library-sync";
@@ -20,8 +24,6 @@ interface UseCloudAnchorSyncOptions {
 export function useCloudAnchorSync({ userId }: UseCloudAnchorSyncOptions) {
   const pendingBookmarkUpsertsRef = useRef<Map<string, Bookmark>>(new Map());
   const pendingHighlightUpsertsRef = useRef<Map<string, Highlight>>(new Map());
-  const pendingBookmarkDeletesRef = useRef<Set<string>>(new Set());
-  const pendingHighlightDeletesRef = useRef<Set<string>>(new Set());
   const flushTimeoutRef = useRef<number | undefined>(undefined);
   const isFlushingRef = useRef(false);
 
@@ -57,32 +59,58 @@ export function useCloudAnchorSync({ userId }: UseCloudAnchorSyncOptions) {
     const highlightUpserts = Array.from(
       pendingHighlightUpsertsRef.current.values(),
     );
-    const bookmarkDeletes = Array.from(pendingBookmarkDeletesRef.current);
-    const highlightDeletes = Array.from(pendingHighlightDeletesRef.current);
 
-    if (
-      bookmarkUpserts.length === 0 &&
-      highlightUpserts.length === 0 &&
-      bookmarkDeletes.length === 0 &&
-      highlightDeletes.length === 0
-    ) {
+    if (bookmarkUpserts.length === 0 && highlightUpserts.length === 0) {
+      isFlushingRef.current = true;
+      let shouldRetryDeletes = false;
+
+      try {
+        await flushPendingCloudDeletes(supabase, userId);
+      } catch (error) {
+        shouldRetryDeletes = true;
+        console.warn("cloud anchor sync failed", error);
+      } finally {
+        isFlushingRef.current = false;
+
+        if (shouldRetryDeletes) {
+          scheduleFlush();
+        }
+      }
+
       return;
     }
 
     pendingBookmarkUpsertsRef.current.clear();
     pendingHighlightUpsertsRef.current.clear();
-    pendingBookmarkDeletesRef.current.clear();
-    pendingHighlightDeletesRef.current.clear();
     isFlushingRef.current = true;
+    let shouldRetry = false;
 
     try {
       await Promise.all([
         upsertCloudBookmarks(supabase, userId, bookmarkUpserts),
         upsertCloudHighlights(supabase, userId, highlightUpserts),
-        deleteCloudBookmarks(supabase, userId, bookmarkDeletes),
-        deleteCloudHighlights(supabase, userId, highlightDeletes),
       ]);
+
+      await Promise.all([
+        ...bookmarkUpserts.map((bookmark) =>
+          putBookmark({
+            ...bookmark,
+            ownerId: bookmark.ownerId ?? userId,
+            syncState: "synced",
+          }),
+        ),
+        ...highlightUpserts.map((highlight) =>
+          putHighlight({
+            ...highlight,
+            ownerId: highlight.ownerId ?? userId,
+            syncState: "synced",
+          }),
+        ),
+      ]);
+
+      await flushPendingCloudDeletes(supabase, userId);
     } catch (error) {
+      shouldRetry = true;
       console.warn("cloud anchor sync failed", error);
 
       bookmarkUpserts.forEach((bookmark) => {
@@ -91,20 +119,13 @@ export function useCloudAnchorSync({ userId }: UseCloudAnchorSyncOptions) {
       highlightUpserts.forEach((highlight) => {
         pendingHighlightUpsertsRef.current.set(highlight.id, highlight);
       });
-      bookmarkDeletes.forEach((bookmarkId) => {
-        pendingBookmarkDeletesRef.current.add(bookmarkId);
-      });
-      highlightDeletes.forEach((highlightId) => {
-        pendingHighlightDeletesRef.current.add(highlightId);
-      });
     } finally {
       isFlushingRef.current = false;
 
       if (
         pendingBookmarkUpsertsRef.current.size > 0 ||
         pendingHighlightUpsertsRef.current.size > 0 ||
-        pendingBookmarkDeletesRef.current.size > 0 ||
-        pendingHighlightDeletesRef.current.size > 0
+        shouldRetry
       ) {
         scheduleFlush();
       }
@@ -117,7 +138,6 @@ export function useCloudAnchorSync({ userId }: UseCloudAnchorSyncOptions) {
         return;
       }
 
-      pendingBookmarkDeletesRef.current.delete(bookmark.id);
       pendingBookmarkUpsertsRef.current.set(bookmark.id, bookmark);
       scheduleFlush();
     },
@@ -130,7 +150,6 @@ export function useCloudAnchorSync({ userId }: UseCloudAnchorSyncOptions) {
         return;
       }
 
-      pendingHighlightDeletesRef.current.delete(highlight.id);
       pendingHighlightUpsertsRef.current.set(highlight.id, highlight);
       scheduleFlush();
     },
@@ -138,26 +157,34 @@ export function useCloudAnchorSync({ userId }: UseCloudAnchorSyncOptions) {
   );
 
   const queueBookmarkDelete = useCallback(
-    (bookmarkId: string) => {
+    async (bookmarkId: string) => {
       if (!userId) {
         return;
       }
 
       pendingBookmarkUpsertsRef.current.delete(bookmarkId);
-      pendingBookmarkDeletesRef.current.add(bookmarkId);
+      await savePendingCloudDelete({
+        ownerId: userId,
+        recordId: bookmarkId,
+        recordType: "bookmark",
+      });
       scheduleFlush();
     },
     [scheduleFlush, userId],
   );
 
   const queueHighlightDelete = useCallback(
-    (highlightId: string) => {
+    async (highlightId: string) => {
       if (!userId) {
         return;
       }
 
       pendingHighlightUpsertsRef.current.delete(highlightId);
-      pendingHighlightDeletesRef.current.add(highlightId);
+      await savePendingCloudDelete({
+        ownerId: userId,
+        recordId: highlightId,
+        recordType: "highlight",
+      });
       scheduleFlush();
     },
     [scheduleFlush, userId],

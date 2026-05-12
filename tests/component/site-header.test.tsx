@@ -172,4 +172,33 @@ describe("SiteHeader", () => {
     expect(screen.queryAllByTitle(/light/i)).toHaveLength(1);
     expect(screen.queryAllByTitle(/dark/i)).toHaveLength(1);
   });
+
+  it("shows an offline sync badge for signed-in users when the browser is offline", async () => {
+    useSupabaseAuth.mockReturnValue({
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 1,
+        highlights: 0,
+        sessions: 1,
+      },
+      isLoading: false,
+      isOnline: false,
+      signOut: vi.fn(),
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
+      syncStatus: "error",
+      user: {
+        email: "reader@example.com",
+      },
+    });
+
+    render(<SiteHeader />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/offline/i).length).toBeGreaterThan(0);
+    });
+  });
 });

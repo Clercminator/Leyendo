@@ -74,7 +74,7 @@ export function ReaderAdBreakOverlay({
     }),
     body: getLocalizedCopy(locale, {
       en: "Leyendo stays the same underneath. This pop-up sits on top of your current session and unlocks the reader as soon as the sponsor break finishes.",
-      es: "Leyendo sigue igual por debajo. Esta ventana se pone encima de tu sesion actual y desbloquea el lector apenas termine el patrocinio.",
+      es: "Leyendo sigue igual por debajo. Esta ventana se coloca sobre tu sesión actual y desbloquea el lector en cuanto termine el patrocinio.",
       pt: "Leyendo continua igual por baixo. Esta janela fica sobre a sua sessao atual e desbloqueia o leitor assim que o patrocinio terminar.",
     }),
     start: getLocalizedCopy(locale, {
@@ -94,7 +94,7 @@ export function ReaderAdBreakOverlay({
     }),
     playing: getLocalizedCopy(locale, {
       en: "The sponsor is playing. The reader unlocks automatically as soon as it finishes.",
-      es: "El patrocinio esta en reproduccion. El lector se desbloquea automaticamente al terminar.",
+      es: "El patrocinio está en reproducción. El lector se desbloquea automáticamente al terminar.",
       pt: "O patrocinio esta sendo exibido. O leitor sera liberado automaticamente quando terminar.",
     }),
     consentTitle: getLocalizedCopy(locale, {

@@ -37,6 +37,9 @@ export const pdfScrollModes = ["continuous", "single-page"] as const;
 
 export type PdfScrollMode = (typeof pdfScrollModes)[number];
 
+export const MIN_READER_WORDS_PER_MINUTE = 120;
+export const MAX_READER_WORDS_PER_MINUTE = 560;
+
 export interface PdfViewerState {
   pageIndex: number;
   zoomValue: string;

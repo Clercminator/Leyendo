@@ -29,6 +29,23 @@ describe("pdf block normalization", () => {
     ]);
   });
 
+  it("normalizes common PDF glyph artifacts inside paragraph text", () => {
+    const normalized = normalizePdfSourceBlocks([
+      {
+        kind: "paragraph",
+        sourcePageIndex: 0,
+        text: "co\u00adoperation\u00a0and ﬁnance\u200b stay aligned",
+      },
+    ]);
+
+    expect(normalized).toEqual([
+      expect.objectContaining({
+        kind: "paragraph",
+        text: "cooperation and finance stay aligned",
+      }),
+    ]);
+  });
+
   it("keeps front-matter and table-of-contents lines separate", () => {
     const lines: PdfLine[] = [
       {
@@ -96,6 +113,75 @@ describe("pdf block normalization", () => {
       "[Image omitted from PDF]",
       "CONTENTS",
       "Translator's Preface ........ 3",
+    ]);
+  });
+
+  it("keeps short bold lines as headings and recognizes broader bullet markers", () => {
+    const lines: PdfLine[] = [
+      {
+        center: 300,
+        entryKind: "text",
+        fontSize: 12,
+        isBold: true,
+        left: 216,
+        pageIndex: 0,
+        pageWidth: 600,
+        right: 384,
+        text: "Important Terms",
+        y: 720,
+      },
+      {
+        center: 155,
+        entryKind: "text",
+        fontSize: 12,
+        left: 72,
+        pageIndex: 0,
+        pageWidth: 600,
+        right: 238,
+        text: "• First item",
+        y: 676,
+      },
+      {
+        center: 168,
+        entryKind: "text",
+        fontSize: 12,
+        left: 96,
+        pageIndex: 0,
+        pageWidth: 600,
+        right: 240,
+        text: "continues on the next line",
+        y: 660,
+      },
+      {
+        center: 143,
+        entryKind: "text",
+        fontSize: 12,
+        left: 72,
+        pageIndex: 0,
+        pageWidth: 600,
+        right: 214,
+        text: "▪ Second item",
+        y: 620,
+      },
+    ];
+
+    const blocks = buildPdfBlocks(lines);
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        kind: "heading",
+        text: "Important Terms",
+      }),
+      expect.objectContaining({
+        kind: "list-item",
+        marker: "•",
+        text: "First item continues on the next line",
+      }),
+      expect.objectContaining({
+        kind: "list-item",
+        marker: "▪",
+        text: "Second item",
+      }),
     ]);
   });
 });

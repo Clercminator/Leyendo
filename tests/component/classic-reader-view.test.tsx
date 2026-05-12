@@ -90,6 +90,69 @@ describe("ClassicReaderView", () => {
     expect(onJumpToToken).toHaveBeenCalledWith(0);
   });
 
+  it("renders structured inline strong spans in classic mode", () => {
+    const documentModel = buildDocumentModel({
+      rawText: "Important terms stay visible in the reader.",
+      sourceBlocks: [
+        {
+          inlineSpans: [
+            {
+              kind: "strong",
+              text: "Important terms",
+            },
+          ],
+          kind: "paragraph",
+          text: "Important terms stay visible in the reader.",
+        },
+      ],
+      sourceKind: "pdf",
+      chunkSize: 2,
+    });
+    const chunk = deriveRuntimeChunks(documentModel, 3)[0];
+
+    const { container } = render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        reduceMotion
+      />,
+    );
+
+    expect(
+      container.querySelector("strong.reader-inline-strong"),
+    ).toHaveTextContent("Important terms");
+  });
+
+  it("renders active chunks with a paint-only surface and explicit run spacing", () => {
+    const documentModel = buildDocumentModel({
+      title: "Classic spacing sample",
+      rawText: "Alpha beta gamma delta epsilon.",
+      sourceKind: "plain-text",
+      chunkSize: 2,
+    });
+    const chunk = deriveRuntimeChunks(documentModel, 2)[1];
+
+    const { container } = render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        reduceMotion
+      />,
+    );
+
+    const activeRun = container.querySelector(".reader-classic-active-run");
+    const activeSurface = container.querySelector(
+      ".reader-classic-active-run-surface",
+    );
+
+    expect(activeRun).toBeTruthy();
+    expect(activeSurface).toBeTruthy();
+    expect(activeRun).toHaveTextContent("gamma delta");
+    expect(activeSurface).toHaveTextContent("gamma delta");
+    expect(activeRun?.parentElement?.lastChild?.textContent).toBe(" ");
+    expect(container.textContent).toContain("Alpha beta gamma delta epsilon.");
+  });
+
   it("renders clean markdown in classic mode like a markdown preview", () => {
     const documentModel = buildDocumentModel({
       title: "Markdown sample",

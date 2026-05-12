@@ -38,7 +38,7 @@ vi.mock("@/lib/supabase/library-sync", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/reader",
+  usePathname: () => "/library",
 }));
 
 describe("FeedbackButton", () => {
@@ -111,7 +111,7 @@ describe("FeedbackButton", () => {
         expect.objectContaining({
           email: undefined,
           message: "Algo esta lento.",
-          route: "/reader",
+          route: "/library",
           userId: "user-1",
         }),
       );

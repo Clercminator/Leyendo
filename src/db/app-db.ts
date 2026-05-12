@@ -8,6 +8,7 @@ import type {
   ReaderPreferences,
   ReadingSession,
 } from "@/types/reader";
+import type { PendingCloudDeleteRecord } from "@/types/sync";
 
 export interface PreferenceRecord {
   key: string;
@@ -20,6 +21,7 @@ export class LeeDatabase extends Dexie {
   sessions!: EntityTable<ReadingSession, "id">;
   bookmarks!: EntityTable<Bookmark, "id">;
   highlights!: EntityTable<Highlight, "id">;
+  pendingCloudDeletes!: EntityTable<PendingCloudDeleteRecord, "id">;
   preferences!: EntityTable<PreferenceRecord, "key">;
 
   constructor() {
@@ -54,6 +56,16 @@ export class LeeDatabase extends Dexie {
       sessions: "id, documentId, updatedAt, ownerId, syncState",
       bookmarks: "id, documentId, createdAt, ownerId, syncState",
       highlights: "id, documentId, createdAt, ownerId, syncState",
+      preferences: "key",
+    });
+
+    this.version(5).stores({
+      documents: "id, updatedAt, sourceKind, ownerId, syncState",
+      documentAssets: "documentId, sourceKind, updatedAt",
+      sessions: "id, documentId, updatedAt, ownerId, syncState",
+      bookmarks: "id, documentId, createdAt, ownerId, syncState",
+      highlights: "id, documentId, createdAt, ownerId, syncState",
+      pendingCloudDeletes: "id, ownerId, recordType, createdAt",
       preferences: "key",
     });
   }

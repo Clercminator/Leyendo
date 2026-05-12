@@ -6,6 +6,8 @@ import type {
   Block,
   Chunk,
   DocumentBlockInput,
+  DocumentInlineSpan,
+  DocumentInlineSpanInput,
   DocumentModel,
   DocumentRecord,
   DocumentSourceKind,
@@ -33,6 +35,107 @@ interface MutableSection {
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const tokenBoundary = /\s+/;
+
+function normalizeInlineSpanMatchText(text: string) {
+  return text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u00a0\u2007\u202f]/gu, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function mergeAdjacentInlineSpans(spans: DocumentInlineSpan[]) {
+  const merged: DocumentInlineSpan[] = [];
+
+  spans.forEach((span) => {
+    const previousSpan = merged.at(-1);
+
+    if (
+      previousSpan &&
+      previousSpan.kind === span.kind &&
+      previousSpan.tokenEnd + 1 >= span.tokenStart
+    ) {
+      previousSpan.tokenEnd = Math.max(previousSpan.tokenEnd, span.tokenEnd);
+      return;
+    }
+
+    merged.push({ ...span });
+  });
+
+  return merged;
+}
+
+function resolveInlineSpans(
+  inlineSpans: DocumentInlineSpanInput[] | undefined,
+  blockTokens: Token[],
+) {
+  if (!inlineSpans?.length || blockTokens.length === 0) {
+    return undefined;
+  }
+
+  const tokenKeys = blockTokens.map((token) =>
+    normalizeInlineSpanMatchText(token.value),
+  );
+  const resolvedInlineSpans: DocumentInlineSpan[] = [];
+  let searchCursor = 0;
+
+  inlineSpans.forEach((inlineSpan) => {
+    const spanKeys = normalizeInlineSpanMatchText(inlineSpan.text)
+      .split(tokenBoundary)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (spanKeys.length === 0) {
+      return;
+    }
+
+    let matchStart = -1;
+
+    for (
+      let start = searchCursor;
+      start <= tokenKeys.length - spanKeys.length;
+      start += 1
+    ) {
+      let matches = true;
+
+      for (let offset = 0; offset < spanKeys.length; offset += 1) {
+        if (tokenKeys[start + offset] !== spanKeys[offset]) {
+          matches = false;
+          break;
+        }
+      }
+
+      if (matches) {
+        matchStart = start;
+        break;
+      }
+    }
+
+    if (matchStart < 0) {
+      return;
+    }
+
+    const matchEnd = matchStart + spanKeys.length - 1;
+    const startToken = blockTokens[matchStart];
+    const endToken = blockTokens[matchEnd];
+
+    if (!startToken || !endToken) {
+      return;
+    }
+
+    resolvedInlineSpans.push({
+      kind: inlineSpan.kind,
+      tokenEnd: endToken.index,
+      tokenStart: startToken.index,
+    });
+    searchCursor = matchEnd + 1;
+  });
+
+  const mergedInlineSpans = mergeAdjacentInlineSpans(resolvedInlineSpans);
+  return mergedInlineSpans.length > 0 ? mergedInlineSpans : undefined;
+}
 
 function buildPlainTextBlocks(rawText: string): DocumentBlockInput[] {
   const normalized = normalizeText(rawText);
@@ -214,10 +317,15 @@ export function buildDocumentModel({
 
     const blockSentenceEnd = sentenceIndex - 1;
     const blockTokenEnd = tokenIndex - 1;
+    const blockInlineSpans = resolveInlineSpans(
+      sourceBlock.inlineSpans,
+      tokens.slice(blockTokenStart, tokenIndex),
+    );
 
     blocks.push({
       alignment: sourceBlock.alignment,
       index: blockIndex,
+      inlineSpans: blockInlineSpans,
       kind: sourceBlock.kind,
       marker: sourceBlock.marker,
       sourcePageIndex: sourceBlock.sourcePageIndex,

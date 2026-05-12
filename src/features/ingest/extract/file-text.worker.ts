@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { extractPdfDocumentFromArrayBuffer } from "@/features/ingest/extract/file-text";
+import { extractPdfDocumentFromArrayBuffer } from "@/features/ingest/extract/file-text-pdf";
 
 declare const self: DedicatedWorkerGlobalScope;
 

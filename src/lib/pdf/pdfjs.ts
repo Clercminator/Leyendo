@@ -151,6 +151,13 @@ export async function loadPdfJs() {
 }
 
 export async function loadPdfJsViewer() {
-  installPdfJsCompatibilityFallbacks();
+  const pdfjs = await loadPdfJs();
+
+  (
+    globalThis as typeof globalThis & {
+      pdfjsLib?: typeof pdfjs;
+    }
+  ).pdfjsLib = pdfjs;
+
   return import("pdfjs-dist/legacy/web/pdf_viewer.mjs");
 }

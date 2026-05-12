@@ -26,10 +26,24 @@ export type BlockKind = "heading" | "paragraph" | "list-item";
 
 export type BlockAlignment = "left" | "center";
 
+export type InlineSpanKind = "strong";
+
+export interface DocumentInlineSpanInput {
+  kind: InlineSpanKind;
+  text: string;
+}
+
+export interface DocumentInlineSpan {
+  kind: InlineSpanKind;
+  tokenStart: number;
+  tokenEnd: number;
+}
+
 export interface DocumentBlockInput {
   kind: BlockKind;
   text: string;
   alignment?: BlockAlignment;
+  inlineSpans?: DocumentInlineSpanInput[];
   marker?: string;
   sourcePageIndex?: number;
 }
@@ -63,6 +77,7 @@ export interface Sentence {
 export interface Block {
   alignment?: BlockAlignment;
   index: number;
+  inlineSpans?: DocumentInlineSpan[];
   kind: BlockKind;
   marker?: string;
   text: string;
@@ -77,6 +92,7 @@ export interface Chunk {
   index: number;
   text: string;
   tokenIndexes: number[];
+  playbackTokenCount?: number;
   anchorTokenIndex: number;
   paragraphIndex: number;
   sentenceIndex: number;

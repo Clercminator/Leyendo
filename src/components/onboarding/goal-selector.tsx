@@ -11,7 +11,6 @@ import {
 } from "@/db/repositories";
 import {
   getRecommendedPreferences,
-  getReadingGoalLabel,
 } from "@/features/reader/engine/presets";
 import { useReaderStore } from "@/state/reader-store";
 import type { ReadingGoal } from "@/types/reader";
@@ -27,7 +26,7 @@ const goals = [
     },
     description: {
       en: "Slow down a little and keep comprehension first.",
-      es: "Reduce un poco el ritmo y prioriza la comprension.",
+      es: "Reduce un poco el ritmo y prioriza la comprensión.",
       pt: "Diminua um pouco o ritmo e priorize a compreensao.",
     },
     icon: Brain,
@@ -36,12 +35,12 @@ const goals = [
     value: "read-faster" as const,
     title: {
       en: "Read faster",
-      es: "Leer mas rapido",
+      es: "Leer más rápido",
       pt: "Ler mais rapido",
     },
     description: {
       en: "Increase pace while keeping forgiving controls nearby.",
-      es: "Aumenta el ritmo sin perder controles utiles cerca.",
+      es: "Aumenta el ritmo sin perder controles útiles cerca.",
       pt: "Aumente o ritmo sem perder controles uteis por perto.",
     },
     icon: Gauge,
@@ -50,12 +49,12 @@ const goals = [
     value: "skim-overview" as const,
     title: {
       en: "Skim for overview",
-      es: "Explorar panorama",
+      es: "Vista general",
       pt: "Ler por panorama",
     },
     description: {
       en: "Move quickly across the document to get the structure.",
-      es: "Recorre el documento con rapidez para entender la estructura.",
+      es: "Recorre el documento rápido para captar la estructura.",
       pt: "Percorra o documento rapidamente para entender a estrutura.",
     },
     icon: Search,
@@ -64,12 +63,12 @@ const goals = [
     value: "practice-focus" as const,
     title: {
       en: "Practice focus",
-      es: "Practicar enfoque",
+      es: "Practicar concentración",
       pt: "Praticar foco",
     },
     description: {
       en: "Reduce visual noise and stay locked into the text.",
-      es: "Reduce el ruido visual y mantente dentro del texto.",
+      es: "Reduce el ruido visual y mantén la atención dentro del texto.",
       pt: "Reduza o ruido visual e mantenha-se dentro do texto.",
     },
     icon: Sparkle,
@@ -130,6 +129,11 @@ export function GoalSelector() {
     void handleGoalSelection(nextGoal.value);
   };
 
+  const selectedGoalOption = goals.find((goal) => goal.value === selectedGoal);
+  const selectedGoalLabel = selectedGoalOption
+    ? getLocalizedCopy(locale, selectedGoalOption.title)
+    : undefined;
+
   return (
     <section
       aria-labelledby="goal-selector-title"
@@ -140,7 +144,7 @@ export function GoalSelector() {
           {locale === "en"
             ? "Reading setup"
             : locale === "es"
-              ? "Preparacion de lectura"
+              ? "Preparación de lectura"
               : "Preparacao de leitura"}
         </p>
         <h2
@@ -150,7 +154,7 @@ export function GoalSelector() {
           {locale === "en"
             ? "Start by choosing how you want this session to feel."
             : locale === "es"
-              ? "Empieza eligiendo como quieres que se sienta esta sesion."
+              ? "Empieza eligiendo cómo quieres que se sienta esta sesión."
               : "Comece escolhendo como voce quer que esta sessao se comporte."}
         </h2>
         <p
@@ -160,7 +164,7 @@ export function GoalSelector() {
           {locale === "en"
             ? "This keeps setup approachable and lets Leyendo recommend a mode instead of forcing you through a dense settings screen."
             : locale === "es"
-              ? "Asi el inicio se mantiene simple y Leyendo puede recomendar un modo sin enviarte a una pantalla densa de ajustes."
+              ? "Así todo arranca simple y Leyendo puede recomendar un modo sin llevarte a una pantalla cargada de ajustes."
               : "Assim o inicio continua simples e o Leyendo pode recomendar um modo sem jogar voce em uma tela densa de ajustes."}
         </p>
       </div>
@@ -250,14 +254,14 @@ export function GoalSelector() {
       <p className="mt-4 text-sm leading-7 text-(--text-muted)">
         {selectedGoal
           ? locale === "en"
-            ? `${getReadingGoalLabel(selectedGoal)} is saved as your current onboarding goal and will shape the next reader session.`
+            ? `${selectedGoalLabel} is saved as your current onboarding goal and will shape the next reader session.`
             : locale === "es"
-              ? `${getReadingGoalLabel(selectedGoal)} queda guardado como tu objetivo actual y dara forma a la siguiente sesion.`
-              : `${getReadingGoalLabel(selectedGoal)} foi salvo como seu objetivo atual e vai orientar a proxima sessao.`
+              ? `${selectedGoalLabel} se guarda como tu objetivo actual y orienta la siguiente sesión.`
+              : `${selectedGoalLabel} foi salvo como seu objetivo atual e vai orientar a proxima sessao.`
           : locale === "en"
             ? "Choosing a goal updates the recommended reader mode and pacing for your next session, while keeping your theme and typography settings intact."
             : locale === "es"
-              ? "Elegir un objetivo actualiza el modo recomendado y el ritmo de tu proxima sesion, sin perder tema ni tipografia."
+              ? "Elegir un objetivo actualiza el modo recomendado y el ritmo de tu próxima sesión, sin cambiar el tema ni la tipografía."
               : "Escolher um objetivo atualiza o modo recomendado e o ritmo da proxima sessao, sem perder tema nem tipografia."}
       </p>
     </section>

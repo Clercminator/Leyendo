@@ -2,6 +2,10 @@ export type LeePerfMetricName =
   | "import.extract"
   | "import.build-document"
   | "reader.derive-runtime-chunks"
+  | "reader.mode-switch"
+  | "reader.pdf-bootstrap-phase"
+  | "reader.pdf-thumbnail-batch"
+  | "reader.preference-apply"
   | "reader.playback-drift";
 
 export interface LeePerfMetric {

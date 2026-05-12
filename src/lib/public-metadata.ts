@@ -29,9 +29,9 @@ export const publicPageMetadataCopy: Record<
       ],
     },
     es: {
-      title: "Lectura rapida para documentos reales",
+      title: "Lee más rápido en varios modos y formatos",
       description:
-        "Leyendo ayuda a lectores que buscan lectura rapida, leer mas rapido, velocidad de lectura y comprension lectora. Lee PDF y documentos densos con mas foco, mejor ritmo y mayor control.",
+        "Importa PDF, DOCX, RTF, Markdown o texto pegado. Lee más rápido en varios modos y cambia de ritmo sin perder tu lugar.",
       keywords: [
         "lectura rapida",
         "leer mas rapido",

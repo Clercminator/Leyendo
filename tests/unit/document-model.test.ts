@@ -75,4 +75,31 @@ describe("buildDocumentModel", () => {
     expect(document.chunks[0]?.sourcePageIndex).toBe(0);
     expect(document.sections[0]?.sourcePageIndex).toBe(0);
   });
+
+  it("resolves inline span hints into block token ranges", () => {
+    const document = buildDocumentModel({
+      rawText: "Important terms stay visible in the reader.",
+      sourceBlocks: [
+        {
+          inlineSpans: [
+            {
+              kind: "strong",
+              text: "Important terms",
+            },
+          ],
+          kind: "paragraph",
+          text: "Important terms stay visible in the reader.",
+        },
+      ],
+      sourceKind: "pdf",
+    });
+
+    expect(document.blocks[0]?.inlineSpans).toEqual([
+      {
+        kind: "strong",
+        tokenEnd: 1,
+        tokenStart: 0,
+      },
+    ]);
+  });
 });

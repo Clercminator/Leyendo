@@ -27,6 +27,7 @@ interface ClassicReaderViewProps {
   document: DocumentModel;
   chunk: Chunk;
   simplifyMarkdownPreview?: boolean;
+  useMarkdownPreview?: boolean;
   onJumpToToken?: (tokenIndex: number) => void;
   reduceMotion: boolean;
 }
@@ -47,7 +48,13 @@ interface RenderedBlockWindow {
 }
 
 const inactiveTokenIndexes = new Set<number>();
+const LARGE_CLASSIC_VISIBLE_BLOCKS = 48;
 const LARGE_MARKDOWN_VISIBLE_BLOCKS = 36;
+const LARGE_CLASSIC_WINDOW_THRESHOLD = LARGE_CLASSIC_VISIBLE_BLOCKS * 2;
+const markdownPreviewBlockCache = new WeakMap<
+  DocumentModel,
+  MarkdownPreviewBlock[]
+>();
 
 function buildRenderedBlockWindow(args: {
   activeParagraphIndex: number;
@@ -215,6 +222,24 @@ function decodeMarkdownAnchor(anchor: string) {
   }
 }
 
+function shouldPreferDirectReaderScroll() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const coarsePointer =
+    window.matchMedia?.("(hover: none), (pointer: coarse)").matches ?? false;
+  const lowConcurrency =
+    typeof navigator.hardwareConcurrency === "number" &&
+    navigator.hardwareConcurrency <= 4;
+  const deviceMemory = (
+    navigator as Navigator & { deviceMemory?: number }
+  ).deviceMemory;
+  const lowMemory = typeof deviceMemory === "number" && deviceMemory <= 4;
+
+  return coarsePointer || lowConcurrency || lowMemory;
+}
+
 function getExpectedBlockKinds(
   nodeType: string | undefined,
 ): ReadonlySet<DocumentModel["blocks"][number]["kind"]> | undefined {
@@ -256,6 +281,12 @@ function extractMermaidChart(children: ReactNode) {
 }
 
 function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
+  const cachedBlocks = markdownPreviewBlockCache.get(document);
+
+  if (cachedBlocks) {
+    return cachedBlocks;
+  }
+
   const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown) as {
     children?: unknown[];
   };
@@ -267,7 +298,7 @@ function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
   const headingSlugger = new GithubSlugger();
   let blockCursor = 0;
 
-  return nodes.flatMap((node, index) => {
+  const previewBlocks = nodes.flatMap((node, index) => {
     const { end, start } = getNodePositionOffsets(node);
     const markdownSource =
       typeof start === "number" && typeof end === "number"
@@ -343,6 +374,10 @@ function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
       } satisfies MarkdownPreviewBlock,
     ];
   });
+
+  markdownPreviewBlockCache.set(document, previewBlocks);
+
+  return previewBlocks;
 }
 
 function renderToken(args: {
@@ -360,7 +395,7 @@ function renderToken(args: {
       data-reader-token-index={token.index}
       className={
         onJumpToToken
-          ? "cursor-pointer rounded-md px-[0.04em] transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-sky)"
+          ? "cursor-pointer rounded-md px-[0.04em] transition hover:text-(--text-strong) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-sky)"
           : undefined
       }
       onClick={
@@ -390,36 +425,128 @@ function renderToken(args: {
   );
 }
 
+function buildInlineStyleRuns(tokens: Token[], strongTokenIndexes: Set<number>) {
+  const runs: Array<{
+    key: string;
+    strong: boolean;
+    tokens: Token[];
+  }> = [];
+
+  tokens.forEach((token) => {
+    const strong = strongTokenIndexes.has(token.index);
+    const previousRun = runs.at(-1);
+
+    if (previousRun && previousRun.strong === strong) {
+      previousRun.key = `${previousRun.key}:${token.index}`;
+      previousRun.tokens.push(token);
+      return;
+    }
+
+    runs.push({
+      key: `${token.index}`,
+      strong,
+      tokens: [token],
+    });
+  });
+
+  return runs;
+}
+
+function buildStrongTokenIndexes(
+  inlineSpans: DocumentModel["blocks"][number]["inlineSpans"],
+) {
+  const strongTokenIndexes = new Set<number>();
+
+  inlineSpans?.forEach((inlineSpan) => {
+    if (inlineSpan.kind !== "strong") {
+      return;
+    }
+
+    for (
+      let tokenIndex = inlineSpan.tokenStart;
+      tokenIndex <= inlineSpan.tokenEnd;
+      tokenIndex += 1
+    ) {
+      strongTokenIndexes.add(tokenIndex);
+    }
+  });
+
+  return strongTokenIndexes;
+}
+
+function renderInlineStyleRuns(args: {
+  isActive: boolean;
+  onJumpToToken?: (tokenIndex: number) => void;
+  strongTokenIndexes: Set<number>;
+  tokens: Token[];
+}) {
+  const { isActive, onJumpToToken, strongTokenIndexes, tokens } = args;
+
+  return buildInlineStyleRuns(tokens, strongTokenIndexes).map((run, runIndex, runs) => {
+    const content = run.tokens.map((token, tokenIndex) => (
+      <span key={token.index}>
+        {renderToken({ isActive, onJumpToToken, token })}
+        {tokenIndex < run.tokens.length - 1 ? " " : null}
+      </span>
+    ));
+
+    if (!run.strong) {
+      return (
+        <span key={run.key}>
+          {content}
+          {runIndex < runs.length - 1 ? " " : null}
+        </span>
+      );
+    }
+
+    return (
+      <span key={run.key}>
+        <strong className="reader-inline-strong">{content}</strong>
+        {runIndex < runs.length - 1 ? " " : null}
+      </span>
+    );
+  });
+}
+
 function renderTokens(args: {
   activeIndexes: Set<number>;
   renderPlainText?: boolean;
   onJumpToToken?: (tokenIndex: number) => void;
+  strongTokenIndexes: Set<number>;
   tokens: Token[];
 }) {
-  const { activeIndexes, onJumpToToken, renderPlainText = false, tokens } = args;
+  const {
+    activeIndexes,
+    onJumpToToken,
+    renderPlainText = false,
+    strongTokenIndexes,
+    tokens,
+  } = args;
 
   if (renderPlainText) {
     return tokens.map((token) => token.value).join(" ");
   }
 
-  return buildTokenRuns(tokens, activeIndexes).map((run) => {
-    if (!run.active) {
-      return run.tokens.map((token, tokenIndex) => (
-        <span key={token.index}>
-          {renderToken({ isActive: false, onJumpToToken, token })}
-          {tokenIndex < run.tokens.length - 1 ? " " : null}
-        </span>
-      ));
-    }
+  return buildTokenRuns(tokens, activeIndexes).map((run, runIndex, runs) => {
+    const content = renderInlineStyleRuns({
+      isActive: run.active,
+      onJumpToToken,
+      strongTokenIndexes,
+      tokens: run.tokens,
+    });
 
     return (
-      <span key={run.key} className="reader-classic-active-run">
-        {run.tokens.map((token, tokenIndex) => (
-          <span key={token.index}>
-            {renderToken({ isActive: true, onJumpToToken, token })}
-            {tokenIndex < run.tokens.length - 1 ? " " : null}
+      <span key={run.key}>
+        {run.active ? (
+          <span className="reader-classic-active-run">
+            <span className="reader-classic-active-run-surface">
+              {content}
+            </span>
           </span>
-        ))}
+        ) : (
+          content
+        )}
+        {runIndex < runs.length - 1 ? " " : null}
       </span>
     );
   });
@@ -429,6 +556,7 @@ export function ClassicReaderView({
   document: documentModel,
   chunk,
   simplifyMarkdownPreview = false,
+  useMarkdownPreview = true,
   onJumpToToken,
   reduceMotion,
 }: ClassicReaderViewProps) {
@@ -447,15 +575,23 @@ export function ClassicReaderView({
     documentModel.sourceKind === "markdown" && documentModel.rawText?.trim(),
   );
   const isSimplifiedMarkdownPreview =
-    hasMarkdownPreviewSource && simplifyMarkdownPreview;
-  const usesMarkdownPreview = hasMarkdownPreviewSource;
+    hasMarkdownPreviewSource && useMarkdownPreview && simplifyMarkdownPreview;
+  const usesMarkdownPreview = hasMarkdownPreviewSource && useMarkdownPreview;
   const renderableBlocks = useMemo(
     () =>
       documentModel.blocks.filter((block) => block.tokenEnd >= block.tokenStart),
     [documentModel.blocks],
   );
+  const shouldWindowClassicBlocks =
+    isSimplifiedMarkdownPreview ||
+    renderableBlocks.length > LARGE_CLASSIC_WINDOW_THRESHOLD;
+  const activeRenderableBlockIndex = useMemo(
+    () =>
+      renderableBlocks.findIndex((block) => block.index === chunk.paragraphIndex),
+    [chunk.paragraphIndex, renderableBlocks],
+  );
   const renderedBlockWindow = useMemo(() => {
-    if (!isSimplifiedMarkdownPreview) {
+    if (!shouldWindowClassicBlocks) {
       return buildRenderedBlockWindow({
         activeParagraphIndex: 0,
         maxVisibleBlocks: renderableBlocks.length,
@@ -463,16 +599,20 @@ export function ClassicReaderView({
       });
     }
 
-    const activeBlockIndex = renderableBlocks.findIndex(
-      (block) => block.index === chunk.paragraphIndex,
-    );
-
     return buildRenderedBlockWindow({
-      activeParagraphIndex: activeBlockIndex >= 0 ? activeBlockIndex : 0,
-      maxVisibleBlocks: LARGE_MARKDOWN_VISIBLE_BLOCKS,
+      activeParagraphIndex:
+        activeRenderableBlockIndex >= 0 ? activeRenderableBlockIndex : 0,
+      maxVisibleBlocks: isSimplifiedMarkdownPreview
+        ? LARGE_MARKDOWN_VISIBLE_BLOCKS
+        : LARGE_CLASSIC_VISIBLE_BLOCKS,
       totalBlocks: renderableBlocks.length,
     });
-  }, [chunk.paragraphIndex, isSimplifiedMarkdownPreview, renderableBlocks]);
+  }, [
+    activeRenderableBlockIndex,
+    isSimplifiedMarkdownPreview,
+    renderableBlocks,
+    shouldWindowClassicBlocks,
+  ]);
   const renderedBlocks = useMemo(
     () =>
       renderableBlocks
@@ -490,6 +630,7 @@ export function ClassicReaderView({
                 : inactiveTokenIndexes,
             block,
             isActive: block.index === chunk.paragraphIndex,
+            strongTokenIndexes: buildStrongTokenIndexes(block.inlineSpans),
             tokens: blockTokens,
           };
         }),
@@ -586,8 +727,11 @@ export function ClassicReaderView({
   }, [markdownPreviewBlocks]);
 
   useEffect(() => {
+    const scrollBehavior =
+      reduceMotion || shouldPreferDirectReaderScroll() ? "auto" : "smooth";
+
     activeParagraphRef.current?.scrollIntoView({
-      behavior: reduceMotion ? "auto" : "smooth",
+      behavior: scrollBehavior,
       block: "nearest",
       inline: "nearest",
     });
@@ -595,13 +739,13 @@ export function ClassicReaderView({
 
   const classicReaderLabel = getLocalizedCopy(locale, {
     en: "Classic Reader",
-    es: "Lector clasico",
+    es: "Lector clásico",
     pt: "Leitor classico",
   });
 
   const viewportLabel = getLocalizedCopy(locale, {
     en: "Classic reader document",
-    es: "Documento del lector clasico",
+    es: "Documento del Lector clásico",
     pt: "Documento do leitor classico",
   });
 
@@ -639,8 +783,11 @@ export function ClassicReaderView({
         return;
       }
 
+      const scrollBehavior =
+        reduceMotion || shouldPreferDirectReaderScroll() ? "auto" : "smooth";
+
       window.document.getElementById(targetId)?.scrollIntoView({
-        behavior: reduceMotion ? "auto" : "smooth",
+        behavior: scrollBehavior,
         block: "start",
       });
     },
@@ -740,7 +887,7 @@ export function ClassicReaderView({
   );
 
   return (
-    <div className="reader-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/10 px-4 py-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:rounded-[1.65rem] md:px-7 md:py-7 lg:rounded-[1.75rem] lg:px-10 lg:py-10">
+    <div className="reader-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] px-4 py-5 text-left md:rounded-[1.65rem] md:px-7 md:py-7 lg:rounded-[1.75rem] lg:px-10 lg:py-10">
       <div className="shrink-0">
         <p className="reader-accent text-xs tracking-[0.24em] uppercase md:text-sm md:tracking-[0.28em]">
           {classicReaderLabel}
@@ -748,7 +895,7 @@ export function ClassicReaderView({
       </div>
       <div
         aria-label={viewportLabel}
-        className="mt-4 flex-1 overflow-y-auto overscroll-contain pr-1.5 md:mt-5 md:pr-3 lg:pr-4"
+        className="reader-scroll-area mt-4 flex-1 overflow-y-auto overscroll-contain pr-1.5 md:mt-5 md:pr-3 lg:pr-4"
       >
         {usesMarkdownPreview ? (
           <div className="space-y-4 pb-4 md:space-y-5 md:pb-5">
@@ -757,7 +904,7 @@ export function ClassicReaderView({
               <button
                 type="button"
                 data-reader-window-sentinel="before"
-                className="reader-muted w-full rounded-[1.15rem] border border-white/8 bg-white/4 px-4 py-3 text-left text-sm transition hover:border-white/15 hover:bg-white/6 md:rounded-[1.35rem] md:px-5 md:py-4"
+                className="reader-panel-surface reader-muted w-full rounded-[1.15rem] px-4 py-3 text-left text-sm transition md:rounded-[1.35rem] md:px-5 md:py-4"
                 onClick={() => {
                   if (typeof previousHiddenMarkdownTokenStart === "number") {
                     handleJumpToToken(previousHiddenMarkdownTokenStart);
@@ -810,7 +957,7 @@ export function ClassicReaderView({
               <button
                 type="button"
                 data-reader-window-sentinel="after"
-                className="reader-muted w-full rounded-[1.15rem] border border-white/8 bg-white/4 px-4 py-3 text-left text-sm transition hover:border-white/15 hover:bg-white/6 md:rounded-[1.35rem] md:px-5 md:py-4"
+                className="reader-panel-surface reader-muted w-full rounded-[1.15rem] px-4 py-3 text-left text-sm transition md:rounded-[1.35rem] md:px-5 md:py-4"
                 onClick={() => {
                   if (typeof nextHiddenMarkdownTokenStart === "number") {
                     handleJumpToToken(nextHiddenMarkdownTokenStart);
@@ -827,12 +974,12 @@ export function ClassicReaderView({
           </div>
         ) : (
           <div className="space-y-3 pb-3 md:space-y-4 md:pb-4">
-            {isSimplifiedMarkdownPreview &&
+            {shouldWindowClassicBlocks &&
             renderedBlockWindow.hiddenBeforeCount > 0 ? (
               <button
                 type="button"
                 data-reader-window-sentinel="before"
-                className="reader-muted w-full rounded-[1.15rem] border border-white/8 bg-white/4 px-4 py-3 text-left text-sm transition hover:border-white/15 hover:bg-white/6 md:rounded-[1.35rem] md:px-5 md:py-4"
+                className="reader-panel-surface reader-muted w-full rounded-[1.15rem] px-4 py-3 text-left text-sm transition md:rounded-[1.35rem] md:px-5 md:py-4"
                 onClick={() => {
                   if (typeof previousHiddenBlockTokenStart === "number") {
                     handleJumpToToken(previousHiddenBlockTokenStart);
@@ -840,14 +987,14 @@ export function ClassicReaderView({
                 }}
               >
                 {getLocalizedCopy(locale, {
-                  en: `${renderedBlockWindow.hiddenBeforeCount} earlier sections hidden to keep large Markdown responsive.`,
-                  es: `${renderedBlockWindow.hiddenBeforeCount} secciones anteriores ocultas para mantener rapido el Markdown grande.`,
-                  pt: `${renderedBlockWindow.hiddenBeforeCount} secoes anteriores ocultas para manter o Markdown grande rapido.`,
+                  en: `${renderedBlockWindow.hiddenBeforeCount} earlier sections hidden to keep this long document responsive.`,
+                  es: `${renderedBlockWindow.hiddenBeforeCount} secciones anteriores ocultas para mantener este documento largo rapido.`,
+                  pt: `${renderedBlockWindow.hiddenBeforeCount} secoes anteriores ocultas para manter este documento longo rapido.`,
                 })}
               </button>
             ) : null}
             {renderedBlocks.map(
-              ({ activeTokenIndexes, block, isActive, tokens }) => {
+              ({ activeTokenIndexes, block, isActive, strongTokenIndexes, tokens }) => {
                 const body = renderTokens({
                   activeIndexes: activeTokenIndexes,
                   onJumpToToken:
@@ -855,6 +1002,7 @@ export function ClassicReaderView({
                       ? undefined
                       : handleJumpToToken,
                   renderPlainText: isSimplifiedMarkdownPreview && !isActive,
+                  strongTokenIndexes,
                   tokens,
                 });
                 const isCentered = block.alignment === "center";
@@ -890,7 +1038,7 @@ export function ClassicReaderView({
                   >
                     {block.kind === "heading" ? (
                       <h3
-                        className={`font-heading text-2xl font-semibold tracking-tight text-white md:text-3xl lg:text-4xl ${
+                        className={`reader-panel-strong-text font-heading text-2xl font-semibold tracking-tight md:text-3xl lg:text-4xl ${
                           isCentered ? "text-center" : "text-left"
                         }`}
                       >
@@ -912,12 +1060,12 @@ export function ClassicReaderView({
                 );
               },
             )}
-            {isSimplifiedMarkdownPreview &&
+            {shouldWindowClassicBlocks &&
             renderedBlockWindow.hiddenAfterCount > 0 ? (
               <button
                 type="button"
                 data-reader-window-sentinel="after"
-                className="reader-muted w-full rounded-[1.15rem] border border-white/8 bg-white/4 px-4 py-3 text-left text-sm transition hover:border-white/15 hover:bg-white/6 md:rounded-[1.35rem] md:px-5 md:py-4"
+                className="reader-panel-surface reader-muted w-full rounded-[1.15rem] px-4 py-3 text-left text-sm transition md:rounded-[1.35rem] md:px-5 md:py-4"
                 onClick={() => {
                   if (typeof nextHiddenBlockTokenStart === "number") {
                     handleJumpToToken(nextHiddenBlockTokenStart);
@@ -925,9 +1073,9 @@ export function ClassicReaderView({
                 }}
               >
                 {getLocalizedCopy(locale, {
-                  en: `${renderedBlockWindow.hiddenAfterCount} later sections hidden to keep large Markdown responsive.`,
-                  es: `${renderedBlockWindow.hiddenAfterCount} secciones posteriores ocultas para mantener rapido el Markdown grande.`,
-                  pt: `${renderedBlockWindow.hiddenAfterCount} secoes posteriores ocultas para manter o Markdown grande rapido.`,
+                  en: `${renderedBlockWindow.hiddenAfterCount} later sections hidden to keep this long document responsive.`,
+                  es: `${renderedBlockWindow.hiddenAfterCount} secciones posteriores ocultas para mantener este documento largo rapido.`,
+                  pt: `${renderedBlockWindow.hiddenAfterCount} secoes posteriores ocultas para manter este documento longo rapido.`,
                 })}
               </button>
             ) : null}

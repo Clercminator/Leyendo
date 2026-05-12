@@ -13,6 +13,7 @@ interface AppShellProps {
   title?: string | LocalizedCopy;
   description?: string | LocalizedCopy;
   centerIntro?: boolean;
+  compactIntro?: boolean;
   mainId?: string;
   mainClassName?: string;
   secondarySkipTargetId?: string;
@@ -36,6 +37,7 @@ export function AppShell({
   title,
   description,
   centerIntro = false,
+  compactIntro = false,
   mainId = "main-content",
   mainClassName,
   secondarySkipTargetId,
@@ -87,22 +89,32 @@ export function AppShell({
               ) : null}
               {titleText ? (
                 <h1
-                  className={`font-heading text-4xl leading-[0.98] font-semibold tracking-[-0.04em] text-(--text-strong) sm:text-5xl ${
+                  className={cn(
+                    "font-heading leading-[0.98] font-semibold tracking-[-0.04em] text-(--text-strong)",
+                    compactIntro ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl",
                     centerIntro
-                      ? "mx-auto max-w-none xl:text-6xl"
-                      : "max-w-4xl text-balance xl:text-7xl"
-                  }`}
+                      ? compactIntro
+                        ? "mx-auto max-w-5xl text-balance xl:text-[3.75rem]"
+                        : "mx-auto max-w-none xl:text-6xl"
+                      : "max-w-4xl text-balance xl:text-7xl",
+                  )}
                 >
                   {titleText}
                 </h1>
               ) : null}
               {descriptionText ? (
                 <p
-                  className={`mt-4 text-base leading-7 text-(--text-muted) sm:mt-6 sm:leading-8 ${
+                  className={cn(
+                    "mt-4 text-(--text-muted)",
+                    compactIntro
+                      ? "text-sm leading-6 sm:mt-5 sm:text-base sm:leading-7"
+                      : "text-base leading-7 sm:mt-6 sm:leading-8",
                     centerIntro
-                      ? "mx-auto max-w-none sm:text-lg"
-                      : "max-w-3xl sm:text-xl"
-                  }`}
+                      ? compactIntro
+                        ? "mx-auto max-w-4xl"
+                        : "mx-auto max-w-none sm:text-lg"
+                      : "max-w-3xl sm:text-xl",
+                  )}
                 >
                   {descriptionText}
                 </p>

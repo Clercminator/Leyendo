@@ -306,6 +306,60 @@ describe("useReaderPersistence", () => {
     ]);
   });
 
+  it("retries a failed cloud session upload on the next forced flush", async () => {
+    const supabaseClient = { kind: "supabase" };
+    const updatePreferences = vi.fn();
+    const syncedRecord = {
+      ...record,
+      ownerId: "user-1",
+      syncState: "synced" as const,
+    };
+
+    getSupabaseBrowserClient.mockReturnValue(supabaseClient);
+    upsertCloudSessions
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(undefined);
+
+    renderHook(() =>
+      useReaderPersistence({
+        document: syncedRecord,
+        activeChunk: runtimeChunks[0],
+        currentChunkIndex: 0,
+        isPlaying: false,
+        preferences: defaultReaderPreferences,
+        runtimeChunks,
+        updatePreferences,
+        userId: "user-1",
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      vi.advanceTimersByTime(250);
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new Event("pagehide"));
+      await Promise.resolve();
+    });
+
+    expect(upsertCloudSessions).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      window.dispatchEvent(new Event("pagehide"));
+      await Promise.resolve();
+    });
+
+    expect(upsertCloudSessions).toHaveBeenCalledTimes(2);
+    expect(saveSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        documentId: syncedRecord.id,
+        ownerId: "user-1",
+        syncState: "synced",
+      }),
+    );
+  });
+
   it("hydrates reader preferences from the signed-in profile and syncs later changes back to cloud", async () => {
     const updatePreferences = vi.fn();
     const syncReaderPreferences = vi.fn().mockResolvedValue(undefined);
@@ -352,7 +406,7 @@ describe("useReaderPersistence", () => {
     rerender({ preferences: nextPreferences });
 
     await act(async () => {
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(1_250);
       await Promise.resolve();
     });
 

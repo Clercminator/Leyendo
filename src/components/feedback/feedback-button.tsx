@@ -84,6 +84,11 @@ export function FeedbackButton() {
   const [email, setEmail] = useState("");
   const [rating, setRating] = useState<number>();
   const [statusMessage, setStatusMessage] = useState<string>();
+  const isReaderRoute = /(^|\/)reader(\/|$)/.test(pathname);
+
+  if (isReaderRoute) {
+    return null;
+  }
 
   async function handleSubmit() {
     const supabase = getSupabaseBrowserClient();

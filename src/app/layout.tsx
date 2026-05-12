@@ -6,6 +6,7 @@ import { SupabaseProvider } from "@/components/auth/supabase-provider";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
 import { ChatwootWidget } from "@/components/layout/chatwoot-widget";
 import { LocaleProvider } from "@/components/layout/locale-provider";
+import { ServiceWorkerRegistration } from "@/components/layout/service-worker-registration";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import {
   siteDescription,
@@ -120,6 +121,7 @@ export default function RootLayout({
               {children}
               <ChatwootWidget />
               <FeedbackButton />
+              <ServiceWorkerRegistration />
               <Analytics />
             </SupabaseProvider>
           </LocaleProvider>

@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -46,13 +47,19 @@ vi.mock("@/db/repositories", () => ({
   saveSession,
 }));
 
-const { detectDocumentSourceKind, isLegacyWordDocument } = vi.hoisted(() => ({
+const {
+  detectDocumentSourceKind,
+  detectPastedTextSourceKind,
+  isLegacyWordDocument,
+} = vi.hoisted(() => ({
   detectDocumentSourceKind: vi.fn(),
+  detectPastedTextSourceKind: vi.fn(),
   isLegacyWordDocument: vi.fn(),
 }));
 
 vi.mock("@/features/ingest/detect/file-kind", () => ({
   detectDocumentSourceKind,
+  detectPastedTextSourceKind,
   isLegacyWordDocument,
 }));
 
@@ -157,6 +164,9 @@ describe("UploadPanel", () => {
     detectDocumentSourceKind.mockReturnValue(
       "plain-text" satisfies DocumentSourceKind,
     );
+    detectPastedTextSourceKind.mockReturnValue(
+      "plain-text" satisfies DocumentSourceKind,
+    );
     isLegacyWordDocument.mockReturnValue(false);
     isPdfTooLargeForBrowser.mockReturnValue(false);
     shouldOffloadPdfExtraction.mockReturnValue(false);
@@ -255,7 +265,7 @@ describe("UploadPanel", () => {
         expect.objectContaining({
           id: "doc-cloud-sync",
           ownerId: "user-1",
-          syncState: "synced",
+          syncState: "local-only",
         }),
       ],
     );
@@ -263,14 +273,32 @@ describe("UploadPanel", () => {
       expect.objectContaining({
         documentId: "doc-cloud-sync",
         ownerId: "user-1",
-        syncState: "synced",
+        syncState: "local-only",
       }),
     ]);
+    expect(saveDocument).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        id: "doc-cloud-sync",
+        ownerId: "user-1",
+        syncState: "synced",
+      }),
+    );
+    expect(saveSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        documentId: "doc-cloud-sync",
+        ownerId: "user-1",
+        syncState: "synced",
+      }),
+    );
     expect(push).toHaveBeenCalledWith("/reader?document=doc-cloud-sync");
   });
 
   it("lets pasted markdown open in the clean markdown view instead of literal text", async () => {
     const user = userEvent.setup();
+
+    detectPastedTextSourceKind.mockReturnValue(
+      "markdown" satisfies DocumentSourceKind,
+    );
 
     buildDocumentModelAsync.mockResolvedValue({
       document: {
@@ -292,7 +320,6 @@ describe("UploadPanel", () => {
       screen.getByRole("textbox", { name: /^paste text$/i }),
       "# Heading\n\n- Bullet item",
     );
-    await user.click(screen.getByRole("radio", { name: /clean markdown/i }));
     await user.click(screen.getByRole("button", { name: /open in reader/i }));
 
     await waitFor(() => {
@@ -300,6 +327,46 @@ describe("UploadPanel", () => {
         expect.objectContaining({
           rawText: "# Heading\n\n- Bullet item",
           sourceKind: "markdown",
+        }),
+      );
+    });
+  });
+
+  it("keeps a manual literal-text override even when pasted content still looks like markdown", async () => {
+    const user = userEvent.setup();
+
+    detectPastedTextSourceKind.mockReturnValue(
+      "markdown" satisfies DocumentSourceKind,
+    );
+
+    buildDocumentModelAsync.mockResolvedValue({
+      document: {
+        blocks: [{ text: "# Heading" }],
+        chunks: [{ index: 0 }],
+        createdAt: "2026-03-27T00:00:00.000Z",
+        excerpt: "# Heading",
+        id: "doc-literal-markdown",
+        sections: [{ index: 0 }],
+        sourceKind: "plain-text" satisfies DocumentSourceKind,
+        title: "Heading",
+        updatedAt: "2026-03-27T00:00:00.000Z",
+      },
+    });
+
+    render(<UploadPanel />);
+
+    const textarea = screen.getByRole("textbox", { name: /^paste text$/i });
+
+    await user.type(textarea, "# Heading");
+    await user.click(screen.getByRole("radio", { name: /literal text/i }));
+    await user.type(textarea, "\n\n- Bullet item");
+    await user.click(screen.getByRole("button", { name: /open in reader/i }));
+
+    await waitFor(() => {
+      expect(buildDocumentModelAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rawText: "# Heading\n\n- Bullet item",
+          sourceKind: "plain-text",
         }),
       );
     });
@@ -456,6 +523,68 @@ describe("UploadPanel", () => {
     expect(
       screen.getByRole("button", { name: /replace file/i }),
     ).toBeInTheDocument();
+
+    expect(screen.getByLabelText(/extracted content preview/i)).toHaveValue(
+      "Imported from file.",
+    );
+  });
+
+  it("accepts a dragged file anywhere in the import section", async () => {
+    const file = new File(["Dragged in file."], "dragged.txt", {
+      type: "text/plain",
+    });
+
+    render(<UploadPanel />);
+
+    const importPanel = document.querySelector(
+      "#upload-panel .editorial-panel",
+    ) as HTMLElement;
+
+    fireEvent.drop(importPanel, {
+      dataTransfer: {
+        files: [file],
+        items: [
+          {
+            getAsFile: () => file,
+            kind: "file",
+            type: file.type,
+          },
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(file);
+    });
+
+    expect(screen.getByLabelText(/extracted content preview/i)).toHaveValue(
+      "Imported from file.",
+    );
+  });
+
+  it("imports a clipboard file pasted into the import section", async () => {
+    const file = new File(["Clipboard file."], "clipboard.txt", {
+      type: "text/plain",
+    });
+
+    render(<UploadPanel />);
+
+    fireEvent.paste(screen.getByRole("textbox", { name: /^paste text$/i }), {
+      clipboardData: {
+        files: [file],
+        items: [
+          {
+            getAsFile: () => file,
+            kind: "file",
+            type: file.type,
+          },
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(file);
+    });
 
     expect(screen.getByLabelText(/extracted content preview/i)).toHaveValue(
       "Imported from file.",

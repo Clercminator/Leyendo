@@ -1,29 +1,43 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  bookmarksAllToArray,
   bookmarksBulkDelete,
   bookmarksBulkPut,
   bookmarksToArray,
+  clearPendingCloudDeletesForOwner,
+  deletePendingCloudDeletes,
+  documentsAllToArray,
   documentsDelete,
   documentsGet,
   documentsPut,
+  getPendingCloudDeletesForOwner,
+  highlightsAllToArray,
   highlightsBulkDelete,
   highlightsBulkPut,
   highlightsToArray,
+  sessionsAllToArray,
   sessionsBulkDelete,
   sessionsPut,
   sessionsToArray,
   transaction,
 } = vi.hoisted(() => ({
+  bookmarksAllToArray: vi.fn(),
   bookmarksBulkDelete: vi.fn(),
   bookmarksBulkPut: vi.fn(),
   bookmarksToArray: vi.fn(),
+  clearPendingCloudDeletesForOwner: vi.fn(),
+  deletePendingCloudDeletes: vi.fn(),
+  documentsAllToArray: vi.fn(),
   documentsDelete: vi.fn(),
   documentsGet: vi.fn(),
   documentsPut: vi.fn(),
+  getPendingCloudDeletesForOwner: vi.fn(),
+  highlightsAllToArray: vi.fn(),
   highlightsBulkDelete: vi.fn(),
   highlightsBulkPut: vi.fn(),
   highlightsToArray: vi.fn(),
+  sessionsAllToArray: vi.fn(),
   sessionsBulkDelete: vi.fn(),
   sessionsPut: vi.fn(),
   sessionsToArray: vi.fn(),
@@ -36,10 +50,12 @@ vi.mock("@/db/app-db", () => ({
       delete: documentsDelete,
       get: documentsGet,
       put: documentsPut,
+      toArray: documentsAllToArray,
     },
     sessions: {
       bulkDelete: sessionsBulkDelete,
       put: sessionsPut,
+      toArray: sessionsAllToArray,
       where: vi.fn(() => ({
         equals: vi.fn(() => ({
           toArray: sessionsToArray,
@@ -49,6 +65,7 @@ vi.mock("@/db/app-db", () => ({
     bookmarks: {
       bulkDelete: bookmarksBulkDelete,
       bulkPut: bookmarksBulkPut,
+      toArray: bookmarksAllToArray,
       where: vi.fn(() => ({
         equals: vi.fn(() => ({
           toArray: bookmarksToArray,
@@ -58,6 +75,7 @@ vi.mock("@/db/app-db", () => ({
     highlights: {
       bulkDelete: highlightsBulkDelete,
       bulkPut: highlightsBulkPut,
+      toArray: highlightsAllToArray,
       where: vi.fn(() => ({
         equals: vi.fn(() => ({
           toArray: highlightsToArray,
@@ -68,7 +86,15 @@ vi.mock("@/db/app-db", () => ({
   },
 }));
 
+vi.mock("@/db/repositories", () => ({
+  clearPendingCloudDeletesForOwner,
+  deletePendingCloudDeletes,
+  getPendingCloudDeletesForOwner,
+}));
+
 import {
+  flushPendingCloudDeletes,
+  getLocalOnlyLibrarySummary,
   getProfile,
   hydrateRemoteDocumentToLocal,
   upsertCloudDocuments,
@@ -90,6 +116,17 @@ function createQueryResult<T>(result: T) {
 describe("library sync hydration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    bookmarksToArray.mockResolvedValue([]);
+    clearPendingCloudDeletesForOwner.mockResolvedValue(undefined);
+    deletePendingCloudDeletes.mockResolvedValue(undefined);
+    documentsAllToArray.mockResolvedValue([]);
+    documentsGet.mockResolvedValue(undefined);
+    getPendingCloudDeletesForOwner.mockResolvedValue([]);
+    highlightsAllToArray.mockResolvedValue([]);
+    highlightsToArray.mockResolvedValue([]);
+    sessionsAllToArray.mockResolvedValue([]);
+    sessionsToArray.mockResolvedValue([]);
+    bookmarksAllToArray.mockResolvedValue([]);
     transaction.mockImplementation(
       async (_mode: string, ...args: unknown[]) => {
         const callback = args.at(-1);
@@ -334,6 +371,81 @@ describe("library sync hydration", () => {
         onConflict: "user_id,document_id",
       },
     );
+  });
+
+  it("counts pending bookmark and highlight deletes in the local-only summary", async () => {
+    getPendingCloudDeletesForOwner.mockResolvedValue([
+      {
+        createdAt: "2026-05-11T09:00:00.000Z",
+        id: "user-1:bookmark:bookmark-1",
+        ownerId: "user-1",
+        recordId: "bookmark-1",
+        recordType: "bookmark",
+      },
+      {
+        createdAt: "2026-05-11T09:01:00.000Z",
+        id: "user-1:highlight:highlight-1",
+        ownerId: "user-1",
+        recordId: "highlight-1",
+        recordType: "highlight",
+      },
+    ]);
+
+    const summary = await getLocalOnlyLibrarySummary("user-1");
+
+    expect(summary).toEqual({
+      bookmarks: 1,
+      documents: 0,
+      highlights: 1,
+      sessions: 0,
+    });
+  });
+
+  it("flushes persisted bookmark and highlight deletes from cloud and clears the local queue", async () => {
+    getPendingCloudDeletesForOwner.mockResolvedValue([
+      {
+        createdAt: "2026-05-11T09:00:00.000Z",
+        id: "user-1:bookmark:bookmark-1",
+        ownerId: "user-1",
+        recordId: "bookmark-1",
+        recordType: "bookmark",
+      },
+      {
+        createdAt: "2026-05-11T09:01:00.000Z",
+        id: "user-1:highlight:highlight-1",
+        ownerId: "user-1",
+        recordId: "highlight-1",
+        recordType: "highlight",
+      },
+    ]);
+
+    const bookmarkDelete = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        in: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    });
+    const highlightDelete = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        in: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    });
+    const supabase = {
+      from: vi.fn((table: string) => ({
+        delete: table === "user_bookmarks" ? bookmarkDelete : highlightDelete,
+      })),
+    };
+
+    await expect(
+      flushPendingCloudDeletes(supabase as never, "user-1"),
+    ).resolves.toEqual({
+      deletedBookmarks: 1,
+      deletedHighlights: 1,
+    });
+
+    expect(deletePendingCloudDeletes).toHaveBeenCalledWith([
+      "user-1:bookmark:bookmark-1",
+      "user-1:highlight:highlight-1",
+    ]);
   });
 
   it("downloads a stored payload when the remote metadata row omits it", async () => {

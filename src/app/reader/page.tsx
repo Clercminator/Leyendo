@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { ReaderWorkspace } from "@/components/reader/reader-workspace";
+import { ReaderWorkspace } from "@/components/reader/workspace/reader-workspace";
 import { createPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = createPageMetadata({

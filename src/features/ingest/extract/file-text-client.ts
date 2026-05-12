@@ -2,9 +2,9 @@ import { measureAsync } from "@/lib/perf/instrumentation";
 
 import {
   extractDocumentFromFile,
-  extractPdfDocumentFromArrayBuffer,
   type ExtractedDocumentPayload,
 } from "@/features/ingest/extract/file-text";
+import { extractPdfDocumentFromArrayBuffer } from "@/features/ingest/extract/file-text-pdf";
 
 export const PDF_EXTRACTION_WORKER_THRESHOLD_BYTES = 150_000_000;
 export const MAX_BROWSER_PDF_BYTES = 150_000_000;

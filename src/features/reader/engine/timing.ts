@@ -1,6 +1,8 @@
 import type { Chunk } from "@/types/document";
 import type { ReaderPreferences } from "@/types/reader";
 
+const MIN_PLAYBACK_INTERVAL_MS = 96;
+
 function hasTerminalPause(text: string) {
   return /[.!?]["')\]]?$/.test(text.trim());
 }
@@ -13,7 +15,10 @@ export function deriveChunkDurationMs(
   chunk: Chunk,
   preferences: ReaderPreferences,
 ) {
-  const tokenCount = Math.max(1, chunk.tokenIndexes.length);
+  const tokenCount = Math.max(
+    1,
+    chunk.playbackTokenCount ?? chunk.tokenIndexes.length,
+  );
   const baseDuration =
     (tokenCount / Math.max(80, preferences.wordsPerMinute)) * 60000;
 
@@ -43,7 +48,7 @@ export function deriveChunkDurationMs(
     duration *= 1.18;
   }
 
-  return Math.max(180, Math.round(duration));
+  return Math.max(MIN_PLAYBACK_INTERVAL_MS, Math.round(duration));
 }
 
 export function derivePlaybackDriftMs(

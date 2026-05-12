@@ -5,20 +5,30 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCloudAnchorSync } from "@/components/reader/use-cloud-anchor-sync";
 import type { Bookmark, Highlight } from "@/types/reader";
 
+const { putBookmark, putHighlight, savePendingCloudDelete } = vi.hoisted(() => ({
+  putBookmark: vi.fn(),
+  putHighlight: vi.fn(),
+  savePendingCloudDelete: vi.fn(),
+}));
+
 const { getSupabaseBrowserClient } = vi.hoisted(() => ({
   getSupabaseBrowserClient: vi.fn(),
 }));
 
 const {
-  deleteCloudBookmarks,
-  deleteCloudHighlights,
+  flushPendingCloudDeletes,
   upsertCloudBookmarks,
   upsertCloudHighlights,
 } = vi.hoisted(() => ({
-  deleteCloudBookmarks: vi.fn(),
-  deleteCloudHighlights: vi.fn(),
+  flushPendingCloudDeletes: vi.fn(),
   upsertCloudBookmarks: vi.fn(),
   upsertCloudHighlights: vi.fn(),
+}));
+
+vi.mock("@/db/repositories", () => ({
+  putBookmark,
+  putHighlight,
+  savePendingCloudDelete,
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -26,8 +36,7 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 vi.mock("@/lib/supabase/library-sync", () => ({
-  deleteCloudBookmarks,
-  deleteCloudHighlights,
+  flushPendingCloudDeletes,
   upsertCloudBookmarks,
   upsertCloudHighlights,
 }));
@@ -43,7 +52,7 @@ describe("useCloudAnchorSync", () => {
     paragraphIndex: 1,
     sectionIndex: 0,
     sourcePageIndex: 0,
-    syncState: "synced",
+    syncState: "local-only",
     tokenIndex: 10,
   };
   const highlightBase: Highlight = {
@@ -57,7 +66,7 @@ describe("useCloudAnchorSync", () => {
     paragraphIndex: 1,
     quote: "quoted text",
     sectionIndex: 0,
-    syncState: "synced",
+    syncState: "local-only",
     tokenIndex: 14,
   };
 
@@ -65,10 +74,15 @@ describe("useCloudAnchorSync", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     getSupabaseBrowserClient.mockReturnValue({});
-    deleteCloudBookmarks.mockResolvedValue(undefined);
-    deleteCloudHighlights.mockResolvedValue(undefined);
+    flushPendingCloudDeletes.mockResolvedValue({
+      deletedBookmarks: 0,
+      deletedHighlights: 0,
+    });
     upsertCloudBookmarks.mockResolvedValue(undefined);
     upsertCloudHighlights.mockResolvedValue(undefined);
+    putBookmark.mockResolvedValue(undefined);
+    putHighlight.mockResolvedValue(undefined);
+    savePendingCloudDelete.mockResolvedValue(undefined);
   });
 
   it("batches anchor changes into a single delayed cloud flush", async () => {
@@ -76,7 +90,7 @@ describe("useCloudAnchorSync", () => {
       useCloudAnchorSync({ userId: "user-1" }),
     );
 
-    act(() => {
+    await act(async () => {
       result.current.queueBookmarkUpsert(bookmarkBase);
       result.current.queueBookmarkUpsert({
         ...bookmarkBase,
@@ -84,7 +98,7 @@ describe("useCloudAnchorSync", () => {
         label: "Bookmark 2",
       });
       result.current.queueHighlightUpsert(highlightBase);
-      result.current.queueBookmarkDelete("bookmark-3");
+      await result.current.queueBookmarkDelete("bookmark-3");
     });
 
     await act(async () => {
@@ -101,12 +115,20 @@ describe("useCloudAnchorSync", () => {
     expect(upsertCloudHighlights).toHaveBeenCalledWith({}, "user-1", [
       expect.objectContaining({ id: "highlight-1" }),
     ]);
-    expect(deleteCloudBookmarks).toHaveBeenCalledTimes(1);
-    expect(deleteCloudBookmarks).toHaveBeenCalledWith({}, "user-1", [
-      "bookmark-3",
-    ]);
-    expect(deleteCloudHighlights).toHaveBeenCalledTimes(1);
-    expect(deleteCloudHighlights).toHaveBeenCalledWith({}, "user-1", []);
+    expect(savePendingCloudDelete).toHaveBeenCalledWith({
+      ownerId: "user-1",
+      recordId: "bookmark-3",
+      recordType: "bookmark",
+    });
+    expect(flushPendingCloudDeletes).toHaveBeenCalledWith({}, "user-1");
+    expect(putBookmark).toHaveBeenCalledWith({
+      ...bookmarkBase,
+      syncState: "synced",
+    });
+    expect(putHighlight).toHaveBeenCalledWith({
+      ...highlightBase,
+      syncState: "synced",
+    });
   });
 
   it("flushes pending anchor changes when the page becomes hidden", async () => {
@@ -131,5 +153,67 @@ describe("useCloudAnchorSync", () => {
     expect(upsertCloudHighlights).toHaveBeenCalledWith({}, "user-1", [
       expect.objectContaining({ id: "highlight-1" }),
     ]);
+  });
+
+  it("persists delete retries before removing anchors locally", async () => {
+    const { result } = renderHook(() =>
+      useCloudAnchorSync({ userId: "user-1" }),
+    );
+
+    await act(async () => {
+      await result.current.queueHighlightDelete("highlight-9");
+      await result.current.flushPendingCloudAnchors();
+    });
+
+    expect(savePendingCloudDelete).toHaveBeenCalledWith({
+      ownerId: "user-1",
+      recordId: "highlight-9",
+      recordType: "highlight",
+    });
+    expect(flushPendingCloudDeletes).toHaveBeenCalledWith({}, "user-1");
+  });
+
+  it("retries pending local-only anchors and marks them synced only after a successful cloud flush", async () => {
+    upsertCloudBookmarks.mockRejectedValueOnce(new Error("offline"));
+    upsertCloudHighlights.mockRejectedValueOnce(new Error("offline"));
+
+    const { result } = renderHook(() =>
+      useCloudAnchorSync({ userId: "user-1" }),
+    );
+
+    act(() => {
+      result.current.queueBookmarkUpsert(bookmarkBase);
+      result.current.queueHighlightUpsert(highlightBase);
+    });
+
+    await act(async () => {
+      await result.current.flushPendingCloudAnchors();
+    });
+
+    expect(upsertCloudBookmarks).toHaveBeenCalledWith({}, "user-1", [
+      bookmarkBase,
+    ]);
+    expect(upsertCloudHighlights).toHaveBeenCalledWith({}, "user-1", [
+      highlightBase,
+    ]);
+    expect(putBookmark).not.toHaveBeenCalled();
+    expect(putHighlight).not.toHaveBeenCalled();
+    expect(flushPendingCloudDeletes).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.flushPendingCloudAnchors();
+    });
+
+    expect(upsertCloudBookmarks).toHaveBeenCalledTimes(2);
+    expect(upsertCloudHighlights).toHaveBeenCalledTimes(2);
+    expect(putBookmark).toHaveBeenCalledWith({
+      ...bookmarkBase,
+      syncState: "synced",
+    });
+    expect(putHighlight).toHaveBeenCalledWith({
+      ...highlightBase,
+      syncState: "synced",
+    });
+    expect(flushPendingCloudDeletes).toHaveBeenCalledWith({}, "user-1");
   });
 });

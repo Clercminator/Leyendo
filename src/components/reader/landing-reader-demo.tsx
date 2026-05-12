@@ -9,7 +9,7 @@ import { ClassicReaderView } from "@/components/reader/classic-reader-view";
 import { FocusWordView } from "@/components/reader/focus-word-view";
 import { GuidedLineView } from "@/components/reader/guided-line-view";
 import { PhraseChunkView } from "@/components/reader/phrase-chunk-view";
-import { ReaderCanvas } from "@/components/reader/reader-canvas";
+import { ReaderCanvas } from "@/components/reader/canvas/reader-canvas";
 import { buildDocumentModel } from "@/features/ingest/build/document-model";
 import {
   clampChunkIndex,
@@ -29,6 +29,8 @@ import {
 import { getLocalizedCopy } from "@/lib/locale";
 import { useReaderStore } from "@/state/reader-store";
 import {
+  MAX_READER_WORDS_PER_MINUTE,
+  MIN_READER_WORDS_PER_MINUTE,
   readerPresets,
   type ReaderMode,
   type ReaderPreferences,
@@ -88,13 +90,13 @@ const demoTitle = {
 
 const demoDescription = {
   en: "This built-in demo opens immediately, so you can test the assistive text modes before committing your own material. The saved reading goal above also changes the recommended starting setup here.",
-  es: "Esta demo integrada se abre al instante para que pruebes los modos asistidos de texto antes de usar tu propio material. El objetivo de lectura guardado arriba tambien cambia el inicio recomendado aqui.",
+  es: "Esta demo se abre al instante para que pruebes los modos asistidos antes de usar tu propio material. El objetivo guardado arriba también cambia el inicio recomendado aquí.",
   pt: "Esta demonstracao integrada abre na hora para que voce teste os modos assistidos de texto antes de usar seu proprio material. O objetivo de leitura salvo acima tambem muda o inicio recomendado aqui.",
 };
 
 const demoTipsTitle = {
   en: "What to test in sixty seconds",
-  es: "Que probar en sesenta segundos",
+  es: "Qué probar en sesenta segundos",
   pt: "O que testar em sessenta segundos",
 };
 
@@ -105,9 +107,9 @@ const demoTips = {
     "Open Classic Reader to confirm the same passage stays understandable when you need full context back.",
   ],
   es: [
-    "Cambia de modo para notar como cambia el ritmo al pasar del foco a los grupos de frases.",
-    "Usa los controles de reproduccion para ver si una velocidad un poco mayor mejora la atencion en vez de romperla.",
-    "Abre Lector clasico para comprobar que el mismo pasaje sigue siendo claro cuando necesitas recuperar todo el contexto.",
+    "Cambia de modo para notar cómo cambia el ritmo al pasar del foco a los grupos de frases.",
+    "Usa los controles de reproducción para ver si una velocidad algo mayor mejora la atención sin romper la comprensión.",
+    "Abre el Lector clásico para confirmar que el mismo pasaje sigue claro cuando necesitas recuperar todo el contexto.",
   ],
   pt: [
     "Troque de modo para sentir como o ritmo muda quando voce sai do foco para grupos de frases.",
@@ -118,7 +120,7 @@ const demoTips = {
 
 const demoPdfNote = {
   en: "Standard PDF mode is not part of this sample because it needs the original PDF file and page assets. After import, that mode keeps the page layout, while the text modes trade layout fidelity for more pacing help.",
-  es: "El modo Standard PDF no forma parte de esta muestra porque necesita el archivo PDF original y sus paginas. Despues de importar, ese modo conserva la pagina, mientras los modos de texto cambian fidelidad de layout por mas ayuda de ritmo.",
+  es: "El modo PDF estándar no forma parte de esta muestra porque necesita el archivo original y sus páginas. Después de importar, ese modo conserva el diseño de la página, mientras los modos de texto cambian fidelidad visual por ayuda de ritmo.",
   pt: "O modo Standard PDF nao faz parte desta amostra porque precisa do arquivo PDF original e de suas paginas. Depois da importacao, esse modo preserva a pagina, enquanto os modos de texto trocam fidelidade de layout por mais ajuda de ritmo.",
 };
 
@@ -136,7 +138,7 @@ const demoRecommendedStart = {
 
 const demoGoalLabel = {
   en: "Goal shaping this demo",
-  es: "Objetivo que guia esta demo",
+  es: "Objetivo que guía esta demo",
   pt: "Objetivo que guia esta demo",
 };
 
@@ -151,13 +153,13 @@ const demoStructureSummary = {
 
 const demoSaveMessage = {
   en: "This homepage demo does not save bookmarks or highlights. Import your own document to keep anchors.",
-  es: "Esta demo de la pagina inicial no guarda marcadores ni destacados. Importa tu propio documento para conservar esos puntos.",
+  es: "Esta demo de la página inicial no guarda marcadores ni destacados. Importa tu propio documento para conservar esos puntos.",
   pt: "Esta demonstracao da pagina inicial nao salva marcadores nem destaques. Importe seu proprio documento para manter esses pontos.",
 };
 
 const demoArticleTitle = {
   en: "Why reading deeply and reading faster can work together",
-  es: "Por que leer con profundidad y leer mas rapido pueden funcionar juntos",
+  es: "Por qué leer con profundidad y leer más rápido pueden funcionar juntos",
   pt: "Por que ler com profundidade e ler mais rapido podem funcionar juntos",
 };
 
@@ -185,28 +187,28 @@ Reading faster is useful when it is guided by comprehension instead of ego. A sl
 
 Better reading speed is not only about finishing faster. It gives you more room to review difficult sections, compare sources, and stay engaged long enough to turn information into judgment. The goal is not to rush. The goal is to make focused reading sustainable.
 `,
-  es: `# Por que leer con profundidad y leer mas rapido pueden funcionar juntos
+  es: `# Por qué leer con profundidad y leer más rápido pueden funcionar juntos
 
-Leer es uno de los pocos habitos que mejora al mismo tiempo el vocabulario, el conocimiento general, el reconocimiento de patrones y la memoria a largo plazo. Cuando lees cada dia, construyes una biblioteca mental mas amplia y el material futuro resulta mas facil de entender porque menos ideas llegan aisladas.
+Leer es uno de los pocos hábitos que mejora al mismo tiempo el vocabulario, el conocimiento general, el reconocimiento de patrones y la memoria a largo plazo. Cuando lees cada día, construyes una biblioteca mental más amplia y el material futuro resulta más fácil de entender porque llegan menos ideas aisladas.
 
 ## Lo que cambia con una lectura constante
 
-Quien lee con frecuencia suele notar tres mejoras. Primero, la comprension mejora porque el cerebro reconoce mas estructuras de frases, argumentos y transiciones. Segundo, el recuerdo mejora porque la exposicion repetida ayuda a organizar la informacion nueva en categorias mas fuertes. Tercero, la atencion dura mas porque la lectura entrena a seguir un hilo en vez de reaccionar a interrupciones constantes.
+Quien lee con frecuencia suele notar tres mejoras. Primero, la comprensión mejora porque el cerebro reconoce más estructuras de frases, argumentos y transiciones. Segundo, el recuerdo mejora porque la exposición repetida ayuda a organizar la información nueva en categorías más firmes. Tercero, la atención dura más porque la lectura entrena a seguir un hilo en vez de reaccionar a interrupciones constantes.
 
-## Por que una velocidad mayor puede ayudar
+## Por qué una velocidad mayor puede ayudar
 
-Leer mas rapido es util cuando la comprension guia el ritmo en lugar del ego. Un ritmo un poco mayor suele reducir la tentacion de releer cada linea y mantiene la atencion avanzando. Ese impulso puede hacer que articulos, ensayos e informes pesen menos porque dejas de tratar cada frase como un punto de frenado y empiezas a ver la estructura completa del pasaje.
+Leer más rápido es útil cuando la comprensión guía el ritmo en lugar del ego. Un ritmo algo mayor suele reducir la tentación de releer cada línea y mantiene la atención avanzando. Ese impulso puede hacer que artículos, ensayos e informes pesen menos porque dejas de tratar cada frase como un punto de frenado y empiezas a ver la estructura completa del pasaje.
 
-## Como ganar velocidad sin perder sentido
+## Cómo ganar velocidad sin perder sentido
 
-- Empieza con un ritmo sereno que siga siendo facil de entender.
+- Empieza con un ritmo sereno que siga siendo fácil de entender.
 - Usa grupos de frases en lugar de pronunciar mentalmente cada palabra.
-- Deja que la puntuacion marque pausas naturales en vez de frenar despues de cada bloque.
-- Vuelve al lector clasico cuando un parrafo merezca una revision mas lenta.
+- Deja que la puntuación marque pausas naturales en vez de frenar después de cada bloque.
+- Vuelve al Lector clásico cuando un párrafo merezca una revisión más lenta.
 
-## El beneficio practico
+## El beneficio práctico
 
-Una mejor velocidad de lectura no sirve solo para terminar antes. Tambien te da mas espacio para revisar secciones dificiles, comparar fuentes y mantener la atencion el tiempo suficiente para convertir informacion en criterio. La meta no es correr. La meta es hacer sostenible la lectura enfocada.
+Una mejor velocidad de lectura no sirve solo para terminar antes. También te da más espacio para revisar secciones difíciles, comparar fuentes y mantener la atención el tiempo suficiente para convertir información en criterio. La meta no es correr. La meta es hacer sostenible la lectura enfocada.
 `,
   pt: `# Por que ler com profundidade e ler mais rapido podem funcionar juntos
 
@@ -256,10 +258,10 @@ export function LandingReaderDemo() {
       demoGoal === "study-carefully"
         ? "Estudiar con calma"
         : demoGoal === "read-faster"
-          ? "Leer mas rapido"
+          ? "Leer más rápido"
           : demoGoal === "skim-overview"
-            ? "Explorar panorama"
-            : "Practicar enfoque",
+            ? "Vista general"
+            : "Practicar concentración",
     pt:
       demoGoal === "study-carefully"
         ? "Estudar com calma"
@@ -400,12 +402,12 @@ export function LandingReaderDemo() {
             : "Classic Reader",
     es:
       preferences.mode === "focus-word"
-        ? "Palabra foco"
+        ? "Foco por palabra"
         : preferences.mode === "phrase-chunk"
           ? "Bloques de frases"
           : preferences.mode === "guided-line"
-            ? "Linea guiada"
-            : "Lector clasico",
+            ? "Línea guiada"
+            : "Lector clásico",
     pt:
       preferences.mode === "focus-word"
         ? "Palavra foco"
@@ -427,12 +429,12 @@ export function LandingReaderDemo() {
               : "Classic Reader",
       es:
         recommendedDemoPreferences.mode === "focus-word"
-          ? "Palabra foco"
+          ? "Foco por palabra"
           : recommendedDemoPreferences.mode === "phrase-chunk"
             ? "Bloques de frases"
             : recommendedDemoPreferences.mode === "guided-line"
-              ? "Linea guiada"
-              : "Lector clasico",
+              ? "Línea guiada"
+              : "Lector clásico",
       pt:
         recommendedDemoPreferences.mode === "focus-word"
           ? "Palavra foco"
@@ -487,6 +489,7 @@ export function LandingReaderDemo() {
             chunk={activeChunk}
             onJumpToToken={handleJumpToToken}
             reduceMotion={preferences.reduceMotion}
+            useMarkdownPreview={false}
           />
         );
     }
@@ -530,7 +533,7 @@ export function LandingReaderDemo() {
               <p className="text-sm tracking-[0.18em] text-(--text-muted) uppercase">
                 {getLocalizedCopy(locale, {
                   en: "Demo article",
-                  es: "Articulo de prueba",
+                  es: "Artículo de prueba",
                   pt: "Artigo de teste",
                 })}
               </p>
@@ -653,8 +656,11 @@ export function LandingReaderDemo() {
             setPreferences((currentPreferences) => ({
               ...currentPreferences,
               wordsPerMinute: Math.max(
-                180,
-                Math.min(520, currentPreferences.wordsPerMinute + delta),
+                MIN_READER_WORDS_PER_MINUTE,
+                Math.min(
+                  MAX_READER_WORDS_PER_MINUTE,
+                  currentPreferences.wordsPerMinute + delta,
+                ),
               ),
             }));
           }}

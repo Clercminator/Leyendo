@@ -61,11 +61,11 @@ export function GuidedLineView({
   );
 
   return (
-    <div className="reader-panel flex h-full flex-1 flex-col rounded-[1.5rem] border border-white/10 px-4 py-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:rounded-[1.65rem] md:px-7 md:py-7 lg:rounded-[1.75rem] lg:px-10 lg:py-10">
+    <div className="reader-panel flex h-full flex-1 flex-col rounded-[1.5rem] px-4 py-5 text-left md:rounded-[1.65rem] md:px-7 md:py-7 lg:rounded-[1.75rem] lg:px-10 lg:py-10">
       <p className="reader-accent text-xs tracking-[0.24em] uppercase md:text-sm md:tracking-[0.28em]">
         {getLocalizedCopy(locale, {
           en: "Guided Line",
-          es: "Linea guiada",
+          es: "Línea guiada",
           pt: "Linha guiada",
         })}
       </p>
@@ -84,11 +84,7 @@ export function GuidedLineView({
                 key={lineChunk.index}
                 data-reader-line-active={isActiveLine ? "true" : undefined}
                 data-reader-line-index={lineChunk.index}
-                className={`rounded-[1.1rem] px-3 py-2.5 transition md:rounded-2xl md:px-4 md:py-3 ${
-                  isActiveLine
-                    ? "border border-white/10 bg-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]"
-                    : "bg-white/3 opacity-55"
-                }`}
+                className="reader-guided-line rounded-[1.1rem] px-3 py-2.5 transition md:rounded-2xl md:px-4 md:py-3"
                 onClick={
                   onJumpToToken
                     ? (event) => {
@@ -101,7 +97,7 @@ export function GuidedLineView({
                 <p
                   className={`reader-guided-body ${
                     isActiveLine
-                      ? "text-lg font-medium text-white md:text-2xl"
+                      ? "reader-guided-line-active-text text-lg font-medium md:text-2xl"
                       : "reader-muted text-base md:text-xl"
                   }`}
                 >
@@ -114,7 +110,7 @@ export function GuidedLineView({
                       data-reader-token-index={token.index}
                       className={
                         onJumpToToken
-                          ? "cursor-pointer rounded-md px-[0.04em] transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-sky)"
+                          ? "cursor-pointer rounded-md px-[0.04em] transition hover:text-(--text-strong) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-sky)"
                           : undefined
                       }
                       onClick={
@@ -151,7 +147,7 @@ export function GuidedLineView({
       <p className="reader-muted mt-5 text-sm leading-6 md:mt-6 md:leading-7">
         {getLocalizedCopy(locale, {
           en: "Follow the active line while nearby lines stay visible, so you keep paragraph context without scanning the whole page.",
-          es: "Sigue la linea activa mientras las lineas cercanas siguen visibles para mantener el contexto del parrafo sin recorrer toda la pagina.",
+          es: "Sigue la línea activa mientras las cercanas siguen visibles, para mantener el contexto del párrafo sin recorrer toda la página.",
           pt: "Siga a linha ativa enquanto as linhas proximas continuam visiveis para manter o contexto do paragrafo sem varrer a pagina inteira.",
         })}
       </p>

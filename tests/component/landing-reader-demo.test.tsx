@@ -52,5 +52,8 @@ describe("LandingReaderDemo", () => {
     expect(screen.getByLabelText(/classic reader document/i)).toHaveTextContent(
       /the practical payoff/i,
     );
+    expect(
+      readerCanvas.querySelector(".reader-classic-active-run-surface"),
+    ).toHaveTextContent(/why reading deeply/i);
   });
 });

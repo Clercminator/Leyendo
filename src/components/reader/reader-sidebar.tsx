@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import { BookmarkPlus, Highlighter, Trash2 } from "lucide-react";
 
@@ -15,6 +15,11 @@ export interface PdfThumbnailItem {
   pageLabel: string;
   imageUrl?: string;
 }
+
+const PDF_THUMBNAIL_DEFAULT_VIEWPORT_HEIGHT_PX = 352;
+const PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX = 264;
+const PDF_THUMBNAIL_OVERSCAN = 3;
+const PDF_THUMBNAIL_WINDOWING_THRESHOLD = 24;
 
 interface ReaderSidebarNotice {
   title: string;
@@ -78,15 +83,111 @@ export const ReaderSidebar = memo(function ReaderSidebar({
   const { locale } = useLocale();
   const thumbnailScrollerRef = useRef<HTMLDivElement | null>(null);
   const thumbnailButtonRefs = useRef(new Map<number, HTMLButtonElement>());
+  const [thumbnailScrollTop, setThumbnailScrollTop] = useState(0);
+  const [thumbnailViewportHeight, setThumbnailViewportHeight] = useState(
+    PDF_THUMBNAIL_DEFAULT_VIEWPORT_HEIGHT_PX,
+  );
+  const pdfThumbnailCount = pdfThumbnails?.length ?? 0;
+  const shouldWindowPdfThumbnails =
+    pdfThumbnailCount > PDF_THUMBNAIL_WINDOWING_THRESHOLD;
+  const renderedThumbnailWindow = useMemo(() => {
+    if (!shouldWindowPdfThumbnails) {
+      return {
+        end: pdfThumbnailCount,
+        start: 0,
+      };
+    }
+
+    const visibleCount = Math.max(
+      1,
+      Math.ceil(
+        thumbnailViewportHeight / PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX,
+      ),
+    );
+    const windowSize = visibleCount + PDF_THUMBNAIL_OVERSCAN * 2;
+    const rawStart = Math.max(
+      0,
+      Math.floor(thumbnailScrollTop / PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX) -
+        PDF_THUMBNAIL_OVERSCAN,
+    );
+    const maxStart = Math.max(0, pdfThumbnailCount - windowSize);
+    const start = Math.min(rawStart, maxStart);
+
+    return {
+      end: Math.min(pdfThumbnailCount, start + windowSize),
+      start,
+    };
+  }, [
+    pdfThumbnailCount,
+    shouldWindowPdfThumbnails,
+    thumbnailScrollTop,
+    thumbnailViewportHeight,
+  ]);
+  const renderedPdfThumbnails = useMemo(
+    () =>
+      pdfThumbnails?.slice(
+        renderedThumbnailWindow.start,
+        renderedThumbnailWindow.end,
+      ) ?? [],
+    [pdfThumbnails, renderedThumbnailWindow.end, renderedThumbnailWindow.start],
+  );
+  const topThumbnailSpacerHeight = shouldWindowPdfThumbnails
+    ? renderedThumbnailWindow.start * PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX
+    : 0;
+  const bottomThumbnailSpacerHeight = shouldWindowPdfThumbnails
+    ? Math.max(
+        0,
+        (pdfThumbnailCount - renderedThumbnailWindow.end) *
+          PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX,
+      )
+    : 0;
 
   useEffect(() => {
-    if (!pdfThumbnails || pdfThumbnails.length === 0 || !onRequestThumbnail) {
+    const scroller = thumbnailScrollerRef.current;
+
+    if (!scroller) {
+      return;
+    }
+
+    const updateViewportHeight = () => {
+      setThumbnailViewportHeight(
+        scroller.clientHeight || PDF_THUMBNAIL_DEFAULT_VIEWPORT_HEIGHT_PX,
+      );
+    };
+
+    updateViewportHeight();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateViewportHeight);
+
+      return () => {
+        window.removeEventListener("resize", updateViewportHeight);
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateViewportHeight();
+    });
+
+    resizeObserver.observe(scroller);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [pdfThumbnailCount]);
+
+  useEffect(() => {
+    setThumbnailScrollTop(0);
+  }, [pdfThumbnailCount]);
+
+  useEffect(() => {
+    if (renderedPdfThumbnails.length === 0 || !onRequestThumbnail) {
       return;
     }
 
     if (typeof IntersectionObserver === "undefined") {
-      pdfThumbnails
-        .slice(0, Math.min(pdfThumbnails.length, 8))
+      renderedPdfThumbnails
+        .slice(0, Math.min(renderedPdfThumbnails.length, 8))
         .forEach((thumbnail) => {
           onRequestThumbnail(thumbnail.pageIndex);
         });
@@ -122,20 +223,20 @@ export const ReaderSidebar = memo(function ReaderSidebar({
     return () => {
       observer.disconnect();
     };
-  }, [onRequestThumbnail, pdfThumbnails]);
+  }, [onRequestThumbnail, renderedPdfThumbnails]);
 
   const formatBookmarkLocation = (bookmark: Bookmark) => {
     if (typeof bookmark.sourcePageIndex === "number") {
       return getLocalizedCopy(locale, {
         en: `Saved on page ${bookmark.sourcePageIndex + 1}`,
-        es: `Guardado en la pagina ${bookmark.sourcePageIndex + 1}`,
+        es: `Guardado en la página ${bookmark.sourcePageIndex + 1}`,
         pt: `Salvo na pagina ${bookmark.sourcePageIndex + 1}`,
       });
     }
 
     return getLocalizedCopy(locale, {
       en: `Saved at paragraph ${bookmark.paragraphIndex + 1}`,
-      es: `Guardado en el parrafo ${bookmark.paragraphIndex + 1}`,
+      es: `Guardado en el párrafo ${bookmark.paragraphIndex + 1}`,
       pt: `Salvo no paragrafo ${bookmark.paragraphIndex + 1}`,
     });
   };
@@ -167,7 +268,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
             <p className="mt-1 text-xs tracking-[0.18em] text-(--text-muted) uppercase">
               {getLocalizedCopy(locale, {
                 en: `Page ${outlineItem.pageIndex + 1}`,
-                es: `Pagina ${outlineItem.pageIndex + 1}`,
+                es: `Página ${outlineItem.pageIndex + 1}`,
                 pt: `Pagina ${outlineItem.pageIndex + 1}`,
               })}
             </p>
@@ -200,7 +301,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
     highlightHelperText ??
     getLocalizedCopy(locale, {
       en: "Highlights keep the active chunk anchored, so reopening still lands on the right passage even if chunk size changes later.",
-      es: "Los destacados mantienen el bloque activo anclado, asi que al reabrir sigues llegando al pasaje correcto aunque cambie el tamano del bloque.",
+      es: "Los destacados mantienen anclado el bloque activo, así que al reabrir vuelves al pasaje correcto aunque cambie el tamaño del bloque.",
       pt: "Os destaques mantem o bloco ativo ancorado, entao ao reabrir voce volta ao trecho certo mesmo se o tamanho do bloco mudar depois.",
     });
   const resolvedSaveHighlightLabel =
@@ -367,7 +468,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
               <p className="mt-3 text-sm leading-6 text-(--text-muted) sm:leading-7">
                 {getLocalizedCopy(locale, {
                   en: "Save a bookmark to return to this exact reading position later.",
-                  es: "Guarda un marcador para volver a esta posicion exacta mas tarde.",
+                  es: "Guarda un marcador para volver a esta posición exacta más tarde.",
                   pt: "Salve um marcador para voltar a esta posicao exata depois.",
                 })}
               </p>
@@ -420,15 +521,28 @@ export const ReaderSidebar = memo(function ReaderSidebar({
               <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
                 {getLocalizedCopy(locale, {
                   en: "Page thumbnails",
-                  es: "Miniaturas de pagina",
+                  es: "Miniaturas de página",
                   pt: "Miniaturas de pagina",
                 })}
               </p>
               <div
                 ref={thumbnailScrollerRef}
                 className="mt-3 grid max-h-88 gap-3 overflow-y-auto pr-1"
+                onScroll={(event) => {
+                  if (!shouldWindowPdfThumbnails) {
+                    return;
+                  }
+
+                  setThumbnailScrollTop(event.currentTarget.scrollTop);
+                }}
               >
-                {pdfThumbnails.map((thumbnail) => {
+                {topThumbnailSpacerHeight > 0 ? (
+                  <div
+                    aria-hidden="true"
+                    style={{ height: `${topThumbnailSpacerHeight}px` }}
+                  />
+                ) : null}
+                {renderedPdfThumbnails.map((thumbnail) => {
                   const isCurrentPage =
                     currentPdfPageIndex === thumbnail.pageIndex;
 
@@ -461,7 +575,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
                             src={thumbnail.imageUrl}
                             alt={getLocalizedCopy(locale, {
                               en: `Page ${thumbnail.pageLabel}`,
-                              es: `Pagina ${thumbnail.pageLabel}`,
+                              es: `Página ${thumbnail.pageLabel}`,
                               pt: `Pagina ${thumbnail.pageLabel}`,
                             })}
                             width={156}
@@ -476,13 +590,19 @@ export const ReaderSidebar = memo(function ReaderSidebar({
                       <p className="mt-2 text-xs font-semibold tracking-[0.18em] text-(--text-muted) uppercase">
                         {getLocalizedCopy(locale, {
                           en: `Page ${thumbnail.pageLabel}`,
-                          es: `Pagina ${thumbnail.pageLabel}`,
+                          es: `Página ${thumbnail.pageLabel}`,
                           pt: `Pagina ${thumbnail.pageLabel}`,
                         })}
                       </p>
                     </button>
                   );
                 })}
+                {bottomThumbnailSpacerHeight > 0 ? (
+                  <div
+                    aria-hidden="true"
+                    style={{ height: `${bottomThumbnailSpacerHeight}px` }}
+                  />
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -500,7 +620,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
                 <p className="mt-2 text-sm leading-6 text-(--text-muted)">
                   {getLocalizedCopy(locale, {
                     en: `Current page ${currentPdfPageLabel}`,
-                    es: `Pagina actual ${currentPdfPageLabel}`,
+                    es: `Página actual ${currentPdfPageLabel}`,
                     pt: `Pagina atual ${currentPdfPageLabel}`,
                   })}
                 </p>

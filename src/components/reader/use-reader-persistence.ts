@@ -31,6 +31,8 @@ interface UseReaderPersistenceOptions {
 
 const SESSION_PROGRESS_BUCKET_SIZE = 5;
 const CLOUD_SESSION_SYNC_DELAY_MS = 15_000;
+const PREFERENCE_SAVE_DELAY_MS = 450;
+const PREFERENCE_SYNC_DELAY_MS = 1_200;
 
 function getSessionProgressBucket(percentComplete: number) {
   return Math.floor(percentComplete / SESSION_PROGRESS_BUCKET_SIZE);
@@ -65,6 +67,38 @@ export function useReaderPersistence({
   );
   const lastPlaybackBoundaryRef = useRef<string | undefined>(undefined);
   const lastPlaybackStateRef = useRef(isPlaying);
+  const pendingPreferencesRef = useRef<ReaderPreferences | undefined>(
+    undefined,
+  );
+  const preferenceSaveTimeoutRef = useRef<number | undefined>(undefined);
+  const preferenceSyncTimeoutRef = useRef<number | undefined>(undefined);
+
+  const flushPreferenceSave = useCallback(() => {
+    const pendingPreferences = pendingPreferencesRef.current;
+
+    if (!pendingPreferences) {
+      return;
+    }
+
+    void saveReaderPreferences(pendingPreferences);
+  }, []);
+
+  const flushPreferenceSync = useCallback(() => {
+    const pendingPreferences = pendingPreferencesRef.current;
+
+    if (!pendingPreferences || !userId || !syncReaderPreferences) {
+      return;
+    }
+
+    const signature = JSON.stringify(pendingPreferences);
+
+    if (signature === lastSyncedPreferenceSignatureRef.current) {
+      return;
+    }
+
+    lastSyncedPreferenceSignatureRef.current = signature;
+    void syncReaderPreferences(pendingPreferences);
+  }, [syncReaderPreferences, userId]);
 
   const flushCloudSession = useCallback(() => {
     const pendingSession = pendingCloudSessionRef.current;
@@ -92,13 +126,20 @@ export function useReaderPersistence({
       return;
     }
 
-    lastCloudSignatureRef.current = signature;
     cloudSyncTimeoutRef.current = undefined;
-    void upsertCloudSessions(supabase, userId, [pendingSession]).catch(
-      (error) => {
+    void upsertCloudSessions(supabase, userId, [pendingSession])
+      .then(async () => {
+        lastCloudSignatureRef.current = signature;
+        await saveSession({
+          ...pendingSession,
+          ownerId: pendingSession.ownerId ?? userId,
+          syncState: "synced",
+        });
+      })
+      .catch((error) => {
+        lastCloudSignatureRef.current = undefined;
         console.warn("session sync failed", error);
-      },
-    );
+      });
   }, [userId]);
 
   const flushPendingSession = useCallback(
@@ -189,26 +230,36 @@ export function useReaderPersistence({
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      void saveReaderPreferences(preferences);
+    pendingPreferencesRef.current = preferences;
 
-      if (!userId || !syncReaderPreferences) {
-        return;
-      }
+    if (preferenceSaveTimeoutRef.current !== undefined) {
+      window.clearTimeout(preferenceSaveTimeoutRef.current);
+    }
 
-      const signature = JSON.stringify(preferences);
-      if (signature === lastSyncedPreferenceSignatureRef.current) {
-        return;
-      }
+    if (preferenceSyncTimeoutRef.current !== undefined) {
+      window.clearTimeout(preferenceSyncTimeoutRef.current);
+    }
 
-      lastSyncedPreferenceSignatureRef.current = signature;
-      void syncReaderPreferences(preferences);
-    }, 180);
+    preferenceSaveTimeoutRef.current = window.setTimeout(() => {
+      flushPreferenceSave();
+      preferenceSaveTimeoutRef.current = undefined;
+    }, PREFERENCE_SAVE_DELAY_MS);
+
+    preferenceSyncTimeoutRef.current = window.setTimeout(() => {
+      flushPreferenceSync();
+      preferenceSyncTimeoutRef.current = undefined;
+    }, PREFERENCE_SYNC_DELAY_MS);
 
     return () => {
-      window.clearTimeout(timeoutId);
+      if (preferenceSaveTimeoutRef.current !== undefined) {
+        window.clearTimeout(preferenceSaveTimeoutRef.current);
+      }
+
+      if (preferenceSyncTimeoutRef.current !== undefined) {
+        window.clearTimeout(preferenceSyncTimeoutRef.current);
+      }
     };
-  }, [preferences, syncReaderPreferences, userId]);
+  }, [flushPreferenceSave, flushPreferenceSync, preferences]);
 
   useEffect(() => {
     if (!document?.payload) {
@@ -229,7 +280,7 @@ export function useReaderPersistence({
         { chunks: runtimeChunks },
         currentChunkIndex,
       ),
-      syncState: document.syncState,
+      syncState: userId ? ("local-only" as const) : document.syncState,
       textPresentation,
       updatedAt: new Date().toISOString(),
     };
@@ -268,6 +319,7 @@ export function useReaderPersistence({
     isPlaying,
     runtimeChunks,
     textPresentation,
+    userId,
   ]);
 
   useEffect(() => {
@@ -281,11 +333,15 @@ export function useReaderPersistence({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (globalThis.document.visibilityState === "hidden") {
+        flushPreferenceSave();
+        flushPreferenceSync();
         flushPendingSession({ forceCloud: true });
       }
     };
 
     const handlePageHide = () => {
+      flushPreferenceSave();
+      flushPreferenceSync();
       flushPendingSession({ forceCloud: true });
     };
 
@@ -304,7 +360,15 @@ export function useReaderPersistence({
       if (cloudSyncTimeoutRef.current !== undefined) {
         window.clearTimeout(cloudSyncTimeoutRef.current);
       }
+      if (preferenceSaveTimeoutRef.current !== undefined) {
+        window.clearTimeout(preferenceSaveTimeoutRef.current);
+      }
+      if (preferenceSyncTimeoutRef.current !== undefined) {
+        window.clearTimeout(preferenceSyncTimeoutRef.current);
+      }
+      flushPreferenceSave();
+      flushPreferenceSync();
       flushPendingSession({ forceCloud: true });
     };
-  }, [flushPendingSession]);
+  }, [flushPendingSession, flushPreferenceSave, flushPreferenceSync]);
 }

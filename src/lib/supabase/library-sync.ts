@@ -2,36 +2,39 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { db } from "@/db/app-db";
 import {
-  normalizePlanTier,
-  normalizeSubscriptionStatus,
-  type PlanTier,
-  type SubscriptionStatus,
-} from "@/lib/plans";
+  deletePendingCloudDeletes,
+  getPendingCloudDeletesForOwner,
+} from "@/db/repositories";
+import {
+  buildDocumentPayloadPath,
+  deleteCloudBookmarks,
+  deleteCloudHighlights,
+  upsertCloudBookmarks,
+  upsertCloudDocuments,
+  upsertCloudHighlights,
+  upsertCloudSessions,
+} from "@/lib/supabase/library-cloud-mutations";
 import type {
   DocumentModel,
   DocumentRecord,
   DocumentSourceKind,
 } from "@/types/document";
 import {
-  defaultReaderPreferences,
-  readingGoals,
-  readerModes,
-  readerThemes,
   type Bookmark,
   type Highlight,
-  type ReaderPreferences,
   type ReadingSession,
 } from "@/types/reader";
+import type { PendingCloudDeleteRecord } from "@/types/sync";
+
+export * from "@/lib/supabase/feedback";
+export * from "@/lib/supabase/library-cloud-mutations";
+export * from "@/lib/supabase/profile";
 
 const DOCUMENTS_TABLE = "user_documents";
 const SESSIONS_TABLE = "user_sessions";
 const BOOKMARKS_TABLE = "user_bookmarks";
 const HIGHLIGHTS_TABLE = "user_highlights";
-const FEEDBACK_TABLE = "feedback";
-const PROFILES_TABLE = "profiles";
-const PROFILE_AVATAR_BUCKET = "profile-avatars";
 const DOCUMENT_PAYLOAD_BUCKET = "document-payloads";
-const GUEST_FILE_UPLOAD_COUNT_PREFERENCE_KEY = "guest-file-upload-count";
 const DOCUMENT_METADATA_SELECT =
   "created_at,document_id,excerpt,source_kind,title,total_chunks,total_sections,updated_at,user_id";
 const DOCUMENT_ID_SELECT = "document_id";
@@ -43,23 +46,6 @@ interface CloudSyncCursors {
   highlightsCreatedAt?: string;
   sessionsUpdatedAt?: string;
 }
-
-const supportedImageExtensions = new Set([
-  "avif",
-  "bmp",
-  "gif",
-  "heic",
-  "heif",
-  "ico",
-  "jfif",
-  "jpeg",
-  "jpg",
-  "png",
-  "svg",
-  "tif",
-  "tiff",
-  "webp",
-]);
 
 interface RemoteDocumentRow {
   created_at: string;
@@ -113,65 +99,22 @@ interface RemoteHighlightRow {
   user_id: string;
 }
 
-interface RemoteProfileRow {
-  avatar_path: string | null;
-  created_at: string;
-  display_name: string | null;
-  file_upload_count: number | null;
-  marketing_consent: boolean | null;
-  personal_info: unknown | null;
-  plan_tier: string | null;
-  reader_preferences: unknown | null;
-  saved_words: unknown | null;
-  subscription_expires_at: string | null;
-  subscription_grace_until: string | null;
-  subscription_started_at: string | null;
-  subscription_status: string | null;
-  updated_at: string;
-  user_id: string;
-}
-
-export interface UserPersonalInfo {
-  birthYear?: number;
-  city?: string;
-  country?: string;
-  industry?: string;
-  interests?: string[];
-  occupation?: string;
-  useCase?: string;
-}
-
-export interface UserSavedWord {
-  createdAt: string;
-  meaning?: string;
-  note?: string;
-  word: string;
-}
-
-export interface UserProfile {
-  avatarPath?: string;
-  avatarUrl?: string;
-  createdAt: string;
-  displayName?: string;
-  fileUploadCount: number;
-  marketingConsent: boolean;
-  personalInfo?: UserPersonalInfo;
-  planTier: PlanTier;
-  readerPreferences?: ReaderPreferences;
-  savedWords?: UserSavedWord[];
-  subscriptionExpiresAt?: string;
-  subscriptionGraceUntil?: string;
-  subscriptionStartedAt?: string;
-  subscriptionStatus?: SubscriptionStatus;
-  updatedAt: string;
-  userId: string;
-}
-
 export interface LocalLibrarySummary {
   bookmarks: number;
   documents: number;
   highlights: number;
   sessions: number;
+}
+
+function isPendingCloudRecord<RecordType extends { ownerId?: string; syncState?: string }>(
+  record: RecordType,
+  userId?: string,
+) {
+  if (record.syncState === "local-only") {
+    return !record.ownerId || !userId || record.ownerId === userId;
+  }
+
+  return !record.ownerId;
 }
 
 function getCloudSyncCursorPreferenceKey(userId: string) {
@@ -194,6 +137,181 @@ async function saveCloudSyncCursors(userId: string, cursors: CloudSyncCursors) {
 
 async function clearCloudSyncCursors(userId: string) {
   await db.preferences.delete(getCloudSyncCursorPreferenceKey(userId));
+}
+
+export async function isRemoteLibraryEmpty(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const { count, error } = await supabase
+    .from(DOCUMENTS_TABLE)
+    .select("document_id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (error) {
+    throw error;
+  }
+
+  return (count ?? 0) === 0;
+}
+
+export async function getLocalOnlyLibrarySummary(
+  userId?: string,
+): Promise<LocalLibrarySummary> {
+  const [documents, sessions, bookmarks, highlights, pendingDeletes] =
+    await Promise.all([
+    db.documents.toArray(),
+    db.sessions.toArray(),
+    db.bookmarks.toArray(),
+    db.highlights.toArray(),
+      userId
+        ? getPendingCloudDeletesForOwner(userId)
+        : Promise.resolve<PendingCloudDeleteRecord[]>([]),
+    ]);
+
+  const pendingBookmarkDeletes = pendingDeletes.filter(
+    (record) => record.recordType === "bookmark",
+  ).length;
+  const pendingHighlightDeletes = pendingDeletes.filter(
+    (record) => record.recordType === "highlight",
+  ).length;
+
+  return {
+    bookmarks:
+      bookmarks.filter((bookmark) => !bookmark.ownerId).length +
+      pendingBookmarkDeletes,
+    documents: documents.filter((document) => !document.ownerId).length,
+    highlights:
+      highlights.filter((highlight) => !highlight.ownerId).length +
+      pendingHighlightDeletes,
+    sessions: sessions.filter((session) => !session.ownerId).length,
+  };
+}
+
+async function getOwnedRows<RecordType extends { ownerId?: string }>(
+  table: {
+    where?: (key: string) => {
+      equals: (value: string) => {
+        toArray?: () => Promise<RecordType[]>;
+      };
+    };
+  },
+  userId: string,
+) {
+  const matches = table.where?.("ownerId")?.equals(userId);
+
+  if (typeof matches?.toArray === "function") {
+    return matches.toArray();
+  }
+
+  return [];
+}
+
+export async function getSyncedLibrarySummary(
+  userId: string,
+): Promise<LocalLibrarySummary> {
+  const [documents, sessions, bookmarks, highlights] = await Promise.all([
+    getOwnedRows<DocumentRecord>(db.documents, userId),
+    getOwnedRows<ReadingSession>(db.sessions, userId),
+    getOwnedRows<Bookmark>(db.bookmarks, userId),
+    getOwnedRows<Highlight>(db.highlights, userId),
+  ]);
+
+  return {
+    bookmarks: bookmarks.length,
+    documents: documents.length,
+    highlights: highlights.length,
+    sessions: sessions.length,
+  };
+}
+
+export async function clearSyncedLibraryForUser(userId: string) {
+  await db.transaction(
+    "rw",
+    db.documents,
+    db.sessions,
+    db.bookmarks,
+    db.highlights,
+    async () => {
+      await db.sessions.where("ownerId").equals(userId).delete();
+      await db.bookmarks.where("ownerId").equals(userId).delete();
+      await db.highlights.where("ownerId").equals(userId).delete();
+      await db.documents.where("ownerId").equals(userId).delete();
+    },
+  );
+
+  await clearCloudSyncCursors(userId);
+}
+
+async function clearSyncedDocumentBundleForUser(
+  userId: string,
+  documentId: string,
+) {
+  const [document, sessions, bookmarks, highlights] = await Promise.all([
+    db.documents.get(documentId),
+    db.sessions.where("documentId").equals(documentId).toArray(),
+    db.bookmarks.where("documentId").equals(documentId).toArray(),
+    db.highlights.where("documentId").equals(documentId).toArray(),
+  ]);
+
+  if (document?.ownerId === userId) {
+    await db.documents.delete(documentId);
+  }
+
+  const sessionIds = sessions
+    .filter((session) => session.ownerId === userId)
+    .map((session) => session.id);
+  const bookmarkIds = bookmarks
+    .filter((bookmark) => bookmark.ownerId === userId)
+    .map((bookmark) => bookmark.id);
+  const highlightIds = highlights
+    .filter((highlight) => highlight.ownerId === userId)
+    .map((highlight) => highlight.id);
+
+  if (sessionIds.length > 0) {
+    await db.sessions.bulkDelete(sessionIds);
+  }
+  if (bookmarkIds.length > 0) {
+    await db.bookmarks.bulkDelete(bookmarkIds);
+  }
+  if (highlightIds.length > 0) {
+    await db.highlights.bulkDelete(highlightIds);
+  }
+}
+
+export async function flushPendingCloudDeletes(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const pendingDeletes = await getPendingCloudDeletesForOwner(userId);
+
+  if (pendingDeletes.length === 0) {
+    return {
+      deletedBookmarks: 0,
+      deletedHighlights: 0,
+    };
+  }
+
+  const bookmarkIds = pendingDeletes
+    .filter((record) => record.recordType === "bookmark")
+    .map((record) => record.recordId);
+  const highlightIds = pendingDeletes
+    .filter((record) => record.recordType === "highlight")
+    .map((record) => record.recordId);
+
+  if (bookmarkIds.length > 0) {
+    await deleteCloudBookmarks(supabase, userId, bookmarkIds);
+  }
+  if (highlightIds.length > 0) {
+    await deleteCloudHighlights(supabase, userId, highlightIds);
+  }
+
+  await deletePendingCloudDeletes(pendingDeletes.map((record) => record.id));
+
+  return {
+    deletedBookmarks: bookmarkIds.length,
+    deletedHighlights: highlightIds.length,
+  };
 }
 
 function maxIsoTimestamp(left: string | undefined, right: string | undefined) {
@@ -339,28 +457,6 @@ async function reconcileDeletedSyncedRows(args: {
   );
 }
 
-function toRemoteDocumentRow(
-  userId: string,
-  record: DocumentRecord,
-): RemoteDocumentRow {
-  return {
-    created_at: record.createdAt,
-    document_id: record.id,
-    excerpt: record.excerpt,
-    payload: null,
-    source_kind: record.sourceKind,
-    title: record.title,
-    total_chunks: record.totalChunks,
-    total_sections: record.totalSections,
-    updated_at: record.updatedAt,
-    user_id: userId,
-  };
-}
-
-function buildDocumentPayloadPath(userId: string, documentId: string) {
-  return `${userId}/${encodeURIComponent(documentId)}.json`;
-}
-
 async function uploadDocumentPayload(
   supabase: SupabaseClient,
   userId: string,
@@ -412,60 +508,6 @@ async function resolveRemoteDocumentPayload(
   }
 
   return downloadDocumentPayload(supabase, row.user_id, row.document_id);
-}
-
-function toRemoteSessionRow(
-  userId: string,
-  session: ReadingSession,
-): RemoteSessionRow {
-  return {
-    current_chunk_index: session.currentChunkIndex,
-    current_paragraph_index: session.currentParagraphIndex,
-    current_section_index: session.currentSectionIndex,
-    current_token_index: session.currentTokenIndex,
-    document_id: session.documentId,
-    percent_complete: session.percentComplete,
-    updated_at: session.updatedAt,
-    user_id: userId,
-  };
-}
-
-function toRemoteBookmarkRow(
-  userId: string,
-  bookmark: Bookmark,
-): RemoteBookmarkRow {
-  return {
-    chunk_index: bookmark.chunkIndex,
-    created_at: bookmark.createdAt,
-    document_id: bookmark.documentId,
-    id: bookmark.id,
-    label: bookmark.label,
-    note: bookmark.note ?? null,
-    paragraph_index: bookmark.paragraphIndex,
-    section_index: bookmark.sectionIndex,
-    source_page_index: bookmark.sourcePageIndex ?? null,
-    token_index: bookmark.tokenIndex,
-    user_id: userId,
-  };
-}
-
-function toRemoteHighlightRow(
-  userId: string,
-  highlight: Highlight,
-): RemoteHighlightRow {
-  return {
-    chunk_index: highlight.chunkIndex,
-    created_at: highlight.createdAt,
-    document_id: highlight.documentId,
-    id: highlight.id,
-    label: highlight.label,
-    note: highlight.note ?? null,
-    paragraph_index: highlight.paragraphIndex,
-    quote: highlight.quote,
-    section_index: highlight.sectionIndex,
-    token_index: highlight.tokenIndex,
-    user_id: userId,
-  };
 }
 
 function toSyncedDocumentRecord(row: RemoteDocumentRow): DocumentRecord {
@@ -533,697 +575,6 @@ function toSyncedHighlightRecord(row: RemoteHighlightRow): Highlight {
   };
 }
 
-function normalizeReaderPreferences(input: unknown) {
-  if (!input || typeof input !== "object") {
-    return undefined;
-  }
-
-  const candidate = input as Partial<Record<keyof ReaderPreferences, unknown>>;
-  const mode =
-    typeof candidate.mode === "string" &&
-    readerModes.includes(candidate.mode as (typeof readerModes)[number])
-      ? (candidate.mode as ReaderPreferences["mode"])
-      : defaultReaderPreferences.mode;
-  const theme =
-    typeof candidate.theme === "string" &&
-    readerThemes.includes(candidate.theme as (typeof readerThemes)[number])
-      ? (candidate.theme as ReaderPreferences["theme"])
-      : defaultReaderPreferences.theme;
-  const readingGoal =
-    typeof candidate.readingGoal === "string" &&
-    readingGoals.includes(
-      candidate.readingGoal as (typeof readingGoals)[number],
-    )
-      ? (candidate.readingGoal as ReaderPreferences["readingGoal"])
-      : undefined;
-  const focusWindowRaw = Number(candidate.focusWindow);
-  const focusWindow =
-    focusWindowRaw === 1 ||
-    focusWindowRaw === 2 ||
-    focusWindowRaw === 3 ||
-    focusWindowRaw === 4
-      ? focusWindowRaw
-      : defaultReaderPreferences.focusWindow;
-
-  return {
-    chunkSize:
-      typeof candidate.chunkSize === "number" &&
-      Number.isFinite(candidate.chunkSize)
-        ? Math.max(1, Math.min(6, Math.round(candidate.chunkSize)))
-        : defaultReaderPreferences.chunkSize,
-    focusWindow,
-    fontScale:
-      typeof candidate.fontScale === "number" &&
-      Number.isFinite(candidate.fontScale)
-        ? Math.max(0.8, Math.min(1.8, Number(candidate.fontScale.toFixed(1))))
-        : defaultReaderPreferences.fontScale,
-    lineHeight:
-      typeof candidate.lineHeight === "number" &&
-      Number.isFinite(candidate.lineHeight)
-        ? Math.max(1.2, Math.min(2.2, Number(candidate.lineHeight.toFixed(1))))
-        : defaultReaderPreferences.lineHeight,
-    mode,
-    naturalPauses:
-      typeof candidate.naturalPauses === "boolean"
-        ? candidate.naturalPauses
-        : defaultReaderPreferences.naturalPauses,
-    readingGoal,
-    reduceMotion:
-      typeof candidate.reduceMotion === "boolean"
-        ? candidate.reduceMotion
-        : defaultReaderPreferences.reduceMotion,
-    smartPacing:
-      typeof candidate.smartPacing === "boolean"
-        ? candidate.smartPacing
-        : defaultReaderPreferences.smartPacing,
-    theme,
-    wordsPerMinute:
-      typeof candidate.wordsPerMinute === "number" &&
-      Number.isFinite(candidate.wordsPerMinute)
-        ? Math.max(120, Math.min(700, Math.round(candidate.wordsPerMinute)))
-        : defaultReaderPreferences.wordsPerMinute,
-  } satisfies ReaderPreferences;
-}
-
-function normalizeText(value: unknown, maxLength: number) {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  return trimmed.slice(0, maxLength);
-}
-
-function normalizeNonNegativeInteger(value: unknown) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 0;
-  }
-
-  return Math.max(0, Math.floor(value));
-}
-
-function normalizeBirthYear(value: unknown) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return undefined;
-  }
-
-  const currentYear = new Date().getFullYear();
-  const normalized = Math.round(value);
-  if (normalized < 1900 || normalized > currentYear) {
-    return undefined;
-  }
-
-  return normalized;
-}
-
-function normalizeInterestList(value: unknown) {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-
-  const uniqueItems = Array.from(
-    new Set(
-      value
-        .map((entry) => normalizeText(entry, 48))
-        .filter((entry): entry is string => Boolean(entry)),
-    ),
-  ).slice(0, 12);
-
-  return uniqueItems.length > 0 ? uniqueItems : undefined;
-}
-
-function normalizePersonalInfo(input: unknown) {
-  if (!input || typeof input !== "object") {
-    return undefined;
-  }
-
-  const candidate = input as Partial<Record<keyof UserPersonalInfo, unknown>>;
-  const normalized = {
-    birthYear: normalizeBirthYear(candidate.birthYear),
-    city: normalizeText(candidate.city, 80),
-    country: normalizeText(candidate.country, 80),
-    industry: normalizeText(candidate.industry, 80),
-    interests: normalizeInterestList(candidate.interests),
-    occupation: normalizeText(candidate.occupation, 80),
-    useCase: normalizeText(candidate.useCase, 240),
-  } satisfies UserPersonalInfo;
-
-  return Object.values(normalized).some((value) => {
-    if (Array.isArray(value)) {
-      return value.length > 0;
-    }
-
-    return value !== undefined;
-  })
-    ? normalized
-    : undefined;
-}
-
-function normalizeSavedWords(input: unknown) {
-  if (!Array.isArray(input)) {
-    return [];
-  }
-
-  const normalized: UserSavedWord[] = [];
-
-  for (const entry of input) {
-    if (!entry || typeof entry !== "object") {
-      continue;
-    }
-
-    const candidate = entry as Partial<Record<keyof UserSavedWord, unknown>>;
-    const word = normalizeText(candidate.word, 80);
-    if (!word) {
-      continue;
-    }
-
-    normalized.push({
-      createdAt:
-        typeof candidate.createdAt === "string" &&
-        Number.isFinite(Date.parse(candidate.createdAt))
-          ? new Date(candidate.createdAt).toISOString()
-          : new Date().toISOString(),
-      meaning: normalizeText(candidate.meaning, 240),
-      note: normalizeText(candidate.note, 400),
-      word,
-    });
-
-    if (normalized.length >= 500) {
-      break;
-    }
-  }
-
-  return normalized;
-}
-
-function getFileExtension(fileName: string) {
-  const normalized = fileName.trim().toLowerCase();
-  const dotIndex = normalized.lastIndexOf(".");
-  if (dotIndex < 0 || dotIndex === normalized.length - 1) {
-    return undefined;
-  }
-
-  return normalized.slice(dotIndex + 1);
-}
-
-function isSupportedAvatarFile(file: File) {
-  if (
-    typeof file.type === "string" &&
-    file.type.toLowerCase().startsWith("image/")
-  ) {
-    return true;
-  }
-
-  const extension = getFileExtension(file.name);
-  return extension ? supportedImageExtensions.has(extension) : false;
-}
-
-function buildAvatarPath(userId: string, file: File) {
-  const extension = getFileExtension(file.name) ?? "img";
-  return `${userId}/avatar-${Date.now()}.${extension}`;
-}
-
-async function resolveAvatarUrl(
-  supabase: SupabaseClient,
-  avatarPath: string | undefined,
-) {
-  if (!avatarPath) {
-    return undefined;
-  }
-
-  const { data, error } = await supabase.storage
-    .from(PROFILE_AVATAR_BUCKET)
-    .createSignedUrl(avatarPath, 60 * 60);
-
-  if (error) {
-    console.warn("profile avatar URL could not be created", error);
-    return undefined;
-  }
-
-  return data.signedUrl;
-}
-
-async function toUserProfile(
-  supabase: SupabaseClient,
-  row: RemoteProfileRow,
-): Promise<UserProfile> {
-  const avatarPath = normalizeText(row.avatar_path, 240);
-
-  return {
-    avatarPath,
-    avatarUrl: await resolveAvatarUrl(supabase, avatarPath),
-    createdAt: row.created_at,
-    displayName: row.display_name ?? undefined,
-    fileUploadCount: normalizeNonNegativeInteger(row.file_upload_count),
-    marketingConsent: row.marketing_consent === true,
-    personalInfo: normalizePersonalInfo(row.personal_info),
-    planTier: normalizePlanTier(row.plan_tier),
-    readerPreferences: normalizeReaderPreferences(row.reader_preferences),
-    savedWords: normalizeSavedWords(row.saved_words),
-    subscriptionExpiresAt: row.subscription_expires_at ?? undefined,
-    subscriptionGraceUntil: row.subscription_grace_until ?? undefined,
-    subscriptionStartedAt: row.subscription_started_at ?? undefined,
-    subscriptionStatus: normalizeSubscriptionStatus(row.subscription_status),
-    updatedAt: row.updated_at,
-    userId: row.user_id,
-  };
-}
-
-async function fetchCurrentUser(supabase: SupabaseClient) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return user ?? null;
-}
-
-async function fetchCurrentUserId(supabase: SupabaseClient) {
-  const user = await fetchCurrentUser(supabase);
-  return user?.id;
-}
-
-export async function ensureProfile(supabase: SupabaseClient, userId?: string) {
-  const currentUser = await fetchCurrentUser(supabase);
-  const currentUserId = userId ?? currentUser?.id;
-
-  if (!currentUserId) {
-    return;
-  }
-
-  const metadataPlanTier = normalizePlanTier(
-    currentUser?.user_metadata?.plan_tier,
-  );
-  const metadataSubscriptionStatus = normalizeSubscriptionStatus(
-    currentUser?.user_metadata?.subscription_status,
-  );
-  const metadataSubscriptionStartedAt =
-    typeof currentUser?.user_metadata?.subscription_started_at === "string"
-      ? currentUser.user_metadata.subscription_started_at
-      : undefined;
-  const profileSeed = {
-    ...(metadataPlanTier !== "basic" ? { plan_tier: metadataPlanTier } : {}),
-    ...(metadataSubscriptionStatus
-      ? { subscription_status: metadataSubscriptionStatus }
-      : {}),
-    ...(metadataSubscriptionStartedAt
-      ? { subscription_started_at: metadataSubscriptionStartedAt }
-      : {}),
-    updated_at: new Date().toISOString(),
-    user_id: currentUserId,
-  };
-
-  const rpcResult = await supabase.rpc("ensure_my_profile");
-  if (rpcResult.error) {
-    await supabase.from(PROFILES_TABLE).upsert(
-      {
-        updated_at: new Date().toISOString(),
-        user_id: currentUserId,
-      },
-      {
-        onConflict: "user_id",
-      },
-    );
-  }
-
-  const reconcileResult = await supabase.rpc(
-    "reconcile_my_billing_subscriptions",
-  );
-  if (reconcileResult.error) {
-    console.warn("billing reconciliation could not run", reconcileResult.error);
-  }
-
-  if (metadataPlanTier === "basic") {
-    return;
-  }
-
-  const { data: existingProfile, error: existingProfileError } = await supabase
-    .from(PROFILES_TABLE)
-    .select("plan_tier, subscription_status, subscription_started_at")
-    .eq("user_id", currentUserId)
-    .maybeSingle();
-
-  if (existingProfileError) {
-    throw existingProfileError;
-  }
-
-  const shouldSeedMetadata =
-    normalizePlanTier(existingProfile?.plan_tier) === "basic" &&
-    !normalizeSubscriptionStatus(existingProfile?.subscription_status) &&
-    !existingProfile?.subscription_started_at;
-
-  if (!shouldSeedMetadata) {
-    return;
-  }
-
-  await supabase.from(PROFILES_TABLE).upsert(profileSeed, {
-    onConflict: "user_id",
-  });
-}
-
-export async function getProfile(supabase: SupabaseClient, userId?: string) {
-  const currentUserId = userId ?? (await fetchCurrentUserId(supabase));
-
-  if (!currentUserId) {
-    return undefined;
-  }
-
-  const { data, error } = await supabase
-    .from(PROFILES_TABLE)
-    .select("*")
-    .eq("user_id", currentUserId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return data ? toUserProfile(supabase, data as RemoteProfileRow) : undefined;
-}
-
-export async function upsertProfile(
-  supabase: SupabaseClient,
-  input: {
-    avatarPath?: string | null;
-    displayName?: string;
-    fileUploadCount?: number;
-    marketingConsent?: boolean;
-    personalInfo?: UserPersonalInfo | null;
-    planTier?: PlanTier;
-    readerPreferences?: ReaderPreferences;
-    savedWords?: UserSavedWord[] | null;
-    subscriptionExpiresAt?: string | null;
-    subscriptionGraceUntil?: string | null;
-    subscriptionStartedAt?: string | null;
-    subscriptionStatus?: SubscriptionStatus | null;
-    userId?: string;
-  },
-) {
-  const currentUserId = input.userId ?? (await fetchCurrentUserId(supabase));
-
-  if (!currentUserId) {
-    throw new Error("Authentication required.");
-  }
-
-  await ensureProfile(supabase, currentUserId);
-
-  const normalizedDisplayName = input.displayName?.trim();
-  const updates: {
-    avatar_path?: string | null;
-    display_name?: string | null;
-    file_upload_count?: number;
-    marketing_consent?: boolean;
-    personal_info?: UserPersonalInfo | null;
-    plan_tier?: PlanTier;
-    reader_preferences?: ReaderPreferences | null;
-    saved_words?: UserSavedWord[];
-    subscription_expires_at?: string | null;
-    subscription_grace_until?: string | null;
-    subscription_started_at?: string | null;
-    subscription_status?: SubscriptionStatus | null;
-    updated_at: string;
-  } = {
-    updated_at: new Date().toISOString(),
-  };
-
-  if ("avatarPath" in input) {
-    updates.avatar_path = input.avatarPath ?? null;
-  }
-
-  if ("displayName" in input) {
-    updates.display_name = normalizedDisplayName ? normalizedDisplayName : null;
-  }
-
-  if ("fileUploadCount" in input) {
-    updates.file_upload_count = normalizeNonNegativeInteger(
-      input.fileUploadCount,
-    );
-  }
-
-  if ("marketingConsent" in input) {
-    updates.marketing_consent = input.marketingConsent === true;
-  }
-
-  if ("personalInfo" in input) {
-    updates.personal_info = input.personalInfo ?? null;
-  }
-
-  if ("planTier" in input) {
-    updates.plan_tier = normalizePlanTier(input.planTier);
-  }
-
-  if ("readerPreferences" in input) {
-    updates.reader_preferences = input.readerPreferences ?? null;
-  }
-
-  if ("savedWords" in input) {
-    updates.saved_words = normalizeSavedWords(input.savedWords ?? []);
-  }
-
-  if ("subscriptionExpiresAt" in input) {
-    updates.subscription_expires_at = input.subscriptionExpiresAt ?? null;
-  }
-
-  if ("subscriptionGraceUntil" in input) {
-    updates.subscription_grace_until = input.subscriptionGraceUntil ?? null;
-  }
-
-  if ("subscriptionStartedAt" in input) {
-    updates.subscription_started_at = input.subscriptionStartedAt ?? null;
-  }
-
-  if ("subscriptionStatus" in input) {
-    updates.subscription_status =
-      normalizeSubscriptionStatus(input.subscriptionStatus) ?? null;
-  }
-
-  const { data, error } = await supabase
-    .from(PROFILES_TABLE)
-    .update(updates)
-    .eq("user_id", currentUserId)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return toUserProfile(supabase, data as RemoteProfileRow);
-}
-
-export async function incrementProfileFileUploadCount(
-  supabase: SupabaseClient,
-  userId?: string,
-) {
-  const currentUserId = userId ?? (await fetchCurrentUserId(supabase));
-
-  if (!currentUserId) {
-    throw new Error("Authentication required.");
-  }
-
-  await ensureProfile(supabase, currentUserId);
-  const currentProfile = await getProfile(supabase, currentUserId);
-
-  return upsertProfile(supabase, {
-    fileUploadCount: (currentProfile?.fileUploadCount ?? 0) + 1,
-    userId: currentUserId,
-  });
-}
-
-export async function getGuestFileUploadCount() {
-  const record = await db.preferences.get(
-    GUEST_FILE_UPLOAD_COUNT_PREFERENCE_KEY,
-  );
-  return normalizeNonNegativeInteger(record?.value);
-}
-
-export async function incrementGuestFileUploadCount() {
-  const nextCount = (await getGuestFileUploadCount()) + 1;
-
-  await db.preferences.put({
-    key: GUEST_FILE_UPLOAD_COUNT_PREFERENCE_KEY,
-    value: nextCount,
-  });
-
-  return nextCount;
-}
-
-export async function deleteProfileAvatar(
-  supabase: SupabaseClient,
-  avatarPath: string | undefined,
-) {
-  if (!avatarPath) {
-    return;
-  }
-
-  const { error } = await supabase.storage
-    .from(PROFILE_AVATAR_BUCKET)
-    .remove([avatarPath]);
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function uploadProfileAvatar(
-  supabase: SupabaseClient,
-  input: {
-    file: File;
-    userId?: string;
-  },
-) {
-  const currentUserId = input.userId ?? (await fetchCurrentUserId(supabase));
-
-  if (!currentUserId) {
-    throw new Error("Authentication required.");
-  }
-
-  if (!isSupportedAvatarFile(input.file)) {
-    throw new Error("Please choose an image file.");
-  }
-
-  const avatarPath = buildAvatarPath(currentUserId, input.file);
-  const { error } = await supabase.storage
-    .from(PROFILE_AVATAR_BUCKET)
-    .upload(avatarPath, input.file, {
-      cacheControl: "3600",
-      contentType: input.file.type || undefined,
-      upsert: true,
-    });
-
-  if (error) {
-    throw error;
-  }
-
-  return avatarPath;
-}
-
-export async function isRemoteLibraryEmpty(
-  supabase: SupabaseClient,
-  userId: string,
-) {
-  const { count, error } = await supabase
-    .from(DOCUMENTS_TABLE)
-    .select("document_id", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  if (error) {
-    throw error;
-  }
-
-  return (count ?? 0) === 0;
-}
-
-export async function getLocalOnlyLibrarySummary(): Promise<LocalLibrarySummary> {
-  const [documents, sessions, bookmarks, highlights] = await Promise.all([
-    db.documents.toArray(),
-    db.sessions.toArray(),
-    db.bookmarks.toArray(),
-    db.highlights.toArray(),
-  ]);
-
-  return {
-    bookmarks: bookmarks.filter((bookmark) => !bookmark.ownerId).length,
-    documents: documents.filter((document) => !document.ownerId).length,
-    highlights: highlights.filter((highlight) => !highlight.ownerId).length,
-    sessions: sessions.filter((session) => !session.ownerId).length,
-  };
-}
-
-async function getOwnedRows<RecordType extends { ownerId?: string }>(
-  table: {
-    where?: (key: string) => {
-      equals: (value: string) => {
-        toArray?: () => Promise<RecordType[]>;
-      };
-    };
-  },
-  userId: string,
-) {
-  const matches = table.where?.("ownerId")?.equals(userId);
-
-  if (typeof matches?.toArray === "function") {
-    return matches.toArray();
-  }
-
-  return [];
-}
-
-export async function getSyncedLibrarySummary(
-  userId: string,
-): Promise<LocalLibrarySummary> {
-  const [documents, sessions, bookmarks, highlights] = await Promise.all([
-    getOwnedRows<DocumentRecord>(db.documents, userId),
-    getOwnedRows<ReadingSession>(db.sessions, userId),
-    getOwnedRows<Bookmark>(db.bookmarks, userId),
-    getOwnedRows<Highlight>(db.highlights, userId),
-  ]);
-
-  return {
-    bookmarks: bookmarks.length,
-    documents: documents.length,
-    highlights: highlights.length,
-    sessions: sessions.length,
-  };
-}
-
-export async function clearSyncedLibraryForUser(userId: string) {
-  await db.transaction(
-    "rw",
-    db.documents,
-    db.sessions,
-    db.bookmarks,
-    db.highlights,
-    async () => {
-      await db.sessions.where("ownerId").equals(userId).delete();
-      await db.bookmarks.where("ownerId").equals(userId).delete();
-      await db.highlights.where("ownerId").equals(userId).delete();
-      await db.documents.where("ownerId").equals(userId).delete();
-    },
-  );
-
-  await clearCloudSyncCursors(userId);
-}
-
-async function clearSyncedDocumentBundleForUser(
-  userId: string,
-  documentId: string,
-) {
-  const [document, sessions, bookmarks, highlights] = await Promise.all([
-    db.documents.get(documentId),
-    db.sessions.where("documentId").equals(documentId).toArray(),
-    db.bookmarks.where("documentId").equals(documentId).toArray(),
-    db.highlights.where("documentId").equals(documentId).toArray(),
-  ]);
-
-  if (document?.ownerId === userId) {
-    await db.documents.delete(documentId);
-  }
-
-  const sessionIds = sessions
-    .filter((session) => session.ownerId === userId)
-    .map((session) => session.id);
-  const bookmarkIds = bookmarks
-    .filter((bookmark) => bookmark.ownerId === userId)
-    .map((bookmark) => bookmark.id);
-  const highlightIds = highlights
-    .filter((highlight) => highlight.ownerId === userId)
-    .map((highlight) => highlight.id);
-
-  if (sessionIds.length > 0) {
-    await db.sessions.bulkDelete(sessionIds);
-  }
-  if (bookmarkIds.length > 0) {
-    await db.bookmarks.bulkDelete(bookmarkIds);
-  }
-  if (highlightIds.length > 0) {
-    await db.highlights.bulkDelete(highlightIds);
-  }
-}
-
 export async function backUpLocalLibraryToCloud(
   supabase: SupabaseClient,
   userId: string,
@@ -1235,23 +586,38 @@ export async function backUpLocalLibraryToCloud(
     db.highlights.toArray(),
   ]);
 
-  const localDocuments = documents.filter((document) => !document.ownerId);
-  if (localDocuments.length === 0) {
-    return { backedUpDocuments: 0 };
-  }
+  const localDocuments = documents.filter((document) =>
+    isPendingCloudRecord(document, userId),
+  );
 
   const localDocumentIds = new Set(
     localDocuments.map((document) => document.id),
   );
-  const localSessions = sessions.filter((session) =>
-    localDocumentIds.has(session.documentId),
+  const localSessions = sessions.filter(
+    (session) =>
+      localDocumentIds.has(session.documentId) ||
+      isPendingCloudRecord(session, userId),
   );
-  const localBookmarks = bookmarks.filter((bookmark) =>
-    localDocumentIds.has(bookmark.documentId),
+  const localBookmarks = bookmarks.filter(
+    (bookmark) =>
+      localDocumentIds.has(bookmark.documentId) ||
+      isPendingCloudRecord(bookmark, userId),
   );
-  const localHighlights = highlights.filter((highlight) =>
-    localDocumentIds.has(highlight.documentId),
+  const localHighlights = highlights.filter(
+    (highlight) =>
+      localDocumentIds.has(highlight.documentId) ||
+      isPendingCloudRecord(highlight, userId),
   );
+
+  if (
+    localDocuments.length === 0 &&
+    localSessions.length === 0 &&
+    localBookmarks.length === 0 &&
+    localHighlights.length === 0
+  ) {
+    await flushPendingCloudDeletes(supabase, userId);
+    return { backedUpDocuments: 0 };
+  }
 
   await upsertCloudDocuments(
     supabase,
@@ -1327,6 +693,8 @@ export async function backUpLocalLibraryToCloud(
       );
     },
   );
+
+  await flushPendingCloudDeletes(supabase, userId);
 
   return { backedUpDocuments: localDocuments.length };
 }
@@ -1709,238 +1077,3 @@ export async function hydrateRemoteDocumentPayloadToLocal(
   return true;
 }
 
-export async function upsertCloudDocuments(
-  supabase: SupabaseClient,
-  userId: string,
-  documents: DocumentRecord[],
-) {
-  if (documents.length === 0) {
-    return;
-  }
-
-  await Promise.all(
-    documents.map((document) =>
-      uploadDocumentPayload(supabase, userId, document),
-    ),
-  );
-  const rows = documents.map((document) =>
-    toRemoteDocumentRow(userId, document),
-  );
-  const { error } = await supabase.from(DOCUMENTS_TABLE).upsert(rows, {
-    onConflict: "user_id,document_id",
-  });
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function upsertCloudSessions(
-  supabase: SupabaseClient,
-  userId: string,
-  sessions: ReadingSession[],
-) {
-  if (sessions.length === 0) {
-    return;
-  }
-
-  const rows = sessions.map((session) => toRemoteSessionRow(userId, session));
-  const { error } = await supabase.from(SESSIONS_TABLE).upsert(rows, {
-    onConflict: "user_id,document_id",
-  });
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function upsertCloudBookmarks(
-  supabase: SupabaseClient,
-  userId: string,
-  bookmarks: Bookmark[],
-) {
-  if (bookmarks.length === 0) {
-    return;
-  }
-
-  const rows = bookmarks.map((bookmark) =>
-    toRemoteBookmarkRow(userId, bookmark),
-  );
-  const { error } = await supabase.from(BOOKMARKS_TABLE).upsert(rows, {
-    onConflict: "user_id,id",
-  });
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function upsertCloudHighlights(
-  supabase: SupabaseClient,
-  userId: string,
-  highlights: Highlight[],
-) {
-  if (highlights.length === 0) {
-    return;
-  }
-
-  const rows = highlights.map((highlight) =>
-    toRemoteHighlightRow(userId, highlight),
-  );
-  const { error } = await supabase.from(HIGHLIGHTS_TABLE).upsert(rows, {
-    onConflict: "user_id,id",
-  });
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function deleteCloudSession(
-  supabase: SupabaseClient,
-  userId: string,
-  documentId: string,
-) {
-  const { error } = await supabase
-    .from(SESSIONS_TABLE)
-    .delete()
-    .eq("user_id", userId)
-    .eq("document_id", documentId);
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function deleteCloudBookmark(
-  supabase: SupabaseClient,
-  userId: string,
-  bookmarkId: string,
-) {
-  await deleteCloudBookmarks(supabase, userId, [bookmarkId]);
-}
-
-export async function deleteCloudBookmarks(
-  supabase: SupabaseClient,
-  userId: string,
-  bookmarkIds: string[],
-) {
-  if (bookmarkIds.length === 0) {
-    return;
-  }
-
-  const { error } = await supabase
-    .from(BOOKMARKS_TABLE)
-    .delete()
-    .eq("user_id", userId)
-    .in("id", bookmarkIds);
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function deleteCloudHighlight(
-  supabase: SupabaseClient,
-  userId: string,
-  highlightId: string,
-) {
-  await deleteCloudHighlights(supabase, userId, [highlightId]);
-}
-
-export async function deleteCloudHighlights(
-  supabase: SupabaseClient,
-  userId: string,
-  highlightIds: string[],
-) {
-  if (highlightIds.length === 0) {
-    return;
-  }
-
-  const { error } = await supabase
-    .from(HIGHLIGHTS_TABLE)
-    .delete()
-    .eq("user_id", userId)
-    .in("id", highlightIds);
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function deleteCloudDocumentBundle(
-  supabase: SupabaseClient,
-  userId: string,
-  documentId: string,
-) {
-  const [
-    sessionResult,
-    bookmarksResult,
-    highlightsResult,
-    documentResult,
-    payloadResult,
-  ] = await Promise.all([
-    supabase
-      .from(SESSIONS_TABLE)
-      .delete()
-      .eq("user_id", userId)
-      .eq("document_id", documentId),
-    supabase
-      .from(BOOKMARKS_TABLE)
-      .delete()
-      .eq("user_id", userId)
-      .eq("document_id", documentId),
-    supabase
-      .from(HIGHLIGHTS_TABLE)
-      .delete()
-      .eq("user_id", userId)
-      .eq("document_id", documentId),
-    supabase
-      .from(DOCUMENTS_TABLE)
-      .delete()
-      .eq("user_id", userId)
-      .eq("document_id", documentId),
-    supabase.storage
-      .from(DOCUMENT_PAYLOAD_BUCKET)
-      .remove([buildDocumentPayloadPath(userId, documentId)]),
-  ]);
-
-  if (sessionResult.error) {
-    throw sessionResult.error;
-  }
-  if (bookmarksResult.error) {
-    throw bookmarksResult.error;
-  }
-  if (highlightsResult.error) {
-    throw highlightsResult.error;
-  }
-  if (documentResult.error) {
-    throw documentResult.error;
-  }
-  if (payloadResult.error) {
-    throw payloadResult.error;
-  }
-}
-
-export async function submitFeedback(
-  supabase: SupabaseClient,
-  input: {
-    email?: string;
-    message: string;
-    rating?: number;
-    route: string;
-    userId?: string;
-  },
-) {
-  const { error } = await supabase.from(FEEDBACK_TABLE).insert({
-    email: input.email?.trim() ? input.email.trim() : null,
-    message: input.message.trim(),
-    rating: input.rating ?? null,
-    route: input.route,
-    user_id: input.userId ?? null,
-  });
-
-  if (error) {
-    throw error;
-  }
-}

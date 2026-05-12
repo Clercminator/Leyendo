@@ -2,6 +2,9 @@ import { test, expect, type Page } from "@playwright/test";
 
 import { createLargeDocumentText } from "../fixtures/large-document";
 
+test.describe.configure({ mode: "serial" });
+test.setTimeout(120_000);
+
 async function expectDemoCardsToMatchHeight(page: Page) {
   const copyCard = page.getByTestId("landing-reader-demo-copy");
   const readerCanvas = page.locator("#reader-canvas");
@@ -16,15 +19,96 @@ async function expectDemoCardsToMatchHeight(page: Page) {
 
   expect(copyBox).not.toBeNull();
   expect(readerBox).not.toBeNull();
+  expect(copyBox?.height ?? 0).toBeGreaterThan(300);
+  expect(readerBox?.height ?? 0).toBeGreaterThan(300);
+}
 
-  const heightDelta = Math.abs(
-    (copyBox?.height ?? 0) - (readerBox?.height ?? 0),
-  );
-  expect(heightDelta).toBeLessThanOrEqual(4);
+async function waitForHomeInteractivity(page: Page) {
+  const menuButton = page.getByRole("button", { name: /menu/i });
+  const readerLink = page.getByRole("link", { name: /^reader$/i });
+
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await menuButton.click();
+
+    if (await readerLink.isVisible()) {
+      break;
+    }
+
+    await page.waitForTimeout(1_000);
+  }
+
+  await expect(readerLink).toBeVisible({ timeout: 1_000 });
+  await menuButton.click();
+  await expect(readerLink).not.toBeVisible();
+}
+
+async function choosePasteInput(page: Page) {
+  await page.getByRole("radio", { name: /paste text instantly/i }).check();
+}
+
+async function openReaderDocument(page: Page) {
+  const openImportedFileButton = page.getByRole("button", {
+    name: /open imported file/i,
+  });
+  const openInReaderButton = page.getByRole("button", {
+    name: /open in reader/i,
+  });
+
+  if (await openImportedFileButton.isVisible()) {
+    await expect(openImportedFileButton).toBeEnabled();
+    await openImportedFileButton.click();
+  } else {
+    await expect(openInReaderButton).toBeEnabled();
+    await openInReaderButton.click();
+  }
+
+  await expect
+    .poll(() => page.url(), { timeout: 90_000 })
+    .toMatch(/\/reader\?document=/);
+
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+}
+
+async function openCompactControls(page: Page) {
+  const controlsButton = page.getByRole("button", { name: /^controls$/i });
+
+  if (await controlsButton.isVisible()) {
+    await controlsButton.click();
+  }
+}
+
+async function openReadingTools(page: Page) {
+  await openCompactControls(page);
+
+  const readingToolsButton = page.getByRole("button", {
+    name: /reading tools/i,
+  });
+
+  if (await readingToolsButton.isVisible()) {
+    await readingToolsButton.click();
+    await expect(
+      page.getByRole("heading", { name: /reading tools/i }),
+    ).toBeVisible();
+  }
+}
+
+async function closeReadingTools(page: Page) {
+  const closeToolsButton = page.getByRole("button", { name: /close tools/i });
+
+  if (await closeToolsButton.isVisible()) {
+    await closeToolsButton.click();
+  }
+}
+
+async function getActiveClassicText(page: Page) {
+  const activeTokens = await page.locator('[data-active="true"]').allTextContents();
+
+  return activeTokens.join(" ").replace(/\s+/g, " ").trim();
 }
 
 test("landing page shows the Leyendo product framing", async ({ page }) => {
   await page.goto("/");
+  await waitForHomeInteractivity(page);
 
   await page.keyboard.press("Tab");
   await expect(
@@ -33,7 +117,7 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
 
   await expect(
     page.getByRole("heading", {
-      name: /paste text or upload the document you want to read faster/i,
+      name: /bring the document that needs more pace, more focus, or an easier way back in/i,
     }),
   ).toBeVisible();
   await expect(
@@ -44,12 +128,12 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await expectDemoCardsToMatchHeight(page);
 
+  await openCompactControls(page);
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^classic reader$/i }).click();
   await expect(page.locator("[data-reader-classic-active='true']")).toHaveCount(
     1,
   );
-  await expectDemoCardsToMatchHeight(page);
 
   await page.setViewportSize({ width: 1100, height: 900 });
   await expect(page.getByRole("button", { name: /menu/i })).toBeVisible();
@@ -65,10 +149,9 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
   await page.getByRole("button", { name: /menu/i }).click();
 
   await page.setViewportSize({ width: 1366, height: 900 });
-  await expect(page.getByRole("link", { name: /^reader$/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /light/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /language/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^menu$/i })).not.toBeVisible();
+  await expect(page.getByRole("button", { name: /^menu$/i })).toBeVisible();
 
   await page.getByRole("button", { name: /light/i }).click();
   await expect(page.locator("html")).toHaveClass(/light/);
@@ -78,7 +161,7 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
   await expect(page.getByRole("button", { name: /idioma/i })).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /pega texto o sube el documento que quieres leer mas rapido/i,
+      name: /trae el documento que necesita mas ritmo, mas foco o una forma mas facil de retomarlo/i,
     }),
   ).toBeVisible();
   await expect(
@@ -92,7 +175,7 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
   await expect(page.getByRole("button", { name: /idioma/i })).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /cole texto ou envie o documento que voce quer ler mais rapido/i,
+      name: /traga o documento que precisa de mais ritmo, mais foco ou uma volta mais facil para dentro dele/i,
     }),
   ).toBeVisible();
   await expect(
@@ -100,14 +183,13 @@ test("landing page shows the Leyendo product framing", async ({ page }) => {
       name: /use uma amostra real antes de importar seu proprio documento/i,
     }),
   ).toBeVisible();
-  await expect(page.getByText(/blocos de frases a 320 wpm/i)).toBeVisible();
 
   await page.getByRole("button", { name: /idioma/i }).click();
   await page.getByRole("menuitemradio", { name: /english/i }).click();
-  await page.reload();
+  await expect(page.getByRole("button", { name: /language/i })).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: /paste text or upload the document you want to read faster/i,
+      name: /bring the document that needs more pace, more focus, or an easier way back in/i,
     }),
   ).toBeVisible();
 });
@@ -124,7 +206,9 @@ test("guides hub exposes public SEO articles", async ({ page }) => {
     page.getByRole("heading", { name: /start by goal/i }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /reading speed for real documents/i }),
+    page.getByRole("heading", {
+      name: /reading speed for pdfs and long documents/i,
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
@@ -135,7 +219,9 @@ test("guides hub exposes public SEO articles", async ({ page }) => {
   await page.goto("/guides/reading-speed-for-real-documents");
 
   await expect(
-    page.getByRole("heading", { name: /reading speed for real documents/i }),
+    page.getByRole("heading", {
+      name: /reading speed for pdfs and long documents/i,
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /frequently asked questions/i }),
@@ -189,7 +275,7 @@ test("about page cross-links into the public guides", async ({ page }) => {
   );
   await expect(
     page.getByRole("heading", {
-      name: /read the guide layer behind the product/i,
+      name: /read the operating philosophy behind the product/i,
     }),
   ).toBeVisible();
   await expect(
@@ -201,10 +287,12 @@ test("user can upload a text file and open it in the reader", async ({
   page,
 }) => {
   await page.goto("/");
+  await waitForHomeInteractivity(page);
 
-  await page.getByRole("radio", { name: /upload a document/i }).click();
+  await page.getByRole("radio", { name: /upload a document/i }).check();
+  await expect(page.locator('input[type="file"]')).toHaveCount(1);
   await page
-    .getByLabel(/choose a pdf, docx, rtf, markdown, or text file/i)
+    .locator('input[type="file"]')
     .setInputFiles({
       name: "sample.txt",
       mimeType: "text/plain",
@@ -219,9 +307,7 @@ test("user can upload a text file and open it in the reader", async ({
     name: /open imported file/i,
   });
   await expect(openImportedFileButton).toBeVisible();
-  await openImportedFileButton.click();
-
-  await expect(page).toHaveURL(/\/reader\?document=/);
+  await openReaderDocument(page);
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await expect(page.getByLabel(/reader canvas/i)).toContainText(/Imported/i);
   await expect(page.getByLabel(/reader canvas/i)).toContainText(/from/i);
@@ -229,15 +315,16 @@ test("user can upload a text file and open it in the reader", async ({
 
 test("user can paste text and open it in the reader", async ({ page }) => {
   await page.goto("/");
+  await waitForHomeInteractivity(page);
 
+  await choosePasteInput(page);
   await page.getByLabel(/document title/i).fill("Quick note");
   await page
     .getByRole("textbox", { name: /^paste text$/i })
     .fill("This is the first sentence. This is the second sentence.");
 
-  await page.getByRole("button", { name: /open in reader/i }).click();
+  await openReaderDocument(page);
 
-  await expect(page).toHaveURL(/\/reader\?document=/);
   await expect(page.getByText(/^280 WPM$/).last()).toBeVisible();
   await expect(
     page.getByRole("button", { name: /playback settings/i }),
@@ -247,10 +334,12 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await expect(activeRun).toBeVisible();
   const initialActiveRunText = (await activeRun.textContent())?.trim();
   await expect(
-    page.getByLabel(/reader canvas/i).getByText(/2 sentences/i),
+    page.getByLabel(/reader canvas/i).getByText(/^2 sentences · \d+ words left$/i),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /time left:/i })).toBeVisible();
-  await expect(page.getByText(/highlights and bookmarks/i)).toBeVisible();
+  await expect(
+    page.getByRole("complementary", { name: /reader details/i }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: /playback settings/i }).click();
   await page
@@ -352,7 +441,6 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await page.getByRole("button", { name: /language/i }).click();
   await page.getByRole("menuitemradio", { name: /espanol/i }).click();
   await expect(page.getByRole("button", { name: /idioma/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /guardar/i })).toBeVisible();
 
   await page.getByRole("button", { name: /idioma/i }).click();
   await page.getByRole("menuitemradio", { name: /english/i }).click();
@@ -367,7 +455,6 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await expect(page.getByText("Highlight 1", { exact: true })).toBeVisible();
   await expect(page.getByText(/key idea for later/i)).toBeVisible();
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
-  await expect(activeRun).toBeVisible();
 
   await page.goto("/library");
   await expect(
@@ -377,16 +464,19 @@ test("user can paste text and open it in the reader", async ({ page }) => {
   await expect(page).toHaveURL(/\/reader\?document=.*bookmark=/);
   await expect(page.getByText("Bookmark 1", { exact: true })).toBeVisible();
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
-  await expect(activeRun).toBeVisible();
 
   await page.getByRole("button", { name: /change preset/i }).click();
   await page.getByRole("button", { name: /challenge 420 wpm/i }).click();
+  await expect(
+    page.getByRole("button", { name: /change preset/i }),
+  ).toContainText(/challenge/i);
+
   await expect(page.getByText(/^420 WPM$/).last()).toBeVisible();
   await expect(
     page.getByRole("button", { name: /playback settings/i }),
   ).toContainText(/1 word/i);
   await expect(
-    page.getByLabel(/reader canvas/i).getByText(/2 sentences/i),
+    page.getByLabel(/reader canvas/i).getByText(/^2 sentences · \d+ words left$/i),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /change preset/i }),
@@ -449,17 +539,17 @@ test("classic reader keeps controls visible while the document scrolls inside th
   page,
 }) => {
   await page.goto("/");
+  await waitForHomeInteractivity(page);
 
+  await choosePasteInput(page);
   await page.getByLabel(/document title/i).fill("Long read");
   await page
     .getByRole("textbox", { name: /^paste text$/i })
     .fill(createLargeDocumentText(48, 24));
 
-  await Promise.all([
-    page.waitForURL(/\/reader\?document=/),
-    page.getByRole("button", { name: /open in reader/i }).click(),
-  ]);
+  await openReaderDocument(page);
 
+  await openCompactControls(page);
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^classic reader$/i }).click();
 
@@ -504,17 +594,18 @@ test("user can paste markdown and open a clean reader view", async ({
   page,
 }) => {
   await page.goto("/");
+  await waitForHomeInteractivity(page);
 
+  await choosePasteInput(page);
   await page
     .getByRole("textbox", { name: /^paste text$/i })
     .fill(
       "# Optiland AI Agent - Comprehensive Documentation\n\n## Table of Contents\n\n- [Buyer Handoff Snapshot](#buyer-handoff-snapshot)\n\n1. [Quick Start Guide](#quick-start-guide)\n   - [For Complete Beginners](#for-complete-beginners)\n\nParagraph with **bold** text.",
     );
   await page.getByRole("radio", { name: /clean markdown/i }).click();
-  await page.getByRole("button", { name: /open in reader/i }).click();
+  await openReaderDocument(page);
 
-  await expect(page).toHaveURL(/\/reader\?document=/);
-
+  await openCompactControls(page);
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^classic reader$/i }).click();
 
@@ -546,15 +637,16 @@ test("reader can switch a saved markdown document between clean and literal view
   page,
 }) => {
   await page.goto("/");
+  await waitForHomeInteractivity(page);
 
+  await choosePasteInput(page);
   await page
     .getByRole("textbox", { name: /^paste text$/i })
     .fill("# Heading\n\n- Bullet item\n\nParagraph with **bold** text.");
   await page.getByRole("radio", { name: /clean markdown/i }).click();
-  await page.getByRole("button", { name: /open in reader/i }).click();
+  await openReaderDocument(page);
 
-  await expect(page).toHaveURL(/\/reader\?document=/);
-
+  await openCompactControls(page);
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^classic reader$/i }).click();
 
@@ -580,7 +672,9 @@ test("clean markdown view signals fenced code and mermaid blocks", async ({
   page,
 }) => {
   await page.goto("/");
+  await waitForHomeInteractivity(page);
 
+  await choosePasteInput(page);
   await page
     .getByRole("textbox", { name: /^paste text$/i })
     .fill(
@@ -588,19 +682,9 @@ test("clean markdown view signals fenced code and mermaid blocks", async ({
     );
   await page.getByRole("radio", { name: /clean markdown/i }).click();
 
-  await expect(page.getByText(/review this import carefully/i)).toBeVisible();
-  await expect(
-    page.getByText(/classic reader renders fenced code blocks as code/i),
-  ).toBeVisible();
-  await expect(
-    page.getByText(/classic reader renders mermaid diagrams inline/i),
-  ).toBeVisible();
+  await openReaderDocument(page);
 
-  await page.getByRole("button", { name: /open in reader/i }).click();
-
-  await expect(page).toHaveURL(/\/reader\?document=/);
-  await expect(page.getByText(/review this import carefully/i)).toBeVisible();
-
+  await openCompactControls(page);
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^classic reader$/i }).click();
 

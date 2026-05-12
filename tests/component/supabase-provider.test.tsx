@@ -58,6 +58,12 @@ function SyncSummaryProbe() {
   );
 }
 
+function SyncStatusProbe() {
+  const { isOnline, syncStatus } = useSupabaseAuth();
+
+  return <div>{`${isOnline ? "online" : "offline"}:${syncStatus}`}</div>;
+}
+
 const { getSupabaseBrowserClient } = vi.hoisted(() => ({
   getSupabaseBrowserClient: vi.fn(),
 }));
@@ -70,6 +76,10 @@ vi.mock("@/lib/supabase/client", () => ({
 describe("SupabaseProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
 
     ensureProfile.mockResolvedValue(undefined);
     getProfile.mockResolvedValue({
@@ -307,5 +317,64 @@ describe("SupabaseProvider", () => {
     });
 
     expect(hydrateCloudLibraryToLocal).not.toHaveBeenCalled();
+  });
+
+  it("waits offline and retries cloud sync when the browser reconnects", async () => {
+    const unsubscribe = vi.fn();
+    const supabaseClient = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: {
+            session: {
+              user: {
+                email: "reader@example.com",
+                id: "user-1",
+              },
+            },
+          },
+        }),
+        onAuthStateChange: vi.fn().mockReturnValue({
+          data: {
+            subscription: {
+              unsubscribe,
+            },
+          },
+        }),
+      },
+    };
+
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: false,
+    });
+    getSupabaseBrowserClient.mockReturnValue(supabaseClient);
+
+    render(
+      <SupabaseProvider>
+        <SyncStatusProbe />
+      </SupabaseProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("offline:error")).toBeInTheDocument();
+    });
+
+    expect(backUpLocalLibraryToCloud).not.toHaveBeenCalled();
+
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+
+    await waitFor(() => {
+      expect(backUpLocalLibraryToCloud).toHaveBeenCalledWith(
+        supabaseClient,
+        "user-1",
+      );
+    });
   });
 });

@@ -62,13 +62,13 @@ const links = [
   {
     href: "/about",
     isPublic: true,
-    label: { en: "About", es: "Sobre", pt: "Sobre" },
+    label: { en: "About", es: "Acerca de", pt: "Sobre" },
     icon: Info,
   },
   {
     href: "/guides",
     isPublic: true,
-    label: { en: "Guides", es: "Guias", pt: "Guias" },
+    label: { en: "Guides", es: "Guías", pt: "Guias" },
     icon: FileText,
   },
   {
@@ -82,13 +82,13 @@ const links = [
 const catalogLink = {
   href: "/catalog",
   isPublic: false,
-  label: { en: "Catalog", es: "Catalogo", pt: "Catalogo" },
+  label: { en: "Catalog", es: "Catálogo", pt: "Catalogo" },
   icon: BookMarked,
 } as const;
 
 const brandLabel: LocalizedCopy = {
   en: "Read faster, stay in control.",
-  es: "Lee mas rapido y manten el control.",
+  es: "Lee más rápido y mantén el control.",
   pt: "Leia mais rapido e mantenha o controle.",
 };
 
@@ -105,25 +105,25 @@ const localeMenuLabel: LocalizedCopy = {
 
 const localeOptions = {
   en: { short: "EN", name: "English" },
-  es: { short: "ES", name: "Espanol" },
-  pt: { short: "PT", name: "Portugues" },
+  es: { short: "ES", name: "Español" },
+  pt: { short: "PT", name: "Português" },
 } as const;
 
 const menuLabel: LocalizedCopy = {
   en: "Menu",
-  es: "Menu",
+  es: "Menú",
   pt: "Menu",
 };
 
 const navigationLabel: LocalizedCopy = {
   en: "Navigation",
-  es: "Navegacion",
+  es: "Navegación",
   pt: "Navegacao",
 };
 
 const primaryNavigationLabel: LocalizedCopy = {
   en: "Primary navigation",
-  es: "Navegacion principal",
+  es: "Navegación principal",
   pt: "Navegacao principal",
 };
 
@@ -135,14 +135,14 @@ const accountPanelLabel: LocalizedCopy = {
 
 const guestAccountHint: LocalizedCopy = {
   en: "Create or log in",
-  es: "Crear o entrar",
+  es: "Crear cuenta o entrar",
   pt: "Criar ou entrar",
 };
 
 const syncStatusLabels = {
   synced: {
     en: "Cloud synced",
-    es: "Nube sincronizada",
+    es: "Sincronizado en la nube",
     pt: "Nuvem sincronizada",
   },
   syncing: {
@@ -152,8 +152,18 @@ const syncStatusLabels = {
   },
   signedIn: {
     en: "Signed in",
-    es: "Sesion activa",
+    es: "Sesión activa",
     pt: "Sessao ativa",
+  },
+  offline: {
+    en: "Offline",
+    es: "Sin conexión",
+    pt: "Offline",
+  },
+  queued: {
+    en: "Sync queued",
+    es: "Sincronización pendiente",
+    pt: "Sincronizacao em fila",
   },
   guest: {
     en: "Guest mode",
@@ -180,6 +190,13 @@ export function SiteHeader() {
   const { resolvedTheme, setTheme } = useTheme();
   const {
     isLoading: isAuthLoading,
+    guestLibrarySummary = {
+      bookmarks: 0,
+      documents: 0,
+      highlights: 0,
+      sessions: 0,
+    },
+    isOnline = true,
     profile,
     signIn,
     signInWithGitHub,
@@ -190,6 +207,11 @@ export function SiteHeader() {
     syncStatus,
     user,
   } = useSupabaseAuth();
+  const pendingSyncCount =
+    guestLibrarySummary.documents +
+    guestLibrarySummary.sessions +
+    guestLibrarySummary.bookmarks +
+    guestLibrarySummary.highlights;
   const [showsFullHeader, setShowsFullHeader] = useState(() => {
     if (
       typeof window === "undefined" ||
@@ -203,6 +225,7 @@ export function SiteHeader() {
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [isLocaleMenuOpen, setIsLocaleMenuOpen] = useState(false);
   const [isGuestAuthOpen, setIsGuestAuthOpen] = useState(false);
+  const [hasMountedThemeControls, setHasMountedThemeControls] = useState(false);
   const [guestAuthMode, setGuestAuthMode] = useState<
     "sign-in" | "create-account"
   >("create-account");
@@ -242,6 +265,10 @@ export function SiteHeader() {
   }, []);
 
   useEffect(() => {
+    setHasMountedThemeControls(true);
+  }, []);
+
+  useEffect(() => {
     if (!isHeaderMenuOpen && !isLocaleMenuOpen) {
       return;
     }
@@ -278,7 +305,11 @@ export function SiteHeader() {
     };
   }, [isHeaderMenuOpen, isLocaleMenuOpen]);
 
-  const activeTheme = resolvedTheme === "light" ? "light" : "dark";
+  const activeTheme = hasMountedThemeControls
+    ? resolvedTheme === "light"
+      ? "light"
+      : "dark"
+    : undefined;
 
   const publicLocaleContext = useMemo(() => {
     const resolvedPathname = pathname ?? "/";
@@ -343,23 +374,31 @@ export function SiteHeader() {
   }
 
   const syncStatusLabel = user?.email
-    ? syncStatus === "synced"
-      ? getLocalizedCopy(locale, syncStatusLabels.synced)
-      : syncStatus === "syncing"
-        ? getLocalizedCopy(locale, syncStatusLabels.syncing)
-        : user.email
+    ? !isOnline
+      ? getLocalizedCopy(locale, syncStatusLabels.offline)
+      : pendingSyncCount > 0
+        ? getLocalizedCopy(locale, syncStatusLabels.queued)
+        : syncStatus === "synced"
+          ? getLocalizedCopy(locale, syncStatusLabels.synced)
+          : syncStatus === "syncing"
+            ? getLocalizedCopy(locale, syncStatusLabels.syncing)
+            : user.email
     : getLocalizedCopy(locale, syncStatusLabels.guest);
 
   const desktopSyncStatusLabel = user?.email
-    ? syncStatus === "synced"
-      ? getLocalizedCopy(locale, syncStatusLabels.synced)
-      : syncStatus === "syncing"
-        ? getLocalizedCopy(locale, syncStatusLabels.syncing)
-        : getLocalizedCopy(locale, syncStatusLabels.signedIn)
+    ? !isOnline
+      ? getLocalizedCopy(locale, syncStatusLabels.offline)
+      : pendingSyncCount > 0
+        ? getLocalizedCopy(locale, syncStatusLabels.queued)
+        : syncStatus === "synced"
+          ? getLocalizedCopy(locale, syncStatusLabels.synced)
+          : syncStatus === "syncing"
+            ? getLocalizedCopy(locale, syncStatusLabels.syncing)
+            : getLocalizedCopy(locale, syncStatusLabels.signedIn)
     : undefined;
 
   const signOutLabel =
-    locale === "en" ? "Sign out" : locale === "es" ? "Cerrar sesion" : "Sair";
+    locale === "en" ? "Sign out" : locale === "es" ? "Cerrar sesión" : "Sair";
 
   const openGuestAuthModal = () => {
     setIsHeaderMenuOpen(false);

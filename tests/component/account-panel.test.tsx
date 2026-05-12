@@ -526,6 +526,74 @@ describe("AccountPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("surfaces offline queued changes in the cloud activity section", async () => {
+    const user = userEvent.setup();
+
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 1,
+        documents: 2,
+        highlights: 1,
+        sessions: 3,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isOnline: false,
+      isProfileSaving: false,
+      lastSyncedAt: "2026-04-05T10:00:00.000Z",
+      lastSyncSummary: {
+        bookmarks: 3,
+        documents: 4,
+        finishedAt: "2026-04-05T10:00:00.000Z",
+        highlights: 2,
+        sessions: 5,
+        uploadedDocuments: 1,
+      },
+      profile: {
+        createdAt: "2026-03-30T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 4,
+        marketingConsent: false,
+        planTier: "focus",
+        updatedAt: "2026-04-05T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile: vi.fn(),
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "error",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<AccountPanel />);
+
+    await user.click(
+      screen.getByRole("button", { name: /show cloud activity/i }),
+    );
+
+    expect(
+      screen.getAllByText(
+        /offline\. 7 local changes will retry when the connection returns\./i,
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(/pending local changes/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /sync now/i }),
+    ).toBeDisabled();
+  });
+
   it("sends a signed-in user back to pricing to resume checkout", async () => {
     const replace = vi.fn();
 

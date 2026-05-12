@@ -7,330 +7,41 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Cloud,
   CloudUpload,
-  ImagePlus,
-  KeyRound,
   LoaderCircle,
-  Mail,
-  Trash2,
-  UserRound,
 } from "lucide-react";
 
+import { AccountPanelAuthForm } from "@/components/auth/account-panel-auth-form";
+import { AccountPanelDictionarySection } from "@/components/auth/account-panel-dictionary-section";
+import { AccountPanelOverviewSection } from "@/components/auth/account-panel-overview-section";
+import { getAccountPanelCopy } from "@/components/auth/account-panel-copy";
+import { AccountPanelCloudActivitySection } from "@/components/auth/account-panel-cloud-activity-section";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/layout/locale-provider";
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
+  buildPersonalInfoFromForm,
+  buildProfileFormState,
+  buildSavedWordFromForm,
+  createEmptyDictionaryFormState,
+  formatDate,
+  getReturnUrlParam,
+  getSubscriptionDateLabel,
+  getSubscriptionStatusLabel,
+  isSamePersonalInfo,
+  normalizeSavedWordKey,
+  normalizeTextInput,
+  type AuthMode,
+  type DictionaryFormState,
+  type ProfileFormState,
+} from "@/components/auth/account-panel-helpers";
+import {
   getEffectivePlanTier,
   hasPlanAccess,
   type PaidPlanTier,
   type SubscriptionStatus,
 } from "@/lib/plans";
-import type {
-  UserPersonalInfo,
-  UserSavedWord,
-} from "@/lib/supabase/library-sync";
-
-const modes = ["sign-in", "create-account", "magic-link"] as const;
-const avatarAccept =
-  "image/*,.avif,.bmp,.gif,.heic,.heif,.ico,.jfif,.jpeg,.jpg,.png,.svg,.tif,.tiff,.webp";
-
-type AuthMode = (typeof modes)[number];
-
-interface ProfileFormState {
-  birthYear: string;
-  city: string;
-  country: string;
-  displayName: string;
-  industry: string;
-  interests: string;
-  marketingConsent: boolean;
-  occupation: string;
-  useCase: string;
-}
-
-interface DictionaryFormState {
-  meaning: string;
-  note: string;
-  word: string;
-}
-
-function createEmptyDictionaryFormState(): DictionaryFormState {
-  return {
-    meaning: "",
-    note: "",
-    word: "",
-  };
-}
-
-function decodeSearchValue(rawValue: string) {
-  try {
-    return decodeURIComponent(rawValue.replace(/\+/g, "%20"));
-  } catch {
-    return rawValue;
-  }
-}
-
-function getReturnUrlParam(
-  currentUrl: URL | null,
-  rawHref: string | null,
-  keys: string[],
-) {
-  for (const key of keys) {
-    const directValue = currentUrl?.searchParams.get(key)?.trim();
-    if (directValue) {
-      return directValue;
-    }
-
-    if (!rawHref) {
-      continue;
-    }
-
-    const match = rawHref.match(new RegExp(`[?&]${key}=([^&#]+)`, "i"));
-    const fallbackValue = match?.[1]?.trim();
-    if (fallbackValue) {
-      return decodeSearchValue(fallbackValue);
-    }
-  }
-
-  return null;
-}
-
-function formatDate(
-  date: string | undefined,
-  options?: Intl.DateTimeFormatOptions,
-) {
-  if (!date) {
-    return undefined;
-  }
-
-  const parsedDate = new Date(date);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return undefined;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-    ...options,
-  }).format(parsedDate);
-}
-
-function getSubscriptionStatusLabel(
-  locale: string,
-  status: SubscriptionStatus,
-) {
-  switch (status) {
-    case "active":
-      return locale === "en" ? "Active" : locale === "es" ? "Activa" : "Ativa";
-    case "trialing":
-      return locale === "en"
-        ? "Trialing"
-        : locale === "es"
-          ? "En prueba"
-          : "Em teste";
-    case "pending":
-      return locale === "en"
-        ? "Pending"
-        : locale === "es"
-          ? "Pendiente"
-          : "Pendente";
-    case "grace_period":
-      return locale === "en"
-        ? "Grace period"
-        : locale === "es"
-          ? "Periodo de gracia"
-          : "Periodo de graca";
-    case "past_due":
-      return locale === "en"
-        ? "Past due"
-        : locale === "es"
-          ? "Cobro pendiente"
-          : "Cobranca pendente";
-    case "canceled":
-      return locale === "en"
-        ? "Canceled"
-        : locale === "es"
-          ? "Cancelada"
-          : "Cancelada";
-    case "expired":
-      return locale === "en"
-        ? "Expired"
-        : locale === "es"
-          ? "Expirada"
-          : "Expirada";
-    case "inactive":
-      return locale === "en"
-        ? "Inactive"
-        : locale === "es"
-          ? "Inactiva"
-          : "Inativa";
-  }
-}
-
-function getSubscriptionDateLabel(locale: string, status: SubscriptionStatus) {
-  if (status === "grace_period") {
-    return locale === "en"
-      ? "Grace period ends"
-      : locale === "es"
-        ? "Fin de la gracia"
-        : "Fim da graca";
-  }
-
-  if (status === "canceled") {
-    return locale === "en"
-      ? "Access until"
-      : locale === "es"
-        ? "Acceso hasta"
-        : "Acesso ate";
-  }
-
-  if (status === "expired" || status === "inactive") {
-    return locale === "en"
-      ? "Ended on"
-      : locale === "es"
-        ? "Termino el"
-        : "Terminou em";
-  }
-
-  return locale === "en"
-    ? "Renewal date"
-    : locale === "es"
-      ? "Fecha de renovacion"
-      : "Data de renovacao";
-}
-
-function buildProfileFormState(profile?: {
-  displayName?: string;
-  marketingConsent?: boolean;
-  personalInfo?: UserPersonalInfo;
-}): ProfileFormState {
-  return {
-    birthYear: profile?.personalInfo?.birthYear?.toString() ?? "",
-    city: profile?.personalInfo?.city ?? "",
-    country: profile?.personalInfo?.country ?? "",
-    displayName: profile?.displayName ?? "",
-    industry: profile?.personalInfo?.industry ?? "",
-    interests: profile?.personalInfo?.interests?.join(", ") ?? "",
-    marketingConsent: profile?.marketingConsent ?? false,
-    occupation: profile?.personalInfo?.occupation ?? "",
-    useCase: profile?.personalInfo?.useCase ?? "",
-  };
-}
-
-function normalizeTextInput(value: string) {
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
-}
-
-function normalizeSavedWordKey(value: string) {
-  return value.trim().toLocaleLowerCase();
-}
-
-function normalizeBirthYearInput(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const parsed = Number.parseInt(trimmed, 10);
-  const currentYear = new Date().getFullYear();
-  if (!Number.isFinite(parsed) || parsed < 1900 || parsed > currentYear) {
-    return undefined;
-  }
-
-  return parsed;
-}
-
-function normalizeInterests(value: string) {
-  return Array.from(
-    new Set(
-      value
-        .split(",")
-        .map((entry) => entry.trim())
-        .filter(Boolean),
-    ),
-  ).slice(0, 12);
-}
-
-function buildPersonalInfoFromForm(form: ProfileFormState) {
-  const interests = normalizeInterests(form.interests);
-  const normalized = {
-    birthYear: normalizeBirthYearInput(form.birthYear),
-    city: normalizeTextInput(form.city),
-    country: normalizeTextInput(form.country),
-    industry: normalizeTextInput(form.industry),
-    interests: interests.length > 0 ? interests : undefined,
-    occupation: normalizeTextInput(form.occupation),
-    useCase: normalizeTextInput(form.useCase),
-  } satisfies UserPersonalInfo;
-
-  return Object.values(normalized).some((value) => {
-    if (Array.isArray(value)) {
-      return value.length > 0;
-    }
-
-    return value !== undefined;
-  })
-    ? normalized
-    : undefined;
-}
-
-function isSameList(left?: string[], right?: string[]) {
-  if (!left?.length && !right?.length) {
-    return true;
-  }
-
-  if (!left || !right || left.length !== right.length) {
-    return false;
-  }
-
-  return left.every((entry, index) => entry === right[index]);
-}
-
-function isSamePersonalInfo(
-  left: UserPersonalInfo | undefined,
-  right: UserPersonalInfo | undefined,
-) {
-  return (
-    left?.birthYear === right?.birthYear &&
-    left?.city === right?.city &&
-    left?.country === right?.country &&
-    left?.industry === right?.industry &&
-    left?.occupation === right?.occupation &&
-    left?.useCase === right?.useCase &&
-    isSameList(left?.interests, right?.interests)
-  );
-}
-
-function getAvatarInitials(value: string | undefined) {
-  const fallback = (value ?? "Leyendo").trim();
-  if (!fallback) {
-    return "LY";
-  }
-
-  const parts = fallback.split(/\s+/).filter(Boolean).slice(0, 2);
-  const initials = parts.map((part) => part.slice(0, 1).toUpperCase()).join("");
-
-  return initials || fallback.slice(0, 2).toUpperCase();
-}
-
-function buildSavedWordFromForm(
-  form: DictionaryFormState,
-  existingEntry?: UserSavedWord,
-) {
-  const word = normalizeTextInput(form.word);
-  if (!word) {
-    return undefined;
-  }
-
-  return {
-    createdAt: existingEntry?.createdAt ?? new Date().toISOString(),
-    meaning: normalizeTextInput(form.meaning),
-    note: normalizeTextInput(form.note),
-    word,
-  } satisfies UserSavedWord;
-}
 
 interface AccountPanelProps {
   checkoutPlan?: PaidPlanTier;
@@ -352,6 +63,7 @@ export function AccountPanel({
     guestLibrarySummary,
     isConfigured,
     isLoading,
+    isOnline = true,
     isProfileSaving,
     lastSyncedAt,
     lastSyncSummary,
@@ -394,8 +106,37 @@ export function AccountPanel({
   const cloudActivitySectionId = useId();
 
   const guestDocuments = guestLibrarySummary.documents;
+  const pendingSyncCount =
+    guestLibrarySummary.documents +
+    guestLibrarySummary.sessions +
+    guestLibrarySummary.bookmarks +
+    guestLibrarySummary.highlights;
   const lastSyncedLabel = formatDate(lastSyncedAt);
   const lastSyncResultLabel = formatDate(lastSyncSummary?.finishedAt);
+  const pendingChangesLabel =
+    locale === "en"
+      ? "Pending local changes"
+      : locale === "es"
+        ? "Cambios locales pendientes"
+        : "Alteracoes locais pendentes";
+  const offlineCachedCopy =
+    locale === "en"
+      ? "Offline. What is already saved on this device stays available."
+      : locale === "es"
+        ? "Sin conexion. Lo guardado en este dispositivo sigue disponible."
+        : "Offline. O que ja esta salvo neste dispositivo continua disponivel.";
+  const offlineQueuedCopy =
+    locale === "en"
+      ? `Offline. ${pendingSyncCount} local change${pendingSyncCount === 1 ? "" : "s"} will retry when the connection returns.`
+      : locale === "es"
+        ? `Sin conexion. ${pendingSyncCount} cambio${pendingSyncCount === 1 ? "" : "s"} local${pendingSyncCount === 1 ? "" : "es"} se reintentaran cuando vuelva la conexion.`
+        : `Offline. ${pendingSyncCount} alteracao${pendingSyncCount === 1 ? "" : "oes"} local${pendingSyncCount === 1 ? "" : "ais"} vai${pendingSyncCount === 1 ? "" : "s"} tentar sincronizar quando a conexao voltar.`;
+  const queuedSyncCopy =
+    locale === "en"
+      ? `${pendingSyncCount} local change${pendingSyncCount === 1 ? "" : "s"} are queued for automatic cloud retry.`
+      : locale === "es"
+        ? `${pendingSyncCount} cambio${pendingSyncCount === 1 ? "" : "s"} local${pendingSyncCount === 1 ? "" : "es"} estan en cola para sincronizarse automaticamente.`
+        : `${pendingSyncCount} alteracao${pendingSyncCount === 1 ? "" : "oes"} local${pendingSyncCount === 1 ? "" : "ais"} estao na fila para sincronizar automaticamente.`;
 
   useEffect(() => {
     setFormState(buildProfileFormState(profile));
@@ -445,343 +186,15 @@ export function AccountPanel({
     };
   }, [avatarDraftFile]);
 
-  const helperCopy = useMemo(() => {
-    if (locale === "es") {
-      return {
-        accountReady: "Cuenta conectada",
-        accountSync:
-          "Tu biblioteca sincronizada aparecerá en cualquier dispositivo donde entres con esta cuenta.",
-        accountUpgradeCta: "Ver planes pagados",
-        accountUpgradeDetail:
-          "La sincronizacion entre dispositivos, el respaldo en la nube y el diccionario de palabras guardadas solo se activan con Focus o Max.",
-        accountUpgradeTitle:
-          "Activa Focus o Max para usar la cuenta en la nube",
-        avatarHint:
-          "La foto se guarda en esta cuenta y se puede reemplazar cuando quieras.",
-        avatarPick: "Subir foto",
-        avatarRemove: "Quitar foto",
-        avatarUndo: "Deshacer cambio de foto",
-        backupAction: "Respaldar este dispositivo",
-        backupDone:
-          "La biblioteca local de este dispositivo ya está en la nube.",
-        backupHint:
-          "Los documentos que importaste antes de iniciar sesión todavía viven solo en este dispositivo. Puedes subirlos a la nube ahora.",
-        birthYearLabel: "Año de nacimiento",
-        cityLabel: "Ciudad",
-        cloudBookmarks: "Marcadores",
-        cloudDocuments: "Docs en la nube",
-        cloudHighlights: "Destacados",
-        cloudSessions: "Sesiones",
-        cloudSignInRequired:
-          "Configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY o NEXT_PUBLIC_SUPABASE_ANON_KEY para activar cuentas, sincronización y feedback.",
-        createAccount: "Crear cuenta",
-        createAccountHint:
-          "Focus o Max son obligatorios para crear una cuenta con sincronizacion y palabras guardadas.",
-        countryLabel: "País",
-        deviceBackup: "Respaldo del dispositivo",
-        dictionaryAddWord: "Guardar palabra",
-        dictionaryEmpty:
-          "Todavia no guardaste palabras. Agrega tu primer termino y su significado aqui.",
-        dictionaryIntro:
-          "Guarda vocabulario, significado y contexto en esta cuenta. Focus y Max lo mantienen sincronizado.",
-        dictionaryMeaningLabel: "Significado",
-        dictionaryMeaningPlaceholder: "Que significa esta palabra para ti",
-        dictionaryNoteLabel: "Contexto o nota",
-        dictionaryNotePlaceholder: "Donde la viste o como quieres recordarla",
-        dictionaryRemoved: "Palabra eliminada del diccionario.",
-        dictionaryRemoveWord: "Quitar",
-        dictionarySaved: "Palabra guardada en tu diccionario.",
-        dictionaryTitle: "Diccionario de palabras guardadas",
-        dictionaryWordLabel: "Palabra",
-        dictionaryWordRequired:
-          "Escribe una palabra antes de guardarla en el diccionario.",
-        dictionaryWordPlaceholder: "serendipia",
-        displayNameLabel: "Nombre visible",
-        displayNamePlaceholder: "Como quieres aparecer en tu cuenta",
-        emailLinkModeDescription:
-          "Te enviaremos un enlace de acceso de un solo uso a tu email. No necesitas contrasena, pero este acceso es solo para cuentas que ya existen.",
-        emailSent:
-          "Revisa tu bandeja de entrada. Ya enviamos un enlace de acceso de un solo uso.",
-        githubSignIn: "Continuar con GitHub",
-        googleSignIn: "Continuar con Google",
-        industryLabel: "Industria",
-        interestsLabel: "Intereses",
-        interestsPlaceholder: "lectura, productividad, educación",
-        lastCloudSync: "Última sincronización",
-        localOnlyDocs: "Solo en este dispositivo",
-        magicLink: "Enviar enlace de acceso por email",
-        mercadoPagoConfirming:
-          "MercadoPago ya aprobó el pago. Leyendo está confirmando ahora la suscripción en esta cuenta.",
-        mercadoPagoLinked:
-          "Pago de MercadoPago confirmado. Esta cuenta está actualizando el nuevo plan.",
-        mercadoPagoPending:
-          "MercadoPago aprobó el pago, pero la suscripción todavía se está sincronizando. Espera un momento y vuelve a cargar esta página si el plan aún no aparece.",
-        marketingConsentHint:
-          "Permite usar estos datos para recomendaciones personalizadas y futuras promociones.",
-        marketingConsentLabel:
-          "Acepto recomendaciones personalizadas y futuras promociones.",
-        occupationLabel: "Ocupación",
-        password: "Contraseña",
-        personalInfoIntro:
-          "Datos opcionales para análisis de audiencia, segmentación y futuras campañas.",
-        personalInfoTitle: "Perfil de audiencia",
-        profileSaved: "Perfil actualizado.",
-        profileSaveFallback: "El perfil no pudo actualizarse.",
-        profileSaveLabel: "Guardar perfil",
-        profileUseCaseLabel: "Para qué usas Leyendo",
-        profileUseCasePlaceholder:
-          "Preparación de exámenes, lectura legal, investigación, práctica de idiomas...",
-        refreshSync: "Sincronizar ahora",
-        readerSetupEmpty:
-          "Abre cualquier documento y ajusta el ritmo o el tema para guardar esa configuración en tu cuenta.",
-        readerSetupTitle: "Configuración de lectura sincronizada",
-        signIn: "Entrar",
-        signInModeDescription:
-          "Usa tu email y contraseña si ya creaste una cuenta.",
-        signOut: "Cerrar sesión",
-        syncResultEmpty:
-          "Pulsa Sincronizar ahora para confirmar cuántos documentos, sesiones, marcadores y destacados puede restaurar esta cuenta.",
-        syncResultTitle: "Resultado de la última sincronización",
-        syncChecklist: [
-          "Tus documentos importados viajan con esta cuenta.",
-          "El progreso de lectura se restaura en otros dispositivos.",
-          "Marcadores y destacados vuelven a aparecer sin reimportar el archivo.",
-        ],
-        syncError: "La sincronización no terminó correctamente.",
-        syncIdle: "Listo para sincronizar esta biblioteca con la nube.",
-        syncInProgress: "Sincronizando documentos, progreso y marcadores...",
-        syncStatusLabel: "Estado de sincronización",
-        syncSuccess: "Biblioteca sincronizada.",
-        syncedLibraryTitle: "Lo que ya se sincroniza",
-        uploadedFromDevice: "Subidos desde este dispositivo",
-        useMagicLink: "Enlace por email",
-        createAccountModeDescription:
-          "Termina la configuracion de tu cuenta pagada con email y contrasena para activar Focus o Max.",
-      };
-    }
-
-    if (locale === "pt") {
-      return {
-        accountReady: "Conta conectada",
-        accountSync:
-          "Sua biblioteca sincronizada aparece em qualquer dispositivo onde voce entrar com esta conta.",
-        accountUpgradeCta: "Ver planos pagos",
-        accountUpgradeDetail:
-          "Sincronizacao entre dispositivos, backup na nuvem e dicionario de palavras salvas so sao ativados com Focus ou Max.",
-        accountUpgradeTitle: "Ative Focus ou Max para usar a conta em nuvem",
-        avatarHint:
-          "A foto fica salva nesta conta e pode ser trocada quando voce quiser.",
-        avatarPick: "Enviar foto",
-        avatarRemove: "Remover foto",
-        avatarUndo: "Desfazer troca da foto",
-        backupAction: "Enviar esta biblioteca para a nuvem",
-        backupDone: "A biblioteca local deste dispositivo ja esta na nuvem.",
-        backupHint:
-          "Os documentos importados antes do login ainda vivem so neste dispositivo. Voce pode envia-los para a nuvem agora.",
-        birthYearLabel: "Ano de nascimento",
-        cityLabel: "Cidade",
-        cloudBookmarks: "Marcadores",
-        cloudDocuments: "Docs na nuvem",
-        cloudHighlights: "Destaques",
-        cloudSessions: "Sessoes",
-        cloudSignInRequired:
-          "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY para ativar contas, sincronizacao e feedback.",
-        createAccount: "Criar conta",
-        createAccountHint:
-          "Focus ou Max sao obrigatorios para criar uma conta com sincronizacao e palavras salvas.",
-        countryLabel: "Pais",
-        deviceBackup: "Backup do dispositivo",
-        dictionaryAddWord: "Salvar palavra",
-        dictionaryEmpty:
-          "Voce ainda nao salvou palavras. Adicione o primeiro termo e significado aqui.",
-        dictionaryIntro:
-          "Guarde vocabulario, significado e contexto nesta conta. Focus e Max mantem tudo sincronizado.",
-        dictionaryMeaningLabel: "Significado",
-        dictionaryMeaningPlaceholder: "O que essa palavra quer dizer para voce",
-        dictionaryNoteLabel: "Contexto ou nota",
-        dictionaryNotePlaceholder:
-          "Onde voce viu a palavra ou como quer lembrar dela",
-        dictionaryRemoved: "Palavra removida do dicionario.",
-        dictionaryRemoveWord: "Remover",
-        dictionarySaved: "Palavra salva no dicionario.",
-        dictionaryTitle: "Dicionario de palavras salvas",
-        dictionaryWordLabel: "Palavra",
-        dictionaryWordRequired:
-          "Escreva uma palavra antes de salvar no dicionario.",
-        dictionaryWordPlaceholder: "serendipidade",
-        displayNameLabel: "Nome de exibicao",
-        displayNamePlaceholder: "Como voce quer aparecer na conta",
-        emailLinkModeDescription:
-          "Vamos enviar um link unico de acesso para seu email. Nao precisa de senha, mas este acesso vale apenas para contas que ja existem.",
-        emailSent:
-          "Confira sua caixa de entrada. Enviamos um link unico de acesso.",
-        githubSignIn: "Continuar com GitHub",
-        googleSignIn: "Continuar com Google",
-        industryLabel: "Industria",
-        interestsLabel: "Interesses",
-        interestsPlaceholder: "leitura, produtividade, educacao",
-        lastCloudSync: "Ultima sincronizacao",
-        localOnlyDocs: "So neste dispositivo",
-        magicLink: "Enviar link de acesso por email",
-        mercadoPagoConfirming:
-          "O MercadoPago ja aprovou o pagamento. O Leyendo esta confirmando agora a assinatura nesta conta.",
-        mercadoPagoLinked:
-          "Pagamento do MercadoPago confirmado. Esta conta esta atualizando o novo plano.",
-        mercadoPagoPending:
-          "O MercadoPago aprovou o pagamento, mas a assinatura ainda esta sincronizando. Espere um momento e recarregue esta pagina se o plano ainda nao aparecer.",
-        marketingConsentHint:
-          "Permite usar estes dados para recomendacoes personalizadas e futuras promocoes.",
-        marketingConsentLabel:
-          "Aceito recomendacoes personalizadas e futuras promocoes.",
-        occupationLabel: "Ocupacao",
-        password: "Senha",
-        personalInfoIntro:
-          "Dados opcionais para analise de audiencia, segmentacao e futuras campanhas.",
-        personalInfoTitle: "Perfil de audiencia",
-        profileSaved: "Perfil atualizado.",
-        profileSaveFallback: "Nao foi possivel atualizar o perfil.",
-        profileSaveLabel: "Salvar perfil",
-        profileUseCaseLabel: "Por que voce usa o Leyendo",
-        profileUseCasePlaceholder:
-          "Preparacao para prova, leitura juridica, pesquisa, pratica de idioma...",
-        refreshSync: "Sincronizar agora",
-        readerSetupEmpty:
-          "Abra qualquer documento e ajuste ritmo ou tema para salvar essa configuracao na sua conta.",
-        readerSetupTitle: "Configuracao de leitura sincronizada",
-        signIn: "Entrar",
-        signInModeDescription:
-          "Use seu email e senha se voce ja criou uma conta.",
-        signOut: "Sair",
-        syncResultEmpty:
-          "Use Sincronizar agora para confirmar quantos documentos, sessoes, marcadores e destaques esta conta consegue restaurar.",
-        syncResultTitle: "Resultado da ultima sincronizacao",
-        syncChecklist: [
-          "Seus documentos importados acompanham esta conta.",
-          "O progresso de leitura reaparece em outros dispositivos.",
-          "Marcadores e destaques voltam sem precisar enviar o arquivo de novo.",
-        ],
-        syncError: "A sincronizacao nao terminou corretamente.",
-        syncIdle: "Pronto para sincronizar esta biblioteca com a nuvem.",
-        syncInProgress: "Sincronizando documentos, progresso e marcadores...",
-        syncStatusLabel: "Estado da sincronizacao",
-        syncSuccess: "Biblioteca sincronizada.",
-        syncedLibraryTitle: "O que ja sincroniza",
-        uploadedFromDevice: "Enviados deste dispositivo",
-        useMagicLink: "Link por email",
-        createAccountModeDescription:
-          "Conclua a configuracao da sua conta paga com email e senha para ativar Focus ou Max.",
-      };
-    }
-
-    return {
-      accountReady: "Account connected",
-      accountSync:
-        "Your synced library will appear on any device where you sign in with this account.",
-      accountUpgradeCta: "See paid plans",
-      accountUpgradeDetail:
-        "Cross-device sync, cloud backup, and the saved-word dictionary only unlock on Focus or Max.",
-      accountUpgradeTitle: "Activate Focus or Max to use this cloud account",
-      avatarHint:
-        "The photo is stored on this account and can be replaced whenever you want.",
-      avatarPick: "Upload photo",
-      avatarRemove: "Remove photo",
-      avatarUndo: "Undo photo change",
-      backupAction: "Back up this device",
-      backupDone: "This device already has its local library in the cloud.",
-      backupHint:
-        "Documents imported before you signed in still live only on this device. You can upload them to the cloud now.",
-      birthYearLabel: "Birth year",
-      cityLabel: "City",
-      cloudBookmarks: "Bookmarks",
-      cloudDocuments: "Cloud docs",
-      cloudHighlights: "Highlights",
-      cloudSessions: "Sessions",
-      cloudSignInRequired:
-        "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY to enable accounts, sync, and feedback.",
-      createAccount: "Create account",
-      createAccountHint:
-        "Focus or Max is required to create an account with sync and saved words.",
-      countryLabel: "Country",
-      deviceBackup: "Device backup",
-      dictionaryAddWord: "Save word",
-      dictionaryEmpty:
-        "You have not saved any words yet. Add your first term and meaning here.",
-      dictionaryIntro:
-        "Keep vocabulary, meaning, and context on this account. Focus and Max keep it synced across devices.",
-      dictionaryMeaningLabel: "Meaning",
-      dictionaryMeaningPlaceholder: "What this word means to you",
-      dictionaryNoteLabel: "Context or note",
-      dictionaryNotePlaceholder:
-        "Where you saw it or how you want to remember it",
-      dictionaryRemoved: "Word removed from your dictionary.",
-      dictionaryRemoveWord: "Remove",
-      dictionarySaved: "Word saved to your dictionary.",
-      dictionaryTitle: "Saved-word dictionary",
-      dictionaryWordLabel: "Word",
-      dictionaryWordRequired: "Enter a word before saving it.",
-      dictionaryWordPlaceholder: "serendipity",
-      displayNameLabel: "Display name",
-      displayNamePlaceholder: "How you want this account to appear",
-      emailLinkModeDescription:
-        "We'll email you a one-time sign-in link. No password needed, but this only works for accounts that already exist.",
-      emailSent: "Check your inbox. We sent a one-time sign-in link.",
-      githubSignIn: "Continue with GitHub",
-      googleSignIn: "Continue with Google",
-      industryLabel: "Industry",
-      interestsLabel: "Interests",
-      interestsPlaceholder: "reading, productivity, education",
-      lastCloudSync: "Last cloud sync",
-      localOnlyDocs: "Local-only docs",
-      magicLink: "Send email sign-in link",
-      mercadoPagoConfirming:
-        "MercadoPago approved the payment. Leyendo is confirming the subscription on this account now.",
-      mercadoPagoLinked:
-        "MercadoPago payment confirmed. This account is refreshing the new plan now.",
-      mercadoPagoPending:
-        "MercadoPago approved the payment, but the subscription is still syncing. Wait a moment and reload this page if the plan does not appear yet.",
-      marketingConsentHint:
-        "Allow Leyendo to use this profile for personalized recommendations and future promotions.",
-      marketingConsentLabel:
-        "I consent to personalized recommendations and future promotions.",
-      occupationLabel: "Occupation",
-      password: "Password",
-      personalInfoIntro:
-        "Optional details for audience analysis, segmentation, and future campaign targeting.",
-      personalInfoTitle: "Audience profile",
-      profileSaved: "Profile updated.",
-      profileSaveFallback: "Profile could not be updated.",
-      profileSaveLabel: "Save profile",
-      profileUseCaseLabel: "Why are you using Leyendo?",
-      profileUseCasePlaceholder:
-        "Exam prep, legal reading, research, language practice...",
-      refreshSync: "Sync now",
-      readerSetupEmpty:
-        "Open any document and adjust pacing or theme once to save that setup to your account.",
-      readerSetupTitle: "Synced reader setup",
-      signIn: "Sign in",
-      signInModeDescription:
-        "Use your email and password if you already created an account.",
-      signOut: "Sign out",
-      syncResultEmpty:
-        "Run Sync now to confirm how many documents, sessions, bookmarks, and highlights this account can restore.",
-      syncResultTitle: "Last sync result",
-      syncChecklist: [
-        "Imported documents follow this account across devices.",
-        "Reading progress comes back when you open Leyendo elsewhere.",
-        "Bookmarks and highlights return without uploading the same file again.",
-      ],
-      syncError: "Cloud sync did not finish correctly.",
-      syncIdle: "Ready to sync this library to the cloud.",
-      syncInProgress: "Syncing documents, progress, and anchors...",
-      syncStatusLabel: "Sync status",
-      syncSuccess: "Library synced.",
-      syncedLibraryTitle: "What already syncs",
-      uploadedFromDevice: "Uploaded from this device",
-      useMagicLink: "Email link",
-      createAccountModeDescription:
-        "Finish setting up your paid account with email and password to unlock Focus or Max.",
-    };
-  }, [locale]);
+  const helperCopy = useMemo(() => getAccountPanelCopy(locale), [locale]);
+  const pendingBreakdownLabel =
+    pendingSyncCount > 0
+      ? locale === "en"
+        ? `${guestLibrarySummary.documents} docs · ${guestLibrarySummary.sessions} sessions · ${guestLibrarySummary.bookmarks} bookmarks · ${guestLibrarySummary.highlights} highlights waiting to retry.`
+        : locale === "es"
+          ? `${guestLibrarySummary.documents} docs · ${guestLibrarySummary.sessions} sesiones · ${guestLibrarySummary.bookmarks} marcadores · ${guestLibrarySummary.highlights} destacados pendientes de reintento.`
+          : `${guestLibrarySummary.documents} docs · ${guestLibrarySummary.sessions} sessoes · ${guestLibrarySummary.bookmarks} marcadores · ${guestLibrarySummary.highlights} destaques aguardando nova tentativa.`
+      : helperCopy.backupDone;
 
   const paidSignupPlanLabel =
     paidSignupPlan === "max"
@@ -883,6 +296,16 @@ export function AccountPanel({
     profileDisplayName.trim() ||
     user?.email ||
     "Leyendo";
+  const accountEyebrow = hasPaidAccountAccess
+    ? helperCopy.accountReady
+    : locale === "en"
+      ? "Upgrade required"
+      : locale === "es"
+        ? "Mejora requerida"
+        : "Upgrade necessario";
+  const accountDescription = hasPaidAccountAccess
+    ? helperCopy.accountSync
+    : helperCopy.accountUpgradeDetail;
   const hasProfileChanges =
     normalizeTextInput(profileNameInput) !==
       normalizeTextInput(profileDisplayName) ||
@@ -890,6 +313,12 @@ export function AccountPanel({
     !isSamePersonalInfo(draftPersonalInfo, profile?.personalInfo) ||
     avatarDraftFile !== null ||
     (removeStoredAvatar && Boolean(profile?.avatarPath));
+  const isProfilePending = pendingAction === "profile" || isProfileSaving;
+  const avatarHelperText = avatarDraftFile?.name ?? helperCopy.avatarHint;
+  const showAvatarUndo = Boolean(avatarDraftFile);
+  const showAvatarRemove = Boolean(
+    profile?.avatarPath && !removeStoredAvatar && !avatarDraftFile,
+  );
   const savedWords = profile?.savedWords ?? [];
   const readerSetupSummary = profile?.readerPreferences
     ? `${profile.readerPreferences.wordsPerMinute} WPM / ${profile.readerPreferences.chunkSize} ${profile.readerPreferences.chunkSize === 1 ? "word" : "words"} / ${profile.readerPreferences.theme}`
@@ -978,13 +407,19 @@ export function AccountPanel({
         : "Use a mesma conta do Leyendo que iniciou o checkout para que a assinatura seja vinculada automaticamente.";
 
   const syncCopy =
-    syncStatus === "syncing"
-      ? helperCopy.syncInProgress
-      : syncStatus === "synced"
-        ? helperCopy.syncSuccess
-        : syncStatus === "error"
-          ? helperCopy.syncError
-          : helperCopy.syncIdle;
+    !isOnline
+      ? pendingSyncCount > 0
+        ? offlineQueuedCopy
+        : offlineCachedCopy
+      : pendingSyncCount > 0
+        ? queuedSyncCopy
+        : syncStatus === "syncing"
+          ? helperCopy.syncInProgress
+          : syncStatus === "synced"
+            ? helperCopy.syncSuccess
+            : syncStatus === "error"
+              ? helperCopy.syncError
+              : helperCopy.syncIdle;
   const toggleClosedLabel =
     locale === "en" ? "Show" : locale === "es" ? "Ver" : "Ver";
   const toggleOpenLabel =
@@ -1010,11 +445,13 @@ export function AccountPanel({
           : `${savedWords.length} palavra${savedWords.length === 1 ? "" : "s"} salva${savedWords.length === 1 ? "" : "s"}`
       : helperCopy.dictionaryEmpty;
   const cloudActivitySummary = lastSyncSummary
-    ? locale === "en"
-      ? `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sessions · ${lastSyncResultLabel ?? "recent sync"}`
-      : locale === "es"
-        ? `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sesiones · ${lastSyncResultLabel ?? "sincronizacion reciente"}`
-        : `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sessoes · ${lastSyncResultLabel ?? "sincronizacao recente"}`
+    ? !isOnline || pendingSyncCount > 0
+      ? syncCopy
+      : locale === "en"
+        ? `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sessions · ${lastSyncResultLabel ?? "recent sync"}`
+        : locale === "es"
+          ? `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sesiones · ${lastSyncResultLabel ?? "sincronizacion reciente"}`
+          : `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sessoes · ${lastSyncResultLabel ?? "sincronizacao recente"}`
     : syncCopy;
 
   useEffect(() => {
@@ -1390,403 +827,80 @@ export function AccountPanel({
   if (user) {
     return (
       <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
-          {showSubscriptionLinkedNotice ? (
-            <div className="mb-6 rounded-[1.75rem] border border-emerald-400/30 bg-emerald-500/10 px-5 py-4">
-              <p className="text-xs font-semibold tracking-[0.18em] text-emerald-200 uppercase">
-                {subscriptionLinkedEyebrow}
-              </p>
-              <h3 className="mt-2 text-xl font-semibold text-white">
-                {subscriptionLinkedHeading}
-              </h3>
-              <p className="mt-2 text-sm leading-7 text-emerald-50/90">
-                {subscriptionLinkedDescription}
-              </p>
-            </div>
-          ) : null}
-
-          {showSubscriptionPendingNotice ? (
-            <div className="mb-6 rounded-[1.75rem] border border-amber-300/30 bg-amber-500/10 px-5 py-4">
-              <p className="text-xs font-semibold tracking-[0.18em] text-amber-100 uppercase">
-                {subscriptionPendingEyebrow}
-              </p>
-              <h3 className="mt-2 text-xl font-semibold text-white">
-                {subscriptionPendingHeading}
-              </h3>
-              <p className="mt-2 text-sm leading-7 text-amber-50/90">
-                {subscriptionPendingDescription}
-              </p>
-            </div>
-          ) : null}
-
-          <input
-            ref={avatarInputRef}
-            type="file"
-            accept={avatarAccept}
-            className="sr-only"
-            aria-label="Profile photo"
-            title="Profile photo"
-            onChange={handleAvatarChange}
-          />
-
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="editorial-kicker text-(--accent-sky)">
-                {hasPaidAccountAccess
-                  ? helperCopy.accountReady
-                  : locale === "en"
-                    ? "Upgrade required"
-                    : locale === "es"
-                      ? "Mejora requerida"
-                      : "Upgrade necessario"}
-              </p>
-              <h2 className="font-heading mt-4 text-4xl font-semibold text-(--text-strong)">
-                {avatarLabel}
-              </h2>
-              <p className="mt-3 text-sm text-(--text-muted)">{user.email}</p>
-              <p className="mt-4 max-w-3xl text-base leading-8 text-(--text-muted)">
-                {hasPaidAccountAccess
-                  ? helperCopy.accountSync
-                  : helperCopy.accountUpgradeDetail}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 lg:items-end">
-              <div className="flex items-center gap-4">
-                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[2rem] border border-(--border-soft) bg-(--surface-soft) text-lg font-semibold text-(--text-strong)">
-                  {activeAvatarUrl && !avatarRenderFailed ? (
-                    <img
-                      src={activeAvatarUrl}
-                      alt={avatarLabel}
-                      className="h-full w-full object-cover"
-                      onError={() => {
-                        setAvatarRenderFailed(true);
-                      }}
-                    />
-                  ) : (
-                    <span>{getAvatarInitials(avatarLabel)}</span>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    className="h-11 rounded-full px-5"
-                    disabled={pendingAction === "profile" || isProfileSaving}
-                    onClick={() => {
-                      avatarInputRef.current?.click();
-                    }}
-                  >
-                    <ImagePlus className="h-4 w-4" />
-                    {helperCopy.avatarPick}
-                  </Button>
-
-                  {avatarDraftFile ? (
-                    <Button
-                      variant="ghost"
-                      className="h-10 rounded-full px-4"
-                      disabled={pendingAction === "profile" || isProfileSaving}
-                      onClick={() => {
-                        setAvatarDraftFile(null);
-                        setAvatarPreviewUrl(undefined);
-                        setAvatarRenderFailed(false);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      {helperCopy.avatarUndo}
-                    </Button>
-                  ) : profile?.avatarPath && !removeStoredAvatar ? (
-                    <Button
-                      variant="ghost"
-                      className="h-10 rounded-full px-4"
-                      disabled={pendingAction === "profile" || isProfileSaving}
-                      onClick={() => {
-                        setRemoveStoredAvatar(true);
-                        setAvatarRenderFailed(false);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      {helperCopy.avatarRemove}
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-
-              <p className="max-w-xs text-right text-xs leading-6 text-(--text-muted)">
-                {avatarDraftFile?.name ?? helperCopy.avatarHint}
-              </p>
-            </div>
-          </div>
-
-          {showSubscriptionStatusCard ? (
-            <div className="mt-8 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) p-5">
-              <p className="editorial-kicker text-(--accent-sky)">
-                {subscriptionStatusCardTitle}
-              </p>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-(--text-muted)">
-                {subscriptionStatusCardDescription}
-              </p>
-
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                    {activePlanFieldLabel}
-                  </p>
-                  <p className="mt-3 text-xl font-semibold text-(--text-strong)">
-                    {subscriptionPlanLabel}
-                  </p>
-                </div>
-
-                <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                    {currentStatusFieldLabel}
-                  </p>
-                  <p className="mt-3 text-xl font-semibold text-(--text-strong)">
-                    {subscriptionStatusLabel}
-                  </p>
-                </div>
-
-                <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                    {subscriptionDateLabel}
-                  </p>
-                  <p className="mt-3 text-xl font-semibold text-(--text-strong)">
-                    {subscriptionDateDisplay}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="mt-8 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) p-5">
-            <div className="grid gap-3">
-            <label
-              className="text-sm font-medium text-(--text-strong)"
-              htmlFor="profile-display-name"
-            >
-              {helperCopy.displayNameLabel}
-            </label>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input
-                id="profile-display-name"
-                type="text"
-                value={profileNameInput}
-                onChange={(event) => {
-                  updateFormField("displayName", event.target.value);
-                }}
-                className="h-12 flex-1 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                placeholder={helperCopy.displayNamePlaceholder}
-              />
-              <Button
-                className="h-12 rounded-[1.25rem] px-5"
-                disabled={
-                  pendingAction === "profile" ||
-                  isProfileSaving ||
-                  !hasProfileChanges
-                }
-                onClick={() => {
-                  void handleProfileSave();
-                }}
-              >
-                {pendingAction === "profile" || isProfileSaving ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <UserRound className="h-4 w-4" />
-                )}
-                {helperCopy.profileSaveLabel}
-              </Button>
-            </div>
-            </div>
-          </div>
-
-          <div className="mt-8 rounded-[1.75rem] border border-(--border-soft) bg-(--surface-soft) p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="max-w-3xl">
-                <p className="editorial-kicker text-(--accent-amber)">
-                  {helperCopy.personalInfoTitle}
-                </p>
-                <p className="mt-4 text-sm leading-7 text-(--text-muted)">
-                  {helperCopy.personalInfoIntro}
-                </p>
-              </div>
-              {profileDetailsOpen ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProfileDetailsOpen((current) => !current);
-                  }}
-                  aria-controls={profileDetailsSectionId}
-                  aria-expanded="true"
-                  aria-label={`${toggleOpenLabel} ${helperCopy.personalInfoTitle}`}
-                  className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                >
-                  {toggleOpenLabel}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProfileDetailsOpen((current) => !current);
-                  }}
-                  aria-controls={profileDetailsSectionId}
-                  aria-expanded="false"
-                  aria-label={`${toggleClosedLabel} ${helperCopy.personalInfoTitle}`}
-                  className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                >
-                  {toggleClosedLabel}
-                </button>
-              )}
-            </div>
-
-            {!profileDetailsOpen ? (
-              <p className="mt-4 text-sm leading-7 text-(--text-muted)">
-                {optionalSectionLabel}
-              </p>
-            ) : (
-              <div
-                id={profileDetailsSectionId}
-                role="region"
-                aria-label={helperCopy.personalInfoTitle}
-              >
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                <span>{helperCopy.birthYearLabel}</span>
-                <input
-                  type="number"
-                  min={1900}
-                  max={new Date().getFullYear()}
-                  inputMode="numeric"
-                  value={formState.birthYear}
-                  onChange={(event) => {
-                    updateFormField("birthYear", event.target.value);
-                  }}
-                  className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                />
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                <span>{helperCopy.countryLabel}</span>
-                <input
-                  type="text"
-                  value={formState.country}
-                  onChange={(event) => {
-                    updateFormField("country", event.target.value);
-                  }}
-                  className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                />
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                <span>{helperCopy.cityLabel}</span>
-                <input
-                  type="text"
-                  value={formState.city}
-                  onChange={(event) => {
-                    updateFormField("city", event.target.value);
-                  }}
-                  className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                />
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                <span>{helperCopy.occupationLabel}</span>
-                <input
-                  type="text"
-                  value={formState.occupation}
-                  onChange={(event) => {
-                    updateFormField("occupation", event.target.value);
-                  }}
-                  className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                />
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                <span>{helperCopy.industryLabel}</span>
-                <input
-                  type="text"
-                  value={formState.industry}
-                  onChange={(event) => {
-                    updateFormField("industry", event.target.value);
-                  }}
-                  className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                />
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                <span>{helperCopy.interestsLabel}</span>
-                <input
-                  type="text"
-                  value={formState.interests}
-                  onChange={(event) => {
-                    updateFormField("interests", event.target.value);
-                  }}
-                  placeholder={helperCopy.interestsPlaceholder}
-                  className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                />
-              </label>
-            </div>
-
-            <div className="mt-4 grid gap-4">
-              <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                <span>{helperCopy.profileUseCaseLabel}</span>
-                <textarea
-                  rows={3}
-                  value={formState.useCase}
-                  onChange={(event) => {
-                    updateFormField("useCase", event.target.value);
-                  }}
-                  placeholder={helperCopy.profileUseCasePlaceholder}
-                  className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 py-3 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                />
-              </label>
-
-              <label className="flex gap-3 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) px-4 py-4">
-                <input
-                  type="checkbox"
-                  checked={formState.marketingConsent}
-                  onChange={(event) => {
-                    updateFormField("marketingConsent", event.target.checked);
-                  }}
-                  className="mt-1 h-4 w-4 rounded border border-(--border-soft) bg-(--surface-input)"
-                />
-                <span className="space-y-1">
-                  <span className="block text-sm font-medium text-(--text-strong)">
-                    {helperCopy.marketingConsentLabel}
-                  </span>
-                  <span className="block text-sm leading-6 text-(--text-muted)">
-                    {helperCopy.marketingConsentHint}
-                  </span>
-                </span>
-              </label>
-            </div>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-8 flex flex-wrap gap-3">
-            {!hasPaidAccountAccess ? (
-              <Link
-                href={getLocalizedPublicPath("/pricing", locale)}
-                className="inline-flex h-11 items-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 text-sm font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-              >
-                {helperCopy.accountUpgradeCta}
-              </Link>
-            ) : null}
-            <Button
-              variant="ghost"
-              className="h-11 rounded-full px-5"
-              disabled={pendingAction === "signout"}
-              onClick={() => {
-                setPendingAction("signout");
-                void signOut().finally(() => {
-                  setPendingAction(undefined);
-                });
-              }}
-            >
-              {helperCopy.signOut}
-            </Button>
-          </div>
-        </article>
+        <AccountPanelOverviewSection
+          activeAvatarUrl={activeAvatarUrl}
+          accountDescription={accountDescription}
+          accountEyebrow={accountEyebrow}
+          activePlanFieldLabel={activePlanFieldLabel}
+          avatarHelperText={avatarHelperText}
+          avatarInputRef={avatarInputRef}
+          avatarLabel={avatarLabel}
+          avatarRenderFailed={avatarRenderFailed}
+          currentStatusFieldLabel={currentStatusFieldLabel}
+          formState={formState}
+          hasPaidAccountAccess={hasPaidAccountAccess}
+          hasProfileChanges={hasProfileChanges}
+          helperCopy={helperCopy}
+          isProfilePending={isProfilePending}
+          locale={locale}
+          optionalSectionLabel={optionalSectionLabel}
+          profileDetailsOpen={profileDetailsOpen}
+          profileDetailsSectionId={profileDetailsSectionId}
+          profileNameInput={profileNameInput}
+          showAvatarRemove={showAvatarRemove}
+          showAvatarUndo={showAvatarUndo}
+          showSubscriptionLinkedNotice={showSubscriptionLinkedNotice}
+          showSubscriptionPendingNotice={showSubscriptionPendingNotice}
+          showSubscriptionStatusCard={showSubscriptionStatusCard}
+          signOutPending={pendingAction === "signout"}
+          subscriptionDateDisplay={subscriptionDateDisplay}
+          subscriptionDateLabel={subscriptionDateLabel}
+          subscriptionLinkedDescription={subscriptionLinkedDescription}
+          subscriptionLinkedEyebrow={subscriptionLinkedEyebrow}
+          subscriptionLinkedHeading={subscriptionLinkedHeading}
+          subscriptionPendingDescription={subscriptionPendingDescription}
+          subscriptionPendingEyebrow={subscriptionPendingEyebrow}
+          subscriptionPendingHeading={subscriptionPendingHeading}
+          subscriptionPlanLabel={subscriptionPlanLabel ?? ""}
+          subscriptionStatusCardDescription={subscriptionStatusCardDescription}
+          subscriptionStatusCardTitle={subscriptionStatusCardTitle}
+          subscriptionStatusLabel={subscriptionStatusLabel ?? ""}
+          toggleClosedLabel={toggleClosedLabel}
+          toggleOpenLabel={toggleOpenLabel}
+          userEmail={user.email}
+          onAvatarChange={handleAvatarChange}
+          onAvatarClear={() => {
+            setAvatarDraftFile(null);
+            setAvatarPreviewUrl(undefined);
+            setAvatarRenderFailed(false);
+          }}
+          onAvatarPick={() => {
+            avatarInputRef.current?.click();
+          }}
+          onAvatarRemove={() => {
+            setRemoveStoredAvatar(true);
+            setAvatarRenderFailed(false);
+          }}
+          onAvatarRenderError={() => {
+            setAvatarRenderFailed(true);
+          }}
+          onDisplayNameChange={(value) => {
+            updateFormField("displayName", value);
+          }}
+          onProfileDetailsToggle={() => {
+            setProfileDetailsOpen((current) => !current);
+          }}
+          onProfileFieldChange={updateFormField}
+          onProfileSave={() => {
+            void handleProfileSave();
+          }}
+          onSignOut={() => {
+            setPendingAction("signout");
+            void signOut().finally(() => {
+              setPendingAction(undefined);
+            });
+          }}
+        />
 
         <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
           {hasPaidAccountAccess ? (
@@ -1806,7 +920,11 @@ export function AccountPanel({
 
                 <Button
                   className="h-11 rounded-full px-5"
-                  disabled={pendingAction === "sync" || syncStatus === "syncing"}
+                  disabled={
+                    pendingAction === "sync" ||
+                    syncStatus === "syncing" ||
+                    !isOnline
+                  }
                   onClick={() => {
                     void handleRefreshSync();
                   }}
@@ -1838,316 +956,49 @@ export function AccountPanel({
                 </p>
               </div>
 
-              <div className="mt-4 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="max-w-3xl">
-                    <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                      {helperCopy.dictionaryTitle}
-                    </p>
-                    <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-                      {dictionarySummary}
-                    </p>
-                  </div>
-                  {dictionarySectionOpen ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDictionarySectionOpen((current) => !current);
-                      }}
-                      aria-controls={dictionarySectionId}
-                      aria-expanded="true"
-                      aria-label={`${toggleOpenLabel} ${helperCopy.dictionaryTitle}`}
-                      className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      {toggleOpenLabel}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDictionarySectionOpen((current) => !current);
-                      }}
-                      aria-controls={dictionarySectionId}
-                      aria-expanded="false"
-                      aria-label={`${toggleClosedLabel} ${helperCopy.dictionaryTitle}`}
-                      className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      {toggleClosedLabel}
-                    </button>
-                  )}
-                </div>
+              <AccountPanelDictionarySection
+                dictionaryForm={dictionaryForm}
+                dictionarySectionId={dictionarySectionId}
+                dictionarySectionOpen={dictionarySectionOpen}
+                dictionarySummary={dictionarySummary}
+                helperCopy={helperCopy}
+                isProfileSaving={isProfileSaving}
+                pendingAction={pendingAction}
+                savedWords={savedWords}
+                toggleClosedLabel={toggleClosedLabel}
+                toggleOpenLabel={toggleOpenLabel}
+                onFieldChange={updateDictionaryField}
+                onRemove={handleDictionaryRemove}
+                onSave={handleDictionarySave}
+                onToggle={() => {
+                  setDictionarySectionOpen((current) => !current);
+                }}
+              />
 
-                {dictionarySectionOpen ? (
-                  <div
-                    id={dictionarySectionId}
-                    role="region"
-                    aria-label={helperCopy.dictionaryTitle}
-                  >
-                <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-                  {helperCopy.dictionaryIntro}
-                </p>
-
-                <div className="mt-4 grid gap-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                      <span>{helperCopy.dictionaryWordLabel}</span>
-                      <input
-                        type="text"
-                        value={dictionaryForm.word}
-                        onChange={(event) => {
-                          updateDictionaryField("word", event.target.value);
-                        }}
-                        placeholder={helperCopy.dictionaryWordPlaceholder}
-                        className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                      />
-                    </label>
-
-                    <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                      <span>{helperCopy.dictionaryMeaningLabel}</span>
-                      <input
-                        type="text"
-                        value={dictionaryForm.meaning}
-                        onChange={(event) => {
-                          updateDictionaryField("meaning", event.target.value);
-                        }}
-                        placeholder={helperCopy.dictionaryMeaningPlaceholder}
-                        className="h-12 rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                      />
-                    </label>
-                  </div>
-
-                  <label className="grid gap-2 text-sm font-medium text-(--text-strong)">
-                    <span>{helperCopy.dictionaryNoteLabel}</span>
-                    <textarea
-                      rows={3}
-                      value={dictionaryForm.note}
-                      onChange={(event) => {
-                        updateDictionaryField("note", event.target.value);
-                      }}
-                      placeholder={helperCopy.dictionaryNotePlaceholder}
-                      className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) px-4 py-3 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                    />
-                  </label>
-
-                  <div className="flex justify-end">
-                    <Button
-                      className="h-11 rounded-full px-5"
-                      disabled={
-                        pendingAction === "dictionary" || isProfileSaving
-                      }
-                      onClick={() => {
-                        void handleDictionarySave();
-                      }}
-                    >
-                      {pendingAction === "dictionary" ? (
-                        <LoaderCircle className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <KeyRound className="h-4 w-4" />
-                      )}
-                      {helperCopy.dictionaryAddWord}
-                    </Button>
-                  </div>
-                </div>
-
-                {savedWords.length > 0 ? (
-                  <div className="mt-5 space-y-3">
-                    {savedWords.map((entry) => (
-                      <div
-                        key={`${entry.word}-${entry.createdAt}`}
-                        className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="space-y-2">
-                            <p className="text-base font-semibold text-(--text-strong)">
-                              {entry.word}
-                            </p>
-                            {entry.meaning ? (
-                              <p className="text-sm leading-7 text-(--text-strong)">
-                                {entry.meaning}
-                              </p>
-                            ) : null}
-                            {entry.note ? (
-                              <p className="text-sm leading-7 text-(--text-muted)">
-                                {entry.note}
-                              </p>
-                            ) : null}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            className="h-10 rounded-full px-4"
-                            disabled={
-                              pendingAction === "dictionary" || isProfileSaving
-                            }
-                            onClick={() => {
-                              void handleDictionaryRemove(entry.word);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            {helperCopy.dictionaryRemoveWord}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-4 text-sm leading-7 text-(--text-muted)">
-                    {helperCopy.dictionaryEmpty}
-                  </p>
-                )}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="mt-4 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="max-w-3xl">
-                    <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                      {cloudActivityTitle}
-                    </p>
-                    <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-                      {cloudActivitySummary}
-                    </p>
-                  </div>
-                  {cloudActivityOpen ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCloudActivityOpen((current) => !current);
-                      }}
-                      aria-controls={cloudActivitySectionId}
-                      aria-expanded="true"
-                      aria-label={`${toggleOpenLabel} ${cloudActivityTitle}`}
-                      className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      {toggleOpenLabel}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCloudActivityOpen((current) => !current);
-                      }}
-                      aria-controls={cloudActivitySectionId}
-                      aria-expanded="false"
-                      aria-label={`${toggleClosedLabel} ${cloudActivityTitle}`}
-                      className="inline-flex items-center rounded-full border border-(--border-soft) bg-(--surface-card) px-4 py-2 text-xs font-medium tracking-[0.18em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      {toggleClosedLabel}
-                    </button>
-                  )}
-                </div>
-
-                {cloudActivityOpen ? (
-                  <div
-                    id={cloudActivitySectionId}
-                    role="region"
-                    aria-label={cloudActivityTitle}
-                  >
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                    {helperCopy.syncResultTitle}
-                  </p>
-                  <p className="text-xs text-(--text-muted)">
-                    {lastSyncResultLabel ?? "-"}
-                  </p>
-                </div>
-
-                {lastSyncSummary ? (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                      <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
-                        {helperCopy.uploadedFromDevice}
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
-                        {lastSyncSummary.uploadedDocuments}
-                      </p>
-                    </div>
-                    <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                      <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
-                        {helperCopy.cloudDocuments}
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
-                        {lastSyncSummary.documents}
-                      </p>
-                    </div>
-                    <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                      <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
-                        {helperCopy.cloudSessions}
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
-                        {lastSyncSummary.sessions}
-                      </p>
-                    </div>
-                    <div className="rounded-[1.25rem] border border-(--border-soft) bg-(--surface-card) p-4">
-                      <p className="text-xs tracking-[0.16em] text-(--text-muted) uppercase">
-                        {helperCopy.cloudBookmarks} /{" "}
-                        {helperCopy.cloudHighlights}
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-(--text-strong)">
-                        {lastSyncSummary.bookmarks} /{" "}
-                        {lastSyncSummary.highlights}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-                    {helperCopy.syncResultEmpty}
-                  </p>
-                )}
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                    {helperCopy.syncStatusLabel}
-                  </p>
-                  <p className="mt-3 text-lg font-semibold text-(--text-strong)">
-                    {syncCopy}
-                  </p>
-                </div>
-                <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                    {helperCopy.localOnlyDocs}
-                  </p>
-                  <p className="mt-3 text-3xl font-semibold text-(--text-strong)">
-                    {guestDocuments}
-                  </p>
-                  <p className="mt-3 text-sm leading-7 text-(--text-muted)">
-                    {guestDocuments > 0
-                      ? helperCopy.backupHint
-                      : helperCopy.backupDone}
-                  </p>
-                </div>
-                <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) p-4">
-                  <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                    {helperCopy.lastCloudSync}
-                  </p>
-                  <p className="mt-3 text-lg font-semibold text-(--text-strong)">
-                    {lastSyncedLabel ?? "-"}
-                  </p>
-                </div>
-              </div>
-
-              {guestDocuments > 0 ? (
-                <div className="mt-4 flex justify-start">
-                  <Button
-                    variant="outline"
-                    className="h-11 rounded-full px-5"
-                    disabled={pendingAction === "backup"}
-                    onClick={() => {
-                      void handleBackup();
-                    }}
-                  >
-                    {pendingAction === "backup" ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CloudUpload className="h-4 w-4" />
-                    )}
-                    {helperCopy.backupAction}
-                  </Button>
-                </div>
-              ) : null}
-                  </div>
-                ) : null}
-              </div>
+              <AccountPanelCloudActivitySection
+                cloudActivityOpen={cloudActivityOpen}
+                cloudActivitySectionId={cloudActivitySectionId}
+                cloudActivitySummary={cloudActivitySummary}
+                cloudActivityTitle={cloudActivityTitle}
+                guestDocuments={guestDocuments}
+                helperCopy={helperCopy}
+                isOnline={isOnline}
+                lastSyncedLabel={lastSyncedLabel}
+                lastSyncResultLabel={lastSyncResultLabel}
+                lastSyncSummary={lastSyncSummary}
+                offlineCachedCopy={offlineCachedCopy}
+                pendingAction={pendingAction}
+                pendingBreakdownLabel={pendingBreakdownLabel}
+                pendingChangesLabel={pendingChangesLabel}
+                pendingSyncCount={pendingSyncCount}
+                syncCopy={syncCopy}
+                toggleClosedLabel={toggleClosedLabel}
+                toggleOpenLabel={toggleOpenLabel}
+                onBackup={handleBackup}
+                onToggle={() => {
+                  setCloudActivityOpen((current) => !current);
+                }}
+              />
             </>
           ) : (
             <>
@@ -2211,203 +1062,37 @@ export function AccountPanel({
   }
 
   return (
-    <section className="grid gap-4">
-      <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-6 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl sm:p-8">
-        {activationSteps.length > 0 ? (
-          <div className="rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) px-5 py-4">
-            <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-sky) uppercase">
-              {locale === "en"
-                ? "Exact next steps"
-                : locale === "es"
-                  ? "Siguientes pasos exactos"
-                  : "Proximos passos exatos"}
-            </p>
-            <ol className="mt-4 space-y-2 text-sm leading-7 text-(--text-strong)">
-              {activationSteps.map((step, index) => (
-                <li key={step} className="flex gap-3">
-                  <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-card) text-xs font-semibold text-(--text-strong)">
-                    {index + 1}
-                  </span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        ) : null}
-
-        <div
-          className={`${activationSteps.length > 0 ? "mt-6" : ""} flex flex-wrap gap-2`}
-        >
-          {modes.map((entry) => (
-            <button
-              key={entry}
-              type="button"
-              onClick={() => {
-                setMode(entry);
-                setStatusMessage(undefined);
-              }}
-              className={`rounded-full border px-4 py-2 text-sm transition ${
-                mode === entry
-                  ? "border-(--border-strong) bg-(--surface-strong) text-(--text-strong)"
-                  : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted) hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong)"
-              }`}
-            >
-              {entry === "sign-in"
-                ? helperCopy.signIn
-                : entry === "create-account"
-                  ? helperCopy.createAccount
-                  : helperCopy.useMagicLink}
-            </button>
-          ))}
-        </div>
-
-        <p className="mt-4 rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
-          {authModeDescription}
-        </p>
-
-        <div className="mt-6 grid gap-4">
-          {showOAuthButtons ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Button
-                  variant="outline"
-                  className="h-12 rounded-[1.25rem]"
-                  disabled={isOAuthPending}
-                  onClick={() => {
-                    void handleOAuthSignIn("github", signInWithGitHub);
-                  }}
-                >
-                  {pendingAction === "github" ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <span className="text-sm font-semibold tracking-[0.18em]">
-                      GH
-                    </span>
-                  )}
-                  {helperCopy.githubSignIn}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="h-12 rounded-[1.25rem]"
-                  disabled={isOAuthPending}
-                  onClick={() => {
-                    void handleOAuthSignIn("google", signInWithGoogle);
-                  }}
-                >
-                  {pendingAction === "google" ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <span className="text-base font-semibold">G</span>
-                  )}
-                  {helperCopy.googleSignIn}
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-3 text-xs tracking-[0.24em] text-(--text-muted) uppercase">
-                <span className="h-px flex-1 bg-(--border-soft)" />
-                <span>
-                  {locale === "en"
-                    ? "Or use email"
-                    : locale === "es"
-                      ? "O usa email"
-                      : "Ou use email"}
-                </span>
-                <span className="h-px flex-1 bg-(--border-soft)" />
-              </div>
-            </>
-          ) : null}
-
-          <label
-            className="text-sm font-medium text-(--text-strong)"
-            htmlFor="account-email"
-          >
-            Email
-          </label>
-          <div className="relative">
-            <Mail className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
-            <input
-              id="account-email"
-              type="email"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-              }}
-              className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-              placeholder="reader@example.com"
-            />
-          </div>
-
-          {paidSignupPlan ? (
-            <p className="text-xs leading-6 text-(--text-muted)">
-              {paymentEmailHint}
-            </p>
-          ) : isPreCheckoutFlow ? (
-            <p className="text-xs leading-6 text-(--text-muted)">
-              {locale === "en"
-                ? `Use the account that should continue to ${checkoutPlanLabel}. Leyendo keeps that same account attached to the upgrade after payment.`
-                : locale === "es"
-                  ? `Usa la cuenta que debe continuar a ${checkoutPlanLabel}. Leyendo mantiene esa misma cuenta vinculada a la mejora despues del pago.`
-                  : `Use a conta que deve continuar para ${checkoutPlanLabel}. O Leyendo mantem essa mesma conta vinculada ao upgrade apos o pagamento.`}
-            </p>
-          ) : null}
-
-          {mode !== "magic-link" ? (
-            <>
-              <label
-                className="text-sm font-medium text-(--text-strong)"
-                htmlFor="account-password"
-              >
-                {helperCopy.password}
-              </label>
-              <div className="relative">
-                <KeyRound className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-(--text-muted)" />
-                <input
-                  id="account-password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => {
-                    setPassword(event.target.value);
-                  }}
-                  className="h-12 w-full rounded-[1.25rem] border border-(--border-soft) bg-(--surface-input) pr-4 pl-11 text-(--text-strong) placeholder:text-(--text-muted) focus:border-(--border-strong) focus:outline-none"
-                  placeholder="At least 6 characters"
-                />
-              </div>
-            </>
-          ) : null}
-
-          <Button
-            className="mt-2 h-12 rounded-[1.25rem]"
-            disabled={
-              pendingAction === "auth" ||
-              !email ||
-              (mode !== "magic-link" && password.length < 6)
-            }
-            onClick={() => {
-              void handleSubmit();
-            }}
-          >
-            {pendingAction === "auth" ? (
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-            ) : mode === "magic-link" ? (
-              <Mail className="h-4 w-4" />
-            ) : (
-              <UserRound className="h-4 w-4" />
-            )}
-            {mode === "sign-in"
-              ? helperCopy.signIn
-              : mode === "create-account"
-                ? helperCopy.createAccount
-                : helperCopy.magicLink}
-          </Button>
-
-          {statusMessage || errorMessage ? (
-            <p className="rounded-[1.35rem] border border-(--border-soft) bg-(--surface-soft) px-4 py-3 text-sm leading-7 text-(--text-strong)">
-              {statusMessage ?? errorMessage}
-            </p>
-          ) : null}
-        </div>
-      </article>
-    </section>
+    <AccountPanelAuthForm
+      activationSteps={activationSteps}
+      authModeDescription={authModeDescription}
+      checkoutPlanLabel={checkoutPlanLabel}
+      email={email}
+      helperCopy={helperCopy}
+      isOAuthPending={isOAuthPending}
+      isPreCheckoutFlow={isPreCheckoutFlow}
+      locale={locale}
+      message={statusMessage ?? errorMessage}
+      mode={mode}
+      paidSignupPlan={paidSignupPlan}
+      password={password}
+      paymentEmailHint={paymentEmailHint}
+      pendingAction={pendingAction}
+      showOAuthButtons={showOAuthButtons}
+      onEmailChange={setEmail}
+      onGitHubSignIn={() => {
+        void handleOAuthSignIn("github", signInWithGitHub);
+      }}
+      onGoogleSignIn={() => {
+        void handleOAuthSignIn("google", signInWithGoogle);
+      }}
+      onPasswordChange={setPassword}
+      onSelectMode={setMode}
+      onStatusReset={() => {
+        setStatusMessage(undefined);
+      }}
+      onSubmit={() => {
+        void handleSubmit();
+      }}
+    />
   );
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   detectDocumentSourceKind,
+  detectPastedTextSourceKind,
   isLegacyWordDocument,
 } from "@/features/ingest/detect/file-kind";
 
@@ -31,5 +32,23 @@ describe("detectDocumentSourceKind", () => {
     expect(detectDocumentSourceKind("archive.zip")).toBeNull();
     expect(detectDocumentSourceKind("legacy.doc", "application/msword")).toBeNull();
     expect(detectDocumentSourceKind("table.csv", "text/plain")).toBeNull();
+  });
+
+  it("detects pasted markdown conservatively from structural cues", () => {
+    expect(detectPastedTextSourceKind("# Heading\n\n- One\n- Two")).toBe(
+      "markdown",
+    );
+    expect(
+      detectPastedTextSourceKind(
+        "Paragraph with [a link](https://example.com).\n\nAnother paragraph with **bold** text.",
+      ),
+    ).toBe("markdown");
+  });
+
+  it("keeps plain prose as plain text when markdown cues are weak", () => {
+    expect(
+      detectPastedTextSourceKind("This is a plain note line.\nStill plain text."),
+    ).toBe("plain-text");
+    expect(detectPastedTextSourceKind("- One short line")).toBe("plain-text");
   });
 });

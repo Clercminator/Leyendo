@@ -25,17 +25,17 @@ import {
   clearSyncedLibraryForUser,
   deleteProfileAvatar,
   ensureProfile,
-  getProfile,
   getLocalOnlyLibrarySummary,
+  getProfile,
   getSyncedLibrarySummary,
   hydrateCloudLibraryToLocal,
   syncCloudLibraryToLocalIncremental,
-  type LocalLibrarySummary,
   type UserProfile,
   type UserPersonalInfo,
   type UserSavedWord,
   uploadProfileAvatar,
   upsertProfile,
+  type LocalLibrarySummary,
 } from "@/lib/supabase/library-sync";
 import {
   getSupabaseBrowserClient,
@@ -65,6 +65,7 @@ interface SupabaseAuthContextValue {
   guestLibrarySummary: LocalLibrarySummary;
   isConfigured: boolean;
   isLoading: boolean;
+  isOnline: boolean;
   isProfileSaving: boolean;
   lastSyncedAt?: string;
   lastSyncSummary?: CloudSyncSummary;
@@ -100,6 +101,7 @@ const defaultSupabaseAuthContext: SupabaseAuthContextValue = {
   guestLibrarySummary: defaultGuestLibrarySummary,
   isConfigured: isSupabaseConfigured,
   isLoading: false,
+  isOnline: true,
   isProfileSaving: false,
   session: null,
   lastSyncSummary: undefined,
@@ -139,10 +141,14 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   const cloudAccessErrorMessage =
     "Focus or Max is required to unlock cloud sync and saved vocabulary.";
   const currentUserIdRef = useRef<string | undefined>(undefined);
+  const isOnlineRef = useRef(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
   const syncLockRef = useRef<Promise<void> | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured);
+  const [isOnline, setIsOnline] = useState(isOnlineRef.current);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [lastSyncedAt, setLastSyncedAt] = useState<string>();
   const [lastSyncSummary, setLastSyncSummary] = useState<CloudSyncSummary>();
@@ -157,7 +163,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshGuestLibrarySummary = useCallback(async () => {
-    const summary = await getLocalOnlyLibrarySummary();
+    const summary = await getLocalOnlyLibrarySummary(currentUserIdRef.current);
     setGuestLibrarySummary(summary);
   }, []);
 
@@ -180,6 +186,13 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   const runCloudSync = useCallback(
     async (options?: { errorWhenLocked?: boolean; forceHydrate?: boolean }) => {
       if (!supabase) {
+        return;
+      }
+
+      if (!isOnlineRef.current) {
+        setSyncStatus("error");
+        setErrorMessage(undefined);
+        await refreshGuestLibrarySummary();
         return;
       }
 
@@ -390,6 +403,13 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       return 0;
     }
 
+    if (!isOnlineRef.current) {
+      setSyncStatus("error");
+      setErrorMessage(undefined);
+      await refreshGuestLibrarySummary();
+      return 0;
+    }
+
     const activeProfile =
       profile ?? (await getProfile(supabase, currentUserIdRef.current));
     if (!hasPlanAccess(activeProfile, "focus")) {
@@ -442,6 +462,41 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   }, [refreshGuestLibrarySummary]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleOnline = () => {
+      isOnlineRef.current = true;
+      setIsOnline(true);
+
+      if (currentUserIdRef.current) {
+        void runCloudSync();
+        return;
+      }
+
+      setSyncStatus("idle");
+      void refreshGuestLibrarySummary();
+    };
+
+    const handleOffline = () => {
+      isOnlineRef.current = false;
+      setIsOnline(false);
+      if (currentUserIdRef.current) {
+        setSyncStatus("error");
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [refreshGuestLibrarySummary, runCloudSync]);
+
+  useEffect(() => {
     if (!supabase) {
       setIsLoading(false);
       return;
@@ -461,7 +516,12 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
 
       if (nextSession?.user) {
-        await runCloudSync();
+        if (isOnlineRef.current) {
+          await runCloudSync();
+        } else {
+          setSyncStatus("error");
+          await refreshGuestLibrarySummary();
+        }
       } else {
         setProfile(undefined);
         setLastSyncSummary(undefined);
@@ -479,7 +539,12 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
       if (nextSession?.user) {
         if (previousUserId !== nextSession.user.id) {
-          void runCloudSync();
+          if (isOnlineRef.current) {
+            void runCloudSync();
+          } else {
+            setSyncStatus("error");
+            void refreshGuestLibrarySummary();
+          }
         }
         return;
       }
@@ -625,6 +690,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       guestLibrarySummary,
       isConfigured: isSupabaseConfigured,
       isLoading,
+      isOnline,
       isProfileSaving,
       lastSyncedAt,
       lastSyncSummary,
@@ -651,6 +717,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       errorMessage,
       guestLibrarySummary,
       isLoading,
+      isOnline,
       isProfileSaving,
       lastSyncedAt,
       lastSyncSummary,

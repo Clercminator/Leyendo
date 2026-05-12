@@ -11,39 +11,39 @@ import { getLocalizedCopy } from "@/lib/locale";
 
 const modes = [
   {
-    name: { en: "Standard PDF", es: "PDF standard", pt: "PDF standard" },
+    name: { en: "Standard PDF", es: "PDF estándar", pt: "PDF standard" },
     description: {
       en: "Keep the original page layout with outline, zoom, and page-aware navigation.",
-      es: "Conserva el diseno original de pagina con esquema, zoom y navegacion por paginas.",
+      es: "Conserva el diseño original de la página, con esquema, zoom y navegación por páginas.",
       pt: "Mantenha o layout original da pagina com sumario, zoom e navegacao por paginas.",
     },
     bestFor: {
       en: "Best for real PDFs and scanned layouts",
-      es: "Ideal para PDF reales y disenos escaneados",
+      es: "Ideal para PDF reales y diseños escaneados",
       pt: "Ideal para PDFs reais e layouts digitalizados",
     },
     tradeoff: {
       en: "Tradeoff: preserves layout better than text speed modes, but gives you less pacing assistance.",
-      es: "Tradeoff: conserva mejor el layout que los modos rapidos de texto, pero te da menos ayuda de ritmo.",
+      es: "A cambio: conserva mejor el diseño que los modos rápidos, pero ayuda menos con el ritmo.",
       pt: "Tradeoff: preserva melhor o layout do que os modos rapidos de texto, mas oferece menos ajuda de ritmo.",
     },
     icon: FileText,
   },
   {
-    name: { en: "Focus Word", es: "Palabra foco", pt: "Palavra foco" },
+    name: { en: "Focus Word", es: "Foco por palabra", pt: "Palavra foco" },
     description: {
       en: "One word at a time for maximum focus and minimal eye travel.",
-      es: "Una palabra a la vez para maxima concentracion y menos movimiento ocular.",
+      es: "Una palabra a la vez para máxima concentración y menos movimiento ocular.",
       pt: "Uma palavra por vez para foco maximo e menos movimento ocular.",
     },
     bestFor: {
       en: "Best for deep concentration",
-      es: "Ideal para concentracion profunda",
+      es: "Ideal para concentración profunda",
       pt: "Ideal para concentracao profunda",
     },
     tradeoff: {
       en: "Tradeoff: strongest attention lock, but least surrounding context at a glance.",
-      es: "Tradeoff: el mayor bloqueo de atencion, pero con menos contexto visible alrededor.",
+      es: "A cambio: fija más la atención, pero deja menos contexto visible.",
       pt: "Tradeoff: o maior bloqueio de atencao, mas com menos contexto visivel ao redor.",
     },
     icon: WholeWord,
@@ -56,45 +56,45 @@ const modes = [
     },
     description: {
       en: "Small groups of words for a more natural RSVP flow.",
-      es: "Pequenos grupos de palabras para un flujo mas natural.",
+      es: "Pequeños grupos de palabras para un flujo más natural.",
       pt: "Pequenos grupos de palavras para um fluxo mais natural.",
     },
     bestFor: {
       en: "Best for balanced speed practice",
-      es: "Ideal para velocidad equilibrada",
+      es: "Ideal para leer más rápido con equilibrio",
       pt: "Ideal para velocidade equilibrada",
     },
     tradeoff: {
       en: "Tradeoff: faster and more natural than single-word focus, but still simplifies the original layout.",
-      es: "Tradeoff: mas rapido y natural que el foco palabra por palabra, pero aun simplifica el layout original.",
+      es: "A cambio: es más rápido y natural que el foco por palabra, pero simplifica el diseño original.",
       pt: "Tradeoff: mais rapido e natural do que foco palavra por palavra, mas ainda simplifica o layout original.",
     },
     icon: GalleryHorizontalEnd,
   },
   {
-    name: { en: "Guided Line", es: "Linea guiada", pt: "Linha guiada" },
+    name: { en: "Guided Line", es: "Línea guiada", pt: "Linha guiada" },
     description: {
       en: "A moving emphasis across a line or tight line group.",
-      es: "Un enfasis en movimiento sobre una linea o grupo corto de lineas.",
+      es: "Un énfasis móvil sobre una línea o un grupo corto de líneas.",
       pt: "Um enfase em movimento sobre uma linha ou grupo curto de linhas.",
     },
     bestFor: {
       en: "Best for comprehension with motion guidance",
-      es: "Ideal para comprension con guia visual",
+      es: "Ideal para comprender con guía visual",
       pt: "Ideal para compreensao com guia visual",
     },
     tradeoff: {
       en: "Tradeoff: easier recovery across lines, but less aggressive for pure speed training.",
-      es: "Tradeoff: facilita retomar entre lineas, pero es menos agresivo para entrenamiento puro de velocidad.",
+      es: "A cambio: facilita retomar entre líneas, pero es menos agresivo para entrenar velocidad.",
       pt: "Tradeoff: facilita a retomada entre linhas, mas e menos agressivo para treino puro de velocidade.",
     },
     icon: Focus,
   },
   {
-    name: { en: "Classic Reader", es: "Lector clasico", pt: "Leitor classico" },
+    name: { en: "Classic Reader", es: "Lector clásico", pt: "Leitor classico" },
     description: {
       en: "A calmer page view with assistive controls always nearby.",
-      es: "Una vista mas calmada con controles utiles siempre cerca.",
+      es: "Una vista más tranquila con controles útiles siempre cerca.",
       pt: "Uma vista mais calma com controles uteis sempre por perto.",
     },
     bestFor: {
@@ -104,7 +104,7 @@ const modes = [
     },
     tradeoff: {
       en: "Tradeoff: richest context and safest fallback, but usually not the fastest pace.",
-      es: "Tradeoff: el contexto mas rico y el respaldo mas seguro, pero normalmente no es el ritmo mas rapido.",
+      es: "A cambio: ofrece más contexto y es la opción más segura para volver al texto, pero no suele ser la más rápida.",
       pt: "Tradeoff: o contexto mais rico e a reserva mais segura, mas normalmente nao e o ritmo mais rapido.",
     },
     icon: AlignLeft,

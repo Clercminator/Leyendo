@@ -254,6 +254,11 @@ describe("ReaderWorkspace PDF gating", () => {
       );
     });
 
+    expect(screen.queryByText(/pace benchmark/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/session snapshot/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/check before changing pace/i),
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId("reader-canvas")).not.toBeInTheDocument();
   });
 

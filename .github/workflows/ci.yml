@@ -68,7 +68,16 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright smoke suite
+        env:
+          PLAYWRIGHT_SERVER_MODE: dev
         run: pnpm exec playwright test tests/e2e/landing.spec.ts tests/e2e/reader-responsive.spec.ts --project=chromium
 
       - name: Run Playwright mobile smoke suite
+        env:
+          PLAYWRIGHT_SERVER_MODE: dev
         run: pnpm exec playwright test tests/e2e/reader-mobile.spec.ts --project=mobile-chromium
+
+      - name: Run Playwright offline production suite
+        env:
+          PLAYWRIGHT_SERVER_MODE: production
+        run: pnpm exec playwright test tests/e2e/reader-offline.spec.ts --project=chromium-production

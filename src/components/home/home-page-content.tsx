@@ -23,7 +23,7 @@ const modesEyebrow = {
 
 const modesTitle = {
   en: "Choose the reading mode that fits the document, the task, and your current attention.",
-  es: "Elige el modo de lectura que encaje con el documento, la tarea y tu atencion actual.",
+  es: "Elige el modo que mejor se adapte al documento, la tarea y tu atención.",
   pt: "Escolha o modo de leitura que combina com o documento, a tarefa e sua atencao atual.",
 };
 
@@ -35,13 +35,13 @@ const firstSessionProofEyebrow = {
 
 const firstSessionProofTitle = {
   en: "The promise should prove itself on your first real document.",
-  es: "La promesa deberia probarse en tu primer documento real.",
+  es: "La promesa debe notarse en tu primer documento real.",
   pt: "A promessa deveria se provar no seu primeiro documento real.",
 };
 
 const firstSessionProofDescription = {
   en: "These are the behaviors Leyendo should make obvious within minutes, not after a long setup or a paid upgrade.",
-  es: "Estos son los comportamientos que Leyendo deberia volver obvios en minutos, no despues de una configuracion larga o una mejora de pago.",
+  es: "Esto debería quedar claro en minutos, no después de una configuración larga ni de subir de plan.",
   pt: "Estes sao os comportamentos que o Leyendo deveria tornar obvios em minutos, nao depois de uma configuracao longa ou de um upgrade pago.",
 };
 
@@ -71,25 +71,25 @@ const firstSessionProofCards = {
   ],
   es: [
     {
-      eyebrow: "Recomendacion",
+      eyebrow: "Recomendación",
       title: "Un objetivo de lectura cambia el punto de partida",
       description:
-        "Elige un objetivo y el modo inicial con su ritmo deberian cambiar antes de tocar una pantalla densa de ajustes.",
-      note: "El sistema deberia ayudar primero, no esperar ajuste manual.",
+        "Al elegir un objetivo, el modo inicial y el ritmo deberían ajustarse antes de abrir una pantalla llena de ajustes.",
+      note: "El sistema debe ayudar primero, no esperar ajustes manuales.",
     },
     {
       eyebrow: "Cambio de modo",
-      title: "Sigues en un solo documento mientras cambia la vista",
+      title: "Sigues en el mismo documento aunque cambie la vista",
       description:
-        "Pasa de modos rapidos de texto a Lector clasico o PDF standard sin abrir una segunda copia ni reconstruir tu lugar.",
-      note: "Recuperar contexto debe ser parte del producto, no un detalle tardio.",
+        "Pasa de los modos rápidos al Lector clásico o al PDF estándar sin abrir otra copia ni perder tu lugar.",
+      note: "Recuperar contexto debe ser parte del producto, no algo secundario.",
     },
     {
       eyebrow: "Continuidad",
       title: "El progreso sigue unido al documento",
       description:
-        "Sal, vuelve desde la biblioteca y conserva ritmo, destacados, marcadores y camino de recuperacion en el mismo archivo.",
-      note: "La continuidad local-first forma parte de la promesa.",
+        "Sal, vuelve desde la biblioteca y conserva el ritmo, los destacados, los marcadores y tu punto de regreso en el mismo archivo.",
+      note: "La continuidad local forma parte de la promesa.",
     },
   ],
   pt: [
@@ -117,62 +117,33 @@ const firstSessionProofCards = {
   ],
 };
 
-const bilingualSearchCards = [
-  {
-    id: "en",
-    eyebrow: "English search intent",
-    title: "Reading speed and fast reading for real documents.",
-    description:
-      "Leyendo is for people searching terms like reading speed, fast reading, speed reading app, and read faster. The goal is not gimmicks. The goal is to read PDFs and dense documents faster without losing comprehension or control.",
-    terms: [
-      "reading speed",
-      "fast reading",
-      "speed reading app",
-      "read faster",
-    ],
-  },
-  {
-    id: "es",
-    eyebrow: "Intencion de busqueda en espanol",
-    title: "Lectura rapida para PDF y documentos reales.",
-    description:
-      "Leyendo esta hecho para personas que buscan lectura rapida, leer mas rapido, velocidad de lectura y comprension lectora. La propuesta no es prometer magia, sino ayudarte a leer documentos con mejor ritmo, mas foco y mejor recuperacion.",
-    terms: [
-      "lectura rapida",
-      "leer mas rapido",
-      "velocidad de lectura",
-      "comprension lectora",
-    ],
-  },
-];
-
 const guidesEyebrow = {
   en: "Guides and articles",
-  es: "Guias y articulos",
+  es: "Guías y artículos",
   pt: "Guias e artigos",
 };
 
 const guidesTitle = {
   en: "Read the public pages targeting reading speed and fast reading intent.",
-  es: "Lee las paginas publicas que trabajan intencion de velocidad de lectura y lectura rapida.",
+  es: "Lee las páginas públicas sobre velocidad de lectura y lectura rápida.",
   pt: "Leia as paginas publicas que trabalham intencao de velocidade de leitura e leitura rapida.",
 };
 
 const guidesDescription = {
   en: "These guides explain the workflow behind Leyendo: faster pacing when it helps, slower recovery when it matters, and better control over real documents from start to finish.",
-  es: "Estas guias explican el flujo detras de Leyendo: mas ritmo cuando ayuda, recuperacion mas lenta cuando importa y mejor control sobre documentos reales de principio a fin.",
+  es: "Estas guías explican cómo funciona Leyendo: más ritmo cuando ayuda, una vuelta más lenta cuando importa y más control de principio a fin.",
   pt: "Estas guias explicam o fluxo por tras do Leyendo: mais ritmo quando ajuda, retomada mais lenta quando importa e melhor controle sobre documentos reais do inicio ao fim.",
 };
 
 const readGuideLabel = {
   en: "Read guide",
-  es: "Leer guia",
+  es: "Leer guía",
   pt: "Ler guia",
 };
 
 const browseGuidesLabel = {
   en: "Browse all guides",
-  es: "Ver todas las guias",
+  es: "Ver todas las guías",
   pt: "Ver todas as guias",
 };
 
@@ -217,19 +188,20 @@ export function HomePageContent() {
   return (
     <AppShell
       centerIntro
+      compactIntro
       eyebrow={{
         en: "Reader for real documents",
-        es: "Lector para documentos reales",
+        es: "Lectura rápida para documentos reales",
         pt: "Leitor para documentos reais",
       }}
       title={{
         en: "Bring the document that needs more pace, more focus, or an easier way back in.",
-        es: "Trae el documento que necesita mas ritmo, mas foco o una forma mas facil de retomarlo.",
+        es: "Lee más rápido en varios modos y formatos.",
         pt: "Traga o documento que precisa de mais ritmo, mais foco ou uma volta mais facil para dentro dele.",
       }}
       description={{
         en: "Leyendo is built for articles, chapters, reports, and PDFs that ask too much from your attention. Import the file, choose a reading pace, and keep your place as you move between faster modes and full-context reading.",
-        es: "Leyendo esta hecho para articulos, capitulos, informes y PDF que exigen demasiado a tu atencion. Importa el archivo, elige un ritmo de lectura y conserva tu lugar mientras cambias entre modos rapidos y lectura con contexto completo.",
+        es: "Importa PDF, DOCX, RTF, Markdown o texto pegado. Cambia de ritmo y de modo sin perder tu lugar.",
         pt: "O Leyendo foi feito para artigos, capitulos, relatorios e PDFs que cobram demais da sua atencao. Importe o arquivo, escolha um ritmo de leitura e mantenha seu lugar enquanto alterna entre modos mais rapidos e leitura com contexto total.",
       }}
     >
@@ -297,35 +269,6 @@ export function HomePageContent() {
             </h2>
           </div>
           <ModeGallery />
-        </section>
-
-        <section className="fade-rise-delayed grid gap-6 lg:grid-cols-2">
-          {bilingualSearchCards.map((card) => (
-            <article
-              key={card.id}
-              className="rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_70px_rgba(20,26,56,0.1)] backdrop-blur-xl"
-            >
-              <p className="editorial-kicker text-(--accent-amber)">
-                {card.eyebrow}
-              </p>
-              <h2 className="font-heading mt-4 text-3xl leading-tight font-semibold text-(--text-strong)">
-                {card.title}
-              </h2>
-              <p className="mt-5 text-base leading-8 text-(--text-muted)">
-                {card.description}
-              </p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                {card.terms.map((term) => (
-                  <span
-                    key={term}
-                    className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong)"
-                  >
-                    {term}
-                  </span>
-                ))}
-              </div>
-            </article>
-          ))}
         </section>
 
         <section className="fade-rise-delayed space-y-5">

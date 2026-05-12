@@ -108,6 +108,7 @@ function createChunk(args: {
   anchorTokenIndex: number;
   index: number;
   paragraphIndex: number;
+  playbackTokenCount?: number;
   sectionIndex: number;
   sentenceIndex: number;
   sourcePageIndex?: number;
@@ -117,6 +118,7 @@ function createChunk(args: {
     index: args.index,
     text: args.tokens.map((token) => token.value).join(" "),
     tokenIndexes: args.tokens.map((token) => token.index),
+    playbackTokenCount: args.playbackTokenCount ?? args.tokens.length,
     anchorTokenIndex: args.anchorTokenIndex,
     paragraphIndex: args.paragraphIndex,
     sentenceIndex: args.sentenceIndex,
@@ -273,6 +275,7 @@ function buildFocusWordChunks(
           anchorTokenIndex: token.index,
           index: chunkIndex,
           paragraphIndex: sentence.paragraphIndex,
+          playbackTokenCount: 1,
           sectionIndex: sectionIndexByBlock.get(sentence.paragraphIndex) ?? 0,
           sentenceIndex: sentence.index,
           sourcePageIndex: sentence.sourcePageIndex,

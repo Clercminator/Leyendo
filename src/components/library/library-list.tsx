@@ -23,7 +23,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   deleteCloudDocumentBundle,
   deleteCloudSession,
-} from "@/lib/supabase/library-sync";
+} from "@/lib/supabase/library-cloud-mutations";
 import type { DocumentRecord } from "@/types/document";
 
 interface LibraryData {

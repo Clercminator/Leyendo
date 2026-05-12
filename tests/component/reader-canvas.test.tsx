@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,7 +34,12 @@ function installMatchMedia() {
   });
 }
 
-function renderReaderCanvas() {
+function renderReaderCanvas(args?: {
+  isPlaying?: boolean;
+  modeView?: React.ReactNode;
+  preferences?: typeof defaultReaderPreferences;
+  remainingWords?: number;
+}) {
   const handlers = {
     onChangeFontScale: vi.fn(),
     onChangeLineHeight: vi.fn(),
@@ -65,11 +70,12 @@ function renderReaderCanvas() {
         activeGoalLabel="Practice focus"
         chunkSize={2}
         currentParagraphNumber={3}
-        isPlaying={false}
+        isPlaying={args?.isPlaying ?? false}
         modeLabel="Classic Reader"
-        modeView={<div>Mode view</div>}
+        modeView={args?.modeView ?? <div>Mode view</div>}
+        remainingWords={args?.remainingWords}
         remainingTimeLabel="2m 2s left"
-        preferences={defaultReaderPreferences}
+        preferences={args?.preferences ?? defaultReaderPreferences}
         sentenceCount={8}
         onAnnounceRemainingTime={vi.fn()}
         onChangeFontScale={handlers.onChangeFontScale}
@@ -249,5 +255,72 @@ describe("ReaderCanvas", () => {
     expect(
       screen.queryByRole("dialog", { name: /reading tools/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the sentence and words-left summary as a single chip on desktop", () => {
+    renderReaderCanvas({ remainingWords: 120 });
+
+    expect(screen.getByText("8 sentences · 120 words left")).toBeInTheDocument();
+    expect(screen.getAllByText("8 sentences · 120 words left")).toHaveLength(1);
+  });
+
+  it("shows the sentence and words-left summary once on compact mobile", () => {
+    mockViewportWidth = 390;
+    installMatchMedia();
+
+    renderReaderCanvas({ remainingWords: 120 });
+
+    expect(screen.getByText("8 sentences · 120 words left")).toBeInTheDocument();
+    expect(screen.getAllByText("8 sentences · 120 words left")).toHaveLength(1);
+  });
+
+  it("toggles playback with Space from the reader surface", async () => {
+    const { onTogglePlayback } = renderReaderCanvas();
+
+    fireEvent.keyDown(document, { code: "Space", key: " " });
+
+    expect(onTogglePlayback).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not toggle playback with Space from interactive fields or token targets", async () => {
+    const user = userEvent.setup();
+    const { onTogglePlayback } = renderReaderCanvas({
+      modeView: (
+        <div>
+          <textarea aria-label="Reader notes" />
+          <div data-reader-token-index="1" tabIndex={0}>
+            Token target
+          </div>
+        </div>
+      ),
+    });
+
+    const textarea = screen.getByRole("textbox", { name: /reader notes/i });
+    textarea.focus();
+
+    await user.keyboard("{Space}");
+
+    expect(onTogglePlayback).not.toHaveBeenCalled();
+
+    const tokenTarget = screen.getByText("Token target");
+    tokenTarget.focus();
+
+    await user.keyboard("{Space}");
+
+    expect(onTogglePlayback).not.toHaveBeenCalled();
+  });
+
+  it("does not toggle playback with Space in PDF mode", async () => {
+    const user = userEvent.setup();
+    const { onTogglePlayback } = renderReaderCanvas({
+      preferences: {
+        ...defaultReaderPreferences,
+        mode: "pdf-page",
+      },
+    });
+
+    await user.keyboard("{Space}");
+
+    expect(onTogglePlayback).not.toHaveBeenCalled();
   });
 });

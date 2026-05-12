@@ -233,6 +233,161 @@ describe("extractDocumentFromFile", () => {
     );
   });
 
+  it("preserves bold PDF fragments as inline span hints", async () => {
+    pdfjsMock.getDocument.mockImplementationOnce(() => ({
+      promise: Promise.resolve({
+        numPages: 1,
+        getPage: async () => ({
+          getViewport: () => ({ width: 612 }),
+          getOperatorList: async () => ({
+            argsArray: [],
+            fnArray: [],
+          }),
+          getTextContent: async () => ({
+            items: [
+              {
+                fontName: "Helvetica",
+                str: "This",
+                transform: [1, 0, 0, 12, 72, 720],
+                width: 24,
+                height: 12,
+              },
+              {
+                fontName: "Helvetica-Bold",
+                str: "Important",
+                transform: [1, 0, 0, 12, 102, 720],
+                width: 56,
+                height: 12,
+              },
+              {
+                fontName: "Helvetica-Bold",
+                str: "terms",
+                transform: [1, 0, 0, 12, 164, 720],
+                width: 34,
+                height: 12,
+              },
+              {
+                fontName: "Helvetica",
+                str: "stay",
+                transform: [1, 0, 0, 12, 204, 720],
+                width: 28,
+                height: 12,
+              },
+              {
+                fontName: "Helvetica",
+                str: "visible.",
+                transform: [1, 0, 0, 12, 238, 720],
+                width: 42,
+                height: 12,
+              },
+            ],
+          }),
+        }),
+      }),
+    }));
+
+    const file = new File([new Uint8Array([9, 8, 7])], "inline-spans.pdf", {
+      type: "application/pdf",
+    });
+
+    const extracted = await extractDocumentFromFile(file);
+
+    expect(extracted.sourceBlocks?.[0]).toEqual(
+      expect.objectContaining({
+        inlineSpans: [
+          {
+            kind: "strong",
+            text: "Important terms",
+          },
+        ],
+        kind: "paragraph",
+        text: "This Important terms stay visible.",
+      }),
+    );
+  });
+
+  it("normalizes common PDF glyph artifacts and keeps bold short lines as headings", async () => {
+    pdfjsMock.getDocument.mockImplementationOnce(() => ({
+      promise: Promise.resolve({
+        numPages: 1,
+        getPage: async () => ({
+          getViewport: () => ({ width: 612 }),
+          getOperatorList: async () => ({
+            argsArray: [],
+            fnArray: [],
+          }),
+          getTextContent: async () => ({
+            items: [
+              {
+                fontName: "Helvetica-Bold",
+                str: "Overview",
+                transform: [1, 0, 0, 12, 252, 760],
+                width: 108,
+                height: 12,
+              },
+              {
+                fontName: "Wingdings",
+                str: "\uF0B7",
+                transform: [1, 0, 0, 12, 72, 706],
+                width: 12,
+                height: 12,
+              },
+              {
+                fontName: "Helvetica",
+                str: "co\u00adoperation",
+                transform: [1, 0, 0, 12, 92, 706],
+                width: 88,
+                height: 12,
+              },
+              {
+                fontName: "Helvetica",
+                str: "and",
+                transform: [1, 0, 0, 12, 186, 706],
+                width: 22,
+                height: 12,
+              },
+              {
+                fontName: "Helvetica",
+                str: "ﬁnance\u200b",
+                transform: [1, 0, 0, 12, 214, 706],
+                width: 54,
+                height: 12,
+              },
+              {
+                fontName: "Helvetica",
+                str: "moves forward.",
+                transform: [1, 0, 0, 12, 92, 690],
+                width: 94,
+                height: 12,
+              },
+            ],
+          }),
+        }),
+      }),
+    }));
+
+    const file = new File([new Uint8Array([4, 5, 6])], "structured.pdf", {
+      type: "application/pdf",
+    });
+
+    const extracted = await extractDocumentFromFile(file);
+
+    expect(extracted.rawText).toContain("Overview");
+    expect(extracted.rawText).toContain("• cooperation and finance moves forward.");
+    expect(extracted.sourceBlocks).toEqual([
+      expect.objectContaining({
+        alignment: "center",
+        kind: "heading",
+        text: "Overview",
+      }),
+      expect.objectContaining({
+        kind: "list-item",
+        marker: "•",
+        text: "cooperation and finance moves forward.",
+      }),
+    ]);
+  });
+
   it("rejects legacy .doc files with a migration hint", async () => {
     const file = new File(["legacy"], "legacy.doc", {
       type: "application/msword",
