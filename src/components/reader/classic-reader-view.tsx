@@ -20,6 +20,10 @@ import { unified } from "unified";
 import { buildTokenRuns } from "@/components/reader/build-token-runs";
 import { useLocale } from "@/components/layout/locale-provider";
 import { MarkdownMermaidDiagram } from "@/components/reader/markdown-mermaid-diagram";
+import {
+  MARKDOWN_CODE_BLOCK_PLACEHOLDER,
+  MARKDOWN_MERMAID_PLACEHOLDER,
+} from "@/features/ingest/normalize/markdown-blocks";
 import { getLocalizedCopy } from "@/lib/locale";
 import type { Chunk, DocumentModel, Token } from "@/types/document";
 
@@ -168,12 +172,12 @@ function normalizeMarkdownComparisonText(text: string) {
 
 function getCodeFencePlaceholder(node: unknown) {
   if (!isNodeRecord(node) || typeof node.lang !== "string") {
-    return "Code snippet included in this section. Switch to Literal text to inspect the code.";
+    return MARKDOWN_CODE_BLOCK_PLACEHOLDER;
   }
 
   return node.lang.toLowerCase() === "mermaid"
-    ? "Mermaid diagram included in this section. Switch to Literal text to inspect the diagram source."
-    : "Code snippet included in this section. Switch to Literal text to inspect the code.";
+    ? MARKDOWN_MERMAID_PLACEHOLDER
+    : MARKDOWN_CODE_BLOCK_PLACEHOLDER;
 }
 
 function getReactNodeText(node: ReactNode): string {

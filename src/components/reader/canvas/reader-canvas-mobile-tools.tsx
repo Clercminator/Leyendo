@@ -19,6 +19,7 @@ import type { TextPresentation } from "@/types/document";
 import type { ReaderPreferences } from "@/types/reader";
 
 interface ReaderCanvasMobileToolsProps {
+  availableTextPresentations?: TextPresentation[];
   chunkSize: number;
   copy: ReaderCanvasCopy;
   isFullscreen: boolean;
@@ -60,6 +61,7 @@ const sheetHeaderButtonClass =
 const compactAdjustmentGroupClass = "grid shrink-0 grid-cols-2 gap-1.5";
 
 export function ReaderCanvasMobileTools({
+  availableTextPresentations = ["clean", "literal"],
   chunkSize,
   copy,
   isFullscreen,
@@ -177,27 +179,32 @@ export function ReaderCanvasMobileTools({
                 {copy.textView}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                {(
-                  [
-                    { label: copy.cleanMarkdown, value: "clean" },
-                    { label: copy.literalText, value: "literal" },
-                  ] as const
-                ).map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => {
-                      onSelectTextPresentation(option.value);
-                    }}
-                    className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
-                      textPresentation === option.value
-                        ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                        : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+                {availableTextPresentations.map((value) => {
+                  const option = {
+                    label:
+                      value === "literal"
+                        ? copy.literalText
+                        : copy.cleanMarkdown,
+                    value,
+                  } as const;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        onSelectTextPresentation(option.value);
+                      }}
+                      className={`rounded-[1rem] border px-3 py-3 text-left text-sm transition ${
+                        textPresentation === option.value
+                          ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                          : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
               </div>
             </section>
           ) : null}

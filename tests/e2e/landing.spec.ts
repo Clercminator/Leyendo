@@ -46,6 +46,10 @@ async function choosePasteInput(page: Page) {
   await page.getByRole("radio", { name: /paste text instantly/i }).check();
 }
 
+async function chooseUploadInput(page: Page) {
+  await page.getByRole("radio", { name: /upload a document/i }).check();
+}
+
 async function openReaderDocument(page: Page) {
   const openImportedFileButton = page.getByRole("button", {
     name: /open imported file/i,
@@ -98,6 +102,11 @@ async function closeReadingTools(page: Page) {
   if (await closeToolsButton.isVisible()) {
     await closeToolsButton.click();
   }
+}
+
+async function uploadDocumentFromFile(page: Page, filePath: string) {
+  await chooseUploadInput(page);
+  await page.locator('input[type="file"]').setInputFiles(filePath);
 }
 
 async function getActiveClassicText(page: Page) {
@@ -289,7 +298,7 @@ test("user can upload a text file and open it in the reader", async ({
   await page.goto("/");
   await waitForHomeInteractivity(page);
 
-  await page.getByRole("radio", { name: /upload a document/i }).check();
+  await chooseUploadInput(page);
   await expect(page.locator('input[type="file"]')).toHaveCount(1);
   await page
     .locator('input[type="file"]')
@@ -311,6 +320,59 @@ test("user can upload a text file and open it in the reader", async ({
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await expect(page.getByLabel(/reader canvas/i)).toContainText(/Imported/i);
   await expect(page.getByLabel(/reader canvas/i)).toContainText(/from/i);
+});
+
+test("markdown file upload keeps all reader modes usable and renders tables and diagrams in classic mode", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await waitForHomeInteractivity(page);
+
+  await uploadDocumentFromFile(
+    page,
+    "tests/fixtures/reader-rich-markdown-upload.md",
+  );
+  await openReaderDocument(page);
+
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+
+  for (const modeName of ["Focus Word", "Phrase Chunk", "Guided Line"]) {
+    await page.getByRole("button", { name: /change reading mode/i }).click();
+    await page.getByRole("button", { name: new RegExp(`^${modeName}$`, "i") }).click();
+
+    await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+
+    await page.getByRole("button", { name: /change text view/i }).click();
+    await expect(
+      page.getByRole("button", { name: /^literal text$/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^clean markdown$/i }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+  }
+
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^classic reader$/i }).click();
+
+  const classicDocument = page.getByLabel(/classic reader document/i);
+
+  await expect(classicDocument).toBeVisible();
+  await expect(classicDocument.getByRole("table")).toBeVisible();
+  await expect(
+    classicDocument.getByRole("columnheader", { name: /^surface$/i }),
+  ).toBeVisible();
+  await expect(
+    classicDocument.locator('[data-mermaid-diagram="true"]').first(),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: /change text view/i }).click();
+  await expect(
+    page.getByRole("button", { name: /^clean markdown$/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^literal text$/i }),
+  ).toBeVisible();
 });
 
 test("user can paste text and open it in the reader", async ({ page }) => {

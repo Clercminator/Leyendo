@@ -1,7 +1,20 @@
 import { buildDocumentModel } from "@/features/ingest/build/document-model";
+import { deriveDocumentComplexityHints } from "@/features/ingest/build/document-complexity-hints";
 import { clampChunkIndex } from "@/features/reader/engine/navigation";
 import type { AppLocale } from "@/lib/locale";
-import type { Chunk, DocumentModel } from "@/types/document";
+import type { Chunk, DocumentComplexityHint, DocumentModel } from "@/types/document";
+import type { ReaderMode } from "@/types/reader";
+
+const LITERAL_PREFERRED_MARKDOWN_HINTS = new Set<DocumentComplexityHint>([
+  "markdown-code-blocks",
+  "markdown-mermaid-diagrams",
+  "markdown-tables",
+  "markdown-task-lists",
+  "markdown-images",
+  "markdown-html",
+  "markdown-math",
+  "markdown-footnotes",
+]);
 
 export function formatRemainingTimeLabel(ms: number, locale: AppLocale) {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
@@ -174,5 +187,33 @@ export function shouldSimplifyClassicMarkdown(
     document.blocks.length >= LARGE_MARKDOWN_BLOCK_THRESHOLD ||
     document.sentences.length >= LARGE_MARKDOWN_SENTENCE_THRESHOLD ||
     document.tokens.length >= LARGE_MARKDOWN_TOKEN_THRESHOLD
+  );
+}
+
+export function shouldPreferLiteralMarkdownForMode(args: {
+  document: DocumentModel | undefined;
+  mode: ReaderMode;
+}): boolean {
+  const { document, mode } = args;
+
+  if (
+    !document ||
+    document.sourceKind !== "markdown" ||
+    !document.rawText?.trim() ||
+    mode === "classic-reader" ||
+    mode === "pdf-page"
+  ) {
+    return false;
+  }
+
+  const complexityHints =
+    document.complexityHints ??
+    deriveDocumentComplexityHints({
+      rawText: document.rawText,
+      sourceKind: document.sourceKind,
+    });
+
+  return complexityHints.some((hint) =>
+    LITERAL_PREFERRED_MARKDOWN_HINTS.has(hint),
   );
 }

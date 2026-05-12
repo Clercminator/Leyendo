@@ -243,6 +243,35 @@ describe("ClassicReaderView", () => {
     });
   });
 
+  it("renders GFM tables and task lists in classic markdown view", () => {
+    const documentModel = buildDocumentModel({
+      title: "Markdown GFM sample",
+      rawText:
+        "# Checklist\n\n- [x] Import the markdown file\n- [ ] Review the rendered output\n\n| Surface | Result |\n| --- | --- |\n| Table | Visible |\n| Task list | Visible |",
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const chunk = deriveRuntimeChunks(documentModel, 2)[0];
+
+    render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        reduceMotion
+      />,
+    );
+
+    expect(screen.getByRole("table")).toBeVisible();
+    expect(screen.getByRole("columnheader", { name: "Surface" })).toBeVisible();
+    expect(screen.getAllByRole("cell", { name: "Visible" })).toHaveLength(2);
+
+    const checkboxes = screen.getAllByRole("checkbox");
+
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0]).toBeChecked();
+    expect(checkboxes[1]).not.toBeChecked();
+  });
+
   it("simplifies oversized markdown and renders only a bounded window", () => {
     const rawText = Array.from({ length: 80 }, (_, index) => {
       return `## Section ${index + 1}\n\nParagraph ${index + 1} with enough content to exercise the reader fast path.`;

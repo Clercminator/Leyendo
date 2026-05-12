@@ -31,6 +31,7 @@ import {
   formatRemainingTimeLabel,
   mapChunkIndexBetweenChunks,
   rebuildStoredTextDocument,
+  shouldPreferLiteralMarkdownForMode,
   shouldSimplifyClassicMarkdown,
 } from "@/components/reader/workspace/reader-workspace-helpers";
 import { useCloudAnchorSync } from "@/components/reader/use-cloud-anchor-sync";
@@ -150,6 +151,9 @@ export function ReaderWorkspace({
     literal?: DocumentModel;
   }>({});
   const preferencesRef = useRef(preferences);
+  const forcedTextPresentationNoticeRef = useRef<string | undefined>(
+    undefined,
+  );
   const pendingModeSwitchMetricRef = useRef<
     | {
         from: ReaderMode;
@@ -194,7 +198,7 @@ export function ReaderWorkspace({
   const canToggleTextPresentation = Boolean(
     payload?.sourceKind === "markdown" && payload.rawText?.trim().length,
   );
-  const textPresentation = canToggleTextPresentation
+  const preferredTextPresentation = canToggleTextPresentation
     ? ((textPresentationOverride.documentId === document?.id
         ? textPresentationOverride.value
         : undefined) ??
@@ -231,6 +235,26 @@ export function ReaderWorkspace({
 
     return nextLiteralPayload;
   }, [canToggleTextPresentation, payload]);
+  const shouldRestrictMarkdownToLiteral = useMemo(
+    () =>
+      shouldPreferLiteralMarkdownForMode({
+        document: payload,
+        mode: preferences.mode,
+      }),
+    [payload, preferences.mode],
+  );
+  const availableTextPresentations = useMemo<TextPresentation[]>(() => {
+    if (!canToggleTextPresentation) {
+      return [];
+    }
+
+    return shouldRestrictMarkdownToLiteral ? ["literal"] : ["clean", "literal"];
+  }, [canToggleTextPresentation, shouldRestrictMarkdownToLiteral]);
+  const textPresentation = canToggleTextPresentation
+    ? (availableTextPresentations.includes(preferredTextPresentation ?? "clean")
+        ? preferredTextPresentation
+        : availableTextPresentations[0])
+    : undefined;
   const getPayloadForPresentation = useCallback(
     (presentation: TextPresentation | undefined) => {
       if (!payload) {
@@ -412,7 +436,7 @@ export function ReaderWorkspace({
     profileReaderPreferences: profile?.readerPreferences,
     runtimeChunks,
     syncReaderPreferences,
-    textPresentation,
+    textPresentation: preferredTextPresentation,
     userId: canSyncDocumentState ? userId : undefined,
     updatePreferences,
   });
@@ -572,6 +596,39 @@ export function ReaderWorkspace({
       liveStatusTimeoutRef.current = undefined;
     }, 0);
   }, []);
+
+  useEffect(() => {
+    const noticeSignature =
+      canToggleTextPresentation &&
+      preferredTextPresentation === "clean" &&
+      textPresentation === "literal" &&
+      shouldRestrictMarkdownToLiteral &&
+      document?.id
+        ? `${document.id}:${preferences.mode}`
+        : undefined;
+
+    if (!noticeSignature) {
+      forcedTextPresentationNoticeRef.current = undefined;
+      return;
+    }
+
+    if (forcedTextPresentationNoticeRef.current === noticeSignature) {
+      return;
+    }
+
+    forcedTextPresentationNoticeRef.current = noticeSignature;
+    announce(
+      "Literal text view is active in this reading mode so tables, task markers, code, and diagrams stay readable. Switch to Classic Reader for rich Markdown rendering.",
+    );
+  }, [
+    announce,
+    canToggleTextPresentation,
+    document?.id,
+    preferredTextPresentation,
+    preferences.mode,
+    shouldRestrictMarkdownToLiteral,
+    textPresentation,
+  ]);
 
   const applyPreferenceChanges = useCallback(
     (changes: Partial<ReaderPreferences>) => {
@@ -980,7 +1037,7 @@ export function ReaderWorkspace({
       tokenIndex: number;
     }) => {
       const anchorPresentation = canToggleTextPresentation
-        ? (anchor.textPresentation ?? "clean")
+        ? (anchor.textPresentation ?? textPresentation ?? "clean")
         : undefined;
       const targetChunks = getRuntimeChunksForPresentation(textPresentation);
       const nextChunkIndex =
@@ -1073,11 +1130,18 @@ export function ReaderWorkspace({
 
   const handleTextPresentationSelection = useCallback(
     (nextPresentation: TextPresentation) => {
-      if (
-        !canToggleTextPresentation ||
-        textPresentation === nextPresentation ||
-        runtimeChunks.length === 0
-      ) {
+      if (!canToggleTextPresentation || runtimeChunks.length === 0) {
+        return;
+      }
+
+      if (!availableTextPresentations.includes(nextPresentation)) {
+        announce(
+          "This reading mode keeps complex Markdown in literal text so layout-sensitive content stays readable. Switch to Classic Reader for rich Markdown rendering.",
+        );
+        return;
+      }
+
+      if (textPresentation === nextPresentation) {
         return;
       }
 
@@ -1105,6 +1169,7 @@ export function ReaderWorkspace({
     [
       activeChunk?.text,
       announce,
+      availableTextPresentations,
       canToggleTextPresentation,
       document?.id,
       getRuntimeChunksForPresentation,
@@ -1588,6 +1653,7 @@ export function ReaderWorkspace({
           <ReaderCanvas
             activeGoalLabel={activeGoalLabel}
             availableModes={availableModes}
+            availableTextPresentations={availableTextPresentations}
             chunkSize={preferences.chunkSize}
             currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
             isPlaying={isPlaying}

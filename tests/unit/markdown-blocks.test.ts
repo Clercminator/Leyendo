@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { extractMarkdownBlocks } from "@/features/ingest/normalize/markdown-blocks";
+import {
+  extractMarkdownBlocks,
+  MARKDOWN_CODE_BLOCK_PLACEHOLDER,
+  MARKDOWN_FOOTNOTE_PLACEHOLDER,
+  MARKDOWN_HTML_PLACEHOLDER,
+  MARKDOWN_MATH_PLACEHOLDER,
+  MARKDOWN_MERMAID_PLACEHOLDER,
+  MARKDOWN_TABLE_PLACEHOLDER,
+} from "@/features/ingest/normalize/markdown-blocks";
 
 describe("extractMarkdownBlocks", () => {
   it("extracts headings, paragraphs, and list items from markdown", () => {
@@ -25,12 +33,28 @@ describe("extractMarkdownBlocks", () => {
       { kind: "heading", text: "Heading" },
       {
         kind: "paragraph",
-        text: "Code snippet included in this section. Switch to Literal text to inspect the code.",
+        text: MARKDOWN_CODE_BLOCK_PLACEHOLDER,
       },
       {
         kind: "paragraph",
-        text: "Mermaid diagram included in this section. Switch to Literal text to inspect the diagram source.",
+        text: MARKDOWN_MERMAID_PLACEHOLDER,
       },
+    ]);
+  });
+
+  it("keeps structural markers for lists and placeholders for non-text blocks", () => {
+    const blocks = extractMarkdownBlocks(
+      "1. Ordered item\n- [x] Completed item\n\n| Plan | Status |\n| --- | --- |\n| Reader | Ready |\n\n![Architecture](diagram.png)\n\n<div>Inline HTML block</div>\n\n$$\nE = mc^2\n$$\n\n[^1]: Supporting note",
+    );
+
+    expect(blocks).toEqual([
+      { kind: "list-item", marker: "1.", text: "Ordered item" },
+      { kind: "list-item", marker: "[x]", text: "Completed item" },
+      { kind: "paragraph", text: MARKDOWN_TABLE_PLACEHOLDER },
+      { kind: "paragraph", text: "Image reference: Architecture" },
+      { kind: "paragraph", text: MARKDOWN_HTML_PLACEHOLDER },
+      { kind: "paragraph", text: MARKDOWN_MATH_PLACEHOLDER },
+      { kind: "paragraph", text: MARKDOWN_FOOTNOTE_PLACEHOLDER },
     ]);
   });
 });

@@ -40,6 +40,7 @@ import {
 interface ReaderCanvasProps {
   activeGoalLabel?: string;
   availableModes?: (typeof readerModes)[number][];
+  availableTextPresentations?: TextPresentation[];
   className?: string;
   chunkSize: number;
   currentParagraphNumber: number;
@@ -105,6 +106,7 @@ function shouldBlockPlaybackShortcut(args: {
 export function ReaderCanvas({
   activeGoalLabel,
   availableModes = [...readerModes],
+  availableTextPresentations = ["clean", "literal"],
   className,
   chunkSize,
   currentParagraphNumber,
@@ -533,28 +535,33 @@ export function ReaderCanvas({
                       {copy.textViewMenu}
                     </p>
                     <div className="mt-3 grid gap-2">
-                      {(
-                        [
-                          { label: copy.cleanMarkdown, value: "clean" },
-                          { label: copy.literalText, value: "literal" },
-                        ] as const
-                      ).map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            onSelectTextPresentation(option.value);
-                            setOpenMenu(null);
-                          }}
-                          className={`rounded-full border px-3 py-2 text-left text-sm transition ${
-                            textPresentation === option.value
-                              ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                              : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
+                      {availableTextPresentations.map((value) => {
+                        const option = {
+                          label:
+                            value === "literal"
+                              ? copy.literalText
+                              : copy.cleanMarkdown,
+                          value,
+                        } as const;
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              onSelectTextPresentation(option.value);
+                              setOpenMenu(null);
+                            }}
+                            className={`rounded-full border px-3 py-2 text-left text-sm transition ${
+                              textPresentation === option.value
+                                ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                                : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : null}
@@ -1207,6 +1214,7 @@ export function ReaderCanvas({
 
       {isCompactReaderChrome && isMobileToolsOpen ? (
         <ReaderCanvasMobileTools
+          availableTextPresentations={availableTextPresentations}
           chunkSize={chunkSize}
           copy={copy}
           isFullscreen={isFullscreen}
