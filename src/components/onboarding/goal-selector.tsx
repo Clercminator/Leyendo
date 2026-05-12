@@ -75,7 +75,11 @@ const goals = [
   },
 ];
 
-export function GoalSelector() {
+interface GoalSelectorProps {
+  compact?: boolean;
+}
+
+export function GoalSelector({ compact = false }: GoalSelectorProps) {
   const { locale } = useLocale();
   const { preferences, updatePreferences } = useReaderStore();
   const [selectedGoal, setSelectedGoal] = useState<ReadingGoal | undefined>(
@@ -133,51 +137,74 @@ export function GoalSelector() {
   const selectedGoalLabel = selectedGoalOption
     ? getLocalizedCopy(locale, selectedGoalOption.title)
     : undefined;
+  const HeadingTag = compact ? "h3" : "h2";
 
   return (
     <section
       aria-labelledby="goal-selector-title"
-      className="rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl sm:p-8"
+      className={
+        compact
+          ? ""
+          : "rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-6 backdrop-blur-xl sm:p-8"
+      }
     >
-      <div className="max-w-2xl">
-        <p className="text-sm tracking-[0.28em] text-(--accent-amber) uppercase">
+      <div className={compact ? "max-w-xl" : "max-w-2xl"}>
+        <p
+          className={
+            compact
+              ? "text-xs tracking-[0.22em] text-(--accent-amber) uppercase"
+              : "text-sm tracking-[0.28em] text-(--accent-amber) uppercase"
+          }
+        >
           {locale === "en"
             ? "Reading setup"
             : locale === "es"
               ? "Preparación de lectura"
               : "Preparacao de leitura"}
         </p>
-        <h2
+        <HeadingTag
           id="goal-selector-title"
-          className="font-heading mt-3 text-3xl font-semibold text-(--text-strong)"
+          className={
+            compact
+              ? "font-heading mt-3 text-2xl font-semibold text-(--text-strong)"
+              : "font-heading mt-3 text-3xl font-semibold text-(--text-strong)"
+          }
         >
           {locale === "en"
             ? "Start by choosing how you want this session to feel."
             : locale === "es"
               ? "Empieza eligiendo cómo quieres que se sienta esta sesión."
               : "Comece escolhendo como voce quer que esta sessao se comporte."}
-        </h2>
-        <p
-          id="goal-selector-help"
-          className="mt-3 text-base leading-8 text-(--text-muted)"
-        >
-          {locale === "en"
-            ? "This keeps setup approachable and lets Leyendo recommend a mode instead of forcing you through a dense settings screen."
-            : locale === "es"
-              ? "Así todo arranca simple y Leyendo puede recomendar un modo sin llevarte a una pantalla cargada de ajustes."
-              : "Assim o inicio continua simples e o Leyendo pode recomendar um modo sem jogar voce em uma tela densa de ajustes."}
-        </p>
+        </HeadingTag>
+        {compact ? null : (
+          <p
+            id="goal-selector-help"
+            className="mt-3 text-base leading-8 text-(--text-muted)"
+          >
+            {locale === "en"
+              ? "This keeps setup approachable and lets Leyendo recommend a mode instead of forcing you through a dense settings screen."
+              : locale === "es"
+                ? "Así todo arranca simple y Leyendo puede recomendar un modo sin llevarte a una pantalla cargada de ajustes."
+                : "Assim o inicio continua simples e o Leyendo pode recomendar um modo sem jogar voce em uma tela densa de ajustes."}
+          </p>
+        )}
       </div>
       <div
-        className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+        className={
+          compact
+            ? "mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            : "mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+        }
         role="radiogroup"
         aria-labelledby="goal-selector-title"
-        aria-describedby="goal-selector-help"
+        aria-describedby={compact ? undefined : "goal-selector-help"}
       >
         {goals.map(({ value, title, description, icon: Icon }, index) => (
           <label
             key={value}
-            className={`relative cursor-pointer rounded-[1.5rem] border p-5 text-left transition hover:-translate-y-0.5 ${
+            className={`relative cursor-pointer border text-left transition hover:-translate-y-0.5 ${
+              compact ? "rounded-[1.35rem] p-4" : "rounded-[1.5rem] p-5"
+            } ${
               selectedGoal === value
                 ? "border-(--border-strong) bg-(--surface-soft) shadow-[0_0_0_1px_rgba(20,26,56,0.04)]"
                 : "border-(--border-soft) bg-(--surface-strong) hover:border-(--border-strong)"
@@ -225,15 +252,33 @@ export function GoalSelector() {
                 }
               }}
             />
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-(--surface-chip) text-(--accent-sky)">
+            <div
+              className={
+                compact
+                  ? "flex h-10 w-10 items-center justify-center rounded-[1.1rem] bg-(--surface-chip) text-(--accent-sky)"
+                  : "flex h-12 w-12 items-center justify-center rounded-2xl bg-(--surface-chip) text-(--accent-sky)"
+              }
+            >
               <Icon className="h-5 w-5" />
             </div>
             <div className="mt-5 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-medium text-(--text-strong)">
+              <h3
+                className={
+                  compact
+                    ? "text-base font-medium text-(--text-strong)"
+                    : "text-lg font-medium text-(--text-strong)"
+                }
+              >
                 {getLocalizedCopy(locale, title)}
               </h3>
               {selectedGoal === value ? (
-                <span className="rounded-full border border-(--border-soft) bg-(--text-strong) px-2.5 py-1 text-xs font-medium text-(--text-on-accent)">
+                <span
+                  className={
+                    compact
+                      ? "rounded-full border border-(--border-soft) bg-(--text-strong) px-2 py-0.5 text-[10px] font-medium tracking-[0.16em] text-(--text-on-accent) uppercase"
+                      : "rounded-full border border-(--border-soft) bg-(--text-strong) px-2.5 py-1 text-xs font-medium text-(--text-on-accent)"
+                  }
+                >
                   {locale === "en"
                     ? "Selected"
                     : locale === "es"
@@ -244,26 +289,32 @@ export function GoalSelector() {
             </div>
             <p
               id={`goal-description-${value}`}
-              className="mt-2 text-sm leading-7 text-(--text-muted)"
+              className={
+                compact
+                  ? "mt-2 text-sm leading-6 text-(--text-muted)"
+                  : "mt-2 text-sm leading-7 text-(--text-muted)"
+              }
             >
               {getLocalizedCopy(locale, description)}
             </p>
           </label>
         ))}
       </div>
-      <p className="mt-4 text-sm leading-7 text-(--text-muted)">
-        {selectedGoal
-          ? locale === "en"
-            ? `${selectedGoalLabel} is saved as your current onboarding goal and will shape the next reader session.`
-            : locale === "es"
-              ? `${selectedGoalLabel} se guarda como tu objetivo actual y orienta la siguiente sesión.`
-              : `${selectedGoalLabel} foi salvo como seu objetivo atual e vai orientar a proxima sessao.`
-          : locale === "en"
-            ? "Choosing a goal updates the recommended reader mode and pacing for your next session, while keeping your theme and typography settings intact."
-            : locale === "es"
-              ? "Elegir un objetivo actualiza el modo recomendado y el ritmo de tu próxima sesión, sin cambiar el tema ni la tipografía."
-              : "Escolher um objetivo atualiza o modo recomendado e o ritmo da proxima sessao, sem perder tema nem tipografia."}
-      </p>
+      {compact ? null : (
+        <p className="mt-4 text-sm leading-7 text-(--text-muted)">
+          {selectedGoal
+            ? locale === "en"
+              ? `${selectedGoalLabel} is saved as your current onboarding goal and will shape the next reader session.`
+              : locale === "es"
+                ? `${selectedGoalLabel} se guarda como tu objetivo actual y orienta la siguiente sesión.`
+                : `${selectedGoalLabel} foi salvo como seu objetivo atual e vai orientar a proxima sessao.`
+            : locale === "en"
+              ? "Choosing a goal updates the recommended reader mode and pacing for your next session, while keeping your theme and typography settings intact."
+              : locale === "es"
+                ? "Elegir un objetivo actualiza el modo recomendado y el ritmo de tu próxima sesión, sin cambiar el tema ni la tipografía."
+                : "Escolher um objetivo atualiza o modo recomendado e o ritmo da proxima sessao, sem perder tema nem tipografia."}
+        </p>
+      )}
     </section>
   );
 }

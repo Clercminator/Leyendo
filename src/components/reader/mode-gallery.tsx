@@ -12,6 +12,21 @@ import { getLocalizedCopy } from "@/lib/locale";
 const modes = [
   {
     name: { en: "Standard PDF", es: "PDF estándar", pt: "PDF standard" },
+    compactLabel: {
+      en: "Real PDFs",
+      es: "PDF reales",
+      pt: "PDFs reais",
+    },
+    compactSummary: {
+      en: "Keeps the original page, outline, and page-aware navigation intact.",
+      es: "Mantiene la página original, el esquema y la navegación por páginas.",
+      pt: "Mantem a pagina original, o sumario e a navegacao por paginas.",
+    },
+    compactTradeoff: {
+      en: "Less pacing assistance.",
+      es: "Menos ayuda con el ritmo.",
+      pt: "Menos ajuda de ritmo.",
+    },
     description: {
       en: "Keep the original page layout with outline, zoom, and page-aware navigation.",
       es: "Conserva el diseño original de la página, con esquema, zoom y navegación por páginas.",
@@ -31,6 +46,21 @@ const modes = [
   },
   {
     name: { en: "Focus Word", es: "Foco por palabra", pt: "Palavra foco" },
+    compactLabel: {
+      en: "Deep focus",
+      es: "Foco profundo",
+      pt: "Foco profundo",
+    },
+    compactSummary: {
+      en: "Shows one word at a time to lock attention and reduce eye travel.",
+      es: "Muestra una palabra a la vez para fijar la atención y reducir el movimiento ocular.",
+      pt: "Mostra uma palavra por vez para travar a atencao e reduzir o movimento ocular.",
+    },
+    compactTradeoff: {
+      en: "Least surrounding context.",
+      es: "Menos contexto visible.",
+      pt: "Menos contexto visivel.",
+    },
     description: {
       en: "One word at a time for maximum focus and minimal eye travel.",
       es: "Una palabra a la vez para máxima concentración y menos movimiento ocular.",
@@ -54,6 +84,21 @@ const modes = [
       es: "Bloques de frases",
       pt: "Blocos de frases",
     },
+    compactLabel: {
+      en: "Balanced speed",
+      es: "Velocidad equilibrada",
+      pt: "Velocidade equilibrada",
+    },
+    compactSummary: {
+      en: "Groups a few words together so pace rises without feeling robotic.",
+      es: "Agrupa pocas palabras para subir el ritmo sin volverlo robótico.",
+      pt: "Agrupa poucas palavras para subir o ritmo sem ficar robotico.",
+    },
+    compactTradeoff: {
+      en: "Simplifies the original layout.",
+      es: "Simplifica el diseño original.",
+      pt: "Simplifica o layout original.",
+    },
     description: {
       en: "Small groups of words for a more natural RSVP flow.",
       es: "Pequeños grupos de palabras para un flujo más natural.",
@@ -73,6 +118,21 @@ const modes = [
   },
   {
     name: { en: "Guided Line", es: "Línea guiada", pt: "Linha guiada" },
+    compactLabel: {
+      en: "Visual guidance",
+      es: "Guía visual",
+      pt: "Guia visual",
+    },
+    compactSummary: {
+      en: "Moves emphasis across a line so you can recover context without losing pace.",
+      es: "Desplaza el énfasis por la línea para retomar contexto sin perder ritmo.",
+      pt: "Move o enfase pela linha para retomar contexto sem perder ritmo.",
+    },
+    compactTradeoff: {
+      en: "Softer speed training.",
+      es: "Menos agresivo para velocidad.",
+      pt: "Menos agressivo para velocidade.",
+    },
     description: {
       en: "A moving emphasis across a line or tight line group.",
       es: "Un énfasis móvil sobre una línea o un grupo corto de líneas.",
@@ -92,6 +152,21 @@ const modes = [
   },
   {
     name: { en: "Classic Reader", es: "Lector clásico", pt: "Leitor classico" },
+    compactLabel: {
+      en: "Comfort fallback",
+      es: "Comodidad y vuelta",
+      pt: "Conforto e volta",
+    },
+    compactSummary: {
+      en: "Restores the calmest full-context reading surface with the key controls nearby.",
+      es: "Recupera la vista más calmada y con contexto completo, con controles útiles a mano.",
+      pt: "Recupera a vista mais calma e completa, com controles uteis por perto.",
+    },
+    compactTradeoff: {
+      en: "Usually not the fastest pace.",
+      es: "No suele ser el modo más rápido.",
+      pt: "Normalmente nao e o modo mais rapido.",
+    },
     description: {
       en: "A calmer page view with assistive controls always nearby.",
       es: "Una vista más tranquila con controles útiles siempre cerca.",
@@ -111,8 +186,62 @@ const modes = [
   },
 ];
 
-export function ModeGallery() {
+interface ModeGalleryProps {
+  compact?: boolean;
+}
+
+export function ModeGallery({ compact = false }: ModeGalleryProps) {
   const { locale } = useLocale();
+
+  if (compact) {
+    return (
+      <section
+        aria-label={getLocalizedCopy(locale, {
+          en: "Reading mode comparison strip",
+          es: "Franja comparativa de modos de lectura",
+          pt: "Faixa comparativa de modos de leitura",
+        })}
+        className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="flex min-w-max gap-3 pr-3">
+          {modes.map(
+            ({
+              name,
+              compactLabel,
+              compactSummary,
+              compactTradeoff,
+              icon: Icon,
+            }) => (
+              <article
+                key={name.en}
+                className="w-[16.5rem] shrink-0 snap-start rounded-[1.45rem] border border-(--border-soft) bg-(--surface-card) p-4 backdrop-blur-xl transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1.1rem] bg-(--surface-chip) text-(--accent-sky)">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] tracking-[0.22em] text-(--accent-amber) uppercase">
+                      {getLocalizedCopy(locale, compactLabel)}
+                    </p>
+                    <h3 className="mt-1 text-lg font-semibold text-(--text-strong)">
+                      {getLocalizedCopy(locale, name)}
+                    </h3>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-(--text-strong)">
+                  {getLocalizedCopy(locale, compactSummary)}
+                </p>
+                <p className="mt-3 text-xs leading-5 text-(--text-muted)">
+                  {getLocalizedCopy(locale, compactTradeoff)}
+                </p>
+              </article>
+            ),
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
