@@ -179,7 +179,7 @@ export function GoalSelector({ compact = false }: GoalSelectorProps) {
         {compact ? null : (
           <p
             id="goal-selector-help"
-            className="mt-3 text-base leading-8 text-(--text-muted)"
+            className="mt-3 text-base leading-8 text-(--text-muted) [text-align:justify]"
           >
             {locale === "en"
               ? "This keeps setup approachable and lets Leyendo recommend a mode instead of forcing you through a dense settings screen."
@@ -291,8 +291,8 @@ export function GoalSelector({ compact = false }: GoalSelectorProps) {
               id={`goal-description-${value}`}
               className={
                 compact
-                  ? "mt-2 text-sm leading-6 text-(--text-muted)"
-                  : "mt-2 text-sm leading-7 text-(--text-muted)"
+                  ? "mt-2 text-sm leading-6 text-(--text-muted) [text-align:justify]"
+                  : "mt-2 text-sm leading-7 text-(--text-muted) [text-align:justify]"
               }
             >
               {getLocalizedCopy(locale, description)}
@@ -301,7 +301,7 @@ export function GoalSelector({ compact = false }: GoalSelectorProps) {
         ))}
       </div>
       {compact ? null : (
-        <p className="mt-4 text-sm leading-7 text-(--text-muted)">
+        <p className="mt-4 text-sm leading-7 text-(--text-muted) [text-align:justify]">
           {selectedGoal
             ? locale === "en"
               ? `${selectedGoalLabel} is saved as your current onboarding goal and will shape the next reader session.`

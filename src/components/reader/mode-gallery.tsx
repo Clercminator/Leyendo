@@ -229,10 +229,10 @@ export function ModeGallery({ compact = false }: ModeGalleryProps) {
                     </h3>
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-(--text-strong)">
+                <p className="mt-4 text-sm leading-6 text-(--text-strong) [text-align:justify]">
                   {getLocalizedCopy(locale, compactSummary)}
                 </p>
-                <p className="mt-3 text-xs leading-5 text-(--text-muted)">
+                <p className="mt-3 text-xs leading-5 text-(--text-muted) [text-align:justify]">
                   {getLocalizedCopy(locale, compactTradeoff)}
                 </p>
               </article>
@@ -256,13 +256,13 @@ export function ModeGallery({ compact = false }: ModeGalleryProps) {
           <h3 className="mt-5 text-xl font-semibold text-(--text-strong)">
             {getLocalizedCopy(locale, name)}
           </h3>
-          <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+          <p className="mt-3 text-sm leading-7 text-(--text-muted) [text-align:justify]">
             {getLocalizedCopy(locale, description)}
           </p>
           <p className="mt-5 text-xs tracking-[0.28em] text-(--accent-amber) uppercase">
             {getLocalizedCopy(locale, bestFor)}
           </p>
-          <p className="mt-3 text-sm leading-7 text-(--text-muted)">
+          <p className="mt-3 text-sm leading-7 text-(--text-muted) [text-align:justify]">
             {getLocalizedCopy(locale, tradeoff)}
           </p>
         </article>
