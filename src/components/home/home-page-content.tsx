@@ -214,9 +214,9 @@ export function HomePageContent() {
       <div className="space-y-10">
         <UploadPanel />
 
-        <GoalSelector />
-
         <LandingReaderDemo />
+
+        <GoalSelector />
 
         <section className="fade-rise-delayed space-y-5">
           <div className="w-full">

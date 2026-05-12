@@ -35,6 +35,18 @@ describe("LandingReaderDemo", () => {
     expect(
       screen.getByText(/standard pdf mode is not part of this sample/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/classic reader document/i),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /change reading mode/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /^focus word$/i }));
+
+    expect(
+      screen.queryByLabelText(/classic reader document/i),
+    ).not.toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: /change reading mode/i }),

@@ -89,9 +89,9 @@ const demoTitle = {
 };
 
 const demoDescription = {
-  en: "This built-in demo opens immediately, so you can test the assistive text modes before committing your own material. The saved reading goal above also changes the recommended starting setup here.",
-  es: "Esta demo se abre al instante para que pruebes los modos asistidos antes de usar tu propio material. El objetivo guardado arriba también cambia el inicio recomendado aquí.",
-  pt: "Esta demonstracao integrada abre na hora para que voce teste os modos assistidos de texto antes de usar seu proprio material. O objetivo de leitura salvo acima tambem muda o inicio recomendado aqui.",
+  en: "This built-in demo opens immediately, so you can test the assistive text modes before committing your own material. The saved reading goal below also adjusts the recommended starting pace here.",
+  es: "Esta demo se abre al instante para que pruebes los modos asistidos antes de usar tu propio material. El objetivo guardado abajo también ajusta el ritmo recomendado aquí.",
+  pt: "Esta demonstracao integrada abre na hora para que voce teste os modos assistidos de texto antes de usar seu proprio material. O objetivo de leitura salvo abaixo tambem ajusta o ritmo recomendado aqui.",
 };
 
 const demoTipsTitle = {
@@ -235,6 +235,8 @@ Ler melhor e mais rapido nao serve apenas para terminar antes. Isso tambem abre 
 `,
 };
 
+const demoDefaultMode: ReaderMode = "classic-reader";
+
 export function LandingReaderDemo() {
   const { locale } = useLocale();
   const savedReadingGoal = useReaderStore(
@@ -273,6 +275,7 @@ export function LandingReaderDemo() {
   });
   const [preferences, setPreferences] = useState<ReaderPreferences>(() => ({
     ...recommendedDemoPreferences,
+    mode: demoDefaultMode,
     fontScale: 1,
     lineHeight: 1.6,
     readingGoal: demoGoal,
@@ -293,6 +296,7 @@ export function LandingReaderDemo() {
     setPreferences((currentPreferences) => ({
       ...currentPreferences,
       ...recommendedDemoPreferences,
+      mode: demoDefaultMode,
       readingGoal: demoGoal,
     }));
     setCurrentChunkIndex(0);
@@ -419,30 +423,9 @@ export function LandingReaderDemo() {
   });
   const recommendedStartLabel = useMemo(() => {
     const recommendedModeLabel = getLocalizedCopy(locale, {
-      en:
-        recommendedDemoPreferences.mode === "focus-word"
-          ? "Focus Word"
-          : recommendedDemoPreferences.mode === "phrase-chunk"
-            ? "Phrase Chunk"
-            : recommendedDemoPreferences.mode === "guided-line"
-              ? "Guided Line"
-              : "Classic Reader",
-      es:
-        recommendedDemoPreferences.mode === "focus-word"
-          ? "Foco por palabra"
-          : recommendedDemoPreferences.mode === "phrase-chunk"
-            ? "Bloques de frases"
-            : recommendedDemoPreferences.mode === "guided-line"
-              ? "Línea guiada"
-              : "Lector clásico",
-      pt:
-        recommendedDemoPreferences.mode === "focus-word"
-          ? "Palavra foco"
-          : recommendedDemoPreferences.mode === "phrase-chunk"
-            ? "Blocos de frases"
-            : recommendedDemoPreferences.mode === "guided-line"
-              ? "Linha guiada"
-              : "Leitor classico",
+      en: "Classic Reader",
+      es: "Lector clásico",
+      pt: "Leitor classico",
     });
 
     return locale === "en"
@@ -450,7 +433,7 @@ export function LandingReaderDemo() {
       : locale === "es"
         ? `${recommendedModeLabel} a ${recommendedDemoPreferences.wordsPerMinute} WPM`
         : `${recommendedModeLabel} a ${recommendedDemoPreferences.wordsPerMinute} WPM`;
-  }, [locale, recommendedDemoPreferences.mode, recommendedDemoPreferences.wordsPerMinute]);
+  }, [locale, recommendedDemoPreferences.wordsPerMinute]);
 
   const modeView = useMemo(() => {
     if (!activeChunk) {
