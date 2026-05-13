@@ -684,6 +684,9 @@ export function ReaderCanvas({
               </button>
             </div>
           )}
+          <p className="text-[11px] leading-5 text-(--text-muted) sm:text-xs">
+            {copy.timeEstimateHelp}
+          </p>
           <p className="hidden text-sm leading-6 text-(--text-muted) lg:block lg:leading-7">
             {copy.readingModeHelp}
           </p>

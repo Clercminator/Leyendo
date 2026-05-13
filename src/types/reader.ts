@@ -119,7 +119,7 @@ export interface ReaderPreset {
 
 export const defaultReaderPreferences: ReaderPreferences = {
   readingGoal: undefined,
-  mode: "focus-word",
+  mode: "classic-reader",
   theme: "midnight",
   wordsPerMinute: 280,
   chunkSize: 2,

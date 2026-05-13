@@ -375,6 +375,44 @@ test("markdown file upload keeps all reader modes usable and renders tables and 
   ).toBeVisible();
 });
 
+test("markdown upload keeps sentence and word counts stable across modes while time stays mode-sensitive", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await waitForHomeInteractivity(page);
+
+  await uploadDocumentFromFile(
+    page,
+    "tests/fixtures/reader-rich-markdown-upload.md",
+  );
+  await openReaderDocument(page);
+
+  const readerCanvas = page.getByLabel(/reader canvas/i);
+  const timeEstimateHelp = page.getByText(/time is an estimate/i);
+  const countSummary = readerCanvas.getByText(/sentences .* words left/i).first();
+  const timeButton = page.getByRole("button", { name: /time left:/i }).first();
+
+  await expect(timeEstimateHelp).toBeVisible();
+
+  const initialCount = (await countSummary.textContent())?.trim();
+  const initialTime = (await timeButton.textContent())?.trim();
+
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^guided line$/i }).click();
+
+  await expect(countSummary).toHaveText(initialCount ?? "");
+  await expect(timeEstimateHelp).toBeVisible();
+
+  const guidedTime = (await timeButton.textContent())?.trim();
+  expect(guidedTime).not.toBe(initialTime);
+
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^classic reader$/i }).click();
+
+  await expect(countSummary).toHaveText(initialCount ?? "");
+  await expect(timeButton).toHaveText(initialTime ?? "");
+});
+
 test("user can paste text and open it in the reader", async ({ page }) => {
   await page.goto("/");
   await waitForHomeInteractivity(page);

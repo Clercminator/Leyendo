@@ -31,6 +31,7 @@ import {
   formatRemainingTimeLabel,
   mapChunkIndexBetweenChunks,
   rebuildStoredTextDocument,
+  resolveReaderCanvasMode,
   shouldPreferLiteralMarkdownForMode,
   shouldSimplifyClassicMarkdown,
 } from "@/components/reader/workspace/reader-workspace-helpers";
@@ -205,15 +206,37 @@ export function ReaderWorkspace({
         savedSession?.textPresentation ??
         "clean")
     : undefined;
+  const hasExtractedText = Boolean(
+    payload && payload.tokens.length > 0 && payload.text.trim().length > 0,
+  );
+  const canUsePdfPageMode =
+    payload?.sourceKind === "pdf" && pdfAssetState === "present";
+  const availableModes = useMemo<ReaderMode[]>(() => {
+    if (canUsePdfPageMode && hasExtractedText) {
+      return [...readerModes];
+    }
+
+    if (canUsePdfPageMode) {
+      return ["pdf-page"];
+    }
+
+    return readerModes.filter((mode) => mode !== "pdf-page");
+  }, [canUsePdfPageMode, hasExtractedText]);
+  const canvasMode = resolveReaderCanvasMode({
+    availableModes,
+    requestedMode: preferences.mode,
+  });
+  const isPdfPageMode = canvasMode === "pdf-page";
+  const runtimeReaderMode = isPdfPageMode ? "classic-reader" : canvasMode;
   const deferredChunkSize = useDeferredValue(preferences.chunkSize);
   const deferredFocusWindow = useDeferredValue(preferences.focusWindow);
   const runtimeChunkOptions = useMemo(
     () => ({
-      mode: preferences.mode,
+      mode: runtimeReaderMode,
       chunkSize: deferredChunkSize,
       focusWindow: deferredFocusWindow,
     }),
-    [deferredChunkSize, deferredFocusWindow, preferences.mode],
+    [deferredChunkSize, deferredFocusWindow, runtimeReaderMode],
   );
   const getLiteralPayload = useCallback(() => {
     if (!payload || !canToggleTextPresentation) {
@@ -239,9 +262,9 @@ export function ReaderWorkspace({
     () =>
       shouldPreferLiteralMarkdownForMode({
         document: payload,
-        mode: preferences.mode,
+        mode: runtimeReaderMode,
       }),
-    [payload, preferences.mode],
+    [payload, runtimeReaderMode],
   );
   const availableTextPresentations = useMemo<TextPresentation[]>(() => {
     if (!canToggleTextPresentation) {
@@ -282,10 +305,38 @@ export function ReaderWorkspace({
 
     return deriveRuntimeChunks(activePresentationPayload, runtimeChunkOptions);
   }, [getPayloadForPresentation, runtimeChunkOptions, textPresentation]);
+  const canonicalMetricChunks = useMemo(() => {
+    if (!payload) {
+      return [];
+    }
+
+    return deriveRuntimeChunks(payload, 1);
+  }, [payload]);
   const resolvedChunkIndex = runtimeChunks.length
     ? clampChunkIndex(runtimeChunks.length, currentChunkIndex)
     : 0;
   const activeChunk = runtimeChunks[resolvedChunkIndex];
+  const canonicalMetricChunkIndex = useMemo(() => {
+    if (canonicalMetricChunks.length === 0) {
+      return 0;
+    }
+
+    if (!activeChunk || runtimeChunks.length === 0) {
+      return 0;
+    }
+
+    return mapChunkIndexBetweenChunks({
+      anchorText: activeChunk.text,
+      currentChunkIndex: resolvedChunkIndex,
+      sourceChunks: runtimeChunks,
+      targetChunks: canonicalMetricChunks,
+    });
+  }, [
+    activeChunk,
+    canonicalMetricChunks,
+    resolvedChunkIndex,
+    runtimeChunks,
+  ]);
   const currentParagraph =
     activePayload && activeChunk
       ? activePayload.blocks[activeChunk.paragraphIndex]
@@ -309,36 +360,37 @@ export function ReaderWorkspace({
   const progress = runtimeChunks.length
     ? deriveReaderProgress({ chunks: runtimeChunks }, resolvedChunkIndex)
     : 0;
+  const sentenceCount = payload?.sentences.length ?? 0;
   const remainingWords = useMemo(() => {
-    if (runtimeChunks.length === 0) {
+    if (canonicalMetricChunks.length === 0) {
       return 0;
     }
 
     const remainingTokenIndexes = new Set<number>();
+    const remainingChunkIndex =
+      activeChunk && runtimeChunks.length > 0 ? canonicalMetricChunkIndex : 0;
 
-    runtimeChunks.slice(resolvedChunkIndex).forEach((runtimeChunk) => {
+    canonicalMetricChunks.slice(remainingChunkIndex).forEach((runtimeChunk) => {
       runtimeChunk.tokenIndexes.forEach((tokenIndex) => {
         remainingTokenIndexes.add(tokenIndex);
       });
     });
 
     return remainingTokenIndexes.size;
-  }, [resolvedChunkIndex, runtimeChunks]);
+  }, [activeChunk, canonicalMetricChunkIndex, canonicalMetricChunks, runtimeChunks.length]);
   const remainingTimeMs = useMemo(() => {
     return deriveRemainingPlaybackMs(
       runtimeChunks,
       resolvedChunkIndex,
-      preferences,
+      {
+        ...preferences,
+        mode: canvasMode,
+      },
     );
-  }, [preferences, resolvedChunkIndex, runtimeChunks]);
+  }, [canvasMode, preferences, resolvedChunkIndex, runtimeChunks]);
   const remainingTimeLabel = useMemo(() => {
     return formatRemainingTimeLabel(remainingTimeMs, locale);
   }, [locale, remainingTimeMs]);
-  const hasExtractedText = Boolean(
-    activePayload &&
-    activePayload.tokens.length > 0 &&
-    activePayload.text.trim().length > 0,
-  );
   const documentComplexityHints = useMemo(() => {
     if (!payload) {
       return [];
@@ -356,26 +408,52 @@ export function ReaderWorkspace({
     () => createDocumentComplexityNotice(locale, documentComplexityHints),
     [documentComplexityHints, locale],
   );
-  const canUsePdfPageMode =
-    payload?.sourceKind === "pdf" && pdfAssetState === "present";
-  const availableModes = useMemo<ReaderMode[]>(() => {
-    if (canUsePdfPageMode && hasExtractedText) {
-      return [...readerModes];
+  const readerModeStatusNotice = useMemo(() => {
+    if (payload?.sourceKind === "pdf" && pdfAssetState === "unknown") {
+      return {
+        description: getLocalizedCopy(locale, {
+          en: "This device is still loading the PDF view and extracted text. Available reading modes may settle in a moment.",
+          es: "Este dispositivo todavía está cargando la vista PDF y el texto extraído. Los modos de lectura disponibles pueden estabilizarse en un momento.",
+          pt: "Este dispositivo ainda esta carregando a visualizacao em PDF e o texto extraido. Os modos de leitura disponiveis podem se estabilizar em instantes.",
+        }),
+        title: getLocalizedCopy(locale, {
+          en: "Preparing this reading view",
+          es: "Preparando esta vista de lectura",
+          pt: "Preparando esta visualizacao de leitura",
+        }),
+      };
     }
 
-    if (canUsePdfPageMode) {
-      return ["pdf-page"];
+    if (
+      canToggleTextPresentation &&
+      preferredTextPresentation === "clean" &&
+      textPresentation === "literal" &&
+      shouldRestrictMarkdownToLiteral
+    ) {
+      return {
+        description: getLocalizedCopy(locale, {
+          en: "Literal Text stays active in this mode so tables, task lists, code, and diagrams remain readable outside Classic Reader.",
+          es: "Texto literal sigue activo en este modo para que las tablas, listas de tareas, el código y los diagramas sigan siendo legibles fuera del Lector clásico.",
+          pt: "Texto literal permanece ativo neste modo para que tabelas, listas de tarefas, codigo e diagramas sigam legiveis fora do Leitor classico.",
+        }),
+        title: getLocalizedCopy(locale, {
+          en: "Literal Text is active here",
+          es: "Texto literal está activo aquí",
+          pt: "Texto literal esta ativo aqui",
+        }),
+      };
     }
 
-    return readerModes.filter((mode) => mode !== "pdf-page");
-  }, [canUsePdfPageMode, hasExtractedText]);
-  const isPdfPageMode =
-    canUsePdfPageMode && (!hasExtractedText || preferences.mode === "pdf-page");
-  const canvasMode = isPdfPageMode
-    ? "pdf-page"
-    : preferences.mode === "pdf-page"
-      ? "classic-reader"
-      : preferences.mode;
+    return undefined;
+  }, [
+    canToggleTextPresentation,
+    locale,
+    payload?.sourceKind,
+    pdfAssetState,
+    preferredTextPresentation,
+    shouldRestrictMarkdownToLiteral,
+    textPresentation,
+  ]);
   const simplifyClassicMarkdownPreview = useMemo(
     () => shouldSimplifyClassicMarkdown(activePayload),
     [activePayload],
@@ -1597,6 +1675,16 @@ export function ReaderWorkspace({
           </ul>
         </div>
       ) : null}
+      {readerModeStatusNotice ? (
+        <div className="rounded-[1.5rem] border border-sky-300/30 bg-sky-500/10 px-4 py-4 shadow-[0_14px_40px_rgba(20,26,56,0.08)]">
+          <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-sky) uppercase">
+            {readerModeStatusNotice.title}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-(--text-muted)">
+            {readerModeStatusNotice.description}
+          </p>
+        </div>
+      ) : null}
       {mobileSidebarSection}
       <div className="fade-rise-delayed relative z-20">
         <p
@@ -1662,7 +1750,7 @@ export function ReaderWorkspace({
             remainingWords={remainingWords}
             remainingTimeLabel={remainingTimeLabel}
             preferences={preferences}
-            sentenceCount={activePayload.sentences.length}
+            sentenceCount={sentenceCount}
             onAnnounceRemainingTime={announceRemainingTime}
             onChangeFontScale={handleFontScaleChange}
             onChangeLineHeight={handleLineHeightChange}

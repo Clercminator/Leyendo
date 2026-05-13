@@ -77,6 +77,27 @@ export function formatRemainingTimeAnnouncement(args: {
   }
 }
 
+export function resolveReaderCanvasMode(args: {
+  availableModes: ReaderMode[];
+  requestedMode: ReaderMode;
+}) {
+  const { availableModes, requestedMode } = args;
+
+  if (availableModes.includes(requestedMode)) {
+    return requestedMode;
+  }
+
+  if (availableModes.includes("classic-reader")) {
+    return "classic-reader";
+  }
+
+  if (availableModes.includes("pdf-page")) {
+    return "pdf-page";
+  }
+
+  return availableModes[0] ?? "classic-reader";
+}
+
 function normalizeChunkText(value: string) {
   return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
