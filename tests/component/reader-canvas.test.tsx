@@ -35,11 +35,16 @@ function installMatchMedia() {
 }
 
 function renderReaderCanvas(args?: {
+  activeGoalLabel?: string;
   isPlaying?: boolean;
   modeView?: React.ReactNode;
   preferences?: typeof defaultReaderPreferences;
   remainingWords?: number;
 }) {
+  const activeGoalLabel =
+    args && "activeGoalLabel" in args
+      ? args.activeGoalLabel
+      : "Practice focus";
   const handlers = {
     onChangeFontScale: vi.fn(),
     onChangeLineHeight: vi.fn(),
@@ -67,7 +72,7 @@ function renderReaderCanvas(args?: {
     ...handlers,
     ...render(
       <ReaderCanvas
-        activeGoalLabel="Practice focus"
+        activeGoalLabel={activeGoalLabel}
         chunkSize={2}
         currentParagraphNumber={3}
         isPlaying={args?.isPlaying ?? false}
@@ -272,6 +277,106 @@ describe("ReaderCanvas", () => {
 
     expect(screen.getByText("8 sentences · 120 words left")).toBeInTheDocument();
     expect(screen.getAllByText("8 sentences · 120 words left")).toHaveLength(1);
+  });
+
+  it("shows the shared reader info details only while hovered on desktop", async () => {
+    const user = userEvent.setup();
+
+    renderReaderCanvas({ activeGoalLabel: undefined });
+
+    const timeLeftButton = screen.getByRole("button", {
+      name: /time left: 2m 2s left/i,
+    });
+    const infoButton = screen.getByRole("button", { name: /reader details/i });
+
+    expect(
+      timeLeftButton.compareDocumentPosition(infoButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "This session is currently customized beyond a saved onboarding goal.",
+      ),
+    ).not.toBeInTheDocument();
+
+    await user.hover(infoButton);
+
+    expect(
+      screen.getByText(
+        "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This session is currently customized beyond a saved onboarding goal.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.unhover(infoButton);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
+        ),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(
+        "This session is currently customized beyond a saved onboarding goal.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("toggles the shared reader info details from compact mobile controls", async () => {
+    const user = userEvent.setup();
+    mockViewportWidth = 390;
+    installMatchMedia();
+
+    renderReaderCanvas({ activeGoalLabel: undefined });
+
+    await user.click(screen.getByRole("button", { name: /controls/i }));
+
+    const infoButton = screen.getByRole("button", { name: /reader details/i });
+
+    expect(
+      screen.queryByText(
+        "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
+      ),
+    ).not.toBeInTheDocument();
+
+    await user.click(infoButton);
+
+    expect(
+      screen.getByText(
+        "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This session is currently customized beyond a saved onboarding goal.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(infoButton);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
+        ),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(
+        "This session is currently customized beyond a saved onboarding goal.",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("toggles playback with Space from the reader surface", async () => {

@@ -65,6 +65,12 @@ export function useReaderPersistence({
   const lastSyncedPreferenceSignatureRef = useRef<string | undefined>(
     undefined,
   );
+  const lastAppliedProfilePreferenceSignatureRef = useRef<string | undefined>(
+    undefined,
+  );
+  const lastHydratedPreferenceUserIdRef = useRef<string | undefined>(
+    undefined,
+  );
   const lastPlaybackBoundaryRef = useRef<string | undefined>(undefined);
   const lastPlaybackStateRef = useRef(isPlaying);
   const pendingPreferencesRef = useRef<ReaderPreferences | undefined>(
@@ -72,6 +78,11 @@ export function useReaderPersistence({
   );
   const preferenceSaveTimeoutRef = useRef<number | undefined>(undefined);
   const preferenceSyncTimeoutRef = useRef<number | undefined>(undefined);
+  const latestPreferenceSignatureRef = useRef(JSON.stringify(preferences));
+
+  useEffect(() => {
+    latestPreferenceSignatureRef.current = JSON.stringify(preferences);
+  }, [preferences]);
 
   const flushPreferenceSave = useCallback(() => {
     const pendingPreferences = pendingPreferencesRef.current;
@@ -201,11 +212,35 @@ export function useReaderPersistence({
   useEffect(() => {
     let cancelled = false;
 
+    if (lastHydratedPreferenceUserIdRef.current !== userId) {
+      lastHydratedPreferenceUserIdRef.current = userId;
+      lastAppliedProfilePreferenceSignatureRef.current = undefined;
+      hasHydratedPreferencesRef.current = false;
+    }
+
     void (async () => {
       if (userId && profileReaderPreferences) {
         const signature = JSON.stringify(profileReaderPreferences);
+        const localSignature = latestPreferenceSignatureRef.current;
+        const lastAppliedProfileSignature =
+          lastAppliedProfilePreferenceSignatureRef.current;
+        const isFirstProfileHydration = lastAppliedProfileSignature === undefined;
+        const shouldHydrateFromProfile =
+          isFirstProfileHydration ||
+          localSignature === signature ||
+          localSignature === lastAppliedProfileSignature;
+
+        if (!shouldHydrateFromProfile) {
+          return;
+        }
+
         lastSyncedPreferenceSignatureRef.current = signature;
-        updatePreferences(profileReaderPreferences);
+        lastAppliedProfilePreferenceSignatureRef.current = signature;
+
+        if (isFirstProfileHydration || localSignature !== signature) {
+          updatePreferences(profileReaderPreferences);
+        }
+
         await saveReaderPreferences(profileReaderPreferences);
         hasHydratedPreferencesRef.current = true;
         return;

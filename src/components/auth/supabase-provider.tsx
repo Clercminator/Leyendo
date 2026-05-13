@@ -43,6 +43,15 @@ import {
 } from "@/lib/supabase/client";
 import { buildSupabaseAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 
+declare global {
+  interface Window {
+    __LEYENDO_E2E_AUTH__?: {
+      getProfileReaderTheme: () => ReaderPreferences["theme"] | undefined;
+      refreshProfile: () => Promise<void>;
+    };
+  }
+}
+
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
 interface CloudSyncSummary extends LocalLibrarySummary {
@@ -495,6 +504,21 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("offline", handleOffline);
     };
   }, [refreshGuestLibrarySummary, runCloudSync]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || process.env.NODE_ENV === "production") {
+      return;
+    }
+
+    window.__LEYENDO_E2E_AUTH__ = {
+      getProfileReaderTheme: () => profile?.readerPreferences?.theme,
+      refreshProfile,
+    };
+
+    return () => {
+      delete window.__LEYENDO_E2E_AUTH__;
+    };
+  }, [profile?.readerPreferences?.theme, refreshProfile]);
 
   useEffect(() => {
     if (!supabase) {

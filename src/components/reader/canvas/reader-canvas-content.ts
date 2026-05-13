@@ -141,6 +141,11 @@ export function getReaderCanvasCopy(
       es: "Tiempo restante",
       pt: "Tempo restante",
     }),
+    readerDetails: getLocalizedCopy(locale, {
+      en: "Reader details",
+      es: "Detalles de lectura",
+      pt: "Detalhes de leitura",
+    }),
     timeEstimateHelp: getLocalizedCopy(locale, {
       en: "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
       es: "El tiempo es una estimación. Puede cambiar según el modo de lectura, el ritmo y los ajustes de movimiento.",

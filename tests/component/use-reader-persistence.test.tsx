@@ -413,4 +413,71 @@ describe("useReaderPersistence", () => {
     expect(saveReaderPreferences).toHaveBeenCalledWith(nextPreferences);
     expect(syncReaderPreferences).toHaveBeenCalledWith(nextPreferences);
   });
+
+  it("does not let stale signed-in profile preferences overwrite a newer local theme change", async () => {
+    const updatePreferences = vi.fn();
+    const syncReaderPreferences = vi.fn().mockResolvedValue(undefined);
+    const cloudPreferences = {
+      ...defaultReaderPreferences,
+      theme: "indigo" as const,
+      wordsPerMinute: 420,
+    };
+    const midnightPreferences = {
+      ...cloudPreferences,
+      theme: "midnight" as const,
+    };
+    const { rerender } = renderHook(
+      ({ preferences, profileReaderPreferences }) =>
+        useReaderPersistence({
+          document: record,
+          activeChunk: runtimeChunks[0],
+          currentChunkIndex: 0,
+          isPlaying: false,
+          preferences,
+          profileReaderPreferences,
+          runtimeChunks,
+          syncReaderPreferences,
+          updatePreferences,
+          userId: "user-1",
+        }),
+      {
+        initialProps: {
+          preferences: cloudPreferences,
+          profileReaderPreferences: cloudPreferences,
+        },
+      },
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(updatePreferences).toHaveBeenCalledWith(cloudPreferences);
+
+    rerender({
+      preferences: midnightPreferences,
+      profileReaderPreferences: cloudPreferences,
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1_250);
+      await Promise.resolve();
+    });
+
+    expect(saveReaderPreferences).toHaveBeenLastCalledWith(midnightPreferences);
+    expect(syncReaderPreferences).toHaveBeenCalledWith(midnightPreferences);
+
+    rerender({
+      preferences: midnightPreferences,
+      profileReaderPreferences: {
+        ...cloudPreferences,
+      },
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(updatePreferences).toHaveBeenCalledTimes(1);
+  });
 });

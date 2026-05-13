@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import {
   BookmarkPlus,
@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Info,
   Maximize2,
   Minimize2,
   Pause,
@@ -160,6 +161,9 @@ export function ReaderCanvas({
   const [isCompactReaderChrome, setIsCompactReaderChrome] = useState(false);
   const [isMobileChromeVisible, setIsMobileChromeVisible] = useState(false);
   const [isMobileToolsOpen, setIsMobileToolsOpen] = useState(false);
+  const [isReaderDetailsPinned, setIsReaderDetailsPinned] = useState(false);
+  const [isReaderDetailsHovered, setIsReaderDetailsHovered] = useState(false);
+  const [isReaderDetailsFocused, setIsReaderDetailsFocused] = useState(false);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const presetMenuRef = useRef<HTMLDivElement>(null);
   const textPresentationMenuRef = useRef<HTMLDivElement>(null);
@@ -169,6 +173,10 @@ export function ReaderCanvas({
   const lineHeightMenuRef = useRef<HTMLDivElement>(null);
   const playbackMenuRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const readerDetailsRef = useRef<HTMLDivElement>(null);
+  const readerDetailsId = useId();
+  const isReaderDetailsOpen =
+    isReaderDetailsPinned || isReaderDetailsHovered || isReaderDetailsFocused;
   const transportButtonClass =
     "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:w-auto sm:rounded-full sm:px-3.5";
   const compactStepButtonClass =
@@ -188,10 +196,18 @@ export function ReaderCanvas({
     "inline-flex min-h-10 w-full shrink-0 items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.14em] text-(--text-strong) uppercase whitespace-nowrap transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm lg:w-auto lg:justify-center";
   const statusChipClass =
     "inline-flex min-h-9 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-2 py-1.5 text-center text-[11px] leading-tight text-(--text-strong) sm:min-h-auto sm:px-3 sm:text-sm";
+  const statusIconButtonClass =
+    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) text-(--text-muted) transition hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong) sm:h-10 sm:w-10";
   const mobileStatCardClass =
     "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-left";
   const mobilePrimaryButtonClass =
     "inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.95rem] border border-(--border-soft) bg-(--surface-soft) px-2.5 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+
+  const closeReaderDetails = useCallback(() => {
+    setIsReaderDetailsPinned(false);
+    setIsReaderDetailsHovered(false);
+    setIsReaderDetailsFocused(false);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -249,6 +265,48 @@ export function ReaderCanvas({
       document.removeEventListener("mousedown", handlePointerDown);
     };
   }, [openMenu]);
+
+  useEffect(() => {
+    if (!isReaderDetailsPinned) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (readerDetailsRef.current?.contains(target)) {
+        return;
+      }
+
+      closeReaderDetails();
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [closeReaderDetails, isReaderDetailsPinned]);
+
+  useEffect(() => {
+    if (!isReaderDetailsOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      closeReaderDetails();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeReaderDetails, isReaderDetailsOpen]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -345,6 +403,86 @@ export function ReaderCanvas({
       <span className={statusChipClass}>{sessionCountSummary}</span>
     );
 
+    const renderRemainingTimeCluster = () => (
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
+          onClick={onAnnounceRemainingTime}
+          className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
+        >
+          <Clock3 className="h-4 w-4 text-(--accent-amber)" />
+          {remainingTimeLabel}
+        </button>
+        <div
+          ref={readerDetailsRef}
+          className="relative inline-flex items-center"
+          onMouseEnter={() => {
+            if (isCompactReaderChrome) {
+              return;
+            }
+
+            setIsReaderDetailsHovered(true);
+          }}
+          onMouseLeave={() => {
+            if (isCompactReaderChrome) {
+              return;
+            }
+
+            setIsReaderDetailsHovered(false);
+          }}
+          onFocusCapture={() => {
+            setIsReaderDetailsFocused(true);
+          }}
+          onBlurCapture={(event) => {
+            if (
+              event.currentTarget.contains(event.relatedTarget as Node | null)
+            ) {
+              return;
+            }
+
+            setIsReaderDetailsFocused(false);
+          }}
+        >
+          <button
+            type="button"
+            aria-controls={readerDetailsId}
+            aria-describedby={
+              isReaderDetailsOpen ? readerDetailsId : undefined
+            }
+            aria-expanded={isReaderDetailsOpen}
+            aria-label={copy.readerDetails}
+            onClick={(event) => {
+              const nextPinned = !isReaderDetailsPinned;
+
+              setIsReaderDetailsPinned(nextPinned);
+
+              if (!nextPinned) {
+                setIsReaderDetailsFocused(false);
+                event.currentTarget.blur();
+              }
+            }}
+            className={`${statusIconButtonClass} ${isReaderDetailsOpen ? "border-(--border-strong) bg-(--surface-chip) text-(--text-strong)" : ""}`}
+          >
+            <Info className="h-4 w-4" />
+          </button>
+          {isReaderDetailsOpen ? (
+            <div
+              id={readerDetailsId}
+              className="absolute top-full right-0 z-60 mt-2 w-[18rem] max-w-[calc(100vw-2rem)] rounded-[1rem] border border-(--border-strong) bg-(--surface-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:left-full sm:right-auto sm:top-1/2 sm:mt-0 sm:ml-2 sm:w-[22rem] sm:-translate-y-1/2"
+            >
+              <p className="text-[11px] leading-5 text-(--text-muted) sm:text-xs">
+                {copy.timeEstimateHelp}
+              </p>
+              <p className="mt-2 text-[11px] leading-5 text-(--text-muted) sm:text-xs sm:leading-6">
+                {copy.readingModeHelp}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+
   const toggleFullscreen = async () => {
     if (!document.fullscreenEnabled) {
       return;
@@ -363,12 +501,13 @@ export function ReaderCanvas({
       return;
     }
 
+    closeReaderDetails();
     setOpenMenu(null);
     if (isMobileToolsOpen) {
       setIsMobileToolsOpen(false);
     }
     setIsMobileChromeVisible((current) => !current);
-  }, [isCompactReaderChrome, isMobileToolsOpen]);
+  }, [closeReaderDetails, isCompactReaderChrome, isMobileToolsOpen]);
 
   return (
     <section
@@ -618,15 +757,7 @@ export function ReaderCanvas({
                   {progress}% {copy.complete}
                 </span>
                 {renderSessionCountChip()}
-                <button
-                  type="button"
-                  aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
-                  onClick={onAnnounceRemainingTime}
-                  className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
-                >
-                  <Clock3 className="h-4 w-4 text-(--accent-amber)" />
-                  {remainingTimeLabel}
-                </button>
+                {renderRemainingTimeCluster()}
               </>
             ) : null}
             {!isCompactReaderChrome ? (
@@ -656,15 +787,7 @@ export function ReaderCanvas({
                   {copy.paragraph} {currentParagraphNumber} · {progress}%
                 </span>
                 {renderSessionCountChip()}
-                <button
-                  type="button"
-                  aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
-                  onClick={onAnnounceRemainingTime}
-                  className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
-                >
-                  <Clock3 className="h-4 w-4 text-(--accent-amber)" />
-                  {remainingTimeLabel}
-                </button>
+                {renderRemainingTimeCluster()}
               </div>
             </div>
           ) : isFullscreen ? null : (
@@ -673,23 +796,9 @@ export function ReaderCanvas({
                 {progress}% {copy.complete}
               </span>
               {renderSessionCountChip()}
-              <button
-                type="button"
-                aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
-                onClick={onAnnounceRemainingTime}
-                className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
-              >
-                <Clock3 className="h-4 w-4 text-(--accent-amber)" />
-                {remainingTimeLabel}
-              </button>
+              {renderRemainingTimeCluster()}
             </div>
           )}
-          <p className="text-[11px] leading-5 text-(--text-muted) sm:text-xs">
-            {copy.timeEstimateHelp}
-          </p>
-          <p className="hidden text-sm leading-6 text-(--text-muted) lg:block lg:leading-7">
-            {copy.readingModeHelp}
-          </p>
           {activePresetSummary ? (
             <p className="hidden text-sm leading-6 text-(--text-muted) lg:block">
               <span className="mr-2 inline-flex rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1 text-[11px] tracking-[0.18em] text-(--accent-amber) uppercase">
