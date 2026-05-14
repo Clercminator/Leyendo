@@ -247,6 +247,42 @@ describe("ClassicReaderView", () => {
     expect(onJumpToToken).toHaveBeenCalledWith(overviewHeading?.tokenStart);
   });
 
+  it("keeps later visible markdown clickable after a raw HTML block in simplified preview", async () => {
+    const user = userEvent.setup();
+    const onJumpToToken = vi.fn();
+    const documentModel = buildDocumentModel({
+      title: "Markdown HTML sample",
+      rawText:
+        "# Intro\n\nThis opening section sets the context.\n\n<div class=\"note\">Injected HTML</div>\n\n## Later Section\n\nThis later paragraph should stay clickable.",
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const laterParagraph = documentModel.blocks.find(
+      (block) =>
+        block.kind === "paragraph" &&
+        block.text === "This later paragraph should stay clickable.",
+    );
+    const chunk = deriveRuntimeChunks(documentModel, 2)[0];
+
+    expect(laterParagraph?.tokenStart).toBeTypeOf("number");
+
+    render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        onJumpToToken={onJumpToToken}
+        reduceMotion
+        simplifyMarkdownPreview
+      />,
+    );
+
+    await user.click(
+      screen.getByText("This later paragraph should stay clickable."),
+    );
+
+    expect(onJumpToToken).toHaveBeenCalledWith(laterParagraph?.tokenStart);
+  });
+
   it("renders mermaid fences as in-app diagrams in classic markdown view", async () => {
     const documentModel = buildDocumentModel({
       title: "Markdown mermaid sample",
@@ -347,5 +383,47 @@ describe("ClassicReaderView", () => {
         }`,
       ),
     ).toBeTruthy();
+  });
+
+  it("jumps past unmapped hidden markdown blocks in simplified preview", async () => {
+    const user = userEvent.setup();
+    const onJumpToToken = vi.fn();
+    const rawText = [
+      ...Array.from({ length: 18 }, (_, index) => {
+        return `## Section ${index + 1}\n\nParagraph ${index + 1} with enough content to exercise the reader fast path.`;
+      }),
+      "---",
+      "## Section 19\n\nParagraph 19 should still be reachable.",
+    ].join("\n\n");
+    const documentModel = buildDocumentModel({
+      title: "Large markdown HTML sample",
+      rawText,
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const firstChunk = deriveRuntimeChunks(documentModel, 2)[0];
+    const targetHeading = documentModel.blocks.find(
+      (block) => block.kind === "heading" && block.text === "Section 19",
+    );
+
+    expect(targetHeading?.tokenStart).toBeTypeOf("number");
+
+    render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={firstChunk!}
+        onJumpToToken={onJumpToToken}
+        reduceMotion
+        simplifyMarkdownPreview
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /later sections hidden to keep large markdown responsive/i,
+      }),
+    );
+
+    expect(onJumpToToken).toHaveBeenCalledWith(targetHeading?.tokenStart);
   });
 });

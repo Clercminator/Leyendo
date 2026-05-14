@@ -22,7 +22,10 @@ import { useLocale } from "@/components/layout/locale-provider";
 import { MarkdownMermaidDiagram } from "@/components/reader/markdown-mermaid-diagram";
 import {
   MARKDOWN_CODE_BLOCK_PLACEHOLDER,
+  MARKDOWN_FOOTNOTE_PLACEHOLDER,
+  MARKDOWN_HTML_PLACEHOLDER,
   MARKDOWN_MERMAID_PLACEHOLDER,
+  MARKDOWN_TABLE_PLACEHOLDER,
 } from "@/features/ingest/normalize/markdown-blocks";
 import { getLocalizedCopy } from "@/lib/locale";
 import type { Chunk, DocumentModel, Token } from "@/types/document";
@@ -192,6 +195,58 @@ function getCodeFencePlaceholder(node: unknown) {
     : MARKDOWN_CODE_BLOCK_PLACEHOLDER;
 }
 
+function getMarkdownPreviewMatchText(node: unknown) {
+  const nodeType = getNodeType(node);
+
+  switch (nodeType) {
+    case "code":
+      return getCodeFencePlaceholder(node);
+    case "footnoteDefinition":
+      return MARKDOWN_FOOTNOTE_PLACEHOLDER;
+    case "html":
+      return MARKDOWN_HTML_PLACEHOLDER;
+    case "image": {
+      const altText = extractMarkdownText(node).trim();
+
+      return altText ? `Image reference: ${altText}` : "Image reference";
+    }
+    case "table":
+      return MARKDOWN_TABLE_PLACEHOLDER;
+    default:
+      return extractMarkdownText(node);
+  }
+}
+
+function findFirstMarkdownPreviewTokenStart(
+  blocks: MarkdownPreviewBlock[],
+  startIndex: number,
+) {
+  for (let index = startIndex; index < blocks.length; index += 1) {
+    const tokenStart = blocks[index]?.tokenStart;
+
+    if (typeof tokenStart === "number") {
+      return tokenStart;
+    }
+  }
+
+  return undefined;
+}
+
+function findLastMarkdownPreviewTokenStart(
+  blocks: MarkdownPreviewBlock[],
+  startIndex: number,
+) {
+  for (let index = startIndex; index >= 0; index -= 1) {
+    const tokenStart = blocks[index]?.tokenStart;
+
+    if (typeof tokenStart === "number") {
+      return tokenStart;
+    }
+  }
+
+  return undefined;
+}
+
 function getReactNodeText(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
     return String(node);
@@ -331,9 +386,7 @@ function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
     const headingId = headingText ? headingSlugger.slug(headingText) : undefined;
     const expectedBlockKinds = getExpectedBlockKinds(nodeType);
     const matchText = normalizeMarkdownComparisonText(
-      nodeType === "code"
-        ? getCodeFencePlaceholder(node)
-        : extractMarkdownText(node),
+      getMarkdownPreviewMatchText(node),
     );
     const paragraphIndexes: number[] = [];
     let scanCursor = blockCursor;
@@ -827,11 +880,17 @@ export function ClassicReaderView({
       : undefined;
   const previousHiddenMarkdownTokenStart =
     renderedMarkdownWindow.hiddenBeforeCount > 0
-      ? markdownPreviewBlocks[renderedMarkdownWindow.start - 1]?.tokenStart
+      ? findLastMarkdownPreviewTokenStart(
+          markdownPreviewBlocks,
+          renderedMarkdownWindow.start - 1,
+        )
       : undefined;
   const nextHiddenMarkdownTokenStart =
     renderedMarkdownWindow.hiddenAfterCount > 0
-      ? markdownPreviewBlocks[renderedMarkdownWindow.end]?.tokenStart
+      ? findFirstMarkdownPreviewTokenStart(
+          markdownPreviewBlocks,
+          renderedMarkdownWindow.end,
+        )
       : undefined;
 
   const renderClassicDocumentBlock = (args: {
@@ -1016,7 +1075,8 @@ export function ClassicReaderView({
               <button
                 type="button"
                 data-reader-window-sentinel="before"
-                className="reader-panel-surface reader-muted w-full rounded-[1.15rem] px-4 py-3 text-left text-sm transition md:rounded-[1.35rem] md:px-5 md:py-4"
+                disabled={typeof previousHiddenMarkdownTokenStart !== "number"}
+                className="reader-panel-surface reader-muted w-full rounded-[1.15rem] px-4 py-3 text-left text-sm transition disabled:cursor-default disabled:opacity-60 md:rounded-[1.35rem] md:px-5 md:py-4"
                 onClick={() => {
                   if (typeof previousHiddenMarkdownTokenStart === "number") {
                     handleJumpToToken(previousHiddenMarkdownTokenStart);
@@ -1118,7 +1178,8 @@ export function ClassicReaderView({
               <button
                 type="button"
                 data-reader-window-sentinel="after"
-                className="reader-panel-surface reader-muted w-full rounded-[1.15rem] px-4 py-3 text-left text-sm transition md:rounded-[1.35rem] md:px-5 md:py-4"
+                disabled={typeof nextHiddenMarkdownTokenStart !== "number"}
+                className="reader-panel-surface reader-muted w-full rounded-[1.15rem] px-4 py-3 text-left text-sm transition disabled:cursor-default disabled:opacity-60 md:rounded-[1.35rem] md:px-5 md:py-4"
                 onClick={() => {
                   if (typeof nextHiddenMarkdownTokenStart === "number") {
                     handleJumpToToken(nextHiddenMarkdownTokenStart);

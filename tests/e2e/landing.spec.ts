@@ -115,6 +115,23 @@ async function getActiveClassicText(page: Page) {
   return activeTokens.join(" ").replace(/\s+/g, " ").trim();
 }
 
+function createLargeMarkdownWithHtmlInterop() {
+  return Array.from({ length: 220 }, (_, index) => {
+    const sectionNumber = index + 1;
+    const lines = [
+      `## Section ${sectionNumber}`,
+      "",
+      `Paragraph ${sectionNumber} keeps navigation working in large Markdown.`,
+    ];
+
+    if (sectionNumber === 2) {
+      lines.push("", '<div class="note">Injected HTML</div>');
+    }
+
+    return lines.join("\n");
+  }).join("\n\n");
+}
+
 test("landing page shows the Leyendo product framing", async ({ page }) => {
   await page.goto("/");
   await waitForHomeInteractivity(page);
@@ -411,6 +428,47 @@ test("markdown upload keeps sentence and word counts stable across modes while t
 
   await expect(countSummary).toHaveText(initialCount ?? "");
   await expect(timeButton).toHaveText(initialTime ?? "");
+});
+
+test("large markdown in classic reader keeps later paragraphs clickable and advances hidden sections @production", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await waitForHomeInteractivity(page);
+
+  await chooseUploadInput(page);
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "large-reader-regression.md",
+    mimeType: "text/markdown",
+    buffer: Buffer.from(createLargeMarkdownWithHtmlInterop()),
+  });
+  await openReaderDocument(page);
+
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^classic reader$/i }).click();
+
+  const classicDocument = page.getByLabel(/classic reader document/i);
+  const activeClassicBlock = page.locator(
+    '[data-reader-markdown-block-index][data-reader-classic-active="true"]',
+  );
+
+  await expect(classicDocument).toBeVisible();
+  await classicDocument
+    .getByText("Paragraph 3 keeps navigation working in large Markdown.")
+    .click();
+  await expect(activeClassicBlock).toContainText(
+    /paragraph 3 keeps navigation working in large markdown/i,
+  );
+
+  const hiddenSectionsButton = classicDocument.getByRole("button", {
+    name: /later sections hidden to keep large markdown responsive/i,
+  });
+
+  await expect(hiddenSectionsButton).toBeVisible();
+  await hiddenSectionsButton.click();
+  await expect(activeClassicBlock).toContainText(
+    /paragraph 18 keeps navigation working in large markdown/i,
+  );
 });
 
 test("user can paste text and open it in the reader", async ({ page }) => {
