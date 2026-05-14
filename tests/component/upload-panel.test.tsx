@@ -554,7 +554,12 @@ describe("UploadPanel", () => {
     });
 
     await waitFor(() => {
-      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(file);
+      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(
+        file,
+        expect.objectContaining({
+          onPdfProgress: expect.any(Function),
+        }),
+      );
     });
 
     expect(screen.getByLabelText(/extracted content preview/i)).toHaveValue(
@@ -583,7 +588,12 @@ describe("UploadPanel", () => {
     });
 
     await waitFor(() => {
-      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(file);
+      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(
+        file,
+        expect.objectContaining({
+          onPdfProgress: expect.any(Function),
+        }),
+      );
     });
 
     expect(screen.getByLabelText(/extracted content preview/i)).toHaveValue(

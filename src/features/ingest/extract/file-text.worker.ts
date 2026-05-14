@@ -1,8 +1,17 @@
 /// <reference lib="webworker" />
 
-import { extractPdfDocumentFromArrayBuffer } from "@/features/ingest/extract/file-text-pdf";
+import {
+  extractPdfDocumentFromArrayBuffer,
+  type PdfExtractionProgress,
+} from "@/features/ingest/extract/file-text-pdf";
+import type { ExtractedDocumentPayload } from "@/features/ingest/extract/file-text";
 
 declare const self: DedicatedWorkerGlobalScope;
+
+type PdfWorkerResponse =
+  | ({ type: "success" } & Pick<ExtractedDocumentPayload, "rawText" | "sourceBlocks">)
+  | ({ type: "progress" } & PdfExtractionProgress)
+  | { type: "error"; message: string };
 
 function getWorkerErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -28,17 +37,25 @@ self.onmessage = async (event: MessageEvent<{ arrayBuffer: ArrayBuffer }>) => {
   try {
     const extracted = await extractPdfDocumentFromArrayBuffer(
       event.data.arrayBuffer,
+      {
+        onProgress: (progress) => {
+          self.postMessage({
+            type: "progress",
+            ...progress,
+          } satisfies PdfWorkerResponse);
+        },
+      },
     );
     self.postMessage({
-      ok: true,
+      type: "success",
       rawText: extracted.rawText,
       sourceBlocks: extracted.sourceBlocks,
-    });
+    } satisfies PdfWorkerResponse);
   } catch (error) {
     self.postMessage({
-      ok: false,
+      type: "error",
       message: getWorkerErrorMessage(error),
-    });
+    } satisfies PdfWorkerResponse);
   }
 };
 

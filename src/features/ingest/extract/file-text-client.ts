@@ -4,15 +4,44 @@ import {
   extractDocumentFromFile,
   type ExtractedDocumentPayload,
 } from "@/features/ingest/extract/file-text";
-import { extractPdfDocumentFromArrayBuffer } from "@/features/ingest/extract/file-text-pdf";
+import {
+  extractPdfDocumentFromArrayBuffer,
+  type PdfExtractionProgress,
+} from "@/features/ingest/extract/file-text-pdf";
 
 export const PDF_EXTRACTION_WORKER_THRESHOLD_BYTES = 150_000_000;
 export const MAX_BROWSER_PDF_BYTES = 150_000_000;
 export const PDF_EXTRACTION_TIMEOUT_MS = 420_000;
 
+type PdfWorkerResponse =
+  | {
+      type: "success";
+      rawText: string;
+      sourceBlocks?: ExtractedDocumentPayload["sourceBlocks"];
+    }
+  | ({ type: "progress" } & PdfExtractionProgress)
+  | { type: "error"; message: string };
+
 export interface DocumentExtractionResult {
   payload: ExtractedDocumentPayload;
   processingMode: "main-thread" | "worker";
+}
+
+export interface DocumentExtractionOptions {
+  onPdfProgress?: (progress: PdfExtractionProgress) => void;
+}
+
+function createPdfPayload(args: {
+  file: Pick<File, "name">;
+  rawText: string;
+  sourceBlocks?: ExtractedDocumentPayload["sourceBlocks"];
+}) {
+  return {
+    sourceBlocks: args.sourceBlocks,
+    sourceKind: "pdf" as const,
+    rawText: args.rawText,
+    title: args.file.name.replace(/\.[^.]+$/u, ""),
+  } satisfies ExtractedDocumentPayload;
 }
 
 function createPdfExtractionError(error: unknown) {
@@ -54,6 +83,7 @@ export function isPdfTooLargeForBrowser(file: Pick<File, "name" | "size" | "type
 
 export async function extractDocumentFromFileAsync(
   file: File,
+  options: DocumentExtractionOptions = {},
 ): Promise<DocumentExtractionResult> {
   if (!shouldOffloadPdfExtraction(file) || typeof Worker === "undefined") {
     const payload = await measureAsync(
@@ -63,7 +93,10 @@ export async function extractDocumentFromFileAsync(
         fileSize: file.size,
         processingMode: "main-thread",
       },
-      () => extractDocumentFromFile(file),
+      () =>
+        extractDocumentFromFile(file, {
+          onPdfProgress: options.onPdfProgress,
+        }),
     );
 
     return {
@@ -71,6 +104,8 @@ export async function extractDocumentFromFileAsync(
       processingMode: "main-thread",
     };
   }
+
+  let processingMode: "main-thread" | "worker" = "worker";
 
   const payload = await measureAsync(
     "import.extract",
@@ -80,6 +115,22 @@ export async function extractDocumentFromFileAsync(
       processingMode: "worker",
     },
     async () => {
+      const extractPdfOnMainThread = async () => {
+        const { rawText, sourceBlocks } = await extractPdfDocumentFromArrayBuffer(
+          await file.arrayBuffer(),
+          {
+            onProgress: options.onPdfProgress,
+          },
+        );
+
+        processingMode = "main-thread";
+        return createPdfPayload({
+          file,
+          rawText,
+          sourceBlocks,
+        });
+      };
+
       const arrayBuffer = await file.arrayBuffer();
 
       return new Promise<ExtractedDocumentPayload>((resolve, reject) => {
@@ -100,30 +151,42 @@ export async function extractDocumentFromFileAsync(
           window.clearTimeout(timeoutId);
         };
 
-        worker.onmessage = (
-          event: MessageEvent<
-            | {
-                ok: true;
-                rawText: string;
-                sourceBlocks?: ExtractedDocumentPayload["sourceBlocks"];
-              }
-            | { ok: false; message: string }
-          >,
+        worker.onmessage = async (
+          event: MessageEvent<PdfWorkerResponse>,
         ) => {
-          clearTimeoutIfPending();
-          worker.terminate();
-
-          if (!event.data.ok) {
-            reject(new Error(event.data.message));
+          if (event.data.type === "progress") {
+            options.onPdfProgress?.({
+              pageCount: event.data.pageCount,
+              processedPages: event.data.processedPages,
+            });
             return;
           }
 
-          resolve({
-            sourceBlocks: event.data.sourceBlocks,
-            sourceKind: "pdf",
-            rawText: event.data.rawText,
-            title: file.name.replace(/\.[^.]+$/u, ""),
-          });
+          clearTimeoutIfPending();
+          worker.terminate();
+
+          if (event.data.type === "error") {
+            try {
+              resolve(await extractPdfOnMainThread());
+            } catch (error) {
+              const extractionError = createPdfExtractionError(error);
+              reject(
+                extractionError.message ===
+                  "Something went wrong while extracting that PDF."
+                  ? new Error(event.data.message)
+                  : extractionError,
+              );
+            }
+            return;
+          }
+
+          resolve(
+            createPdfPayload({
+              file,
+              rawText: event.data.rawText,
+              sourceBlocks: event.data.sourceBlocks,
+            }),
+          );
         };
 
         worker.onerror = async (event) => {
@@ -136,14 +199,7 @@ export async function extractDocumentFromFileAsync(
               : new Error("The PDF extraction worker failed to start.");
 
           try {
-            const { rawText, sourceBlocks } =
-              await extractPdfDocumentFromArrayBuffer(arrayBuffer);
-            resolve({
-              sourceBlocks,
-              sourceKind: "pdf",
-              rawText,
-              title: file.name.replace(/\.[^.]+$/u, ""),
-            });
+            resolve(await extractPdfOnMainThread());
           } catch (error) {
             const extractionError = createPdfExtractionError(error);
             reject(
@@ -162,6 +218,6 @@ export async function extractDocumentFromFileAsync(
 
   return {
     payload,
-    processingMode: "worker",
+    processingMode,
   };
 }

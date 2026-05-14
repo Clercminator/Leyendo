@@ -126,11 +126,13 @@ export function ReaderWorkspace({
   const preferences = useReaderStore((state) => state.preferences);
   const setActiveDocument = useReaderStore((state) => state.setActiveDocument);
   const setChunkIndex = useReaderStore((state) => state.setChunkIndex);
-  const setMode = useReaderStore((state) => state.setMode);
   const setPlaying = useReaderStore((state) => state.setPlaying);
   const updatePreferences = useReaderStore(
     (state) => state.updatePreferences,
   );
+  const [documentModeOverride, setDocumentModeOverride] = useState<
+    ReaderMode | undefined
+  >(undefined);
   const [highlightNote, setHighlightNote] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [pdfAssetState, setPdfAssetState] = useState<
@@ -228,9 +230,25 @@ export function ReaderWorkspace({
 
     return readerModes.filter((mode) => mode !== "pdf-page");
   }, [canUsePdfPageMode, hasExtractedText]);
+  const requestedMode = documentModeOverride ?? preferences.mode;
+
+  useEffect(() => {
+    if (!document?.id) {
+      setDocumentModeOverride(undefined);
+      return;
+    }
+
+    if (payload?.sourceKind === "pdf" && pdfAssetState === "present") {
+      setDocumentModeOverride("pdf-page");
+      return;
+    }
+
+    setDocumentModeOverride(undefined);
+  }, [document?.id, payload?.sourceKind, pdfAssetState]);
+
   const canvasMode = resolveReaderCanvasMode({
     availableModes,
-    requestedMode: preferences.mode,
+    requestedMode,
   });
   const isPdfPageMode = canvasMode === "pdf-page";
   const runtimeReaderMode = isPdfPageMode ? "classic-reader" : canvasMode;
@@ -1032,17 +1050,32 @@ export function ReaderWorkspace({
   ]);
 
   const handleSavePdfHighlight = useCallback(
-    async (args: { pageIndex: number; selectionText?: string }) => {
+    async (args: {
+      pageIndex: number;
+      selectionPrefixText?: string;
+      selectionText?: string;
+      selectionSuffixText?: string;
+    }) => {
       if (!document || !payload || runtimeChunks.length === 0) {
         return;
       }
 
       const selectionText = args.selectionText?.trim();
+      const preferredTokenIndex =
+        runtimeChunks[resolvedChunkIndex]?.sourcePageIndex === args.pageIndex
+          ? runtimeChunks[resolvedChunkIndex]?.anchorTokenIndex
+          : runtimeChunkIndexBySourcePage.get(args.pageIndex) !== undefined
+            ? runtimeChunks[runtimeChunkIndexBySourcePage.get(args.pageIndex) ?? -1]
+                ?.anchorTokenIndex
+            : undefined;
       const resolvedAnchor = selectionText
         ? resolvePdfSelectionAnchor({
             document: payload,
             pageIndex: args.pageIndex,
+            preferredTokenIndex,
+            prefixText: args.selectionPrefixText,
             quote: selectionText,
+            suffixText: args.selectionSuffixText,
           })
         : null;
       const chunkIndexForSelection = resolvedAnchor
@@ -1074,6 +1107,7 @@ export function ReaderWorkspace({
         paragraphIndex:
           resolvedAnchor?.paragraphIndex ?? anchorChunk.paragraphIndex,
         sectionIndex: resolvedAnchor?.sectionIndex ?? anchorChunk.sectionIndex,
+        sourcePageIndex: resolvedAnchor?.sourcePageIndex ?? args.pageIndex,
         syncState: canSyncDocumentState ? "local-only" : undefined,
       });
 
@@ -1093,6 +1127,7 @@ export function ReaderWorkspace({
       prependHighlight,
       queueHighlightUpsert,
       resolvedChunkIndex,
+      runtimeChunkIndexBySourcePage,
       runtimeChunks,
       canSyncDocumentState,
       localDocumentOwnerId,
@@ -1129,7 +1164,9 @@ export function ReaderWorkspace({
     (anchor: {
       anchorText?: string;
       chunkIndex: number;
+      paragraphIndex?: number;
       quote?: string;
+      sourcePageIndex?: number;
       textPresentation?: TextPresentation;
       tokenIndex: number;
     }) => {
@@ -1208,7 +1245,13 @@ export function ReaderWorkspace({
     (
       highlight: Pick<
         Highlight,
-        "chunkIndex" | "label" | "quote" | "textPresentation" | "tokenIndex"
+        | "chunkIndex"
+        | "label"
+        | "paragraphIndex"
+        | "quote"
+        | "sourcePageIndex"
+        | "textPresentation"
+        | "tokenIndex"
       >,
     ) => {
       jumpToAnchor(highlight);
@@ -1383,6 +1426,7 @@ export function ReaderWorkspace({
         to: mode,
       };
 
+      setDocumentModeOverride(canUsePdfPageMode ? mode : undefined);
       applyPreferenceChanges({ mode });
       announce(
         `Reading mode set to ${mode
@@ -1391,7 +1435,13 @@ export function ReaderWorkspace({
           .join(" ")}.`,
       );
     },
-      [announce, applyPreferenceChanges, canvasMode, flushQueuedPreferenceChanges],
+      [
+        announce,
+        applyPreferenceChanges,
+        canUsePdfPageMode,
+        canvasMode,
+        flushQueuedPreferenceChanges,
+      ],
   );
 
   const handleDecreaseChunkSize = useCallback(() => {

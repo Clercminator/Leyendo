@@ -10,21 +10,44 @@ const dataDirFlag = process.argv.find((value) =>
   value.startsWith("--data-dir="),
 );
 const outputFlag = process.argv.find((value) => value.startsWith("--output="));
+const sampleFlag = process.argv.find((value) => value.startsWith("--sample="));
 const shouldPublish = process.argv.includes("--publish");
-const dataDir = path.resolve(
-  process.cwd(),
-  dataDirFlag ? dataDirFlag.slice("--data-dir=".length) : "data",
-);
 const outputDir = path.resolve(process.cwd(), "test-results");
+const knownSamples = {
+  "corfo-legal": {
+    dataDir: path.resolve(process.cwd(), "data", "legal files"),
+    defaultOutputPath: path.join(outputDir, "corfo-legal-scan.json"),
+    fileName:
+      "RE N°1457 de 2025 de Corfo - Bases BIG 12 Start-Up Chile.pdf",
+    label: "CORFO legal basis sample",
+  },
+};
+const requestedSampleId = sampleFlag?.slice("--sample=".length);
+const requestedSample = requestedSampleId
+  ? knownSamples[requestedSampleId]
+  : undefined;
+
+if (requestedSampleId && !requestedSample) {
+  throw new Error(`Unknown PDF scan sample: ${requestedSampleId}`);
+}
+
+const dataDir = requestedSample?.dataDir
+  ? requestedSample.dataDir
+  : path.resolve(
+      process.cwd(),
+      dataDirFlag ? dataDirFlag.slice("--data-dir=".length) : "data",
+    );
 const outputPath = outputFlag
   ? path.resolve(process.cwd(), outputFlag.slice("--output=".length))
-  : path.join(outputDir, "catalog-import-scan.json");
+  : requestedSample?.defaultOutputPath ??
+    path.join(outputDir, "catalog-import-scan.json");
 const extractionTimeoutMs = 240_000;
 const openTimeoutMs = 180_000;
 const fileFilters = process.argv
   .slice(2)
   .filter((value) => !value.startsWith("--"))
   .map((value) => value.toLowerCase());
+const shouldResetOutput = process.argv.includes("--fresh") || Boolean(requestedSample);
 const catalogWordsPerMinute = 220;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -92,6 +115,13 @@ async function writeScanSummary(outputPath, input) {
     dataDir,
     generatedAt: nowIso(),
     mode: shouldPublish ? "scan-and-publish" : "scan-only",
+    sample: requestedSample
+      ? {
+          fileName: requestedSample.fileName,
+          id: requestedSampleId,
+          label: requestedSample.label,
+        }
+      : null,
     totals: {
       pdfCount: input.totalPdfCount,
       processed: input.results.length,
@@ -210,9 +240,17 @@ async function waitForReaderOpen(page, timeoutMs) {
 
       const isReaderRoute = window.location.pathname === "/reader";
       const bodyText = document.body?.innerText ?? "";
-      const looksLikeReaderWorkspace =
-        /reader canvas/i.test(bodyText) &&
-        /highlights and bookmarks/i.test(bodyText);
+      const looksLikePdfReader =
+        /(pdf estándar|pdf standard|standard pdf)/i.test(bodyText) &&
+        /(search in the document|buscar en el documento|buscar no documento)/i.test(
+          bodyText,
+        );
+      const looksLikeTextReader =
+        /(reader canvas|lienzo del lector|canvas do leitor)/i.test(bodyText) &&
+        /(highlights and bookmarks|destacados y marcadores|destaques e marcadores)/i.test(
+          bodyText,
+        );
+      const looksLikeReaderWorkspace = looksLikePdfReader || looksLikeTextReader;
 
       if (isReaderRoute && looksLikeReaderWorkspace) {
         const title =
@@ -518,18 +556,19 @@ async function validatePdf(browser, fileName) {
 }
 
 async function main() {
-  const entries = await readdir(dataDir, { withFileTypes: true });
-  const pdfs = entries
-    .filter(
-      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".pdf"),
-    )
-    .map((entry) => entry.name)
-    .filter((name) =>
-      fileFilters.length === 0
-        ? true
-        : fileFilters.some((filter) => name.toLowerCase().includes(filter)),
-    )
-    .sort((left, right) => left.localeCompare(right));
+  const pdfs = requestedSample
+    ? [requestedSample.fileName]
+    : (await readdir(dataDir, { withFileTypes: true }))
+        .filter(
+          (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".pdf"),
+        )
+        .map((entry) => entry.name)
+        .filter((name) =>
+          fileFilters.length === 0
+            ? true
+            : fileFilters.some((filter) => name.toLowerCase().includes(filter)),
+        )
+        .sort((left, right) => left.localeCompare(right));
 
   if (pdfs.length === 0) {
     throw new Error(`No PDFs found in ${dataDir}`);
@@ -539,7 +578,9 @@ async function main() {
   const supabase = shouldPublish ? createSupabaseAdminClient() : null;
 
   try {
-    const results = await loadExistingScanResults(outputPath);
+    const results = shouldResetOutput
+      ? []
+      : await loadExistingScanResults(outputPath);
     const processedFileNames = new Set(
       results
         .map((result) => result?.fileName)

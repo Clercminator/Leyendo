@@ -11,6 +11,7 @@
     "prestart": "pnpm sync:pdf-assets",
     "start": "next start",
     "catalog:scan": "node ./scripts/validate-pdf-library.mjs",
+    "catalog:scan:corfo": "node ./scripts/validate-pdf-library.mjs --sample=corfo-legal",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",

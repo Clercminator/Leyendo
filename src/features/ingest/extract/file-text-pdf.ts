@@ -9,6 +9,16 @@ export interface ExtractedPdfDocument {
   sourceBlocks: DocumentBlockInput[];
 }
 
+export interface PdfExtractionProgress {
+  pageCount: number;
+  processedPages: number;
+}
+
+export interface ExtractPdfDocumentOptions {
+  onProgress?: (progress: PdfExtractionProgress) => void;
+  pageBatchSize?: number;
+}
+
 interface PdfFragment {
   fontName?: string;
   text: string;
@@ -38,6 +48,7 @@ type PdfTransformMatrix = [number, number, number, number, number, number];
 
 const DOCUMENT_PAYLOAD_EMPTY_ERROR =
   "This PDF appears to have no selectable text. Scanned PDFs are not supported in the MVP.";
+const DEFAULT_PDF_PAGE_BATCH_SIZE = 4;
 const pdfIdentityTransform: PdfTransformMatrix = [1, 0, 0, 1, 0, 0];
 const pdfCompatCharacterMap = new Map<string, string>([
   ["\uF0A7", "▪"],
@@ -52,7 +63,15 @@ const pdfCompatCharacterMap = new Map<string, string>([
 ]);
 
 const pdfListMarkerPattern =
-  /^((?:\d+\.)+\d*\.?|(?:\d+|[A-Za-z]|[IVXLCDMivxlcdm]+)[.)]|[•◦▪■●○◆◇‣⁃∙·]|[-*–—])\s+(.+)$/u;
+  /^((?:\d+\.)+\d*[.)]?|(?:\([A-Za-z0-9]+\)|§+\s*\d+[A-Za-z0-9.-]*|(?:\d+|[A-Za-z]|[IVXLCDMivxlcdm]+)[.)]|[•◦▪■●○◆◇‣⁃∙·]|[-*–—]))\s+(.+)$/u;
+const pdfOrdinalHeadingPattern =
+  /^(?:primero|segundo|tercero|cuarto|quinto|sexto|s[ée]ptimo|octavo|noveno|d[ée]cimo|und[ée]cimo|duod[ée]cimo)(?::|\.|-)/iu;
+const pdfLegalHeadingPrefixPattern =
+  /^(?:(?:art(?:[íi]culo)?|cap(?:[íi]tulo)?|t(?:[íi]tulo)?|secci(?:[óo]n)?|anexo|ap(?:[ée]ndice)?|bases?)\s+[A-Z0-9IVXLCDM]+)/iu;
+const pdfUppercaseLegalHeadingPattern =
+  /^(?:[A-ZÁÉÍÓÚÜÑ0-9][A-ZÁÉÍÓÚÜÑ0-9 ,;()\/-]{4,}:)$/u;
+const pdfSpacedUppercaseHeadingPattern =
+  /(?:\b(?:[A-ZÁÉÍÓÚÜÑ]\s+){2,}[A-ZÁÉÍÓÚÜÑ](?=\s*[:.]))/gu;
 
 function normalizeExtractedText(text: string) {
   return text.replace(/\r\n/g, "\n").trim();
@@ -78,6 +97,9 @@ function normalizePdfFragmentText(text: string) {
 
 function normalizePdfBlockText(text: string) {
   return normalizePdfTextArtifacts(text)
+    .replace(pdfSpacedUppercaseHeadingPattern, (match) =>
+      match.replace(/\s+/g, ""),
+    )
     .replace(/\s+/g, " ")
     .replace(/([\p{L}\p{N}])-\s+(?=[\p{Ll}\p{N}])/gu, "$1")
     .replace(/\s+([,;:!?%)\]])/g, "$1")
@@ -201,6 +223,30 @@ function isMostlyUppercase(text: string) {
 
 function isCenteredLine(line: PdfLine) {
   return Math.abs(line.center - line.pageWidth / 2) <= line.pageWidth * 0.12;
+}
+
+function isLegalHeadingText(text: string) {
+  const normalized = text.trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  if (
+    pdfUppercaseLegalHeadingPattern.test(normalized) ||
+    pdfOrdinalHeadingPattern.test(normalized)
+  ) {
+    return true;
+  }
+
+  if (!pdfLegalHeadingPrefixPattern.test(normalized) || normalized.length > 140) {
+    return false;
+  }
+
+  return (
+    isMostlyUppercase(normalized) ||
+    !/[.!?]["')\]]?$/u.test(normalized)
+  );
 }
 
 function extractBlockMarker(text: string) {
@@ -652,6 +698,10 @@ function isHeadingLine(line: PdfLine, bodyFontSize: number) {
     return false;
   }
 
+  if (isLegalHeadingText(line.text)) {
+    return true;
+  }
+
   if (
     isCenteredLine(line) &&
     (oversized || boldStandalone || isMostlyUppercase(line.text))
@@ -672,6 +722,57 @@ function isPdfFrontMatterMetaLine(text: string) {
   return /(?:translated by|published by|copyright|all rights reserved|isbn\b|www\.|https?:\/\/|@)/iu.test(
     normalized,
   );
+}
+
+function isPdfFrontMatterHeaderNoise(text: string) {
+  const normalized = normalizePdfBlockText(text).trim().toLowerCase();
+
+  return /^(?:gerencia de(?:\s+resoluci[óo]n electr[óo]nica)?|resoluci[óo]n electr[óo]nica)$/iu.test(
+    normalized,
+  );
+}
+
+function isPdfImagePlaceholderBlock(block: DocumentBlockInput) {
+  return block.kind === "paragraph" && block.text === "[Image omitted from PDF]";
+}
+
+function isLikelyPdfCoverTitleBlock(block: DocumentBlockInput) {
+  if (block.sourcePageIndex !== 0 || isPdfImagePlaceholderBlock(block)) {
+    return false;
+  }
+
+  const text = block.text.trim();
+
+  if (!text || isPdfFrontMatterHeaderNoise(text)) {
+    return false;
+  }
+
+  return (
+    block.kind === "heading" ||
+    (text.length >= 18 && isMostlyUppercase(text))
+  );
+}
+
+function cleanupPdfFrontMatterBlocks(blocks: DocumentBlockInput[]) {
+  const coverTitleIndex = blocks.findIndex((block) =>
+    isLikelyPdfCoverTitleBlock(block),
+  );
+
+  if (coverTitleIndex <= 0) {
+    return blocks;
+  }
+
+  return blocks.filter((block, index) => {
+    if (block.sourcePageIndex !== 0 || index >= coverTitleIndex) {
+      return true;
+    }
+
+    if (isPdfImagePlaceholderBlock(block)) {
+      return false;
+    }
+
+    return !isPdfFrontMatterHeaderNoise(block.text);
+  });
 }
 
 function isStandalonePdfLine(line: PdfLine, bodyFontSize: number) {
@@ -708,6 +809,14 @@ function shouldMergePdfParagraphLine(
   currentLine: PdfLine,
   bodyFontSize: number,
 ) {
+  if (
+    isLegalHeadingText(previousLine.text) ||
+    isLegalHeadingText(currentLine.text) ||
+    extractBlockMarker(currentLine.text)
+  ) {
+    return false;
+  }
+
   if (
     previousLine.pageIndex !== currentLine.pageIndex ||
     isCenteredLine(previousLine) ||
@@ -769,6 +878,15 @@ function shouldMergePdfParagraphBlocks(
     return false;
   }
 
+  if (
+    isLegalHeadingText(previousText) ||
+    isLegalHeadingText(currentText) ||
+    extractBlockMarker(previousText) ||
+    extractBlockMarker(currentText)
+  ) {
+    return false;
+  }
+
   if (/\[Image omitted from PDF\]/u.test(previousText + currentText)) {
     return false;
   }
@@ -781,7 +899,7 @@ function shouldMergePdfParagraphBlocks(
     return false;
   }
 
-  return /^[a-zà-ÿ(\["'0-9]/iu.test(currentText);
+  return /^[a-zà-ÿ(\["'0-9]/u.test(currentText);
 }
 
 export function normalizePdfSourceBlocks(blocks: DocumentBlockInput[]) {
@@ -816,7 +934,7 @@ export function normalizePdfSourceBlocks(blocks: DocumentBlockInput[]) {
     );
   });
 
-  return normalizedBlocks;
+  return cleanupPdfFrontMatterBlocks(normalizedBlocks);
 }
 
 export function buildPdfBlocks(lines: PdfLine[]) {
@@ -970,7 +1088,9 @@ export async function extractPdfTextFromArrayBuffer(arrayBuffer: ArrayBuffer) {
 
 export async function extractPdfDocumentFromArrayBuffer(
   arrayBuffer: ArrayBuffer,
+  options: ExtractPdfDocumentOptions = {},
 ): Promise<ExtractedPdfDocument> {
+  const { onProgress, pageBatchSize = DEFAULT_PDF_PAGE_BATCH_SIZE } = options;
   const pdfjs = await loadPdfJs();
   const loadingTask = pdfjs.getDocument({
     cMapPacked: true,
@@ -984,47 +1104,77 @@ export async function extractPdfDocumentFromArrayBuffer(
   });
   const pdf = await loadingTask.promise;
   const lines: PdfLine[] = [];
+  const totalPages = pdf.numPages;
+  const resolvedPageBatchSize = Math.max(1, Math.floor(pageBatchSize));
 
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const viewport = page.getViewport({ scale: 1 });
-    const textContent = await page.getTextContent();
-    let imageLines: PdfLine[] = [];
+  onProgress?.({
+    pageCount: totalPages,
+    processedPages: 0,
+  });
 
-    if (typeof page.getOperatorList === "function") {
-      try {
-        const operatorList = await page.getOperatorList();
-        imageLines = extractPdfImageLines(
-          operatorList,
-          pageNumber - 1,
-          viewport.width,
-          pdfjs.OPS as Record<string, number> | undefined,
-        );
-      } catch {
-        imageLines = [];
-      }
-    }
+  for (
+    let pageNumber = 1;
+    pageNumber <= totalPages;
+    pageNumber += resolvedPageBatchSize
+  ) {
+    const batchPageNumbers = Array.from(
+      {
+        length: Math.min(resolvedPageBatchSize, totalPages - pageNumber + 1),
+      },
+      (_, index) => pageNumber + index,
+    );
+    const batchLines = await Promise.all(
+      batchPageNumbers.map(async (batchPageNumber) => {
+        const page = await pdf.getPage(batchPageNumber);
+        const viewport = page.getViewport({ scale: 1 });
+        const textContent = await page.getTextContent();
+        let imageLines: PdfLine[] = [];
 
-    lines.push(
-      ...[
-        ...buildPdfLines(textContent.items, pageNumber - 1, viewport.width),
-        ...imageLines,
-      ].sort((left, right) => {
-        if (left.pageIndex !== right.pageIndex) {
-          return left.pageIndex - right.pageIndex;
+        if (typeof page.getOperatorList === "function") {
+          try {
+            const operatorList = await page.getOperatorList();
+            imageLines = extractPdfImageLines(
+              operatorList,
+              batchPageNumber - 1,
+              viewport.width,
+              pdfjs.OPS as Record<string, number> | undefined,
+            );
+          } catch {
+            imageLines = [];
+          }
         }
 
-        const verticalDistance = Math.abs(left.y - right.y);
-        if (
-          verticalDistance <=
-          Math.max(left.fontSize, right.fontSize) * 0.35
-        ) {
-          return left.left - right.left;
-        }
+        return [
+          ...buildPdfLines(textContent.items, batchPageNumber - 1, viewport.width),
+          ...imageLines,
+        ].sort((left, right) => {
+          if (left.pageIndex !== right.pageIndex) {
+            return left.pageIndex - right.pageIndex;
+          }
 
-        return right.y - left.y;
+          const verticalDistance = Math.abs(left.y - right.y);
+          if (
+            verticalDistance <=
+            Math.max(left.fontSize, right.fontSize) * 0.35
+          ) {
+            return left.left - right.left;
+          }
+
+          return right.y - left.y;
+        });
       }),
     );
+
+    batchLines.forEach((pageLines) => {
+      lines.push(...pageLines);
+    });
+    onProgress?.({
+      pageCount: totalPages,
+      processedPages: Math.min(
+        totalPages,
+        pageNumber + batchPageNumbers.length - 1,
+      ),
+    });
   }
 
   const sourceBlocks = buildPdfBlocks(lines);

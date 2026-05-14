@@ -57,6 +57,7 @@ interface RemoteHighlightRow {
   paragraph_index: number;
   quote: string;
   section_index: number;
+  source_page_index: number | null;
   token_index: number;
   user_id: string;
 }
@@ -128,6 +129,7 @@ function toRemoteHighlightRow(
     paragraph_index: highlight.paragraphIndex,
     quote: highlight.quote,
     section_index: highlight.sectionIndex,
+    source_page_index: highlight.sourcePageIndex ?? null,
     token_index: highlight.tokenIndex,
     user_id: userId,
   };

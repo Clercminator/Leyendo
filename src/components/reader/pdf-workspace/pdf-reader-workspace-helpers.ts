@@ -46,6 +46,12 @@ export interface PdfMatchCount {
   total: number;
 }
 
+export interface PdfSelectionSnapshot {
+  prefixText?: string;
+  selectedText: string;
+  suffixText?: string;
+}
+
 export interface PdfPageChangingEvent {
   pageNumber?: number;
 }
@@ -163,9 +169,29 @@ export function sanitizePdfViewerState(
   };
 }
 
-export function getPdfSelectionText(container: HTMLDivElement | null) {
+const PDF_SELECTION_CONTEXT_TOKEN_LIMIT = 10;
+
+function normalizePdfSelectionSegment(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function trimPdfSelectionContext(value: string, side: "start" | "end") {
+  const tokens = normalizePdfSelectionSegment(value).split(/\s+/u).filter(Boolean);
+
+  if (tokens.length === 0) {
+    return undefined;
+  }
+
+  return side === "end"
+    ? tokens.slice(-PDF_SELECTION_CONTEXT_TOKEN_LIMIT).join(" ")
+    : tokens.slice(0, PDF_SELECTION_CONTEXT_TOKEN_LIMIT).join(" ");
+}
+
+export function getPdfSelectionSnapshot(
+  container: HTMLDivElement | null,
+): PdfSelectionSnapshot | undefined {
   const selection = globalThis.getSelection?.();
-  const selectedText = selection?.toString().replace(/\s+/g, " ").trim();
+  const selectedText = normalizePdfSelectionSegment(selection?.toString() ?? "");
 
   if (!selection || !selectedText || !container) {
     return undefined;
@@ -181,7 +207,32 @@ export function getPdfSelectionText(container: HTMLDivElement | null) {
     return undefined;
   }
 
-  return selectedText;
+  const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+  if (!range) {
+    return { selectedText };
+  }
+
+  try {
+    const prefixRange = range.cloneRange();
+    prefixRange.selectNodeContents(container);
+    prefixRange.setEnd(range.startContainer, range.startOffset);
+
+    const suffixRange = range.cloneRange();
+    suffixRange.selectNodeContents(container);
+    suffixRange.setStart(range.endContainer, range.endOffset);
+
+    return {
+      prefixText: trimPdfSelectionContext(prefixRange.toString(), "end"),
+      selectedText,
+      suffixText: trimPdfSelectionContext(suffixRange.toString(), "start"),
+    };
+  } catch {
+    return { selectedText };
+  }
+}
+
+export function getPdfSelectionText(container: HTMLDivElement | null) {
+  return getPdfSelectionSnapshot(container)?.selectedText;
 }
 
 export function formatZoomLabel(args: {

@@ -95,6 +95,7 @@ interface RemoteHighlightRow {
   paragraph_index: number;
   quote: string;
   section_index: number;
+  source_page_index: number | null;
   token_index: number;
   user_id: string;
 }
@@ -570,6 +571,7 @@ function toSyncedHighlightRecord(row: RemoteHighlightRow): Highlight {
     paragraphIndex: row.paragraph_index,
     quote: row.quote,
     sectionIndex: row.section_index,
+    sourcePageIndex: row.source_page_index ?? undefined,
     syncState: "synced",
     tokenIndex: row.token_index,
   };

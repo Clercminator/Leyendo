@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { extractDocumentFromFile } from "@/features/ingest/extract/file-text";
+import {
+  buildPdfBlocks,
+  normalizePdfSourceBlocks,
+  type PdfLine,
+} from "@/features/ingest/extract/file-text-pdf";
 
 const pdfjsMock = vi.hoisted(() => ({
   GlobalWorkerOptions: {
@@ -384,6 +389,212 @@ describe("extractDocumentFromFile", () => {
         kind: "list-item",
         marker: "•",
         text: "cooperation and finance moves forward.",
+      }),
+    ]);
+  });
+
+  it("reports page progress while extracting multi-page PDFs", async () => {
+    const progressSnapshots: number[] = [];
+
+    pdfjsMock.getDocument.mockImplementationOnce(() => ({
+      promise: Promise.resolve({
+        numPages: 5,
+        getPage: async (pageNumber: number) => ({
+          getViewport: () => ({ width: 612 }),
+          getOperatorList: async () => ({
+            argsArray: [],
+            fnArray: [],
+          }),
+          getTextContent: async () => ({
+            items: [
+              {
+                fontName: "Helvetica",
+                str: `Page ${pageNumber}`,
+                transform: [1, 0, 0, 12, 72, 720],
+                width: 48,
+                height: 12,
+              },
+            ],
+          }),
+        }),
+      }),
+    }));
+
+    const file = new File([new Uint8Array([4, 5, 6])], "long-legal.pdf", {
+      type: "application/pdf",
+    });
+
+    const extracted = await extractDocumentFromFile(file, {
+      onPdfProgress: (progress) => {
+        progressSnapshots.push(progress.processedPages);
+      },
+    });
+
+    expect(progressSnapshots.at(-1)).toBe(5);
+    expect(progressSnapshots.some((value) => value > 0 && value < 5)).toBe(
+      true,
+    );
+    expect(extracted.rawText).toContain("Page 5");
+  });
+
+  it("preserves legal headings and numbered clauses in PDF block extraction", () => {
+    const lines: PdfLine[] = [
+      {
+        boldTextRatio: 1,
+        center: 196,
+        entryKind: "text",
+        fontSize: 12,
+        isBold: true,
+        left: 72,
+        pageIndex: 0,
+        pageWidth: 612,
+        right: 320,
+        text: "PRIMERO: Requisitos generales",
+        y: 760,
+      },
+      {
+        center: 256,
+        entryKind: "text",
+        fontSize: 12,
+        left: 72,
+        pageIndex: 0,
+        pageWidth: 612,
+        right: 440,
+        text: "1.1. La postulante debe presentar antecedentes.",
+        y: 732,
+      },
+      {
+        center: 252,
+        entryKind: "text",
+        fontSize: 12,
+        left: 72,
+        pageIndex: 0,
+        pageWidth: 612,
+        right: 432,
+        text: "1.2) Cumplir con las bases del programa.",
+        y: 708,
+      },
+      {
+        boldTextRatio: 1,
+        center: 198,
+        entryKind: "text",
+        fontSize: 12,
+        isBold: true,
+        left: 72,
+        pageIndex: 0,
+        pageWidth: 612,
+        right: 324,
+        text: "ARTICULO 3.- Elegibilidad",
+        y: 676,
+      },
+      {
+        center: 252,
+        entryKind: "text",
+        fontSize: 12,
+        left: 72,
+        pageIndex: 0,
+        pageWidth: 612,
+        right: 432,
+        text: "La comision evaluadora revisara la postulacion.",
+        y: 650,
+      },
+    ];
+
+    expect(buildPdfBlocks(lines)).toEqual([
+      expect.objectContaining({
+        kind: "heading",
+        text: "PRIMERO: Requisitos generales",
+      }),
+      expect.objectContaining({
+        kind: "list-item",
+        marker: "1.1.",
+        text: "La postulante debe presentar antecedentes.",
+      }),
+      expect.objectContaining({
+        kind: "list-item",
+        marker: "1.2)",
+        text: "Cumplir con las bases del programa.",
+      }),
+      expect.objectContaining({
+        kind: "heading",
+        text: "ARTICULO 3.- Elegibilidad",
+      }),
+      expect.objectContaining({
+        kind: "paragraph",
+        text: "La comision evaluadora revisara la postulacion.",
+      }),
+    ]);
+  });
+
+  it("keeps legal heading boundaries during PDF block normalization", () => {
+    expect(
+      normalizePdfSourceBlocks([
+        {
+          kind: "paragraph",
+          sourcePageIndex: 0,
+          text: "La convocatoria exige antecedentes",
+        },
+        {
+          kind: "paragraph",
+          sourcePageIndex: 0,
+          text: "DISPOSICIONES GENERALES:",
+        },
+        {
+          kind: "paragraph",
+          sourcePageIndex: 0,
+          text: "La postulacion debe presentarse en linea.",
+        },
+      ]),
+    ).toEqual([
+      expect.objectContaining({ text: "La convocatoria exige antecedentes" }),
+      expect.objectContaining({ text: "DISPOSICIONES GENERALES:" }),
+      expect.objectContaining({
+        text: "La postulacion debe presentarse en linea.",
+      }),
+    ]);
+  });
+
+  it("cleans CORFO-style front matter noise from normalized PDF preview blocks", () => {
+    expect(
+      normalizePdfSourceBlocks([
+        {
+          alignment: "center",
+          kind: "paragraph",
+          sourcePageIndex: 0,
+          text: "GERENCIA DE RESOLUCIÓN ELECTRÓNICA",
+        },
+        {
+          alignment: "center",
+          kind: "paragraph",
+          sourcePageIndex: 0,
+          text: "[Image omitted from PDF]",
+        },
+        {
+          alignment: "center",
+          kind: "paragraph",
+          sourcePageIndex: 0,
+          text: "[Image omitted from PDF]",
+        },
+        {
+          alignment: "center",
+          kind: "heading",
+          sourcePageIndex: 0,
+          text: "START-UP CHILE EXENTA",
+        },
+        {
+          kind: "heading",
+          sourcePageIndex: 0,
+          text: "V I S T O:",
+        },
+      ]),
+    ).toEqual([
+      expect.objectContaining({
+        kind: "heading",
+        text: "START-UP CHILE EXENTA",
+      }),
+      expect.objectContaining({
+        kind: "heading",
+        text: "VISTO:",
       }),
     ]);
   });

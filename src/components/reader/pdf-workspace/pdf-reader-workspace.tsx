@@ -18,6 +18,7 @@ import { useLocale } from "@/components/layout/locale-provider";
 import {
   dispatchFind,
   formatZoomLabel,
+  getPdfSelectionSnapshot,
   getPdfSelectionText,
   pdfReaderModeLabels,
   sanitizePdfViewerState,
@@ -160,7 +161,9 @@ interface PdfReaderWorkspaceProps {
   onSaveBookmark: (args: { pageIndex: number }) => void;
   onSaveHighlight: (args: {
     pageIndex: number;
+    selectionPrefixText?: string;
     selectionText?: string;
+    selectionSuffixText?: string;
   }) => void;
   onSelectMode: (mode: ReaderMode) => void;
 }
@@ -1365,9 +1368,13 @@ export function PdfReaderWorkspace({
   }, [currentPageIndex, onSaveBookmark]);
 
   const handleSidebarSaveHighlight = useCallback(() => {
+    const selectionSnapshot = getPdfSelectionSnapshot(viewerContainerRef.current);
+
     onSaveHighlight({
       pageIndex: currentPageIndex,
-      selectionText: getPdfSelectionText(viewerContainerRef.current),
+      selectionPrefixText: selectionSnapshot?.prefixText,
+      selectionText: selectionSnapshot?.selectedText,
+      selectionSuffixText: selectionSnapshot?.suffixText,
     });
   }, [currentPageIndex, onSaveHighlight]);
 

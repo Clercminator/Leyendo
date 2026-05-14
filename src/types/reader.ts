@@ -100,6 +100,7 @@ export interface Highlight extends SyncOwnedRecord {
   tokenIndex: number;
   paragraphIndex: number;
   sectionIndex: number;
+  sourcePageIndex?: number;
   textPresentation?: TextPresentation;
   createdAt: string;
 }

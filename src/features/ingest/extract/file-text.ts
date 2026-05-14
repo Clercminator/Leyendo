@@ -3,7 +3,10 @@ import {
   isLegacyWordDocument,
 } from "@/features/ingest/detect/file-kind";
 import { extractDocxTextFromArrayBuffer } from "./file-text-docx";
-import { extractPdfDocumentFromArrayBuffer } from "./file-text-pdf";
+import {
+  extractPdfDocumentFromArrayBuffer,
+  type PdfExtractionProgress,
+} from "./file-text-pdf";
 import { extractRtfTextFromArrayBuffer } from "./file-text-rtf";
 import type { DocumentBlockInput, DocumentSourceKind } from "@/types/document";
 
@@ -21,6 +24,10 @@ export interface ExtractedDocumentPayload {
   rawText: string;
   sourceBlocks?: DocumentBlockInput[];
   title: string;
+}
+
+export interface ExtractDocumentFromFileOptions {
+  onPdfProgress?: (progress: PdfExtractionProgress) => void;
 }
 
 function deriveTitle(fileName: string) {
@@ -55,6 +62,7 @@ async function extractTextByKind(file: File, sourceKind: DocumentSourceKind) {
 
 export async function extractDocumentFromFile(
   file: File,
+  options: ExtractDocumentFromFileOptions = {},
 ): Promise<ExtractedDocumentPayload> {
   if (isLegacyWordDocument(file.name, file.type)) {
     throw new Error(
@@ -70,6 +78,9 @@ export async function extractDocumentFromFile(
   if (sourceKind === "pdf") {
     const { rawText, sourceBlocks } = await extractPdfDocumentFromArrayBuffer(
       await file.arrayBuffer(),
+      {
+        onProgress: options.onPdfProgress,
+      },
     );
 
     return {

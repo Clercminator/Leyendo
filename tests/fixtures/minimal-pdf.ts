@@ -5,7 +5,27 @@ function escapePdfText(text: string) {
     .replace(/\)/g, "\\)");
 }
 
-export function createMinimalPdfBuffer(pages: string[]) {
+type MinimalPdfPage = string | string[];
+
+function createPdfPageContent(page: MinimalPdfPage) {
+  const lines = Array.isArray(page) ? page : [page];
+  const pageLines = lines.length > 0 ? lines : ["Hello PDF from Leyendo"];
+  const contentStream = ["BT", "/F1 18 Tf", "72 736 Td"];
+
+  pageLines.forEach((line, index) => {
+    if (index > 0) {
+      contentStream.push("0 -26 Td");
+    }
+
+    contentStream.push(`(${escapePdfText(line)}) Tj`);
+  });
+
+  contentStream.push("ET", "");
+
+  return contentStream.join("\n");
+}
+
+export function createMinimalPdfBuffer(pages: MinimalPdfPage[]) {
   const pageTexts = pages.length > 0 ? pages : ["Hello PDF from Leyendo"];
   const pageObjectIds = pageTexts.map((_, index) => 4 + index * 2);
   const contentObjectIds = pageTexts.map((_, index) => 5 + index * 2);
@@ -16,14 +36,7 @@ export function createMinimalPdfBuffer(pages: string[]) {
   ];
 
   pageTexts.forEach((pageText, index) => {
-    const contentStream = [
-      "BT",
-      "/F1 24 Tf",
-      "72 720 Td",
-      `(${escapePdfText(pageText)}) Tj`,
-      "ET",
-      "",
-    ].join("\n");
+    const contentStream = createPdfPageContent(pageText);
 
     objects.push(
       `${pageObjectIds[index]} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjectIds[index]} 0 R >>\nendobj\n`,

@@ -234,7 +234,10 @@ export function UploadPanel() {
       return undefined;
     }
 
-    const recommendedMode = getRecommendedMode(savedReadingGoal);
+    const recommendedMode =
+      inputMode === "file" && selectedSourceKind === "pdf"
+        ? "pdf-page"
+        : getRecommendedMode(savedReadingGoal);
     const recommendedPreferences = getRecommendedPreferences(savedReadingGoal);
     const goalLabel = getLocalizedCopy(locale, {
       en:
@@ -300,7 +303,7 @@ export function UploadPanel() {
       modeLabel,
       wordsPerMinute: recommendedPreferences.wordsPerMinute,
     };
-  }, [locale, savedReadingGoal]);
+  }, [inputMode, locale, savedReadingGoal, selectedSourceKind]);
   const showRecommendedReaderStart = Boolean(
     recommendedReaderStart && (content.trim().length > 0 || selectedFile),
   );
@@ -438,13 +441,26 @@ export function UploadPanel() {
     }
 
     setIsReadingFile(true);
+    const shouldUseBackgroundExtraction =
+      shouldOffloadPdfExtraction(file) && typeof Worker !== "undefined";
     setStatusMessage(
-      createReadingFileStatus(locale, file, shouldOffloadPdfExtraction(file)),
+      createReadingFileStatus(locale, file, shouldUseBackgroundExtraction),
     );
 
     try {
       const { payload: extracted, processingMode } =
-        await extractDocumentFromFileAsync(file);
+        await extractDocumentFromFileAsync(file, {
+          onPdfProgress: (progress) => {
+            setStatusMessage(
+              createReadingFileStatus(
+                locale,
+                file,
+                shouldUseBackgroundExtraction,
+                progress,
+              ),
+            );
+          },
+        });
       const nextSelectedFile = {
         name: file.name,
         size: file.size,

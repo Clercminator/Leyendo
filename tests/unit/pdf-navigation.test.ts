@@ -68,9 +68,67 @@ describe("pdf navigation helpers", () => {
     );
   });
 
+  it("prefers contextual matches for repeated legal phrases on the same page", () => {
+    const document = buildDocumentModel({
+      rawText:
+        "BASES\n\nPRIMERO. La entidad beneficiaria debe presentar antecedentes dentro de cinco dias habiles.\n\nSEGUNDO. La entidad beneficiaria debe presentar antecedentes dentro de diez dias habiles.",
+      sourceBlocks: [
+        { kind: "heading", sourcePageIndex: 0, text: "BASES" },
+        {
+          kind: "paragraph",
+          sourcePageIndex: 0,
+          text: "PRIMERO. La entidad beneficiaria debe presentar antecedentes dentro de cinco dias habiles.",
+        },
+        {
+          kind: "paragraph",
+          sourcePageIndex: 0,
+          text: "SEGUNDO. La entidad beneficiaria debe presentar antecedentes dentro de diez dias habiles.",
+        },
+      ],
+      sourceKind: "pdf",
+    });
+
+    expect(
+      resolvePdfSelectionAnchor({
+        document,
+        pageIndex: 0,
+        preferredTokenIndex: document.blocks[2]?.tokenStart,
+        prefixText: "SEGUNDO.",
+        quote: "La entidad beneficiaria debe presentar antecedentes",
+        suffixText: "dentro de diez dias habiles.",
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        paragraphIndex: 2,
+        sourcePageIndex: 0,
+      }),
+    );
+  });
+
+  it("prefers an explicit source page index when restoring PDF anchors", () => {
+    const document = buildDocumentModel({
+      rawText: "Agreement\n\nFirst clause.\n\nSecond clause.",
+      sourceBlocks: [
+        { kind: "heading", sourcePageIndex: 0, text: "Agreement" },
+        { kind: "paragraph", sourcePageIndex: 1, text: "First clause." },
+        { kind: "paragraph", sourcePageIndex: 2, text: "Second clause." },
+      ],
+      sourceKind: "pdf",
+    });
+
+    expect(
+      resolveSourcePageIndexForAnchor(document, {
+        chunkIndex: 1,
+        sourcePageIndex: 2,
+        tokenIndex: 2,
+      }),
+    ).toBe(2);
+  });
+
   it("resolves named and explicit destinations to zero-based page indexes", async () => {
     const pdfDocument = {
       getDestination: vi.fn().mockResolvedValue([{ gen: 0, num: 42 }]),
+      getOutline: vi.fn().mockResolvedValue(null),
       getPageIndex: vi.fn().mockResolvedValue(3),
     };
 

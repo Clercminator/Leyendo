@@ -17,6 +17,13 @@ export interface PdfSelectionAnchor {
   sourcePageIndex: number | null;
 }
 
+interface PdfTokenSequenceMatch {
+  contextScore: number;
+  prefixMatches: number;
+  startIndex: number;
+  suffixMatches: number;
+}
+
 interface PdfOutlineNodeInput {
   title: string;
   dest: string | unknown[] | null;
@@ -58,13 +65,14 @@ function resolveAnchorFromTokenIndex(
   };
 }
 
-function findMatchingTokenSequence(args: {
+function findMatchingTokenSequenceMatches(args: {
   document: DocumentModel;
   queryTokens: string[];
   pageIndex?: number;
 }) {
   const { document, queryTokens, pageIndex } = args;
   const maxStartIndex = document.tokens.length - queryTokens.length;
+  const matches: number[] = [];
 
   for (let startIndex = 0; startIndex <= maxStartIndex; startIndex += 1) {
     const startToken = document.tokens[startIndex];
@@ -93,19 +101,198 @@ function findMatchingTokenSequence(args: {
     }
 
     if (isMatch) {
-      return startIndex;
+      matches.push(startIndex);
     }
   }
 
-  return null;
+  return matches;
+}
+
+function normalizeContextTokens(text: string | undefined) {
+  if (!text?.trim()) {
+    return [] as string[];
+  }
+
+  return normalizeText(text).tokens.map((token) => token.toLowerCase());
+}
+
+function countPrefixMatches(document: DocumentModel, startIndex: number, prefixTokens: string[]) {
+  let matches = 0;
+
+  for (let offset = 1; offset <= prefixTokens.length; offset += 1) {
+    if (
+      document.tokens[startIndex - offset]?.normalizedValue !==
+      prefixTokens[prefixTokens.length - offset]
+    ) {
+      break;
+    }
+
+    matches += 1;
+  }
+
+  return matches;
+}
+
+function countSuffixMatches(
+  document: DocumentModel,
+  startIndex: number,
+  queryLength: number,
+  suffixTokens: string[],
+) {
+  let matches = 0;
+
+  for (let offset = 0; offset < suffixTokens.length; offset += 1) {
+    if (
+      document.tokens[startIndex + queryLength + offset]?.normalizedValue !==
+      suffixTokens[offset]
+    ) {
+      break;
+    }
+
+    matches += 1;
+  }
+
+  return matches;
+}
+
+function compareTokenSequenceMatches(
+  left: PdfTokenSequenceMatch,
+  right: PdfTokenSequenceMatch,
+  preferredTokenIndex: number | undefined,
+) {
+  if (left.contextScore !== right.contextScore) {
+    return right.contextScore - left.contextScore;
+  }
+
+  if (typeof preferredTokenIndex === "number") {
+    const leftDistance = Math.abs(left.startIndex - preferredTokenIndex);
+    const rightDistance = Math.abs(right.startIndex - preferredTokenIndex);
+
+    if (leftDistance !== rightDistance) {
+      return leftDistance - rightDistance;
+    }
+  }
+
+  if (left.prefixMatches !== right.prefixMatches) {
+    return right.prefixMatches - left.prefixMatches;
+  }
+
+  if (left.suffixMatches !== right.suffixMatches) {
+    return right.suffixMatches - left.suffixMatches;
+  }
+
+  return left.startIndex - right.startIndex;
+}
+
+function resolveBestTokenSequenceMatch(args: {
+  document: DocumentModel;
+  pageIndex?: number;
+  preferredTokenIndex?: number;
+  prefixText?: string;
+  queryTokens: string[];
+  suffixText?: string;
+}) {
+  const matches = findMatchingTokenSequenceMatches({
+    document: args.document,
+    pageIndex: args.pageIndex,
+    queryTokens: args.queryTokens,
+  });
+
+  if (matches.length === 0) {
+    return null;
+  }
+
+  if (matches.length === 1) {
+    return matches[0] ?? null;
+  }
+
+  const prefixTokens = normalizeContextTokens(args.prefixText);
+  const suffixTokens = normalizeContextTokens(args.suffixText);
+  const scoredMatches = matches.map((startIndex) => {
+    const prefixMatches = countPrefixMatches(
+      args.document,
+      startIndex,
+      prefixTokens,
+    );
+    const suffixMatches = countSuffixMatches(
+      args.document,
+      startIndex,
+      args.queryTokens.length,
+      suffixTokens,
+    );
+
+    return {
+      contextScore: prefixMatches * 2 + suffixMatches * 2,
+      prefixMatches,
+      startIndex,
+      suffixMatches,
+    } satisfies PdfTokenSequenceMatch;
+  });
+
+  scoredMatches.sort((left, right) =>
+    compareTokenSequenceMatches(left, right, args.preferredTokenIndex),
+  );
+
+  return scoredMatches[0]?.startIndex ?? null;
+}
+
+function resolveBestBlockMatch(args: {
+  document: DocumentModel;
+  normalizedQuery: string;
+  pageIndex?: number;
+  preferredTokenIndex?: number;
+}) {
+  const matchingBlocks = args.document.blocks.filter((block) => {
+    if (
+      typeof args.pageIndex === "number" &&
+      block.sourcePageIndex !== args.pageIndex
+    ) {
+      return false;
+    }
+
+    return normalizeText(block.text)
+      .raw.toLowerCase()
+      .includes(args.normalizedQuery);
+  });
+
+  if (matchingBlocks.length === 0) {
+    return null;
+  }
+
+  matchingBlocks.sort((left, right) => {
+    if (typeof args.preferredTokenIndex === "number") {
+      const leftDistance = Math.abs(left.tokenStart - args.preferredTokenIndex);
+      const rightDistance = Math.abs(
+        right.tokenStart - args.preferredTokenIndex,
+      );
+
+      if (leftDistance !== rightDistance) {
+        return leftDistance - rightDistance;
+      }
+    }
+
+    return left.tokenStart - right.tokenStart;
+  });
+
+  return matchingBlocks[0] ?? null;
 }
 
 export function resolvePdfSelectionAnchor(args: {
   document: DocumentModel;
   pageIndex?: number;
+  preferredTokenIndex?: number;
+  prefixText?: string;
   quote: string;
+  suffixText?: string;
 }) {
-  const { document, pageIndex, quote } = args;
+  const {
+    document,
+    pageIndex,
+    preferredTokenIndex,
+    prefixText,
+    quote,
+    suffixText,
+  } = args;
   const normalizedQuote = normalizeText(quote);
   const queryTokens = normalizedQuote.tokens.map((token) =>
     token.toLowerCase(),
@@ -115,10 +302,13 @@ export function resolvePdfSelectionAnchor(args: {
     return null;
   }
 
-  const exactTokenIndex = findMatchingTokenSequence({
+  const exactTokenIndex = resolveBestTokenSequenceMatch({
     document,
-    queryTokens,
     pageIndex,
+    preferredTokenIndex,
+    prefixText,
+    queryTokens,
+    suffixText,
   });
 
   if (typeof exactTokenIndex === "number") {
@@ -126,14 +316,11 @@ export function resolvePdfSelectionAnchor(args: {
   }
 
   const normalizedQuery = normalizedQuote.raw.toLowerCase();
-  const blockMatch = document.blocks.find((block) => {
-    if (typeof pageIndex === "number" && block.sourcePageIndex !== pageIndex) {
-      return false;
-    }
-
-    return normalizeText(block.text)
-      .raw.toLowerCase()
-      .includes(normalizedQuery);
+  const blockMatch = resolveBestBlockMatch({
+    document,
+    normalizedQuery,
+    pageIndex,
+    preferredTokenIndex,
   });
 
   if (!blockMatch) {
@@ -154,8 +341,13 @@ export function resolveSourcePageIndexForAnchor(
     chunkIndex?: number;
     tokenIndex?: number;
     paragraphIndex?: number;
+    sourcePageIndex?: number;
   },
 ) {
+  if (typeof anchor.sourcePageIndex === "number") {
+    return anchor.sourcePageIndex;
+  }
+
   const chunkPageIndex =
     typeof anchor.chunkIndex === "number"
       ? document.chunks[anchor.chunkIndex]?.sourcePageIndex

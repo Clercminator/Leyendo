@@ -498,8 +498,18 @@ export function createLargePdfStatus(
 export function createReadingFileStatus(
   locale: "en" | "es" | "pt",
   file: Pick<File, "name">,
-  isLargePdf: boolean,
+  usesBackgroundExtraction: boolean,
+  progress?: { pageCount: number; processedPages: number },
 ): UploadStatusMessage {
+  const progressDetail =
+    progress && progress.pageCount > 0 && progress.processedPages > 0
+      ? locale === "en"
+        ? ` ${progress.processedPages} of ${progress.pageCount} pages processed.`
+        : locale === "es"
+          ? ` ${progress.processedPages} de ${progress.pageCount} páginas procesadas.`
+          : ` ${progress.processedPages} de ${progress.pageCount} paginas processadas.`
+      : "";
+
   return {
     tone: "info",
     eyebrow:
@@ -514,17 +524,17 @@ export function createReadingFileStatus(
         : locale === "es"
           ? `Procesando ${file.name}`
           : `Processando ${file.name}`,
-    detail: isLargePdf
+    detail: usesBackgroundExtraction
       ? locale === "en"
-        ? "Large PDF detected. Leyendo is extracting the text off the main thread to keep the page responsive."
+        ? `Leyendo is extracting the PDF text off the main thread to keep the page responsive.${progressDetail}`
         : locale === "es"
-          ? "Se detectó un PDF grande. Leyendo está extrayendo el texto fuera del hilo principal para mantener fluida la página."
-          : "PDF grande detectado. O Leyendo esta extraindo o texto fora da thread principal para manter a pagina responsiva."
+          ? `Leyendo está extrayendo el texto del PDF fuera del hilo principal para mantener fluida la página.${progressDetail}`
+          : `O Leyendo esta extraindo o texto do PDF fora da thread principal para manter a pagina responsiva.${progressDetail}`
       : locale === "en"
-        ? "Leyendo is reading the file locally and pulling out the text preview now."
+        ? `Leyendo is reading the file locally and pulling out the text preview now.${progressDetail}`
         : locale === "es"
-          ? "Leyendo está leyendo el archivo localmente y extrayendo la vista previa del texto."
-          : "O Leyendo esta lendo o arquivo localmente e extraindo agora a previa do texto.",
+          ? `Leyendo está leyendo el archivo localmente y extrayendo la vista previa del texto.${progressDetail}`
+          : `O Leyendo esta lendo o arquivo localmente e extraindo agora a previa do texto.${progressDetail}`,
     nextStep:
       locale === "en"
         ? "Keep this tab open while the preview is prepared."
