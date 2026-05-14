@@ -187,6 +187,35 @@ describe("ClassicReaderView", () => {
     expect(screen.getByText(/paragraph with/i)).toBeVisible();
   });
 
+  it("highlights only the exact active chunk words in markdown preview blocks", () => {
+    const documentModel = buildDocumentModel({
+      title: "Markdown chunk sample",
+      rawText: "Alpha beta gamma delta epsilon zeta.",
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const chunk = deriveRuntimeChunks(documentModel, 3)[0];
+
+    expect(chunk).toBeDefined();
+
+    const { container } = render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        reduceMotion
+      />,
+    );
+
+    const activeRuns = container.querySelectorAll(".reader-classic-active-run");
+
+    expect(activeRuns).toHaveLength(1);
+    expect(activeRuns[0]).toHaveTextContent("Alpha beta gamma");
+    expect(
+      container.querySelector('[data-reader-classic-active="true"]'),
+    ).not.toHaveClass("reader-active-paragraph");
+    expect(container.textContent).toContain("Alpha beta gamma delta epsilon zeta.");
+  });
+
   it("jumps to GitHub-style TOC anchors in simplified markdown preview", async () => {
     const user = userEvent.setup();
     const onJumpToToken = vi.fn();
@@ -309,8 +338,8 @@ describe("ClassicReaderView", () => {
       container.querySelectorAll("[data-reader-markdown-block-index]").length,
     ).toBeLessThan(documentModel.blocks.length);
     expect(
-      container.querySelector("[data-reader-paragraph-index]"),
-    ).not.toBeInTheDocument();
+      container.querySelectorAll(".reader-classic-active-run"),
+    ).toHaveLength(1);
     expect(
       container.querySelector(
         `[data-reader-markdown-block-index]#section-${

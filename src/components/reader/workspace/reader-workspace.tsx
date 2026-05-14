@@ -5,10 +5,13 @@ import {
   useDeferredValue,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
 } from "react";
+
+import { ChevronDown } from "lucide-react";
 
 import {
   deleteBookmark,
@@ -136,6 +139,7 @@ export function ReaderWorkspace({
   const [pdfPageJumpRequest, setPdfPageJumpRequest] = useState<
     { nonce: number; pageIndex: number } | undefined
   >();
+  const documentComplexityNoticeContentId = useId();
   const [textPresentationOverride, setTextPresentationOverride] = useState<{
     documentId: string | undefined;
     value: TextPresentation | undefined;
@@ -143,6 +147,8 @@ export function ReaderWorkspace({
     documentId: undefined,
     value: undefined,
   });
+  const [isDocumentComplexityNoticeExpanded, setIsDocumentComplexityNoticeExpanded] =
+    useState(false);
   const hasHydratedSessionRef = useRef(false);
   const lastAnchorTokenRef = useRef<number | undefined>(undefined);
   const liveStatusRegionRef = useRef<HTMLParagraphElement | null>(null);
@@ -408,6 +414,19 @@ export function ReaderWorkspace({
     () => createDocumentComplexityNotice(locale, documentComplexityHints),
     [documentComplexityHints, locale],
   );
+  useEffect(() => {
+    setIsDocumentComplexityNoticeExpanded(false);
+  }, [document?.id, documentComplexityNotice?.title]);
+  const expandComplexityNoticeLabel = getLocalizedCopy(locale, {
+    en: "Expand",
+    es: "Expandir",
+    pt: "Expandir",
+  });
+  const collapseComplexityNoticeLabel = getLocalizedCopy(locale, {
+    en: "Collapse",
+    es: "Colapsar",
+    pt: "Recolher",
+  });
   const readerModeStatusNotice = useMemo(() => {
     if (payload?.sourceKind === "pdf" && pdfAssetState === "unknown") {
       return {
@@ -1659,20 +1678,43 @@ export function ReaderWorkspace({
     >
       {!isPdfPageMode && documentComplexityNotice ? (
         <div className="rounded-[1.5rem] border border-amber-300/30 bg-amber-500/10 px-4 py-4 shadow-[0_14px_40px_rgba(20,26,56,0.08)]">
-          <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-amber) uppercase">
-            {documentComplexityNotice.title}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-(--text-muted)">
-            {documentComplexityNotice.description}
-          </p>
-          <ul className="mt-3 space-y-2 text-sm leading-6 text-(--text-muted)">
-            {documentComplexityNotice.items.map((item) => (
-              <li key={item} className="flex gap-2">
-                <span className="text-(--accent-amber)">*</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            aria-controls={documentComplexityNoticeContentId}
+            aria-expanded={isDocumentComplexityNoticeExpanded}
+            aria-label={`${isDocumentComplexityNoticeExpanded ? collapseComplexityNoticeLabel : expandComplexityNoticeLabel} ${documentComplexityNotice.title}`}
+            onClick={() => {
+              setIsDocumentComplexityNoticeExpanded((current) => !current);
+            }}
+            className="flex w-full items-start justify-between gap-3 text-left"
+          >
+            <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-amber) uppercase">
+              {documentComplexityNotice.title}
+            </p>
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-[0.68rem] font-medium tracking-[0.18em] text-(--text-muted) uppercase transition hover:border-amber-300/70 hover:bg-amber-500/15 hover:text-(--text-strong)">
+              {isDocumentComplexityNoticeExpanded
+                ? collapseComplexityNoticeLabel
+                : expandComplexityNoticeLabel}
+              <ChevronDown
+                className={`h-4 w-4 transition ${isDocumentComplexityNoticeExpanded ? "rotate-180" : ""}`}
+              />
+            </span>
+          </button>
+          {isDocumentComplexityNoticeExpanded ? (
+            <div id={documentComplexityNoticeContentId}>
+              <p className="mt-2 text-sm leading-6 text-(--text-muted)">
+                {documentComplexityNotice.description}
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-(--text-muted)">
+                {documentComplexityNotice.items.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="text-(--accent-amber)">*</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {readerModeStatusNotice ? (

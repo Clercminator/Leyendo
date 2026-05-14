@@ -40,7 +40,9 @@ interface MarkdownPreviewBlock {
   key: string;
   markdown: string;
   paragraphIndexes: number[];
+  headingDepth?: 1 | 2 | 3 | 4 | 5 | 6;
   headingId?: string;
+  nodeType?: string;
   tokenStart?: number;
 }
 
@@ -99,6 +101,16 @@ function getNodeType(node: unknown) {
   return isNodeRecord(node) && typeof node.type === "string"
     ? node.type
     : undefined;
+}
+
+function getHeadingDepth(node: unknown) {
+  if (!isNodeRecord(node) || typeof node.depth !== "number") {
+    return undefined;
+  }
+
+  const normalizedDepth = Math.max(1, Math.min(6, Math.round(node.depth)));
+
+  return normalizedDepth as 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 function getNodeChildren(node: unknown) {
@@ -367,8 +379,10 @@ function buildMarkdownPreviewBlocks(markdown: string, document: DocumentModel) {
 
     return [
       {
+        headingDepth: getHeadingDepth(node),
         key: `${index}-${start ?? 0}-${end ?? 0}`,
         markdown: markdownSource,
+        nodeType,
         paragraphIndexes,
         headingId,
         tokenStart:
@@ -820,6 +834,100 @@ export function ClassicReaderView({
       ? markdownPreviewBlocks[renderedMarkdownWindow.end]?.tokenStart
       : undefined;
 
+  const renderClassicDocumentBlock = (args: {
+    activeTokenIndexes: Set<number>;
+    block: DocumentModel["blocks"][number];
+    headingTagName?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+    isActive: boolean;
+    keyValue: string | number;
+    renderPlainTextWhenInactive?: boolean;
+    strongTokenIndexes: Set<number>;
+    tokens: Token[];
+    useArticleTag?: boolean;
+  }) => {
+    const {
+      activeTokenIndexes,
+      block,
+      headingTagName,
+      isActive,
+      keyValue,
+      renderPlainTextWhenInactive = false,
+      strongTokenIndexes,
+      tokens,
+      useArticleTag = true,
+    } = args;
+    const ContainerTag = useArticleTag ? "article" : "div";
+    const HeadingTag = headingTagName ?? "h3";
+    const body = renderTokens({
+      activeIndexes: activeTokenIndexes,
+      onJumpToToken:
+        renderPlainTextWhenInactive && !isActive ? undefined : handleJumpToToken,
+      renderPlainText: renderPlainTextWhenInactive && !isActive,
+      strongTokenIndexes,
+      tokens,
+    });
+    const isCentered = block.alignment === "center";
+    const listMarker = block.marker ? (
+      <span className="reader-accent pt-[0.1em] font-medium tabular-nums">
+        {block.marker}
+      </span>
+    ) : (
+      <span className="reader-accent mt-[0.85em] h-2 w-2 shrink-0 rounded-full bg-current" />
+    );
+
+    return (
+      <ContainerTag
+        key={keyValue}
+        ref={(node) => {
+          if (isActive) {
+            activeParagraphRef.current = node;
+          }
+        }}
+        data-reader-classic-active={isActive ? "true" : undefined}
+        data-reader-paragraph-index={block.index}
+        className={`scroll-mt-4 rounded-[1.15rem] transition md:scroll-mt-6 md:rounded-[1.35rem] ${
+          isActive
+            ? "px-4 py-3 md:px-5 md:py-4"
+            : block.kind === "heading"
+              ? "px-1 py-1.5 md:px-2 md:py-2"
+              : "px-1 py-2 md:px-2 md:py-3"
+        }`}
+        onClick={
+          onJumpToToken
+            ? (event) => {
+                event.stopPropagation();
+                handleJumpToToken(block.tokenStart);
+              }
+            : undefined
+        }
+      >
+        {block.kind === "heading" ? (
+          <HeadingTag
+            aria-label={block.text}
+            className={`reader-panel-strong-text font-heading text-2xl font-semibold tracking-tight md:text-3xl lg:text-4xl ${
+              isCentered ? "text-center" : "text-left"
+            }`}
+          >
+            {body}
+          </HeadingTag>
+        ) : block.kind === "list-item" ? (
+          <p className="reader-body reader-muted grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+            {listMarker}
+            <span>{body}</span>
+          </p>
+        ) : (
+          <p
+            className={`reader-body reader-muted ${
+              isCentered ? "text-center" : "text-left"
+            }`}
+          >
+            {body}
+          </p>
+        )}
+      </ContainerTag>
+    );
+  };
+
   const markdownComponents = useMemo(
     () => ({
       a: ({ children, href, ...props }: ComponentPropsWithoutRef<"a">) => {
@@ -925,19 +1033,32 @@ export function ClassicReaderView({
             {renderedMarkdownBlocks.map(({ block, index }) => {
               const isActive = index === effectiveActiveMarkdownBlockIndex;
               const tokenStart = block.tokenStart;
+              const activeMarkdownBlocks = block.paragraphIndexes
+                .map((paragraphIndex) => documentModel.blocks[paragraphIndex])
+                .filter(
+                  (
+                    documentBlock,
+                  ): documentBlock is DocumentModel["blocks"][number] =>
+                    Boolean(
+                      documentBlock &&
+                        documentBlock.tokenEnd >= documentBlock.tokenStart,
+                    ),
+                );
 
               return (
                 <article
                   key={block.key}
                   id={block.headingId}
-                  ref={isActive ? activeParagraphRef : null}
+                  ref={
+                    isActive && activeMarkdownBlocks.length === 0
+                      ? activeParagraphRef
+                      : null
+                  }
                   data-reader-classic-active={isActive ? "true" : undefined}
                   data-reader-markdown-block-index={index}
-                  className={`reader-markdown-block scroll-mt-4 rounded-[1.15rem] px-4 py-3 transition md:scroll-mt-6 md:rounded-[1.35rem] md:px-5 md:py-4 ${
-                    isActive ? "reader-active-paragraph" : ""
-                  }`}
+                  className="reader-markdown-block scroll-mt-4 rounded-[1.15rem] px-4 py-3 transition md:scroll-mt-6 md:rounded-[1.35rem] md:px-5 md:py-4"
                   onClick={
-                    onJumpToToken && typeof tokenStart === "number"
+                    !isActive && onJumpToToken && typeof tokenStart === "number"
                       ? (event) => {
                           event.stopPropagation();
                           handleJumpToToken(tokenStart);
@@ -945,14 +1066,50 @@ export function ClassicReaderView({
                       : undefined
                   }
                 >
-                  <div className="reader-markdown-preview reader-muted">
-                    <ReactMarkdown
-                      components={markdownComponents}
-                      remarkPlugins={[remarkGfm]}
-                    >
-                      {block.markdown}
-                    </ReactMarkdown>
-                  </div>
+                  {isActive && activeMarkdownBlocks.length > 0 ? (
+                    <div className="space-y-3 md:space-y-4">
+                      {activeMarkdownBlocks.map((documentBlock) => {
+                        const tokens = documentModel.tokens.slice(
+                          documentBlock.tokenStart,
+                          documentBlock.tokenEnd + 1,
+                        );
+
+                        return renderClassicDocumentBlock({
+                          activeTokenIndexes:
+                            documentBlock.index === chunk.paragraphIndex
+                              ? activeIndexes
+                              : inactiveTokenIndexes,
+                          block: documentBlock,
+                          headingTagName:
+                            block.nodeType === "heading"
+                              ? (`h${block.headingDepth ?? 3}` as
+                                  | "h1"
+                                  | "h2"
+                                  | "h3"
+                                  | "h4"
+                                  | "h5"
+                                  | "h6")
+                              : undefined,
+                          isActive: documentBlock.index === chunk.paragraphIndex,
+                          keyValue: `${block.key}:${documentBlock.index}`,
+                          strongTokenIndexes: buildStrongTokenIndexes(
+                            documentBlock.inlineSpans,
+                          ),
+                          tokens,
+                          useArticleTag: false,
+                        });
+                      })}
+                    </div>
+                  ) : (
+                    <div className="reader-markdown-preview reader-muted">
+                      <ReactMarkdown
+                        components={markdownComponents}
+                        remarkPlugins={[remarkGfm]}
+                      >
+                        {block.markdown}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </article>
               );
             })}
@@ -998,71 +1155,16 @@ export function ClassicReaderView({
               </button>
             ) : null}
             {renderedBlocks.map(
-              ({ activeTokenIndexes, block, isActive, strongTokenIndexes, tokens }) => {
-                const body = renderTokens({
-                  activeIndexes: activeTokenIndexes,
-                  onJumpToToken:
-                    isSimplifiedMarkdownPreview && !isActive
-                      ? undefined
-                      : handleJumpToToken,
-                  renderPlainText: isSimplifiedMarkdownPreview && !isActive,
+              ({ activeTokenIndexes, block, isActive, strongTokenIndexes, tokens }) =>
+                renderClassicDocumentBlock({
+                  activeTokenIndexes,
+                  block,
+                  isActive,
+                  keyValue: block.index,
+                  renderPlainTextWhenInactive: isSimplifiedMarkdownPreview,
                   strongTokenIndexes,
                   tokens,
-                });
-                const isCentered = block.alignment === "center";
-                const listMarker = block.marker ? (
-                  <span className="reader-accent pt-[0.1em] font-medium tabular-nums">
-                    {block.marker}
-                  </span>
-                ) : (
-                  <span className="reader-accent mt-[0.85em] h-2 w-2 shrink-0 rounded-full bg-current" />
-                );
-
-                return (
-                  <article
-                    key={block.index}
-                    ref={isActive ? activeParagraphRef : null}
-                    data-reader-classic-active={isActive ? "true" : undefined}
-                    data-reader-paragraph-index={block.index}
-                    className={`scroll-mt-4 rounded-[1.15rem] transition md:scroll-mt-6 md:rounded-[1.35rem] ${
-                      isActive
-                        ? "px-4 py-3 md:px-5 md:py-4"
-                        : block.kind === "heading"
-                          ? "px-1 py-1.5 md:px-2 md:py-2"
-                          : "px-1 py-2 md:px-2 md:py-3"
-                    }`}
-                    onClick={
-                      onJumpToToken
-                        ? (event) => {
-                            event.stopPropagation();
-                            handleJumpToToken(block.tokenStart);
-                          }
-                        : undefined
-                    }
-                  >
-                    {block.kind === "heading" ? (
-                      <h3
-                        className={`reader-panel-strong-text font-heading text-2xl font-semibold tracking-tight md:text-3xl lg:text-4xl ${
-                          isCentered ? "text-center" : "text-left"
-                        }`}
-                      >
-                        {body}
-                      </h3>
-                    ) : block.kind === "list-item" ? (
-                      <p className="reader-body reader-muted grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-                        {listMarker}
-                        <span>{body}</span>
-                      </p>
-                    ) : (
-                      <p
-                        className={`reader-body reader-muted ${isCentered ? "text-center" : "text-left"}`}
-                      >
-                        {body}
-                      </p>
-                    )}
-                  </article>
-                );
-              },
+                }),
             )}
             {shouldWindowClassicBlocks &&
             renderedBlockWindow.hiddenAfterCount > 0 ? (

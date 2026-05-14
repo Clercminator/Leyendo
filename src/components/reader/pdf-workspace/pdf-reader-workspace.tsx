@@ -1375,6 +1375,7 @@ export function PdfReaderWorkspace({
     bookmarks,
     currentPdfPageIndex: currentPageIndex,
     currentPdfPageLabel: currentPageLabel,
+    defaultHighlightsSectionExpanded: hasExtractedText,
     highlightHelperText,
     highlightNote,
     highlightNoteLabel,
