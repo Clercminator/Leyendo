@@ -38,6 +38,27 @@ function renderReaderCanvas(args?: {
   activeGoalLabel?: string;
   isPlaying?: boolean;
   modeView?: React.ReactNode;
+  onReturnToOriginalPage?: () => void;
+  pdfCompanion?: {
+    currentPageIndex: number;
+    currentPageLabel: string;
+    pageCount: number;
+    pageJumpError?: string;
+    pageJumpValue: string;
+    scrollMode: "continuous" | "single-page";
+    searchQuery: string;
+    searchStatusLabel: string;
+    zoomLabel: string;
+    onPageJump: () => void;
+    onPageJumpValueChange: (value: string) => void;
+    onPageStep: (delta: -1 | 1) => void;
+    onSearchNext: () => void;
+    onSearchPrevious: () => void;
+    onSearchQueryChange: (value: string) => void;
+    onSelectScrollMode: (scrollMode: "continuous" | "single-page") => void;
+    onSelectZoomValue: (zoomValue: string) => void;
+    onZoomStep: (steps: number) => void;
+  };
   preferences?: typeof defaultReaderPreferences;
   remainingWords?: number;
 }) {
@@ -78,6 +99,8 @@ function renderReaderCanvas(args?: {
         isPlaying={args?.isPlaying ?? false}
         modeLabel="Classic Reader"
         modeView={args?.modeView ?? <div>Mode view</div>}
+        onReturnToOriginalPage={args?.onReturnToOriginalPage}
+        pdfCompanion={args?.pdfCompanion}
         remainingWords={args?.remainingWords}
         remainingTimeLabel="2m 2s left"
         preferences={args?.preferences ?? defaultReaderPreferences}
@@ -215,8 +238,8 @@ describe("ReaderCanvas", () => {
       screen.queryByRole("button", { name: /change theme/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /enter fullscreen/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /enter fullscreen/i }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /reading tools/i }));
 
@@ -262,6 +285,65 @@ describe("ReaderCanvas", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps a compact PDF summary visible and exposes full PDF controls through the mobile tools sheet", async () => {
+    const user = userEvent.setup();
+    mockViewportWidth = 390;
+    installMatchMedia();
+
+    renderReaderCanvas({
+      onReturnToOriginalPage: vi.fn(),
+      pdfCompanion: {
+        currentPageIndex: 0,
+        currentPageLabel: "1",
+        pageCount: 3,
+        pageJumpValue: "1",
+        scrollMode: "continuous",
+        searchQuery: "Leyendo",
+        searchStatusLabel: "1 of 1",
+        zoomLabel: "Fit width",
+        onPageJump: vi.fn(),
+        onPageJumpValueChange: vi.fn(),
+        onPageStep: vi.fn(),
+        onSearchNext: vi.fn(),
+        onSearchPrevious: vi.fn(),
+        onSearchQueryChange: vi.fn(),
+        onSelectScrollMode: vi.fn(),
+        onSelectZoomValue: vi.fn(),
+        onZoomStep: vi.fn(),
+      },
+    });
+
+    expect(
+      screen.getByRole("button", { name: /return to original page/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 of 3")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: /search this pdf/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^view$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /controls/i }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /controls/i }));
+
+    expect(
+      screen.queryByRole("textbox", { name: /search this pdf/i }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /reading tools/i }));
+
+    const dialog = screen.getByRole("dialog", { name: /reading tools/i });
+
+    expect(
+      within(dialog).getByRole("textbox", { name: /search this pdf/i }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /fit width/i })).toBeInTheDocument();
+    expect(within(dialog).getByText("Page 1")).toBeInTheDocument();
+  });
+
   it("shows the sentence and words-left summary as a single chip on desktop", () => {
     renderReaderCanvas({ remainingWords: 120 });
 
@@ -269,11 +351,18 @@ describe("ReaderCanvas", () => {
     expect(screen.getAllByText("8 sentences · 120 words left")).toHaveLength(1);
   });
 
-  it("shows the sentence and words-left summary once on compact mobile", () => {
+  it("keeps the sentence and words-left summary behind compact controls on mobile", async () => {
+    const user = userEvent.setup();
     mockViewportWidth = 390;
     installMatchMedia();
 
     renderReaderCanvas({ remainingWords: 120 });
+
+    expect(
+      screen.queryByText("8 sentences · 120 words left"),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /controls/i }));
 
     expect(screen.getByText("8 sentences · 120 words left")).toBeInTheDocument();
     expect(screen.getAllByText("8 sentences · 120 words left")).toHaveLength(1);
@@ -415,14 +504,35 @@ describe("ReaderCanvas", () => {
     expect(onTogglePlayback).not.toHaveBeenCalled();
   });
 
-  it("does not toggle playback with Space in PDF mode", async () => {
+  it("does not toggle playback with Space while the mobile tools sheet is open", async () => {
     const user = userEvent.setup();
+    mockViewportWidth = 390;
+    installMatchMedia();
+
     const { onTogglePlayback } = renderReaderCanvas({
-      preferences: {
-        ...defaultReaderPreferences,
-        mode: "pdf-page",
+      pdfCompanion: {
+        currentPageIndex: 0,
+        currentPageLabel: "1",
+        pageCount: 1,
+        pageJumpValue: "1",
+        scrollMode: "continuous",
+        searchQuery: "",
+        searchStatusLabel: "Search the document",
+        zoomLabel: "Fit width",
+        onPageJump: vi.fn(),
+        onPageJumpValueChange: vi.fn(),
+        onPageStep: vi.fn(),
+        onSearchNext: vi.fn(),
+        onSearchPrevious: vi.fn(),
+        onSearchQueryChange: vi.fn(),
+        onSelectScrollMode: vi.fn(),
+        onSelectZoomValue: vi.fn(),
+        onZoomStep: vi.fn(),
       },
     });
+
+    await user.click(screen.getByRole("button", { name: /controls/i }));
+    await user.click(screen.getByRole("button", { name: /reading tools/i }));
 
     await user.keyboard("{Space}");
 

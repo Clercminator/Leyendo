@@ -20,7 +20,6 @@ import {
   formatZoomLabel,
   getPdfSelectionSnapshot,
   getPdfSelectionText,
-  pdfReaderModeLabels,
   sanitizePdfViewerState,
   type PdfDocumentHandle,
   type PdfFindControlStateEvent,
@@ -487,9 +486,9 @@ export function PdfReaderWorkspace({
           if (!cancelled) {
             setError(
               getLocalizedCopy(locale, {
-                en: "The original PDF is not stored on this device. Re-import the PDF locally to use the in-app PDF beta fallback or open it in your browser.",
-                es: "El PDF original no esta guardado en este dispositivo. Importalo otra vez localmente para usar el PDF beta en la app o abrirlo en el navegador.",
-                pt: "O PDF original nao esta salvo neste dispositivo. Importe o PDF novamente localmente para usar o PDF beta no app ou abri-lo no navegador.",
+                en: "The original PDF is not stored on this device. Re-import the PDF locally to reopen it here or open it in your browser.",
+                es: "El PDF original no esta guardado en este dispositivo. Importalo otra vez localmente para volver a abrirlo aqui o abrirlo en el navegador.",
+                pt: "O PDF original nao esta salvo neste dispositivo. Importe o PDF novamente localmente para reabri-lo aqui ou abri-lo no navegador.",
               }),
             );
           }
@@ -1242,6 +1241,11 @@ export function PdfReaderWorkspace({
     es: "Abrir PDF en el navegador",
     pt: "Abrir PDF no navegador",
   });
+  const browserPdfModeLabel = getLocalizedCopy(locale, {
+    en: "Browser PDF",
+    es: "PDF en navegador",
+    pt: "PDF no navegador",
+  });
   const openBrowserPdfInsteadLabel = getLocalizedCopy(locale, {
     en: "Open Browser PDF instead",
     es: "Abrir PDF en el navegador",
@@ -1448,9 +1452,9 @@ export function PdfReaderWorkspace({
         <FileWarning className="mx-auto h-8 w-8 text-amber-700" />
         <h2 className="mt-5 text-3xl font-semibold tracking-tight">
           {getLocalizedCopy(locale, {
-            en: "The in-app PDF beta view is unavailable",
-            es: "La vista PDF beta en la app no esta disponible",
-            pt: "A visualizacao PDF beta no app nao esta disponivel",
+            en: "This PDF workspace is unavailable",
+            es: "Este espacio de trabajo PDF no esta disponible",
+            pt: "Este espaco de trabalho PDF nao esta disponivel",
             })}
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-amber-900/80">
@@ -1506,44 +1510,67 @@ export function PdfReaderWorkspace({
       <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-200 shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
         <div className="flex flex-col gap-3 border-b border-slate-300/80 bg-slate-50 px-3 py-3 text-sm text-slate-700 sm:px-5 sm:py-4">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div className="relative" ref={modeMenuRef}>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsModeMenuOpen((current) => !current);
-                  setIsViewMenuOpen(false);
-                }}
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-xs tracking-[0.18em] text-slate-700 uppercase transition hover:border-slate-400 sm:px-4 sm:text-sm"
-              >
-                {getLocalizedCopy(locale, pdfReaderModeLabels["pdf-page"])}
-                <ChevronDown
-                  className={`h-4 w-4 transition ${isModeMenuOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-              {isModeMenuOpen ? (
-                <div className={toolbarDropdownClass}>
-                  <div className="grid gap-2">
-                    {availableModes.map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => {
-                          onSelectMode(mode);
-                          setIsModeMenuOpen(false);
-                        }}
-                        className={`rounded-full border px-3 py-2 text-left text-sm transition ${
-                          mode === "pdf-page"
-                            ? "border-slate-900 bg-slate-900 text-white"
-                            : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100"
-                        }`}
-                      >
-                        {getLocalizedCopy(locale, pdfReaderModeLabels[mode])}
-                      </button>
-                    ))}
+            {availableModes.length > 0 ? (
+              <div className="relative" ref={modeMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModeMenuOpen((current) => !current);
+                    setIsViewMenuOpen(false);
+                  }}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-xs tracking-[0.18em] text-slate-700 uppercase transition hover:border-slate-400 sm:px-4 sm:text-sm"
+                >
+                  {browserPdfModeLabel}
+                  <ChevronDown
+                    className={`h-4 w-4 transition ${isModeMenuOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {isModeMenuOpen ? (
+                  <div className={toolbarDropdownClass}>
+                    <div className="grid gap-2">
+                      {availableModes.map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => {
+                            onSelectMode(mode);
+                            setIsModeMenuOpen(false);
+                          }}
+                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                        >
+                          {getLocalizedCopy(locale, {
+                            "focus-word": {
+                              en: "Focus Word",
+                              es: "Foco por palabra",
+                              pt: "Palavra foco",
+                            },
+                            "phrase-chunk": {
+                              en: "Phrase Chunk",
+                              es: "Bloques de frases",
+                              pt: "Blocos de frases",
+                            },
+                            "guided-line": {
+                              en: "Guided Line",
+                              es: "Línea guiada",
+                              pt: "Linha guiada",
+                            },
+                            "classic-reader": {
+                              en: "Classic Reader",
+                              es: "Lector clásico",
+                              pt: "Leitor classico",
+                            },
+                          }[mode])}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            ) : (
+              <span className="inline-flex min-h-10 items-center rounded-full border border-slate-300 bg-white px-3 py-2 text-xs tracking-[0.18em] text-slate-700 uppercase sm:px-4 sm:text-sm">
+                {browserPdfModeLabel}
+              </span>
+            )}
 
             <button
               type="button"

@@ -37,6 +37,7 @@ interface ClassicReaderViewProps {
   useMarkdownPreview?: boolean;
   onJumpToToken?: (tokenIndex: number) => void;
   reduceMotion: boolean;
+  visibleSourcePageIndex?: number;
 }
 
 interface MarkdownPreviewBlock {
@@ -630,6 +631,7 @@ export function ClassicReaderView({
   useMarkdownPreview = true,
   onJumpToToken,
   reduceMotion,
+  visibleSourcePageIndex,
 }: ClassicReaderViewProps) {
   const { locale } = useLocale();
   const activeParagraphRef = useRef<HTMLElement | null>(null);
@@ -650,8 +652,18 @@ export function ClassicReaderView({
   const usesMarkdownPreview = hasMarkdownPreviewSource && useMarkdownPreview;
   const renderableBlocks = useMemo(
     () =>
-      documentModel.blocks.filter((block) => block.tokenEnd >= block.tokenStart),
-    [documentModel.blocks],
+      documentModel.blocks.filter((block) => {
+        if (block.tokenEnd < block.tokenStart) {
+          return false;
+        }
+
+        if (typeof visibleSourcePageIndex !== "number") {
+          return true;
+        }
+
+        return block.sourcePageIndex === visibleSourcePageIndex;
+      }),
+    [documentModel.blocks, visibleSourcePageIndex],
   );
   const shouldWindowClassicBlocks =
     isSimplifiedMarkdownPreview ||

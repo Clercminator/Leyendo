@@ -250,7 +250,7 @@ describe("ReaderWorkspace PDF gating", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("pdf-workspace")).toHaveTextContent(
-        "image-pdf|pdf-page",
+        "image-pdf|",
       );
     });
 
@@ -267,7 +267,7 @@ describe("ReaderWorkspace PDF gating", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("pdf-workspace")).toHaveTextContent(
-        "image-pdf|pdf-page",
+        "image-pdf|",
       );
     });
 

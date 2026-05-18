@@ -119,9 +119,9 @@ const demoTips = {
 };
 
 const demoPdfNote = {
-  en: "Browser PDF is not part of this sample because it opens the original PDF in a browser tab. After import, that path keeps the page layout, while the text modes trade layout fidelity for more pacing help and the in-app PDF beta stays as fallback.",
-  es: "El PDF en navegador no forma parte de esta muestra porque abre el PDF original en una pestaña del navegador. Después de importar, esa ruta conserva el diseño de la página, mientras los modos de texto cambian fidelidad visual por ayuda de ritmo y el PDF beta en la app queda como respaldo.",
-  pt: "O PDF no navegador nao faz parte desta amostra porque abre o PDF original em uma aba do navegador. Depois da importacao, esse caminho preserva a pagina, enquanto os modos de texto trocam fidelidade de layout por mais ajuda de ritmo e o PDF beta no app fica como fallback.",
+  en: "Browser PDF is not part of this sample because it opens the original PDF in a browser tab. After import, that path keeps the page layout, while Classic Reader and the fast text modes become the companion layer when you want page-aware reading controls inside Leyendo.",
+  es: "El PDF en navegador no forma parte de esta muestra porque abre el PDF original en una pestaña del navegador. Después de importar, esa ruta conserva el diseño de la página, mientras el Lector clásico y los modos rápidos de texto se convierten en la capa complementaria cuando quieres controles de lectura por página dentro de Leyendo.",
+  pt: "O PDF no navegador nao faz parte desta amostra porque abre o PDF original em uma aba do navegador. Depois da importacao, esse caminho preserva a pagina, enquanto o Leitor classico e os modos rapidos de texto viram a camada complementar quando voce quer controles de leitura por pagina dentro do Leyendo.",
 };
 
 const demoStatusIdle = {

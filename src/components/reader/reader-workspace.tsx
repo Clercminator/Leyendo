@@ -274,32 +274,23 @@ export function ReaderWorkspace({
     () => createDocumentComplexityNotice(locale, documentComplexityHints),
     [documentComplexityHints, locale],
   );
-  const canUsePdfPageMode =
+  const canUseLegacyPdfWorkspace =
     payload?.sourceKind === "pdf" && pdfAssetState === "present";
   const availableModes = useMemo<ReaderMode[]>(() => {
-    if (canUsePdfPageMode && hasExtractedText) {
+    if (canUseLegacyPdfWorkspace && hasExtractedText) {
       return [...readerModes];
     }
 
-    if (canUsePdfPageMode) {
-      return ["pdf-page"];
-    }
-
-    return readerModes.filter((mode) => mode !== "pdf-page");
-  }, [canUsePdfPageMode, hasExtractedText]);
-  const isPdfPageMode =
-    canUsePdfPageMode && (!hasExtractedText || preferences.mode === "pdf-page");
-  const canvasMode = isPdfPageMode
-    ? "pdf-page"
-    : preferences.mode === "pdf-page"
-      ? "classic-reader"
-      : preferences.mode;
+    return [];
+  }, [canUseLegacyPdfWorkspace, hasExtractedText]);
+  const showsLegacyPdfWorkspace =
+    canUseLegacyPdfWorkspace && !hasExtractedText;
+  const canvasMode = preferences.mode;
   const simplifyClassicMarkdownPreview = useMemo(
     () => shouldSimplifyClassicMarkdown(activePayload),
     [activePayload],
   );
   const modeLabel = {
-    "pdf-page": { en: "Standard", es: "PDF estándar", pt: "Standard" },
     "focus-word": {
       en: "Focus Word",
       es: "Foco por palabra",
@@ -327,7 +318,7 @@ export function ReaderWorkspace({
     ownerKey: userId ?? "guest",
     planTier: activePlanTier,
     readerMode: canvasMode,
-    readerReady: Boolean(activePayload && (activeChunk || isPdfPageMode)),
+    readerReady: Boolean(activePayload && (activeChunk || showsLegacyPdfWorkspace)),
     setPlaying,
   });
 
@@ -395,10 +386,10 @@ export function ReaderWorkspace({
   }, [document?.id, document?.sourceKind]);
 
   useEffect(() => {
-    if (isPdfPageMode && isPlaying) {
+    if (showsLegacyPdfWorkspace && isPlaying) {
       setPlaying(false);
     }
-  }, [isPdfPageMode, isPlaying, setPlaying]);
+  }, [isPlaying, setPlaying, showsLegacyPdfWorkspace]);
 
   useEffect(() => {
     if (
@@ -427,7 +418,7 @@ export function ReaderWorkspace({
   }, [activeChunk]);
 
   useEffect(() => {
-    if (!bookmarkId || !isPdfPageMode) {
+    if (!bookmarkId || !showsLegacyPdfWorkspace) {
       return;
     }
 
@@ -447,7 +438,7 @@ export function ReaderWorkspace({
         pageIndex: sourcePageIndex,
       });
     });
-  }, [bookmarkId, bookmarks, isPdfPageMode]);
+  }, [bookmarkId, bookmarks, showsLegacyPdfWorkspace]);
 
   useEffect(() => {
     if (runtimeChunks.length === 0) {
@@ -824,7 +815,7 @@ export function ReaderWorkspace({
 
       moveToChunk(nextChunkIndex);
 
-      if (!isPdfPageMode || !payload) {
+      if (!showsLegacyPdfWorkspace || !payload) {
         return;
       }
 
@@ -836,7 +827,7 @@ export function ReaderWorkspace({
     [
       canToggleTextPresentation,
       getRuntimeChunksForPresentation,
-      isPdfPageMode,
+      showsLegacyPdfWorkspace,
       moveToChunk,
       payload,
       textPresentation,
@@ -859,7 +850,7 @@ export function ReaderWorkspace({
         typeof bookmark.sourcePageIndex === "number" &&
         (runtimeChunks.length === 0 || bookmark.chunkIndex < 0)
       ) {
-        if (isPdfPageMode) {
+        if (showsLegacyPdfWorkspace) {
           setPdfPageJumpRequest({
             nonce: Date.now(),
             pageIndex: bookmark.sourcePageIndex,
@@ -873,7 +864,7 @@ export function ReaderWorkspace({
       jumpToAnchor(bookmark);
       announce(`${bookmark.label} loaded.`);
     },
-    [announce, isPdfPageMode, jumpToAnchor, runtimeChunks.length],
+    [announce, jumpToAnchor, runtimeChunks.length, showsLegacyPdfWorkspace],
   );
 
   const jumpToHighlight = useCallback(
@@ -970,6 +961,11 @@ export function ReaderWorkspace({
     es: "Notas, destacados y marcadores",
     pt: "Notas, destaques e marcadores",
   });
+  const sidebarCompactLabel = getLocalizedCopy(locale, {
+    en: "Notes",
+    es: "Notas",
+    pt: "Notas",
+  });
   const sidebarOpenLabel = getLocalizedCopy(locale, {
     en: "Hide",
     es: "Ocultar",
@@ -999,10 +995,11 @@ export function ReaderWorkspace({
     onJumpToBookmark: jumpToBookmark,
     onJumpToHighlight: jumpToHighlight,
   };
-  const mobileSidebarSection = isPdfPageMode ? null : (
+  const mobileSidebarSection = showsLegacyPdfWorkspace ? null : (
     <ReaderWorkspaceMobileSidebar
       isOpen={isMobileSidebarOpen}
       sidebarClosedLabel={sidebarClosedLabel}
+      sidebarCompactLabel={sidebarCompactLabel}
       sidebarOpenLabel={sidebarOpenLabel}
       sidebarSummary={sidebarSummary}
       sidebarToggleLabel={sidebarToggleLabel}
@@ -1165,7 +1162,7 @@ export function ReaderWorkspace({
   }, [announce, applyPreferenceChanges, preferences.reduceMotion]);
 
   const handlePlaybackToggle = useCallback(() => {
-    if (isPdfPageMode) {
+    if (showsLegacyPdfWorkspace) {
       return;
     }
 
@@ -1175,7 +1172,7 @@ export function ReaderWorkspace({
 
     setPlaying(!isPlaying);
     announce(isPlaying ? "Playback paused." : "Playback resumed.");
-  }, [activeChunk, announce, isPdfPageMode, isPlaying, setPlaying]);
+  }, [activeChunk, announce, isPlaying, setPlaying, showsLegacyPdfWorkspace]);
 
   const lastAnnouncedAdPhaseRef = useRef<typeof readerAds.phase | undefined>(
     undefined,
@@ -1291,7 +1288,7 @@ export function ReaderWorkspace({
     !document ||
     error ||
     !activePayload ||
-    (!activeChunk && !isPdfPageMode)
+    (!activeChunk && !showsLegacyPdfWorkspace)
   ) {
     return (
       <ReaderWorkspaceState
@@ -1329,7 +1326,7 @@ export function ReaderWorkspace({
       data-reader-font-scale={preferences.fontScale.toFixed(1)}
       data-reader-line-height={preferences.lineHeight.toFixed(1)}
     >
-      {!isPdfPageMode && documentComplexityNotice ? (
+      {!showsLegacyPdfWorkspace && documentComplexityNotice ? (
         <div className="rounded-[1.5rem] border border-amber-300/30 bg-amber-500/10 px-4 py-4 shadow-[0_14px_40px_rgba(20,26,56,0.08)]">
           <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-amber) uppercase">
             {documentComplexityNotice.title}
@@ -1356,7 +1353,7 @@ export function ReaderWorkspace({
           aria-live="polite"
         />
 
-        {isPdfPageMode ? (
+        {showsLegacyPdfWorkspace ? (
           <PdfReaderWorkspace
             availableModes={availableModes}
             bookmarks={bookmarks}
@@ -1535,7 +1532,7 @@ export function ReaderWorkspace({
         />
       ) : null}
 
-      {isPdfPageMode ? null : (
+      {showsLegacyPdfWorkspace ? null : (
         <>
           <div className="hidden lg:block">
             <ReaderSidebar {...sidebarProps} />

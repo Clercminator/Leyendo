@@ -290,11 +290,6 @@ export const pdfReaderModeLabels: Record<
   ReaderMode,
   Record<"en" | "es" | "pt", string>
 > = {
-  "pdf-page": {
-    en: "In-app PDF beta",
-    es: "PDF beta en la app",
-    pt: "PDF beta no app",
-  },
   "focus-word": {
     en: "Focus Word",
     es: "Foco por palabra",

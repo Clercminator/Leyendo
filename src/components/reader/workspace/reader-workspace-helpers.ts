@@ -91,10 +91,6 @@ export function resolveReaderCanvasMode(args: {
     return "classic-reader";
   }
 
-  if (availableModes.includes("pdf-page")) {
-    return "pdf-page";
-  }
-
   return availableModes[0] ?? "classic-reader";
 }
 
@@ -221,8 +217,7 @@ export function shouldPreferLiteralMarkdownForMode(args: {
     !document ||
     document.sourceKind !== "markdown" ||
     !document.rawText?.trim() ||
-    mode === "classic-reader" ||
-    mode === "pdf-page"
+    mode === "classic-reader"
   ) {
     return false;
   }

@@ -11,8 +11,8 @@ import {
   MAX_READER_WORDS_PER_MINUTE,
   MIN_READER_WORDS_PER_MINUTE,
   defaultReaderPreferences,
+  normalizeReaderMode,
   readingGoals,
-  readerModes,
   readerThemes,
   type ReaderPreferences,
 } from "@/types/reader";
@@ -98,11 +98,7 @@ function normalizeReaderPreferences(input: unknown) {
   }
 
   const candidate = input as Partial<Record<keyof ReaderPreferences, unknown>>;
-  const mode =
-    typeof candidate.mode === "string" &&
-    readerModes.includes(candidate.mode as (typeof readerModes)[number])
-      ? (candidate.mode as ReaderPreferences["mode"])
-      : defaultReaderPreferences.mode;
+  const mode = normalizeReaderMode(candidate.mode);
   const theme =
     typeof candidate.theme === "string" &&
     readerThemes.includes(candidate.theme as (typeof readerThemes)[number])

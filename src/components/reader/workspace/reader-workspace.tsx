@@ -17,12 +17,14 @@ import {
   deleteBookmark,
   deleteHighlight,
   getDocumentAsset,
+  getStoredPdfViewerState,
   saveBookmark,
+  savePdfViewerState,
   saveHighlight,
 } from "@/db/repositories";
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { useLocale } from "@/components/layout/locale-provider";
-import { PdfReaderWorkspace } from "@/components/reader/pdf-workspace/pdf-reader-workspace";
+import { formatZoomLabel } from "@/components/reader/pdf-workspace/pdf-reader-workspace-helpers";
 import { ReaderAdBreakOverlay } from "@/components/reader/reader-ad-break-overlay";
 import { ReaderCanvas } from "@/components/reader/canvas/reader-canvas";
 import { ReaderWorkspaceMobileSidebar } from "@/components/reader/workspace/reader-workspace-mobile-sidebar";
@@ -59,6 +61,8 @@ import {
   getMatchingReadingGoal,
 } from "@/features/reader/engine/presets";
 import {
+  getPdfPageLabel,
+  resolvePdfPageInput,
   resolvePdfSelectionAnchor,
   resolveSourcePageIndexForAnchor,
 } from "@/features/reader/pdf/navigation";
@@ -67,15 +71,18 @@ import { createDocumentComplexityNotice } from "@/lib/document-complexity";
 import { getLocalizedCopy } from "@/lib/locale";
 import { recordPerfMetric } from "@/lib/perf/instrumentation";
 import { getEffectivePlanTier, hasPlanAccess } from "@/lib/plans";
+import { normalizeText } from "@/lib/text/normalize-text";
 import { useReaderStore } from "@/state/reader-store";
 import type { Chunk, DocumentModel, TextPresentation } from "@/types/document";
 import type {
   Bookmark,
   Highlight,
+  PdfViewerState,
   ReaderMode,
   ReaderPreferences,
 } from "@/types/reader";
 import {
+  defaultPdfViewerState,
   MAX_READER_WORDS_PER_MINUTE,
   MIN_READER_WORDS_PER_MINUTE,
   readerModes,
@@ -92,6 +99,62 @@ const READER_BURST_PREFERENCE_DELAY_MS = 120;
 
 function getPerfNow() {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
+function getPdfCompanionPageLabels(document: DocumentModel | undefined) {
+  if (!document || document.sourceKind !== "pdf") {
+    return null;
+  }
+
+  if (document.pages.length > 0) {
+    return document.pages.map((page) => page.label || String(page.index + 1));
+  }
+
+  const maxSourcePageIndex = document.tokens.reduce((maxIndex, token) => {
+    return typeof token.sourcePageIndex === "number"
+      ? Math.max(maxIndex, token.sourcePageIndex)
+      : maxIndex;
+  }, -1);
+
+  if (maxSourcePageIndex < 0) {
+    return ["1"];
+  }
+
+  return Array.from({ length: maxSourcePageIndex + 1 }, (_, index) => {
+    return String(index + 1);
+  });
+}
+
+function findPdfSearchTokenIndexes(document: DocumentModel | undefined, query: string) {
+  if (!document || document.sourceKind !== "pdf") {
+    return [] as number[];
+  }
+
+  const queryTokens = normalizeText(query).tokens.map((token) => token.toLowerCase());
+
+  if (queryTokens.length === 0) {
+    return [] as number[];
+  }
+
+  const matches: number[] = [];
+  const maxStartIndex = document.tokens.length - queryTokens.length;
+
+  for (let startIndex = 0; startIndex <= maxStartIndex; startIndex += 1) {
+    let isMatch = true;
+
+    for (let offset = 0; offset < queryTokens.length; offset += 1) {
+      if (document.tokens[startIndex + offset]?.normalizedValue !== queryTokens[offset]) {
+        isMatch = false;
+        break;
+      }
+    }
+
+    if (isMatch) {
+      matches.push(startIndex);
+    }
+  }
+
+  return matches;
 }
 
 export function ReaderWorkspace({
@@ -138,8 +201,13 @@ export function ReaderWorkspace({
   const [pdfAssetState, setPdfAssetState] = useState<
     "unknown" | "present" | "missing"
   >("unknown");
-  const [pdfPageJumpRequest, setPdfPageJumpRequest] = useState<
-    { nonce: number; pageIndex: number } | undefined
+  const [pdfCompanionState, setPdfCompanionState] = useState<PdfViewerState>(
+    defaultPdfViewerState,
+  );
+  const [pdfPageJumpError, setPdfPageJumpError] = useState<string>();
+  const [pdfPageJumpValue, setPdfPageJumpValue] = useState("");
+  const [pdfSearchMatchIndex, setPdfSearchMatchIndex] = useState<
+    number | undefined
   >();
   const documentComplexityNoticeContentId = useId();
   const [textPresentationOverride, setTextPresentationOverride] = useState<{
@@ -160,6 +228,8 @@ export function ReaderWorkspace({
     literal?: DocumentModel;
   }>({});
   const preferencesRef = useRef(preferences);
+  const pdfCompanionStateLoadedRef = useRef(false);
+  const pdfCompanionStateSaveTimeoutRef = useRef<number | undefined>(undefined);
   const forcedTextPresentationNoticeRef = useRef<string | undefined>(
     undefined,
   );
@@ -214,46 +284,26 @@ export function ReaderWorkspace({
         savedSession?.textPresentation ??
         "clean")
     : undefined;
+  const isPdfDocument = payload?.sourceKind === "pdf";
   const hasExtractedText = Boolean(
     payload && payload.tokens.length > 0 && payload.text.trim().length > 0,
   );
-  const canUsePdfPageMode =
-    payload?.sourceKind === "pdf" && pdfAssetState === "present";
   const canOpenBrowserPdf =
-    payload?.sourceKind === "pdf" && pdfAssetState === "present";
+    isPdfDocument && pdfAssetState === "present";
   const availableModes = useMemo<ReaderMode[]>(() => {
-    if (canUsePdfPageMode && hasExtractedText) {
-      return [...readerModes];
-    }
-
-    if (canUsePdfPageMode) {
-      return ["pdf-page"];
-    }
-
-    return readerModes.filter((mode) => mode !== "pdf-page");
-  }, [canUsePdfPageMode, hasExtractedText]);
+    return [...readerModes];
+  }, []);
   const requestedMode = documentModeOverride ?? preferences.mode;
 
   useEffect(() => {
-    if (!document?.id) {
-      setDocumentModeOverride(undefined);
-      return;
-    }
-
-    if (payload?.sourceKind === "pdf" && pdfAssetState === "present") {
-      setDocumentModeOverride("pdf-page");
-      return;
-    }
-
     setDocumentModeOverride(undefined);
-  }, [document?.id, payload?.sourceKind, pdfAssetState]);
+  }, [document?.id]);
 
   const canvasMode = resolveReaderCanvasMode({
     availableModes,
     requestedMode,
   });
-  const isPdfPageMode = canvasMode === "pdf-page";
-  const runtimeReaderMode = isPdfPageMode ? "classic-reader" : canvasMode;
+  const runtimeReaderMode = canvasMode;
   const deferredChunkSize = useDeferredValue(preferences.chunkSize);
   const deferredFocusWindow = useDeferredValue(preferences.focusWindow);
   const runtimeChunkOptions = useMemo(
@@ -401,6 +451,62 @@ export function ReaderWorkspace({
 
     return chunkIndexByPage;
   }, [runtimeChunks]);
+  const pdfPageLabels = useMemo(() => {
+    return getPdfCompanionPageLabels(payload);
+  }, [payload]);
+  const pdfPageCount = pdfPageLabels?.length ?? 0;
+  const boundedPdfPageIndex = useMemo(() => {
+    if (pdfPageCount <= 0) {
+      return 0;
+    }
+
+    return Math.max(0, Math.min(pdfCompanionState.pageIndex, pdfPageCount - 1));
+  }, [pdfCompanionState.pageIndex, pdfPageCount]);
+  const currentPdfCompanionPageIndex = useMemo(() => {
+    if (typeof currentPdfSourcePageIndex === "number") {
+      return pdfPageCount > 0
+        ? Math.max(0, Math.min(currentPdfSourcePageIndex, pdfPageCount - 1))
+        : currentPdfSourcePageIndex;
+    }
+
+    return boundedPdfPageIndex;
+  }, [boundedPdfPageIndex, currentPdfSourcePageIndex, pdfPageCount]);
+  const currentPdfCompanionPageLabel = useMemo(() => {
+    return getPdfPageLabel(currentPdfCompanionPageIndex, pdfPageLabels);
+  }, [currentPdfCompanionPageIndex, pdfPageLabels]);
+  const pdfSearchTokenIndexes = useMemo(() => {
+    return findPdfSearchTokenIndexes(activePayload, pdfCompanionState.searchQuery);
+  }, [activePayload, pdfCompanionState.searchQuery]);
+  const pdfSearchStatusLabel = useMemo(() => {
+    if (!pdfCompanionState.searchQuery.trim()) {
+      return getLocalizedCopy(locale, {
+        en: "Search the document",
+        es: "Buscar en el documento",
+        pt: "Buscar no documento",
+      });
+    }
+
+    if (pdfSearchTokenIndexes.length === 0) {
+      return getLocalizedCopy(locale, {
+        en: "No matches",
+        es: "Sin resultados",
+        pt: "Sem resultados",
+      });
+    }
+
+    return getLocalizedCopy(locale, {
+      en: `${(pdfSearchMatchIndex ?? 0) + 1} of ${pdfSearchTokenIndexes.length}`,
+      es: `${(pdfSearchMatchIndex ?? 0) + 1} de ${pdfSearchTokenIndexes.length}`,
+      pt: `${(pdfSearchMatchIndex ?? 0) + 1} de ${pdfSearchTokenIndexes.length}`,
+    });
+  }, [locale, pdfCompanionState.searchQuery, pdfSearchMatchIndex, pdfSearchTokenIndexes.length]);
+  const pdfCompanionZoomLabel = useMemo(() => {
+    return formatZoomLabel({
+      locale,
+      zoomPercent: Math.max(80, Math.min(180, Math.round(preferences.fontScale * 100))),
+      zoomValue: pdfCompanionState.zoomValue,
+    });
+  }, [locale, pdfCompanionState.zoomValue, preferences.fontScale]);
   const progress = runtimeChunks.length
     ? deriveReaderProgress({ chunks: runtimeChunks }, resolvedChunkIndex)
     : 0;
@@ -516,11 +622,6 @@ export function ReaderWorkspace({
     [activePayload],
   );
   const modeLabel = {
-    "pdf-page": {
-      en: "In-app PDF beta",
-      es: "PDF beta en la app",
-      pt: "PDF beta no app",
-    },
     "focus-word": {
       en: "Focus Word",
       es: "Foco por palabra",
@@ -548,7 +649,7 @@ export function ReaderWorkspace({
     ownerKey: userId ?? "guest",
     planTier: activePlanTier,
     readerMode: canvasMode,
-    readerReady: Boolean(activePayload && (activeChunk || isPdfPageMode)),
+    readerReady: Boolean(activePayload && activeChunk),
     setPlaying,
   });
 
@@ -591,6 +692,111 @@ export function ReaderWorkspace({
   });
 
   useEffect(() => {
+    if (!document?.id || !isPdfDocument) {
+      pdfCompanionStateLoadedRef.current = false;
+      setPdfCompanionState(defaultPdfViewerState);
+      setPdfPageJumpError(undefined);
+      setPdfPageJumpValue("");
+      setPdfSearchMatchIndex(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    pdfCompanionStateLoadedRef.current = false;
+
+    void (async () => {
+      const storedState = await getStoredPdfViewerState(document.id);
+
+      if (cancelled) {
+        return;
+      }
+
+      const normalizedState: PdfViewerState = {
+        pageIndex:
+          pdfPageCount > 0
+            ? Math.max(0, Math.min(storedState.pageIndex, pdfPageCount - 1))
+            : 0,
+        rotation: [0, 90, 180, 270].includes(storedState.rotation)
+          ? storedState.rotation
+          : 0,
+        scrollMode:
+          storedState.scrollMode === "single-page"
+            ? "single-page"
+            : "continuous",
+        searchQuery: storedState.searchQuery || "",
+        zoomValue: storedState.zoomValue || defaultPdfViewerState.zoomValue,
+      };
+
+      setPdfCompanionState(normalizedState);
+      setPdfPageJumpError(undefined);
+      setPdfPageJumpValue(getPdfPageLabel(normalizedState.pageIndex, pdfPageLabels));
+      pdfCompanionStateLoadedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [document?.id, isPdfDocument, pdfPageCount, pdfPageLabels]);
+
+  useEffect(() => {
+    if (
+      !document?.id ||
+      !isPdfDocument ||
+      !pdfCompanionStateLoadedRef.current
+    ) {
+      return;
+    }
+
+    if (pdfCompanionStateSaveTimeoutRef.current) {
+      window.clearTimeout(pdfCompanionStateSaveTimeoutRef.current);
+    }
+
+    pdfCompanionStateSaveTimeoutRef.current = window.setTimeout(() => {
+      void savePdfViewerState(document.id, {
+        ...pdfCompanionState,
+        pageIndex: boundedPdfPageIndex,
+      });
+    }, 250);
+
+    return () => {
+      if (pdfCompanionStateSaveTimeoutRef.current) {
+        window.clearTimeout(pdfCompanionStateSaveTimeoutRef.current);
+        pdfCompanionStateSaveTimeoutRef.current = undefined;
+      }
+    };
+  }, [boundedPdfPageIndex, document?.id, isPdfDocument, pdfCompanionState]);
+
+  useEffect(() => {
+    if (!isPdfDocument) {
+      return;
+    }
+
+    setPdfPageJumpValue(
+      getPdfPageLabel(currentPdfCompanionPageIndex, pdfPageLabels),
+    );
+  }, [currentPdfCompanionPageIndex, isPdfDocument, pdfPageLabels]);
+
+  useEffect(() => {
+    if (!pdfCompanionState.searchQuery.trim()) {
+      setPdfSearchMatchIndex(undefined);
+      return;
+    }
+
+    if (pdfSearchTokenIndexes.length === 0) {
+      setPdfSearchMatchIndex(undefined);
+      return;
+    }
+
+    setPdfSearchMatchIndex((current) => {
+      if (typeof current === "number" && current < pdfSearchTokenIndexes.length) {
+        return current;
+      }
+
+      return 0;
+    });
+  }, [pdfCompanionState.searchQuery, pdfSearchTokenIndexes.length]);
+
+  useEffect(() => {
     if (document?.sourceKind !== "pdf") {
       return;
     }
@@ -609,12 +815,6 @@ export function ReaderWorkspace({
       cancelled = true;
     };
   }, [document?.id, document?.sourceKind]);
-
-  useEffect(() => {
-    if (isPdfPageMode && isPlaying) {
-      setPlaying(false);
-    }
-  }, [isPdfPageMode, isPlaying, setPlaying]);
 
   useEffect(() => {
     if (
@@ -643,7 +843,7 @@ export function ReaderWorkspace({
   }, [activeChunk]);
 
   useEffect(() => {
-    if (!bookmarkId || !isPdfPageMode) {
+    if (!bookmarkId || !isPdfDocument) {
       return;
     }
 
@@ -657,13 +857,25 @@ export function ReaderWorkspace({
 
     const sourcePageIndex = pageBookmark.sourcePageIndex;
 
+    setPdfCompanionState((currentState) => ({
+      ...currentState,
+      pageIndex: sourcePageIndex,
+    }));
+
+    const chunkIndexForPage = runtimeChunkIndexBySourcePage.get(sourcePageIndex);
+
     startTransition(() => {
-      setPdfPageJumpRequest({
-        nonce: Date.now(),
-        pageIndex: sourcePageIndex,
-      });
+      if (typeof chunkIndexForPage === "number") {
+        setChunkIndex(chunkIndexForPage);
+      }
     });
-  }, [bookmarkId, bookmarks, isPdfPageMode]);
+  }, [
+    bookmarkId,
+    bookmarks,
+    isPdfDocument,
+    runtimeChunkIndexBySourcePage,
+    setChunkIndex,
+  ]);
 
   useEffect(() => {
     if (runtimeChunks.length === 0) {
@@ -1213,19 +1425,21 @@ export function ReaderWorkspace({
 
       moveToChunk(nextChunkIndex);
 
-      if (!isPdfPageMode || !payload) {
+      if (!payload || payload.sourceKind !== "pdf") {
         return;
       }
 
       const pageIndex = resolveSourcePageIndexForAnchor(payload, anchor);
       if (typeof pageIndex === "number") {
-        setPdfPageJumpRequest({ nonce: Date.now(), pageIndex });
+        setPdfCompanionState((currentState) => ({
+          ...currentState,
+          pageIndex,
+        }));
       }
     },
     [
       canToggleTextPresentation,
       getRuntimeChunksForPresentation,
-      isPdfPageMode,
       moveToChunk,
       payload,
       textPresentation,
@@ -1248,12 +1462,10 @@ export function ReaderWorkspace({
         typeof bookmark.sourcePageIndex === "number" &&
         (runtimeChunks.length === 0 || bookmark.chunkIndex < 0)
       ) {
-        if (isPdfPageMode) {
-          setPdfPageJumpRequest({
-            nonce: Date.now(),
-            pageIndex: bookmark.sourcePageIndex,
-          });
-        }
+        setPdfCompanionState((currentState) => ({
+          ...currentState,
+          pageIndex: bookmark.sourcePageIndex ?? currentState.pageIndex,
+        }));
 
         announce(`${bookmark.label} loaded.`);
         return;
@@ -1262,7 +1474,7 @@ export function ReaderWorkspace({
       jumpToAnchor(bookmark);
       announce(`${bookmark.label} loaded.`);
     },
-    [announce, isPdfPageMode, jumpToAnchor, runtimeChunks.length],
+    [announce, jumpToAnchor, runtimeChunks.length],
   );
 
   const jumpToHighlight = useCallback(
@@ -1290,6 +1502,126 @@ export function ReaderWorkspace({
       jumpToAnchor({ chunkIndex: nextChunkIndex, tokenIndex });
     },
     [jumpToAnchor, runtimeChunks],
+  );
+
+  useEffect(() => {
+    if (
+      !hasExtractedText ||
+      typeof pdfSearchMatchIndex !== "number" ||
+      pdfSearchMatchIndex < 0 ||
+      pdfSearchMatchIndex >= pdfSearchTokenIndexes.length
+    ) {
+      return;
+    }
+
+    jumpToToken(pdfSearchTokenIndexes[pdfSearchMatchIndex] ?? 0);
+  }, [hasExtractedText, jumpToToken, pdfSearchMatchIndex, pdfSearchTokenIndexes]);
+
+  const goToPdfCompanionPage = useCallback(
+    (pageIndex: number) => {
+      if (pdfPageCount <= 0) {
+        return;
+      }
+
+      const boundedPageIndex = Math.max(0, Math.min(pageIndex, pdfPageCount - 1));
+
+      setPdfCompanionState((currentState) => ({
+        ...currentState,
+        pageIndex: boundedPageIndex,
+      }));
+      setPdfPageJumpError(undefined);
+
+      const chunkIndexForPage = runtimeChunkIndexBySourcePage.get(boundedPageIndex);
+
+      if (
+        typeof chunkIndexForPage === "number" &&
+        chunkIndexForPage >= 0 &&
+        chunkIndexForPage !== resolvedChunkIndex
+      ) {
+        startTransition(() => {
+          setChunkIndex(chunkIndexForPage);
+        });
+      }
+    },
+    [pdfPageCount, resolvedChunkIndex, runtimeChunkIndexBySourcePage, setChunkIndex],
+  );
+
+  const handlePdfCompanionPageJump = useCallback(() => {
+    const resolvedPageIndex = resolvePdfPageInput({
+      input: pdfPageJumpValue,
+      pageCount: pdfPageCount,
+      pageLabels: pdfPageLabels,
+    });
+
+    if (resolvedPageIndex === null) {
+      setPdfPageJumpError(
+        getLocalizedCopy(locale, {
+          en: "Enter a valid page label or number.",
+          es: "Ingresa una pagina o etiqueta valida.",
+          pt: "Digite uma pagina ou etiqueta valida.",
+        }),
+      );
+      return;
+    }
+
+    goToPdfCompanionPage(resolvedPageIndex);
+  }, [goToPdfCompanionPage, locale, pdfPageCount, pdfPageJumpValue, pdfPageLabels]);
+
+  const handlePdfCompanionSearchStep = useCallback(
+    (delta: -1 | 1) => {
+      if (pdfSearchTokenIndexes.length === 0) {
+        return;
+      }
+
+      setPdfSearchMatchIndex((current) => {
+        if (typeof current !== "number" || current < 0) {
+          return delta > 0 ? 0 : pdfSearchTokenIndexes.length - 1;
+        }
+
+        return (current + delta + pdfSearchTokenIndexes.length) % pdfSearchTokenIndexes.length;
+      });
+    },
+    [pdfSearchTokenIndexes.length],
+  );
+
+  const handlePdfCompanionZoomStep = useCallback(
+    (steps: number) => {
+      const nextFontScale = Math.max(
+        0.8,
+        Math.min(1.8, Number((preferences.fontScale + steps * 0.1).toFixed(1))),
+      );
+
+      queueBurstPreferenceChanges(
+        { fontScale: nextFontScale },
+        `Font scale set to ${nextFontScale.toFixed(1)} times.`,
+      );
+      setPdfCompanionState((currentState) => ({
+        ...currentState,
+        zoomValue: `${Math.round(nextFontScale * 100)}%`,
+      }));
+    },
+    [preferences.fontScale, queueBurstPreferenceChanges],
+  );
+
+  const handlePdfCompanionZoomPreset = useCallback(
+    (zoomValue: string) => {
+      const presetFontScale =
+        zoomValue === "page-width"
+          ? 1.1
+          : zoomValue === "page-fit"
+            ? 1
+            : 0.9;
+
+      queueBurstPreferenceChanges(
+        { fontScale: presetFontScale },
+        `Font scale set to ${presetFontScale.toFixed(1)} times.`,
+      );
+      setPdfCompanionState((currentState) => ({
+        ...currentState,
+        zoomValue,
+      }));
+    },
+    [queueBurstPreferenceChanges],
   );
 
   const handleTextPresentationSelection = useCallback(
@@ -1368,6 +1700,10 @@ export function ReaderWorkspace({
         },
       }[preferences.readingGoal][locale]
     : undefined;
+  const visiblePdfSourcePageIndex =
+    isPdfDocument && pdfCompanionState.scrollMode === "single-page"
+      ? currentPdfCompanionPageIndex
+      : undefined;
   const modeView = useMemo(
     () => (
       <ReaderWorkspaceModeView
@@ -1378,6 +1714,7 @@ export function ReaderWorkspace({
         reduceMotion={preferences.reduceMotion}
         runtimeChunks={runtimeChunks}
         simplifyClassicMarkdownPreview={simplifyClassicMarkdownPreview}
+        visibleSourcePageIndex={visiblePdfSourcePageIndex}
         onJumpToToken={jumpToToken}
       />
     ),
@@ -1390,12 +1727,18 @@ export function ReaderWorkspace({
       preferences.reduceMotion,
       runtimeChunks,
       simplifyClassicMarkdownPreview,
+      visiblePdfSourcePageIndex,
     ],
   );
   const sidebarToggleLabel = getLocalizedCopy(locale, {
     en: "Notes, highlights, and bookmarks",
     es: "Notas, destacados y marcadores",
     pt: "Notas, destaques e marcadores",
+  });
+  const sidebarCompactLabel = getLocalizedCopy(locale, {
+    en: "Notes",
+    es: "Notas",
+    pt: "Notas",
   });
   const sidebarOpenLabel = getLocalizedCopy(locale, {
     en: "Hide",
@@ -1426,10 +1769,11 @@ export function ReaderWorkspace({
     onJumpToBookmark: jumpToBookmark,
     onJumpToHighlight: jumpToHighlight,
   };
-  const mobileSidebarSection = isPdfPageMode ? null : (
+  const mobileSidebarSection = (
     <ReaderWorkspaceMobileSidebar
       isOpen={isMobileSidebarOpen}
       sidebarClosedLabel={sidebarClosedLabel}
+      sidebarCompactLabel={sidebarCompactLabel}
       sidebarOpenLabel={sidebarOpenLabel}
       sidebarSummary={sidebarSummary}
       sidebarToggleLabel={sidebarToggleLabel}
@@ -1450,7 +1794,7 @@ export function ReaderWorkspace({
         to: mode,
       };
 
-      setDocumentModeOverride(canUsePdfPageMode ? mode : undefined);
+      setDocumentModeOverride(undefined);
       applyPreferenceChanges({ mode });
       announce(
         `Reading mode set to ${mode
@@ -1462,7 +1806,6 @@ export function ReaderWorkspace({
       [
         announce,
         applyPreferenceChanges,
-        canUsePdfPageMode,
         canvasMode,
         flushQueuedPreferenceChanges,
       ],
@@ -1519,38 +1862,19 @@ export function ReaderWorkspace({
     [announce, document, locale],
   );
 
-  const handleReadPdfPageInClassic = useCallback(
-    (pageIndex: number) => {
-      const chunkIndexForPage = runtimeChunkIndexBySourcePage.get(pageIndex);
-
-      if (
-        typeof chunkIndexForPage === "number" &&
-        chunkIndexForPage >= 0 &&
-        chunkIndexForPage !== resolvedChunkIndex
-      ) {
-        startTransition(() => {
-          setChunkIndex(chunkIndexForPage);
-        });
-      }
-
-      handleModeSelection("classic-reader");
-    },
-    [
-      handleModeSelection,
-      resolvedChunkIndex,
-      runtimeChunkIndexBySourcePage,
-      setChunkIndex,
-    ],
-  );
-
   const handleReturnToOriginalPdfPage = useCallback(() => {
     void handleOpenBrowserPdf({
-      pageIndex:
-        typeof currentPdfSourcePageIndex === "number"
-          ? currentPdfSourcePageIndex
-          : undefined,
+      pageIndex: currentPdfCompanionPageIndex,
     });
-  }, [currentPdfSourcePageIndex, handleOpenBrowserPdf]);
+  }, [currentPdfCompanionPageIndex, handleOpenBrowserPdf]);
+
+  const handlePdfCompanionSearchQueryChange = useCallback((value: string) => {
+    setPdfCompanionState((currentState) => ({
+      ...currentState,
+      searchQuery: value,
+    }));
+    setPdfSearchMatchIndex(undefined);
+  }, []);
 
   const handleDecreaseChunkSize = useCallback(() => {
       const nextChunkSize = Math.max(1, getQueuedPreferenceValue("chunkSize") - 1);
@@ -1669,18 +1993,73 @@ export function ReaderWorkspace({
     preferences.reduceMotion,
   ]);
 
-  const handlePlaybackToggle = useCallback(() => {
-    if (isPdfPageMode) {
-      return;
+  const pdfCompanionControls = useMemo(() => {
+    if (!isPdfDocument || !hasExtractedText) {
+      return undefined;
     }
 
+    return {
+      currentPageIndex: currentPdfCompanionPageIndex,
+      currentPageLabel: currentPdfCompanionPageLabel,
+      pageCount: Math.max(pdfPageCount, 1),
+      pageJumpError: pdfPageJumpError,
+      pageJumpValue: pdfPageJumpValue,
+      scrollMode: pdfCompanionState.scrollMode,
+      searchQuery: pdfCompanionState.searchQuery,
+      searchStatusLabel: pdfSearchStatusLabel,
+      zoomLabel: pdfCompanionZoomLabel,
+      onPageJump: handlePdfCompanionPageJump,
+      onPageJumpValueChange: (value: string) => {
+        setPdfPageJumpValue(value);
+        setPdfPageJumpError(undefined);
+      },
+      onPageStep: (delta: -1 | 1) => {
+        goToPdfCompanionPage(currentPdfCompanionPageIndex + delta);
+      },
+      onSearchNext: () => {
+        handlePdfCompanionSearchStep(1);
+      },
+      onSearchPrevious: () => {
+        handlePdfCompanionSearchStep(-1);
+      },
+      onSearchQueryChange: handlePdfCompanionSearchQueryChange,
+      onSelectScrollMode: (scrollMode: "continuous" | "single-page") => {
+        setPdfCompanionState((currentState) => ({
+          ...currentState,
+          scrollMode,
+        }));
+      },
+      onSelectZoomValue: handlePdfCompanionZoomPreset,
+      onZoomStep: handlePdfCompanionZoomStep,
+    };
+  }, [
+    currentPdfCompanionPageIndex,
+    currentPdfCompanionPageLabel,
+    goToPdfCompanionPage,
+    handlePdfCompanionPageJump,
+    handlePdfCompanionSearchQueryChange,
+    handlePdfCompanionSearchStep,
+    handlePdfCompanionZoomPreset,
+    handlePdfCompanionZoomStep,
+    hasExtractedText,
+    isPdfDocument,
+    pdfCompanionState.scrollMode,
+    pdfCompanionState.searchQuery,
+    pdfCompanionZoomLabel,
+    pdfPageCount,
+    pdfPageJumpError,
+    pdfPageJumpValue,
+    pdfSearchStatusLabel,
+  ]);
+
+  const handlePlaybackToggle = useCallback(() => {
     if (!activeChunk) {
       return;
     }
 
     setPlaying(!isPlaying);
     announce(isPlaying ? "Playback paused." : "Playback resumed.");
-  }, [activeChunk, announce, isPdfPageMode, isPlaying, setPlaying]);
+  }, [activeChunk, announce, isPlaying, setPlaying]);
 
   const lastAnnouncedAdPhaseRef = useRef<typeof readerAds.phase | undefined>(
     undefined,
@@ -1793,10 +2172,59 @@ export function ReaderWorkspace({
   }
 
   if (
+    document &&
+    !error &&
+    activePayload &&
+    isPdfDocument &&
+    !hasExtractedText
+  ) {
+    return (
+      <ReaderWorkspaceState
+        actionHref={
+          canOpenBrowserPdf
+            ? `/browser-pdf?document=${document.id}&page=${currentPdfCompanionPageIndex + 1}`
+            : undefined
+        }
+        actionLabel={
+          canOpenBrowserPdf
+            ? locale === "en"
+              ? "Open Browser PDF"
+              : locale === "es"
+                ? "Abrir PDF en el navegador"
+                : "Abrir PDF no navegador"
+            : undefined
+        }
+        description={
+          locale === "en"
+            ? "This PDF still needs extracted text or OCR before Classic Reader and the fast text modes can render it inside Leyendo. Open the original PDF in your browser to keep the page layout, then re-import an OCR or text-based version when you want text-driven reading controls here."
+            : locale === "es"
+              ? "Este PDF todavía necesita texto extraído u OCR antes de que el Lector clásico y los modos rápidos de texto puedan renderizarlo dentro de Leyendo. Abre el PDF original en tu navegador para conservar la maquetación y vuelve a importarlo con OCR o texto cuando quieras controles de lectura basados en texto aquí."
+              : "Este PDF ainda precisa de texto extraido ou OCR antes que o Leitor classico e os modos rapidos de texto consigam renderiza-lo dentro do Leyendo. Abra o PDF original no navegador para manter o layout da pagina e importe novamente uma versao com OCR ou texto quando quiser controles de leitura baseados em texto aqui."
+        }
+        eyebrow={
+          locale === "en"
+            ? "OCR needed"
+            : locale === "es"
+              ? "Se necesita OCR"
+              : "OCR necessario"
+        }
+        title={
+          locale === "en"
+            ? "Classic Reader is ready once this PDF has extracted text."
+            : locale === "es"
+              ? "El Lector clásico estará listo cuando este PDF tenga texto extraído."
+              : "O Leitor classico estara pronto quando este PDF tiver texto extraido."
+        }
+        variant="warning"
+      />
+    );
+  }
+
+  if (
     !document ||
     error ||
     !activePayload ||
-    (!activeChunk && !isPdfPageMode)
+    !activeChunk
   ) {
     return (
       <ReaderWorkspaceState
@@ -1829,12 +2257,12 @@ export function ReaderWorkspace({
 
   return (
     <section
-      className="space-y-3 lg:space-y-4"
+      className="space-y-2 sm:space-y-3 lg:space-y-4"
       data-reader-theme={preferences.theme}
       data-reader-font-scale={preferences.fontScale.toFixed(1)}
       data-reader-line-height={preferences.lineHeight.toFixed(1)}
     >
-      {!isPdfPageMode && documentComplexityNotice ? (
+      {documentComplexityNotice ? (
         <div className="rounded-[1.5rem] border border-amber-300/30 bg-amber-500/10 px-4 py-4 shadow-[0_14px_40px_rgba(20,26,56,0.08)]">
           <button
             type="button"
@@ -1894,120 +2322,68 @@ export function ReaderWorkspace({
           aria-live="polite"
         />
 
-        {isPdfPageMode ? (
-          <PdfReaderWorkspace
-            availableModes={availableModes}
-            bookmarks={bookmarks}
-            document={document}
-            hasExtractedText={hasExtractedText}
-            highlightNote={highlightNote}
-            highlights={highlights}
-            jumpRequest={pdfPageJumpRequest}
-            onChangeHighlightNote={setHighlightNote}
-            onDeleteBookmark={(bookmarkIdToDelete: string) => {
-              void handleDeleteBookmark(bookmarkIdToDelete);
-            }}
-            onDeleteHighlight={(highlightIdToDelete: string) => {
-              void handleDeleteHighlight(highlightIdToDelete);
-            }}
-            onJumpToBookmark={jumpToBookmark}
-            onJumpToHighlight={jumpToHighlight}
-            onOpenBrowserPdf={(args) => {
-              handleOpenBrowserPdf(args);
-            }}
-            onPageChange={(pageIndex) => {
-              if (!hasExtractedText) {
-                return;
-              }
-
-              const chunkIndexForPage =
-                runtimeChunkIndexBySourcePage.get(pageIndex) ?? -1;
-
-              if (
-                chunkIndexForPage >= 0 &&
-                chunkIndexForPage !== resolvedChunkIndex
-              ) {
-                startTransition(() => {
-                  setChunkIndex(chunkIndexForPage);
-                });
-              }
-            }}
-            onReadCurrentPageInClassic={
-              hasExtractedText ? handleReadPdfPageInClassic : undefined
-            }
-            onSaveBookmark={(args) => {
-              void handleSavePdfBookmark(args);
-            }}
-            onSaveHighlight={(args) => {
-              void handleSavePdfHighlight(args);
-            }}
-            onSelectMode={handleModeSelection}
-          />
-        ) : (
-          <ReaderCanvas
-            activeGoalLabel={activeGoalLabel}
-            availableModes={availableModes}
-            availableTextPresentations={availableTextPresentations}
-            chunkSize={preferences.chunkSize}
-            currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
-            isPlaying={isPlaying}
-            modeLabel={modeLabel}
-            modeView={modeView}
-            remainingWords={remainingWords}
-            remainingTimeLabel={remainingTimeLabel}
-            preferences={preferences}
-            sentenceCount={sentenceCount}
-            onAnnounceRemainingTime={announceRemainingTime}
-            onChangeFontScale={handleFontScaleChange}
-            onChangeLineHeight={handleLineHeightChange}
-            onChangeWordsPerMinute={changeWordsPerMinute}
-            onDecreaseChunkSize={handleDecreaseChunkSize}
-            onIncreaseChunkSize={handleIncreaseChunkSize}
-            onMoveBackward={() => moveToChunk(resolvedChunkIndex - 1)}
-            onMoveBackwardFive={() =>
-              moveToChunk(
-                jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, -5),
-              )
-            }
-            onMoveForward={() => moveToChunk(resolvedChunkIndex + 1)}
-            onMoveForwardFive={() =>
-              moveToChunk(
-                jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, 5),
-              )
-            }
-            onRepeatChunk={() =>
-              moveToChunk(repeatChunkIndex(resolvedChunkIndex))
-            }
-            onRestart={() => moveToChunk(0)}
-            onRestartParagraph={() =>
-              moveToChunk(
-                restartParagraphChunkIndex(runtimeChunks, resolvedChunkIndex),
-              )
-            }
-            onReturnToOriginalPage={
-              canOpenBrowserPdf ? handleReturnToOriginalPdfPage : undefined
-            }
-            onSaveBookmark={() => {
-              void handleSaveBookmark();
-            }}
-            onSaveHighlight={() => {
-              void handleSaveHighlight();
-            }}
-            onSelectMode={handleModeSelection}
-            onSelectPreset={handlePresetSelection}
-            onSelectTextPresentation={
-              canToggleTextPresentation
-                ? handleTextPresentationSelection
-                : undefined
-            }
-            onSelectTheme={handleThemeSelection}
-            onToggleNaturalPauses={handleNaturalPausesToggle}
-            onTogglePlayback={handlePlaybackToggle}
-            onToggleReduceMotion={handleReduceMotionToggle}
-            progress={progress}
-            textPresentation={textPresentation}
-          />
-        )}
+        <ReaderCanvas
+          activeGoalLabel={activeGoalLabel}
+          availableModes={availableModes}
+          availableTextPresentations={availableTextPresentations}
+          chunkSize={preferences.chunkSize}
+          currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
+          isPlaying={isPlaying}
+          modeLabel={modeLabel}
+          modeView={modeView}
+          pdfCompanion={pdfCompanionControls}
+          remainingWords={remainingWords}
+          remainingTimeLabel={remainingTimeLabel}
+          preferences={preferences}
+          sentenceCount={sentenceCount}
+          onAnnounceRemainingTime={announceRemainingTime}
+          onChangeFontScale={handleFontScaleChange}
+          onChangeLineHeight={handleLineHeightChange}
+          onChangeWordsPerMinute={changeWordsPerMinute}
+          onDecreaseChunkSize={handleDecreaseChunkSize}
+          onIncreaseChunkSize={handleIncreaseChunkSize}
+          onMoveBackward={() => moveToChunk(resolvedChunkIndex - 1)}
+          onMoveBackwardFive={() =>
+            moveToChunk(
+              jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, -5),
+            )
+          }
+          onMoveForward={() => moveToChunk(resolvedChunkIndex + 1)}
+          onMoveForwardFive={() =>
+            moveToChunk(
+              jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, 5),
+            )
+          }
+          onRepeatChunk={() => moveToChunk(repeatChunkIndex(resolvedChunkIndex))}
+          onRestart={() => moveToChunk(0)}
+          onRestartParagraph={() =>
+            moveToChunk(
+              restartParagraphChunkIndex(runtimeChunks, resolvedChunkIndex),
+            )
+          }
+          onReturnToOriginalPage={
+            canOpenBrowserPdf ? handleReturnToOriginalPdfPage : undefined
+          }
+          onSaveBookmark={() => {
+            void handleSaveBookmark();
+          }}
+          onSaveHighlight={() => {
+            void handleSaveHighlight();
+          }}
+          onSelectMode={handleModeSelection}
+          onSelectPreset={handlePresetSelection}
+          onSelectTextPresentation={
+            canToggleTextPresentation
+              ? handleTextPresentationSelection
+              : undefined
+          }
+          onSelectTheme={handleThemeSelection}
+          onToggleNaturalPauses={handleNaturalPausesToggle}
+          onTogglePlayback={handlePlaybackToggle}
+          onToggleReduceMotion={handleReduceMotionToggle}
+          progress={progress}
+          textPresentation={textPresentation}
+        />
       </div>
 
       {readerAds.shouldRender ? (
@@ -2068,13 +2444,9 @@ export function ReaderWorkspace({
         />
       ) : null}
 
-      {isPdfPageMode ? null : (
-        <>
-          <div className="hidden lg:block">
-            <ReaderSidebar {...sidebarProps} />
-          </div>
-        </>
-      )}
+      <div className="hidden lg:block">
+        <ReaderSidebar {...sidebarProps} />
+      </div>
     </section>
   );
 }

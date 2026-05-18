@@ -27,9 +27,15 @@ test("@mobile reader route stays usable at phone width for text modes", async ({
 
   await expect(mobileSidebarToggle).toBeVisible();
   await mobileSidebarToggle.click();
-  await expect(
-    page.locator("#reader-sidebar-mobile").getByText(/recent bookmarks/i),
-  ).toBeVisible();
+  const mobileSidebar = page.getByRole("complementary", {
+    name: /reader details/i,
+  });
+
+  await expect(mobileSidebar).toBeVisible();
+  await mobileSidebar
+    .getByRole("button", { name: /expand highlights and bookmarks/i })
+    .click();
+  await expect(mobileSidebar.getByText(/recent bookmarks/i)).toBeVisible();
 
   await page.getByRole("button", { name: /controls/i }).click();
   await page.getByRole("button", { name: /change reading mode/i }).click();
@@ -44,7 +50,7 @@ test("@mobile reader route stays usable at phone width for text modes", async ({
   await expect(page.getByLabel(/classic reader document/i)).toBeVisible();
 });
 
-test("@mobile phone users can save Standard PDF bookmarks and highlights from a real imported PDF", async ({
+test("@mobile phone users can save PDF bookmarks and highlights from a real imported PDF", async ({
   page,
 }) => {
   await page.goto("/");
@@ -71,92 +77,78 @@ test("@mobile phone users can save Standard PDF bookmarks and highlights from a 
   });
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await page.getByRole("button", { name: /controls/i }).click();
+  await page.getByRole("button", { name: /reading tools/i }).click();
 
-  await page.getByRole("button", { name: /change reading mode/i }).click();
-  await page.getByRole("button", { name: /^standard$/i }).click();
+  const toolsDialog = page.getByRole("dialog", { name: /reading tools/i });
 
+  await expect(toolsDialog).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: /jump to page/i }),
+    toolsDialog.getByRole("button", { name: /return to original page/i }),
+  ).toBeVisible();
+  await expect(
+    toolsDialog.getByRole("textbox", { name: /jump to page/i }),
   ).toHaveValue("1");
-  await page.getByRole("textbox", { name: /jump to page/i }).fill("2");
-  await page.getByRole("button", { name: /^go$/i }).click();
-  await expect(page.getByText(/^2 of 2$/)).toBeVisible();
+  await toolsDialog.getByRole("textbox", { name: /jump to page/i }).fill("2");
+  await toolsDialog.getByRole("button", { name: /^go$/i }).click();
+  await expect(toolsDialog.getByText(/^2 of 2$/)).toBeVisible();
+  await toolsDialog.getByRole("button", { name: /save bookmark/i }).click();
+  await expect(toolsDialog).not.toBeVisible();
 
-  await page
-    .getByRole("button", { name: /pages, outline, and notes/i })
-    .click();
-  const pdfToolsDialog = page.getByRole("dialog", {
-    name: /pages, outline, and notes/i,
+  const mobileSidebarToggle = page.getByRole("button", {
+    name: /notes, highlights, and bookmarks/i,
   });
 
-  await expect(pdfToolsDialog).toBeVisible();
-  await expect(pdfToolsDialog.getByText(/page thumbnails/i)).toBeVisible();
-  await expect(
-    pdfToolsDialog.getByRole("button", { name: /save bookmark/i }),
-  ).toBeVisible();
-
-  await pdfToolsDialog.getByRole("button", { name: /save bookmark/i }).click();
-  await expect(pdfToolsDialog).not.toBeVisible();
-
-  await page
-    .getByRole("button", { name: /pages, outline, and notes/i })
-    .click();
-  const bookmarkDialog = page.getByRole("dialog", {
-    name: /pages, outline, and notes/i,
-  });
-  await expect(
-    bookmarkDialog.getByText("Bookmark 1", { exact: true }),
-  ).toBeVisible();
-  await expect(bookmarkDialog.getByText(/saved on page 2/i)).toBeVisible();
-
-  await bookmarkDialog
-    .getByLabel(/note for selected text or current page/i)
-    .fill("Keep this page for the contract summary.");
-  await bookmarkDialog
-    .getByRole("button", { name: /save page highlight/i })
-    .click();
-  await expect(bookmarkDialog).not.toBeVisible();
-
-  await page
-    .getByRole("button", { name: /pages, outline, and notes/i })
-    .click();
-  const highlightDialog = page.getByRole("dialog", {
-    name: /pages, outline, and notes/i,
-  });
-  await expect(
-    highlightDialog.getByText("Highlight 1", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    highlightDialog.getByText(/keep this page for the contract summary\./i),
-  ).toBeVisible();
-
-  await highlightDialog.getByRole("button", { name: /close/i }).click();
-  await expect(highlightDialog).not.toBeVisible();
-
-  await page.getByRole("textbox", { name: /jump to page/i }).fill("1");
-  await page.getByRole("button", { name: /^go$/i }).click();
-  await expect(page.getByText(/^1 of 2$/)).toBeVisible();
-
-  await page
-    .getByRole("button", { name: /pages, outline, and notes/i })
-    .click();
-  const reopenedPdfToolsDialog = page.getByRole("dialog", {
-    name: /pages, outline, and notes/i,
+  await mobileSidebarToggle.click();
+  const mobileSidebar = page.getByRole("complementary", {
+    name: /reader details/i,
   });
 
-  await expect(reopenedPdfToolsDialog).toBeVisible();
-  await reopenedPdfToolsDialog
+  await expect(mobileSidebar).toBeVisible();
+  await expect(
+    mobileSidebar.getByText("Bookmark 1", { exact: true }),
+  ).toBeVisible();
+  await expect(mobileSidebar.getByText(/saved at paragraph 2/i)).toBeVisible();
+
+  await page.getByRole("button", { name: /controls/i }).click();
+  await page.getByRole("button", { name: /reading tools/i }).click();
+  const highlightToolsDialog = page.getByRole("dialog", {
+    name: /reading tools/i,
+  });
+
+  await expect(highlightToolsDialog).toBeVisible();
+  await highlightToolsDialog
+    .getByRole("button", { name: /save highlight/i })
+    .click();
+  await expect(highlightToolsDialog).not.toBeVisible();
+
+  await expect(
+    mobileSidebar.getByText("Highlight 1", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    mobileSidebar.getByRole("button", { name: /jump to highlight/i }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: /controls/i }).click();
+  await page.getByRole("button", { name: /reading tools/i }).click();
+  const reopenedToolsDialog = page.getByRole("dialog", {
+    name: /reading tools/i,
+  });
+
+  await expect(reopenedToolsDialog).toBeVisible();
+  await reopenedToolsDialog
+    .getByRole("textbox", { name: /jump to page/i })
+    .fill("1");
+  await reopenedToolsDialog.getByRole("button", { name: /^go$/i }).click();
+  await expect(reopenedToolsDialog.getByText(/^1 of 2$/)).toBeVisible();
+  await reopenedToolsDialog.getByLabel(/close tools/i).click();
+  await expect(reopenedToolsDialog).not.toBeVisible();
+
+  await mobileSidebar
     .getByRole("button", { name: /jump to bookmark/i })
     .click();
   await expect(page.getByText(/^2 of 2$/)).toBeVisible();
 
-  await page
-    .getByRole("button", { name: /pages, outline, and notes/i })
-    .click();
-  const highlightJumpDialog = page.getByRole("dialog", {
-    name: /pages, outline, and notes/i,
-  });
   await expect(
-    highlightJumpDialog.getByRole("button", { name: /jump to highlight/i }),
+    mobileSidebar.getByRole("button", { name: /jump to highlight/i }),
   ).toBeVisible();
 });

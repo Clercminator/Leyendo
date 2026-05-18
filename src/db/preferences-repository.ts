@@ -2,6 +2,7 @@ import { db } from "@/db/app-db";
 import {
   defaultPdfViewerState,
   defaultReaderPreferences,
+  normalizeReaderMode,
   type PdfViewerState,
   type ReaderPreferences,
 } from "@/types/reader";
@@ -11,19 +12,32 @@ function getPdfViewerStateKey(documentId: string) {
 }
 
 export async function saveReaderPreferences(preferences: ReaderPreferences) {
+  const normalizedPreferences = {
+    ...preferences,
+    mode: normalizeReaderMode(preferences.mode),
+  } satisfies ReaderPreferences;
+
   await db.preferences.put({
     key: "reader-preferences",
-    value: preferences,
+    value: normalizedPreferences,
   });
 
-  return preferences;
+  return normalizedPreferences;
 }
 
 export async function getStoredReaderPreferences() {
   const record = await db.preferences.get("reader-preferences");
-  return (
-    (record?.value as ReaderPreferences | undefined) ?? defaultReaderPreferences
-  );
+  const storedPreferences = record?.value as Partial<ReaderPreferences> | undefined;
+
+  if (!storedPreferences) {
+    return defaultReaderPreferences;
+  }
+
+  return {
+    ...defaultReaderPreferences,
+    ...storedPreferences,
+    mode: normalizeReaderMode(storedPreferences.mode),
+  } satisfies ReaderPreferences;
 }
 
 export async function savePdfViewerState(

@@ -24,7 +24,7 @@ export default async function ReaderPage({ searchParams }: ReaderPageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
 
   return (
-    <AppShell mainClassName="max-w-[90rem] px-4 pt-3 pb-8 sm:px-6 sm:pt-4 lg:px-8">
+    <AppShell mainClassName="max-w-none px-2 pt-2 pb-4 sm:px-4 sm:pt-3 sm:pb-6 lg:max-w-[90rem] lg:px-8 lg:pb-8">
       <ReaderWorkspace
         documentId={resolvedSearchParams.document}
         bookmarkId={resolvedSearchParams.bookmark}

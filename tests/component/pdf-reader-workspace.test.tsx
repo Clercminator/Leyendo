@@ -212,7 +212,7 @@ describe("PdfReaderWorkspace", () => {
 
     render(
       <PdfReaderWorkspace
-        availableModes={["pdf-page"]}
+        availableModes={[]}
         bookmarks={[]}
         document={{
           createdAt: "2026-03-30T10:00:00.000Z",
@@ -263,7 +263,7 @@ describe("PdfReaderWorkspace", () => {
 
     render(
       <PdfReaderWorkspace
-        availableModes={["pdf-page", "classic-reader"]}
+        availableModes={["classic-reader"]}
         bookmarks={[]}
         document={{
           createdAt: "2026-03-30T10:00:00.000Z",
@@ -294,7 +294,7 @@ describe("PdfReaderWorkspace", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /^in-app pdf beta$/i }),
+        screen.getByRole("button", { name: /^browser pdf$/i }),
       ).toBeInTheDocument();
     });
 
@@ -391,7 +391,7 @@ describe("PdfReaderWorkspace", () => {
 
     render(
       <PdfReaderWorkspace
-        availableModes={["pdf-page"]}
+        availableModes={[]}
         bookmarks={[]}
         document={{
           createdAt: "2026-03-30T10:00:00.000Z",

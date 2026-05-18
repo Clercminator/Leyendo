@@ -56,7 +56,7 @@ interface ComplexityNotice {
 interface RecommendedReaderStart {
   goalLabel: string;
   modeLabel: string;
-  wordsPerMinute: number;
+  paceLabel: string;
 }
 
 interface UploadPanelViewProps {
@@ -850,7 +850,7 @@ export function UploadPanelView({
                     : "Inicio recomendado"}
               </p>
               <p className="mt-2 text-sm font-medium text-(--text-strong)">
-                {recommendedReaderStart?.goalLabel}: {recommendedReaderStart?.modeLabel} · {recommendedReaderStart?.wordsPerMinute} WPM
+                {recommendedReaderStart?.goalLabel}: {recommendedReaderStart?.modeLabel} · {recommendedReaderStart?.paceLabel}
               </p>
               <p className="mt-2 text-sm leading-7 text-(--text-muted)">
                 {locale === "en"

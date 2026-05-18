@@ -15,6 +15,7 @@ interface ReaderWorkspaceModeViewProps {
   reduceMotion: boolean;
   runtimeChunks: Chunk[];
   simplifyClassicMarkdownPreview: boolean;
+  visibleSourcePageIndex?: number;
   onJumpToToken: (tokenIndex: number) => void;
 }
 
@@ -26,6 +27,7 @@ export const ReaderWorkspaceModeView = memo(function ReaderWorkspaceModeView({
   reduceMotion,
   runtimeChunks,
   simplifyClassicMarkdownPreview,
+  visibleSourcePageIndex,
   onJumpToToken,
 }: ReaderWorkspaceModeViewProps) {
   if (!activePayload || !activeChunk) {
@@ -41,6 +43,7 @@ export const ReaderWorkspaceModeView = memo(function ReaderWorkspaceModeView({
           onJumpToToken={onJumpToToken}
           reduceMotion={reduceMotion}
           simplifyMarkdownPreview={simplifyClassicMarkdownPreview}
+          visibleSourcePageIndex={visibleSourcePageIndex}
         />
       );
     case "phrase-chunk":

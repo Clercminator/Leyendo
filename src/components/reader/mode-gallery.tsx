@@ -42,9 +42,9 @@ const modes = [
       pt: "Ideal para PDFs reais e layouts digitalizados",
     },
     tradeoff: {
-      en: "Tradeoff: preserves layout better than text speed modes, while the in-app PDF beta remains a fallback during testing.",
-      es: "A cambio: conserva mejor el diseño que los modos rápidos, mientras el PDF beta en la app queda como respaldo durante las pruebas.",
-      pt: "Tradeoff: preserva melhor o layout do que os modos rapidos de texto, enquanto o PDF beta no app fica como fallback durante os testes.",
+      en: "Tradeoff: preserves layout better than text speed modes, while Classic Reader stays in-app for page-aware search, zoom, and companion reading.",
+      es: "A cambio: conserva mejor el diseño que los modos rápidos, mientras el Lector clásico queda dentro de la app para búsqueda por página, zoom y lectura complementaria.",
+      pt: "Tradeoff: preserva melhor o layout do que os modos rapidos de texto, enquanto o Leitor classico fica no app para busca por pagina, zoom e leitura complementar.",
     },
     icon: FileText,
   },

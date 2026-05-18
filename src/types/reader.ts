@@ -2,7 +2,6 @@ import type { TextPresentation } from "@/types/document";
 import type { SyncOwnedRecord } from "@/types/sync";
 
 export const readerModes = [
-  "pdf-page",
   "focus-word",
   "phrase-chunk",
   "guided-line",
@@ -131,6 +130,21 @@ export const defaultReaderPreferences: ReaderPreferences = {
   smartPacing: true,
   reduceMotion: false,
 };
+
+export function normalizeReaderMode(mode: unknown): ReaderPreferences["mode"] {
+  if (mode === "pdf-page") {
+    return "classic-reader";
+  }
+
+  if (
+    typeof mode === "string" &&
+    readerModes.includes(mode as (typeof readerModes)[number])
+  ) {
+    return mode as ReaderPreferences["mode"];
+  }
+
+  return defaultReaderPreferences.mode;
+}
 
 export const defaultPdfViewerState: PdfViewerState = {
   pageIndex: 0,

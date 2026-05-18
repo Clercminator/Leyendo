@@ -1,5 +1,6 @@
 import { getLocalizedCopy, type AppLocale } from "@/lib/locale";
 import {
+  pdfScrollModes,
   readerModes,
   readerPresets,
   type ReaderPreferences,
@@ -33,11 +34,6 @@ export const modeLabels: Record<
   (typeof readerModes)[number],
   Record<"en" | "es" | "pt", string>
 > = {
-  "pdf-page": {
-    en: "In-app PDF beta",
-    es: "PDF beta en la app",
-    pt: "PDF beta no app",
-  },
   "focus-word": {
     en: "Focus Word",
     es: "Foco por palabra",
@@ -171,11 +167,113 @@ export function getReaderCanvasCopy(
       es: "Opciones para guardar",
       pt: "Opcoes para salvar",
     }),
+    pdfPageControls: getLocalizedCopy(locale, {
+      en: "PDF page controls",
+      es: "Controles de pagina PDF",
+      pt: "Controles da pagina PDF",
+    }),
     pdfCompanion: getLocalizedCopy(locale, {
       en: "PDF companion",
       es: "Companero PDF",
       pt: "Companheiro PDF",
     }),
+    pdfSearch: getLocalizedCopy(locale, {
+      en: "Search this PDF",
+      es: "Buscar en este PDF",
+      pt: "Buscar neste PDF",
+    }),
+    pdfSearchMenu: getLocalizedCopy(locale, {
+      en: "PDF search",
+      es: "Busqueda PDF",
+      pt: "Busca no PDF",
+    }),
+    openBrowserPdf: getLocalizedCopy(locale, {
+      en: "Open Browser PDF",
+      es: "Abrir PDF en el navegador",
+      pt: "Abrir PDF no navegador",
+    }),
+    previousPage: getLocalizedCopy(locale, {
+      en: "Previous page",
+      es: "Pagina anterior",
+      pt: "Pagina anterior",
+    }),
+    nextPage: getLocalizedCopy(locale, {
+      en: "Next page",
+      es: "Pagina siguiente",
+      pt: "Proxima pagina",
+    }),
+    jumpToPage: getLocalizedCopy(locale, {
+      en: "Jump to page",
+      es: "Ir a la pagina",
+      pt: "Ir para a pagina",
+    }),
+    pageFieldPlaceholder: getLocalizedCopy(locale, {
+      en: "Page",
+      es: "Pagina",
+      pt: "Pagina",
+    }),
+    goToPage: getLocalizedCopy(locale, {
+      en: "Go",
+      es: "Ir",
+      pt: "Ir",
+    }),
+    zoomOut: getLocalizedCopy(locale, {
+      en: "Zoom out",
+      es: "Alejar",
+      pt: "Diminuir zoom",
+    }),
+    zoomIn: getLocalizedCopy(locale, {
+      en: "Zoom in",
+      es: "Acercar",
+      pt: "Aumentar zoom",
+    }),
+    view: getLocalizedCopy(locale, {
+      en: "View",
+      es: "Vista",
+      pt: "Vista",
+    }),
+    viewMenu: getLocalizedCopy(locale, {
+      en: "PDF view tools",
+      es: "Herramientas de vista PDF",
+      pt: "Ferramentas de visualizacao PDF",
+    }),
+    fitWidth: getLocalizedCopy(locale, {
+      en: "Fit width",
+      es: "Ajustar ancho",
+      pt: "Ajustar largura",
+    }),
+    fitPage: getLocalizedCopy(locale, {
+      en: "Fit page",
+      es: "Ajustar pagina",
+      pt: "Ajustar pagina",
+    }),
+    actualSize: getLocalizedCopy(locale, {
+      en: "Actual size",
+      es: "Tamano real",
+      pt: "Tamanho real",
+    }),
+    continuousPages: getLocalizedCopy(locale, {
+      en: "Continuous",
+      es: "Continuo",
+      pt: "Continuo",
+    }),
+    singlePage: getLocalizedCopy(locale, {
+      en: "Single page",
+      es: "Pagina unica",
+      pt: "Pagina unica",
+    }),
+    pageCountSummary: (args: { currentPageNumber: number; pageCount: number }) =>
+      getLocalizedCopy(locale, {
+        en: `${args.currentPageNumber} of ${args.pageCount}`,
+        es: `${args.currentPageNumber} de ${args.pageCount}`,
+        pt: `${args.currentPageNumber} de ${args.pageCount}`,
+      }),
+    currentPageSummary: (args: { currentPageLabel: string }) =>
+      getLocalizedCopy(locale, {
+        en: `Page ${args.currentPageLabel}`,
+        es: `Pagina ${args.currentPageLabel}`,
+        pt: `Pagina ${args.currentPageLabel}`,
+      }),
     returnToOriginalPage: getLocalizedCopy(locale, {
       en: "Return to original page",
       es: "Volver a la pagina original",
@@ -469,5 +567,21 @@ export function getReaderCanvasCopy(
         }),
   };
 }
+
+export const pdfViewModeLabels: Record<
+  (typeof pdfScrollModes)[number],
+  Record<"en" | "es" | "pt", string>
+> = {
+  continuous: {
+    en: "Continuous",
+    es: "Continuo",
+    pt: "Continuo",
+  },
+  "single-page": {
+    en: "Single page",
+    es: "Pagina unica",
+    pt: "Pagina unica",
+  },
+};
 
 export type ReaderCanvasCopy = ReturnType<typeof getReaderCanvasCopy>;

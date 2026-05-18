@@ -234,10 +234,9 @@ export function UploadPanel() {
       return undefined;
     }
 
-    const recommendedMode =
-      inputMode === "file" && selectedSourceKind === "pdf"
-        ? "pdf-page"
-        : getRecommendedMode(savedReadingGoal);
+    const isPdfRecommendation =
+      inputMode === "file" && selectedSourceKind === "pdf";
+    const recommendedMode = getRecommendedMode(savedReadingGoal);
     const recommendedPreferences = getRecommendedPreferences(savedReadingGoal);
     const goalLabel = getLocalizedCopy(locale, {
       en:
@@ -267,8 +266,8 @@ export function UploadPanel() {
     });
     const modeLabel = getLocalizedCopy(locale, {
       en:
-        recommendedMode === "pdf-page"
-          ? "Browser PDF"
+        isPdfRecommendation
+          ? "Browser PDF + Classic Reader"
           : recommendedMode === "focus-word"
             ? "Focus Word"
             : recommendedMode === "phrase-chunk"
@@ -277,8 +276,8 @@ export function UploadPanel() {
                 ? "Guided Line"
                 : "Classic Reader",
       es:
-        recommendedMode === "pdf-page"
-          ? "PDF en navegador"
+        isPdfRecommendation
+          ? "PDF en navegador + Lector clásico"
           : recommendedMode === "focus-word"
             ? "Foco por palabra"
             : recommendedMode === "phrase-chunk"
@@ -287,8 +286,8 @@ export function UploadPanel() {
                 ? "Línea guiada"
                 : "Lector clásico",
       pt:
-        recommendedMode === "pdf-page"
-          ? "PDF no navegador"
+        isPdfRecommendation
+          ? "PDF no navegador + Leitor classico"
           : recommendedMode === "focus-word"
             ? "Palavra foco"
             : recommendedMode === "phrase-chunk"
@@ -301,7 +300,13 @@ export function UploadPanel() {
     return {
       goalLabel,
       modeLabel,
-      wordsPerMinute: recommendedPreferences.wordsPerMinute,
+      paceLabel: isPdfRecommendation
+        ? getLocalizedCopy(locale, {
+            en: `Classic Reader at ${recommendedPreferences.wordsPerMinute} WPM`,
+            es: `Lector clásico a ${recommendedPreferences.wordsPerMinute} ppm`,
+            pt: `Leitor classico a ${recommendedPreferences.wordsPerMinute} ppm`,
+          })
+        : `${recommendedPreferences.wordsPerMinute} WPM`,
     };
   }, [inputMode, locale, savedReadingGoal, selectedSourceKind]);
   const showRecommendedReaderStart = Boolean(

@@ -14,16 +14,20 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Search,
   SlidersHorizontal,
   SkipBack,
   SkipForward,
   Undo2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 import { useLocale } from "@/components/layout/locale-provider";
 import {
   getReaderCanvasCopy,
   modeLabels,
+  pdfViewModeLabels,
   presetCopy,
   themeLabels,
   themePreviewSwatchClassNames,
@@ -33,10 +37,32 @@ import { getLocalizedCopy } from "@/lib/locale";
 import { cn } from "@/lib/utils";
 import type { TextPresentation } from "@/types/document";
 import {
+  type PdfScrollMode,
   readerModes,
   readerPresets,
   type ReaderPreferences,
 } from "@/types/reader";
+
+interface ReaderCanvasPdfCompanionProps {
+  currentPageIndex: number;
+  currentPageLabel: string;
+  pageCount: number;
+  pageJumpError?: string;
+  pageJumpValue: string;
+  scrollMode: PdfScrollMode;
+  searchQuery: string;
+  searchStatusLabel: string;
+  zoomLabel: string;
+  onPageJump: () => void;
+  onPageJumpValueChange: (value: string) => void;
+  onPageStep: (delta: -1 | 1) => void;
+  onSearchNext: () => void;
+  onSearchPrevious: () => void;
+  onSearchQueryChange: (value: string) => void;
+  onSelectScrollMode: (scrollMode: PdfScrollMode) => void;
+  onSelectZoomValue: (zoomValue: string) => void;
+  onZoomStep: (steps: number) => void;
+}
 
 interface ReaderCanvasProps {
   activeGoalLabel?: string;
@@ -48,6 +74,7 @@ interface ReaderCanvasProps {
   isPlaying: boolean;
   modeLabel: string;
   modeView: React.ReactNode;
+  pdfCompanion?: ReaderCanvasPdfCompanionProps;
   remainingWords?: number;
   remainingTimeLabel: string;
   preferences: ReaderPreferences;
@@ -105,6 +132,22 @@ function shouldBlockPlaybackShortcut(args: {
 
   return target !== document.body && Boolean(canvasElement && !canvasElement.contains(target));
 }
+
+function getCompactReaderChromeValue() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const compactViewport =
+    window.matchMedia?.("(max-width: 1023px)").matches ??
+    window.innerWidth <= 1023;
+  const touchViewport =
+    (window.matchMedia?.("(hover: none), (pointer: coarse)").matches ??
+      false) && window.innerWidth <= 1100;
+
+  return compactViewport || touchViewport;
+}
+
 export function ReaderCanvas({
   activeGoalLabel,
   availableModes = [...readerModes],
@@ -115,6 +158,7 @@ export function ReaderCanvas({
   isPlaying,
   modeLabel,
   modeView,
+  pdfCompanion,
   remainingWords,
   remainingTimeLabel,
   preferences,
@@ -156,6 +200,7 @@ export function ReaderCanvas({
     | "font-scale"
     | "line-height"
     | "playback"
+    | "pdf-view"
     | "more"
     | null
   >(null);
@@ -174,6 +219,7 @@ export function ReaderCanvas({
   const fontScaleMenuRef = useRef<HTMLDivElement>(null);
   const lineHeightMenuRef = useRef<HTMLDivElement>(null);
   const playbackMenuRef = useRef<HTMLDivElement>(null);
+  const pdfViewMenuRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const readerDetailsRef = useRef<HTMLDivElement>(null);
   const readerDetailsId = useId();
@@ -195,15 +241,32 @@ export function ReaderCanvas({
   const settingsRowClass =
     "min-w-0 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5";
   const topControlButtonClass =
-    "inline-flex min-h-10 w-full shrink-0 items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.14em] text-(--text-strong) uppercase whitespace-nowrap transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm lg:w-auto lg:justify-center";
+    "inline-flex min-h-9 w-auto max-w-full shrink-0 touch-manipulation items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-[11px] tracking-[0.14em] text-(--text-strong) uppercase whitespace-nowrap transition hover:border-(--border-strong) hover:bg-(--surface-chip) active:scale-[0.985] sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm sm:justify-center";
   const statusChipClass =
     "inline-flex min-h-9 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-2 py-1.5 text-center text-[11px] leading-tight text-(--text-strong) sm:min-h-auto sm:px-3 sm:text-sm";
   const statusIconButtonClass =
-    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) text-(--text-muted) transition hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong) sm:h-10 sm:w-10";
+    "inline-flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) text-(--text-muted) transition hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong) active:scale-[0.985] sm:h-10 sm:w-10";
   const mobileStatCardClass =
     "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-left";
   const mobilePrimaryButtonClass =
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.95rem] border border-(--border-soft) bg-(--surface-soft) px-2.5 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)";
+    "inline-flex min-h-10 touch-manipulation items-center justify-center gap-2 rounded-[0.95rem] border border-(--border-soft) bg-(--surface-soft) px-2.5 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) active:scale-[0.985]";
+  const pdfToolbarButtonClass =
+    "inline-flex min-h-10 touch-manipulation items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) active:scale-[0.985]";
+  const pdfToolbarChipClass =
+    "inline-flex min-h-10 items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-(--text-strong)";
+  const pdfToolbarIconButtonClass =
+    "rounded-full p-1 touch-manipulation text-(--text-strong) transition hover:bg-(--surface-chip) active:scale-[0.985]";
+  const compactTopControlButtonClass = cn(
+    topControlButtonClass,
+    isCompactReaderChrome &&
+      "min-h-8 rounded-[0.95rem] px-2.5 py-1.5 text-[10px] tracking-[0.12em] shadow-[0_14px_32px_rgba(20,26,56,0.08)] sm:min-h-9 sm:px-3 sm:py-2 sm:text-[11px]",
+  );
+  const compactDockSurfaceClass =
+    "pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-(--border-strong) bg-(--surface-card)/94 p-1 shadow-[0_18px_40px_rgba(20,26,56,0.18)] backdrop-blur-xl";
+  const compactDockButtonClass =
+    "inline-flex min-h-10 touch-manipulation items-center justify-center gap-2 rounded-full px-3 py-2 text-[11px] tracking-[0.16em] text-(--text-strong) uppercase transition hover:bg-(--surface-soft) active:scale-[0.985]";
+  const compactDockIconButtonClass =
+    "inline-flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-(--text-strong) transition hover:bg-(--surface-soft) active:scale-[0.985]";
 
   const closeReaderDetails = useCallback(() => {
     setIsReaderDetailsPinned(false);
@@ -217,15 +280,7 @@ export function ReaderCanvas({
     }
 
     const resolveCompactReaderChrome = () => {
-      const compactViewport =
-        window.matchMedia?.("(max-width: 1023px)").matches ??
-        window.innerWidth <= 1023;
-      const touchViewport =
-        (window.matchMedia?.("(hover: none), (pointer: coarse)").matches ??
-          false) &&
-        window.innerWidth <= 1100;
-
-      setIsCompactReaderChrome(compactViewport || touchViewport);
+      setIsCompactReaderChrome(getCompactReaderChromeValue());
     };
 
     resolveCompactReaderChrome();
@@ -253,6 +308,7 @@ export function ReaderCanvas({
         fontScaleMenuRef.current?.contains(target) ||
         lineHeightMenuRef.current?.contains(target) ||
         playbackMenuRef.current?.contains(target) ||
+        pdfViewMenuRef.current?.contains(target) ||
         moreMenuRef.current?.contains(target)
       ) {
         return;
@@ -354,7 +410,6 @@ export function ReaderCanvas({
         event.ctrlKey ||
         event.metaKey ||
         event.shiftKey ||
-        preferences.mode === "pdf-page" ||
         Boolean(openMenu) ||
         isMobileToolsOpen ||
         shouldBlockPlaybackShortcut({
@@ -511,6 +566,19 @@ export function ReaderCanvas({
     setIsMobileChromeVisible((current) => !current);
   }, [closeReaderDetails, isCompactReaderChrome, isMobileToolsOpen]);
 
+  const compactStatusPanel =
+    isCompactReaderChrome && isMobileChromeVisible ? (
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <div className="contents">
+          <span className={statusChipClass}>
+            {copy.paragraph} {currentParagraphNumber} · {progress}%
+          </span>
+          {renderSessionCountChip()}
+          {renderRemainingTimeCluster()}
+        </div>
+      </div>
+    ) : null;
+
   return (
     <section
       ref={canvasRef}
@@ -518,7 +586,7 @@ export function ReaderCanvas({
       aria-labelledby="reader-canvas-title"
       tabIndex={-1}
       className={cn(
-        "reader-canvas relative isolate flex h-[calc(100svh-6.75rem)] min-h-120 w-full flex-col gap-3 overflow-visible rounded-[1.5rem] border border-(--border-soft) bg-(--surface-strong) px-3 py-3 text-left md:h-[calc(100svh-8rem)] md:min-h-136 md:gap-5 md:rounded-[1.65rem] md:px-5 md:py-4 lg:h-[86vh] lg:min-h-176 lg:gap-6 lg:rounded-[1.75rem] lg:px-8 lg:py-6",
+        "reader-canvas relative isolate flex h-[calc(100svh-5.75rem)] min-h-0 w-full flex-col gap-1.5 overflow-visible rounded-[1.1rem] border border-(--border-soft) bg-(--surface-strong) px-2 py-2 text-left sm:h-[calc(100svh-6.25rem)] sm:gap-2 sm:rounded-[1.35rem] sm:px-2.5 sm:py-2.5 md:h-[calc(100svh-8rem)] md:min-h-136 md:gap-5 md:rounded-[1.65rem] md:px-5 md:py-4 lg:h-[86vh] lg:min-h-176 lg:gap-6 lg:rounded-[1.75rem] lg:px-8 lg:py-6",
         className,
       )}
     >
@@ -526,13 +594,14 @@ export function ReaderCanvas({
         {copy.readerCanvas}
       </h2>
       <div className="flex min-h-0 flex-1 flex-col">
-        <div
-          className={cn(
-            "space-y-3 sm:space-y-4",
-            !isMobileChromeVisible && isCompactReaderChrome && "hidden",
-          )}
-        >
-          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-3">
+        <div className="space-y-2 sm:space-y-3.5">
+          <div
+            className={cn(
+              isCompactReaderChrome
+                ? "flex items-center gap-1.5 overflow-x-auto pb-0.5 text-sm"
+                : "grid gap-2 text-sm sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-3",
+            )}
+          >
             <div ref={modeMenuRef} className="relative z-40">
               <button
                 type="button"
@@ -542,7 +611,10 @@ export function ReaderCanvas({
                     current === "mode" ? null : "mode",
                   );
                 }}
-                className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.16em] text-(--accent-sky) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) md:min-h-11 md:px-4 md:py-2.5 md:text-sm md:tracking-[0.22em] lg:w-auto lg:justify-center"
+                className={cn(
+                  compactTopControlButtonClass,
+                  "text-(--accent-sky) tracking-[0.16em] sm:tracking-[0.22em]",
+                )}
               >
                 {modeLabel}
                 <ChevronDown
@@ -585,7 +657,7 @@ export function ReaderCanvas({
                     current === "preset" ? null : "preset",
                   );
                 }}
-                className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-widest text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip) md:min-h-11 md:px-4 md:py-2.5 md:text-sm md:tracking-[0.14em] lg:w-auto lg:justify-center"
+                className={cn(compactTopControlButtonClass, "tracking-widest")}
               >
                 {activePreset
                   ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
@@ -661,7 +733,7 @@ export function ReaderCanvas({
                         : "text-presentation",
                     );
                   }}
-                  className={topControlButtonClass}
+                    className={compactTopControlButtonClass}
                 >
                   {textPresentation === "literal"
                     ? copy.literalText
@@ -712,10 +784,18 @@ export function ReaderCanvas({
               <button
                 type="button"
                 onClick={onReturnToOriginalPage}
-                className={topControlButtonClass}
+                className={compactTopControlButtonClass}
               >
                 {copy.returnToOriginalPage}
               </button>
+            ) : null}
+            {isCompactReaderChrome && pdfCompanion ? (
+              <span className={`${statusChipClass} shrink-0`}>
+                {copy.pageCountSummary({
+                  currentPageNumber: pdfCompanion.currentPageIndex + 1,
+                  pageCount: pdfCompanion.pageCount,
+                })}
+              </span>
             ) : null}
             {!isCompactReaderChrome ? (
               <div ref={themeMenuRef} className="relative z-40">
@@ -727,7 +807,7 @@ export function ReaderCanvas({
                       current === "theme" ? null : "theme",
                     );
                   }}
-                  className={topControlButtonClass}
+                  className={compactTopControlButtonClass}
                 >
                   {getLocalizedCopy(locale, themeLabels[preferences.theme])}
                   <ChevronDown
@@ -780,7 +860,7 @@ export function ReaderCanvas({
                 onClick={() => {
                   void toggleFullscreen();
                 }}
-                className={topControlButtonClass}
+                className={compactTopControlButtonClass}
               >
                 {isFullscreen ? (
                   <Minimize2 className="h-4 w-4" />
@@ -791,25 +871,15 @@ export function ReaderCanvas({
               </button>
             ) : null}
           </div>
-          {isCompactReaderChrome && isMobileChromeVisible ? (
-            <div className="grid gap-2 text-sm">
-              <div className="grid grid-cols-3 gap-2">
-                <span className={statusChipClass}>
-                  {copy.paragraph} {currentParagraphNumber} · {progress}%
-                </span>
-                {renderSessionCountChip()}
-                {renderRemainingTimeCluster()}
-              </div>
-            </div>
-          ) : isFullscreen ? null : (
-            <div className="flex flex-wrap items-center gap-3 text-sm">
+          {!isCompactReaderChrome ? (isFullscreen ? null : (
+            <div className="hidden flex-wrap items-center gap-3 text-sm lg:flex">
               <span className={statusChipClass}>
                 {progress}% {copy.complete}
               </span>
               {renderSessionCountChip()}
               {renderRemainingTimeCluster()}
             </div>
-          )}
+          )) : null}
           {activePresetSummary ? (
             <p className="hidden text-sm leading-6 text-(--text-muted) lg:block">
               <span className="mr-2 inline-flex rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1 text-[11px] tracking-[0.18em] text-(--accent-amber) uppercase">
@@ -820,82 +890,330 @@ export function ReaderCanvas({
               {activePresetSummary}
             </p>
           ) : null}
+          {pdfCompanion ? (
+            !isCompactReaderChrome ? (
+              <div className="hidden gap-2 sm:gap-3 lg:grid">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className={pdfToolbarChipClass}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pdfCompanion.onPageStep(-1);
+                    }}
+                    aria-label={copy.previousPage}
+                    title={copy.previousPage}
+                    className={pdfToolbarIconButtonClass}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm">
+                    {copy.currentPageSummary({
+                      currentPageLabel: pdfCompanion.currentPageLabel,
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pdfCompanion.onPageStep(1);
+                    }}
+                    aria-label={copy.nextPage}
+                    title={copy.nextPage}
+                    className={pdfToolbarIconButtonClass}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <span className={pdfToolbarChipClass}>
+                  {copy.pageCountSummary({
+                    currentPageNumber: pdfCompanion.currentPageIndex + 1,
+                    pageCount: pdfCompanion.pageCount,
+                  })}
+                </span>
+
+                <div className={pdfToolbarChipClass}>
+                  <input
+                    value={pdfCompanion.pageJumpValue}
+                    onChange={(event) => {
+                      pdfCompanion.onPageJumpValueChange(event.target.value);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        pdfCompanion.onPageJump();
+                      }
+                    }}
+                    aria-label={copy.jumpToPage}
+                    placeholder={copy.pageFieldPlaceholder}
+                    className="w-18 min-w-0 bg-transparent text-sm text-(--text-strong) placeholder:text-(--text-muted) focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={pdfCompanion.onPageJump}
+                    className="rounded-full border border-(--border-soft) bg-(--surface-chip) px-2.5 py-1 text-xs font-medium text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-strong)"
+                  >
+                    {copy.goToPage}
+                  </button>
+                </div>
+
+                <div className={pdfToolbarChipClass}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pdfCompanion.onZoomStep(-1);
+                    }}
+                    aria-label={copy.zoomOut}
+                    title={copy.zoomOut}
+                    className={pdfToolbarIconButtonClass}
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </button>
+                  <span>{pdfCompanion.zoomLabel}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pdfCompanion.onZoomStep(1);
+                    }}
+                    aria-label={copy.zoomIn}
+                    title={copy.zoomIn}
+                    className={pdfToolbarIconButtonClass}
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div ref={pdfViewMenuRef} className="relative z-40">
+                  <button
+                    type="button"
+                    aria-label={copy.view}
+                    onClick={() => {
+                      setOpenMenu((current) =>
+                        current === "pdf-view" ? null : "pdf-view",
+                      );
+                    }}
+                    className={pdfToolbarButtonClass}
+                  >
+                    {copy.view}
+                    <ChevronDown
+                      className={`h-4 w-4 transition ${openMenu === "pdf-view" ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {openMenu === "pdf-view" ? (
+                    <div
+                      className={cn(
+                        "reader-dropdown-panel absolute left-0 z-60 w-[19rem] max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
+                        desktopBottomMenuPositionClass,
+                      )}
+                    >
+                      <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
+                        {copy.viewMenu}
+                      </p>
+                      <div className="mt-3 grid gap-2">
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          {[
+                            { label: copy.fitWidth, value: "page-width" },
+                            { label: copy.fitPage, value: "page-fit" },
+                            { label: copy.actualSize, value: "page-actual" },
+                          ].map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => {
+                                pdfCompanion.onSelectZoomValue(option.value);
+                                setOpenMenu(null);
+                              }}
+                              className={`rounded-full border px-3 py-2 text-sm transition ${
+                                pdfCompanion.zoomLabel === option.label
+                                  ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                                  : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {(Object.entries(pdfViewModeLabels) as Array<
+                            [PdfScrollMode, Record<"en" | "es" | "pt", string>]
+                          >).map(([value, labels]) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => {
+                                pdfCompanion.onSelectScrollMode(value);
+                                setOpenMenu(null);
+                              }}
+                              className={`rounded-full border px-3 py-2 text-sm transition ${
+                                pdfCompanion.scrollMode === value
+                                  ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                                  : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                              }`}
+                            >
+                              {getLocalizedCopy(locale, labels)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex min-w-0 items-center gap-2 rounded-[1.1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-(--text-strong)">
+                <Search className="h-4 w-4 shrink-0 text-(--text-muted)" />
+                <input
+                  value={pdfCompanion.searchQuery}
+                  onChange={(event) => {
+                    pdfCompanion.onSearchQueryChange(event.target.value);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      pdfCompanion.onSearchNext();
+                    }
+                  }}
+                  aria-label={copy.pdfSearch}
+                  placeholder={copy.pdfSearch}
+                  className="min-w-0 flex-1 bg-transparent text-sm text-(--text-strong) placeholder:text-(--text-muted) focus:outline-none"
+                />
+                <span className="text-[11px] tracking-[0.18em] text-(--text-muted) uppercase sm:text-xs">
+                  {pdfCompanion.searchStatusLabel}
+                </span>
+                <button
+                  type="button"
+                  onClick={pdfCompanion.onSearchPrevious}
+                  aria-label={copy.previous}
+                  title={copy.previous}
+                  className={pdfToolbarIconButtonClass}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={pdfCompanion.onSearchNext}
+                  aria-label={copy.next}
+                  title={copy.next}
+                  className={pdfToolbarIconButtonClass}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              {pdfCompanion.pageJumpError ? (
+                <p className="px-1 text-sm text-(--accent-amber)">
+                  {pdfCompanion.pageJumpError}
+                </p>
+              ) : null}
+              </div>
+            ) : null
+          ) : null}
         </div>
-        <div className="mt-3 flex min-h-0 flex-1 sm:mt-6">
+        <div className="mt-2 flex min-h-0 flex-1 sm:mt-6">
           <div className="relative flex min-h-0 min-w-0 flex-1 items-stretch overflow-hidden *:h-full">
             {modeView}
           </div>
         </div>
-        {isCompactReaderChrome ? (
-          <div className="mt-3 flex justify-end lg:hidden">
+      </div>
+
+      {isCompactReaderChrome ? (
+        <div className="pointer-events-none absolute right-3 bottom-3 z-40 lg:hidden">
+          <div className={compactDockSurfaceClass}>
+            <button
+              type="button"
+              aria-label={
+                isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
+              }
+              onClick={() => {
+                void toggleFullscreen();
+              }}
+              className={compactDockIconButtonClass}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+              <span className="sr-only">
+                {isFullscreen ? copy.collapse : copy.expand}
+              </span>
+            </button>
             <button
               type="button"
               aria-label={
                 isMobileChromeVisible ? copy.hideControls : copy.controls
               }
               onClick={toggleCompactControls}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-xs tracking-[0.16em] text-(--text-strong) uppercase transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+              className={cn(
+                compactDockButtonClass,
+                isMobileChromeVisible && "bg-(--surface-soft)",
+              )}
             >
               <SlidersHorizontal className="h-4 w-4" />
               {isMobileChromeVisible ? copy.hideControls : copy.controls}
             </button>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div
         className={cn(
-          "shrink-0 space-y-3 border-t border-(--border-soft) pt-4 sm:pt-5",
-          isCompactReaderChrome ? !isMobileChromeVisible && "hidden" : "",
+          isCompactReaderChrome
+            ? "pointer-events-none absolute inset-x-2 bottom-16 z-30 lg:hidden"
+            : "shrink-0 space-y-3 border-t border-(--border-soft) pt-4 sm:pt-5",
+          isCompactReaderChrome && !isMobileChromeVisible && "hidden",
         )}
         aria-label="Reader transport and annotation controls"
       >
         {isCompactReaderChrome ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <button
-              type="button"
-              aria-label={copy.previous}
-              onClick={onMoveBackward}
-              className={mobilePrimaryButtonClass}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              {copy.previous}
-            </button>
-            <button
-              type="button"
-              aria-label={isPlaying ? copy.pause : copy.play}
-              onClick={onTogglePlayback}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--accent-sky)/35 bg-(--accent-sky)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-sky)/55 hover:bg-(--accent-sky)/24"
-            >
-              {isPlaying ? (
-                <Pause className="h-4 w-4" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              {isPlaying ? copy.pause : copy.play}
-            </button>
-            <button
-              type="button"
-              aria-label={copy.next}
-              onClick={onMoveForward}
-              className={mobilePrimaryButtonClass}
-            >
-              {copy.next}
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              aria-haspopup="dialog"
-              aria-label={copy.readingTools}
-              onClick={() => {
-                setOpenMenu(null);
-                setIsMobileToolsOpen(true);
-              }}
-              className={mobilePrimaryButtonClass}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              {copy.tools}
-            </button>
+          <div className="pointer-events-auto rounded-[1.2rem] border border-(--border-strong) bg-(--surface-card)/96 p-2 shadow-[0_20px_50px_rgba(20,26,56,0.2)] backdrop-blur-xl">
+            <div className="space-y-2.5">
+              {compactStatusPanel}
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <button
+                type="button"
+                aria-label={copy.previous}
+                onClick={onMoveBackward}
+                className={mobilePrimaryButtonClass}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {copy.previous}
+              </button>
+              <button
+                type="button"
+                aria-label={isPlaying ? copy.pause : copy.play}
+                onClick={onTogglePlayback}
+                className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-[1rem] border border-(--accent-sky)/35 bg-(--accent-sky)/16 px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--accent-sky)/55 hover:bg-(--accent-sky)/24 active:scale-[0.985]"
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+                {isPlaying ? copy.pause : copy.play}
+              </button>
+              <button
+                type="button"
+                aria-label={copy.next}
+                onClick={onMoveForward}
+                className={mobilePrimaryButtonClass}
+              >
+                {copy.next}
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                aria-label={copy.readingTools}
+                onClick={() => {
+                  setOpenMenu(null);
+                  setIsMobileToolsOpen(true);
+                }}
+                className={mobilePrimaryButtonClass}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                {copy.tools}
+              </button>
+            </div>
           </div>
         ) : null}
         {!isCompactReaderChrome ? (
@@ -1342,6 +1660,7 @@ export function ReaderCanvas({
           copy={copy}
           isFullscreen={isFullscreen}
           locale={locale}
+          pdfCompanion={pdfCompanion}
           preferences={preferences}
           textPresentation={textPresentation}
           onChangeFontScale={onChangeFontScale}
