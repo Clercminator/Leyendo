@@ -11,26 +11,30 @@ import { getLocalizedCopy } from "@/lib/locale";
 
 const modes = [
   {
-    name: { en: "Standard PDF", es: "PDF estándar", pt: "PDF standard" },
+    name: {
+      en: "Browser PDF",
+      es: "PDF en navegador",
+      pt: "PDF no navegador",
+    },
     compactLabel: {
       en: "Real PDFs",
       es: "PDF reales",
       pt: "PDFs reais",
     },
     compactSummary: {
-      en: "Keeps the original page, outline, and page-aware navigation intact.",
-      es: "Mantiene la página original, el esquema y la navegación por páginas.",
-      pt: "Mantem a pagina original, o sumario e a navegacao por paginas.",
+      en: "Opens the original PDF in your browser for the strongest page fidelity.",
+      es: "Abre el PDF original en tu navegador para lograr la mayor fidelidad de página.",
+      pt: "Abre o PDF original no navegador para manter a maior fidelidade de pagina.",
     },
     compactTradeoff: {
-      en: "Less pacing assistance.",
-      es: "Menos ayuda con el ritmo.",
-      pt: "Menos ajuda de ritmo.",
+      en: "Fast reading stays in the companion text modes.",
+      es: "La lectura rápida queda en los modos de texto complementarios.",
+      pt: "A leitura rapida fica nos modos de texto complementares.",
     },
     description: {
-      en: "Keep the original page layout with outline, zoom, and page-aware navigation.",
-      es: "Conserva el diseño original de la página, con esquema, zoom y navegación por páginas.",
-      pt: "Mantenha o layout original da pagina com sumario, zoom e navegacao por paginas.",
+      en: "Open the original PDF in your browser and keep Leyendo's fast modes as the companion layer.",
+      es: "Abre el PDF original en tu navegador y deja los modos rápidos de Leyendo como capa complementaria.",
+      pt: "Abra o PDF original no navegador e mantenha os modos rapidos do Leyendo como camada complementar.",
     },
     bestFor: {
       en: "Best for real PDFs and scanned layouts",
@@ -38,9 +42,9 @@ const modes = [
       pt: "Ideal para PDFs reais e layouts digitalizados",
     },
     tradeoff: {
-      en: "Tradeoff: preserves layout better than text speed modes, but gives you less pacing assistance.",
-      es: "A cambio: conserva mejor el diseño que los modos rápidos, pero ayuda menos con el ritmo.",
-      pt: "Tradeoff: preserva melhor o layout do que os modos rapidos de texto, mas oferece menos ajuda de ritmo.",
+      en: "Tradeoff: preserves layout better than text speed modes, while the in-app PDF beta remains a fallback during testing.",
+      es: "A cambio: conserva mejor el diseño que los modos rápidos, mientras el PDF beta en la app queda como respaldo durante las pruebas.",
+      pt: "Tradeoff: preserva melhor o layout do que os modos rapidos de texto, enquanto o PDF beta no app fica como fallback durante os testes.",
     },
     icon: FileText,
   },

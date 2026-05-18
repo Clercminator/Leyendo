@@ -37,6 +37,7 @@ interface ReaderCanvasMobileToolsProps {
   onRepeatChunk: () => void;
   onRestart: () => void;
   onRestartParagraph: () => void;
+  onReturnToOriginalPage?: () => void;
   onSaveBookmark: () => void;
   onSaveHighlight: () => void;
   onSelectTextPresentation?: (presentation: TextPresentation) => void;
@@ -79,6 +80,7 @@ export function ReaderCanvasMobileTools({
   onRepeatChunk,
   onRestart,
   onRestartParagraph,
+  onReturnToOriginalPage,
   onSaveBookmark,
   onSaveHighlight,
   onSelectTextPresentation,
@@ -143,6 +145,26 @@ export function ReaderCanvasMobileTools({
         </div>
 
         <div className="mt-4 space-y-2.5">
+          {onReturnToOriginalPage ? (
+            <section className={mobileToolsSectionClass}>
+              <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
+                {copy.pdfCompanion}
+              </p>
+              <div className="mt-3 grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onReturnToOriginalPage();
+                    onClose();
+                  }}
+                  className={sheetActionButtonClass}
+                >
+                  {copy.returnToOriginalPage}
+                </button>
+              </div>
+            </section>
+          ) : null}
+
           <section className={mobileToolsSectionClass}>
             <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
               {copy.saveMenu}

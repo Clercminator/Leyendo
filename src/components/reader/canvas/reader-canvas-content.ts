@@ -34,9 +34,9 @@ export const modeLabels: Record<
   Record<"en" | "es" | "pt", string>
 > = {
   "pdf-page": {
-    en: "Standard",
-    es: "PDF estándar",
-    pt: "Standard",
+    en: "In-app PDF beta",
+    es: "PDF beta en la app",
+    pt: "PDF beta no app",
   },
   "focus-word": {
     en: "Focus Word",
@@ -170,6 +170,16 @@ export function getReaderCanvasCopy(
       en: "Save options",
       es: "Opciones para guardar",
       pt: "Opcoes para salvar",
+    }),
+    pdfCompanion: getLocalizedCopy(locale, {
+      en: "PDF companion",
+      es: "Companero PDF",
+      pt: "Companheiro PDF",
+    }),
+    returnToOriginalPage: getLocalizedCopy(locale, {
+      en: "Return to original page",
+      es: "Volver a la pagina original",
+      pt: "Voltar para a pagina original",
     }),
     pause: getLocalizedCopy(locale, {
       en: "Pause",

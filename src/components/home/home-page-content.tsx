@@ -77,7 +77,7 @@ const firstSessionProofCards = {
       eyebrow: "Mode switching",
       title: "You stay in one document while the view changes",
       description:
-        "Move from faster text modes into Classic Reader or Standard PDF without opening a second copy or rebuilding your place.",
+        "Move from faster text modes into Classic Reader or back to the original Browser PDF without opening a second copy or rebuilding your place.",
       note: "Context recovery should be part of the product, not an afterthought.",
     },
     {

@@ -269,6 +269,27 @@ function isBoldPdfFontName(fontName: string | undefined) {
   );
 }
 
+function isDropCapFragment(fragment: PdfFragment, neighbors: PdfFragment[]) {
+  if (fragment.text.replace(/\s/g, "").length !== 1) {
+    return false;
+  }
+
+  const neighborHeights = neighbors
+    .filter((neighbor) => neighbor !== fragment && neighbor.text.trim().length > 0)
+    .map((neighbor) => neighbor.height);
+
+  if (neighborHeights.length === 0) {
+    return false;
+  }
+
+  const medianNeighborHeight =
+    neighborHeights.sort((a, b) => a - b)[
+      Math.floor(neighborHeights.length / 2)
+    ] ?? 0;
+
+  return fragment.height >= medianNeighborHeight * 1.8;
+}
+
 function buildPdfLineContent(fragments: PdfFragment[]) {
   let output = "";
   let currentStrongText = "";
@@ -301,16 +322,33 @@ function buildPdfLineContent(fragments: PdfFragment[]) {
       const previous = fragments[index - 1];
       if (previous) {
         const gap = fragment.x - previous.right;
-        const separatorThreshold = Math.max(
-          2.5,
-          Math.min(previous.height, fragment.height) * 0.28,
-        );
+        const referenceHeight = Math.min(previous.height, fragment.height);
+        const separatorThreshold = Math.max(2.5, referenceHeight * 0.28);
         const startsWithPunctuation = /^[,.;:!?%)\]]/u.test(content);
 
+        // Use a lower threshold when fonts change (bold↔regular) since
+        // reported widths may be slightly inaccurate across font switches.
+        const fontChanged =
+          isBoldPdfFontName(previous.fontName) !==
+          isBoldPdfFontName(fragment.fontName);
+        const fontChangeThreshold = fontChanged
+          ? Math.max(1.2, referenceHeight * 0.12)
+          : separatorThreshold;
+        const effectiveThreshold = Math.min(
+          separatorThreshold,
+          fontChangeThreshold,
+        );
+
+        // Suppress space insertion between a drop cap and its continuation
+        const previousIsDropCap = isDropCapFragment(previous, fragments);
+        const suppressDropCapSpace =
+          previousIsDropCap && /^[A-ZÁÉÍÓÚÜÑ]/u.test(content);
+
         if (
-          gap > separatorThreshold &&
+          gap > effectiveThreshold &&
           !startsWithPunctuation &&
-          !output.endsWith("-")
+          !output.endsWith("-") &&
+          !suppressDropCapSpace
         ) {
           prefix = " ";
         }
@@ -408,7 +446,16 @@ function buildPdfLines(items: unknown[], pageIndex: number, pageWidth: number) {
     const referenceY =
       currentGroup.reduce((total, item) => total + item.y, 0) /
       currentGroup.length;
-    const tolerance = Math.max(2, fragment.height * 0.45);
+    // Use the larger of the fragment's own tolerance and the group's max
+    // fragment height tolerance so drop caps can attract adjacent text.
+    const maxGroupHeight = Math.max(
+      ...currentGroup.map((item) => item.height),
+    );
+    const tolerance = Math.max(
+      2,
+      fragment.height * 0.45,
+      maxGroupHeight * 0.45,
+    );
 
     if (Math.abs(referenceY - fragment.y) <= tolerance) {
       currentGroup.push(fragment);
@@ -430,7 +477,14 @@ function buildPdfLines(items: unknown[], pageIndex: number, pageWidth: number) {
 
       const left = Math.min(...sortedGroup.map((fragment) => fragment.x));
       const right = Math.max(...sortedGroup.map((fragment) => fragment.right));
-      const fontSize = median(sortedGroup.map((fragment) => fragment.height));
+      // Exclude drop cap fragments from font size calculation to avoid
+      // inflating the line's fontSize and causing false heading detection.
+      const nonDropCapFragments = sortedGroup.filter(
+        (fragment) => !isDropCapFragment(fragment, sortedGroup),
+      );
+      const fontSizeFragments =
+        nonDropCapFragments.length > 0 ? nonDropCapFragments : sortedGroup;
+      const fontSize = median(fontSizeFragments.map((fragment) => fragment.height));
       const boldTextLength =
         lineContent.inlineSpans?.reduce((total, inlineSpan) => {
           return inlineSpan.kind === "strong"
@@ -799,8 +853,8 @@ function isStandalonePdfLine(line: PdfLine, bodyFontSize: number) {
 
   return (
     isCenteredLine(line) &&
-    line.text.length <= 100 &&
-    line.fontSize >= bodyFontSize * 0.92
+    line.text.length <= 60 &&
+    line.fontSize >= bodyFontSize * 1.08
   );
 }
 
@@ -817,12 +871,29 @@ function shouldMergePdfParagraphLine(
     return false;
   }
 
-  if (
-    previousLine.pageIndex !== currentLine.pageIndex ||
-    isCenteredLine(previousLine) ||
-    isCenteredLine(currentLine)
-  ) {
+  if (previousLine.pageIndex !== currentLine.pageIndex) {
     return false;
+  }
+
+  const previousCentered = isCenteredLine(previousLine);
+  const currentCentered = isCenteredLine(currentLine);
+
+  // Allow merging when BOTH lines are centered if they look like body text
+  // (similar font size to body, long enough to be paragraph content).
+  if (previousCentered !== currentCentered) {
+    return false;
+  }
+
+  if (previousCentered && currentCentered) {
+    const bothBodySized =
+      previousLine.fontSize <= bodyFontSize * 1.15 &&
+      currentLine.fontSize <= bodyFontSize * 1.15;
+    const bothLongEnough =
+      previousLine.text.length >= 30 || currentLine.text.length >= 30;
+
+    if (!bothBodySized || !bothLongEnough) {
+      return false;
+    }
   }
 
   const verticalGap = Math.abs(previousLine.y - currentLine.y);

@@ -119,9 +119,9 @@ const demoTips = {
 };
 
 const demoPdfNote = {
-  en: "Standard PDF mode is not part of this sample because it needs the original PDF file and page assets. After import, that mode keeps the page layout, while the text modes trade layout fidelity for more pacing help.",
-  es: "El modo PDF estándar no forma parte de esta muestra porque necesita el archivo original y sus páginas. Después de importar, ese modo conserva el diseño de la página, mientras los modos de texto cambian fidelidad visual por ayuda de ritmo.",
-  pt: "O modo Standard PDF nao faz parte desta amostra porque precisa do arquivo PDF original e de suas paginas. Depois da importacao, esse modo preserva a pagina, enquanto os modos de texto trocam fidelidade de layout por mais ajuda de ritmo.",
+  en: "Browser PDF is not part of this sample because it opens the original PDF in a browser tab. After import, that path keeps the page layout, while the text modes trade layout fidelity for more pacing help and the in-app PDF beta stays as fallback.",
+  es: "El PDF en navegador no forma parte de esta muestra porque abre el PDF original en una pestaña del navegador. Después de importar, esa ruta conserva el diseño de la página, mientras los modos de texto cambian fidelidad visual por ayuda de ritmo y el PDF beta en la app queda como respaldo.",
+  pt: "O PDF no navegador nao faz parte desta amostra porque abre o PDF original em uma aba do navegador. Depois da importacao, esse caminho preserva a pagina, enquanto os modos de texto trocam fidelidade de layout por mais ajuda de ritmo e o PDF beta no app fica como fallback.",
 };
 
 const demoStatusIdle = {

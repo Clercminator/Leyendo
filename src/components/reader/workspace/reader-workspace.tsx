@@ -219,6 +219,8 @@ export function ReaderWorkspace({
   );
   const canUsePdfPageMode =
     payload?.sourceKind === "pdf" && pdfAssetState === "present";
+  const canOpenBrowserPdf =
+    payload?.sourceKind === "pdf" && pdfAssetState === "present";
   const availableModes = useMemo<ReaderMode[]>(() => {
     if (canUsePdfPageMode && hasExtractedText) {
       return [...readerModes];
@@ -365,6 +367,24 @@ export function ReaderWorkspace({
     activePayload && activeChunk
       ? activePayload.blocks[activeChunk.paragraphIndex]
       : undefined;
+  const currentPdfSourcePageIndex = useMemo(() => {
+    if (!payload || payload.sourceKind !== "pdf") {
+      return null;
+    }
+
+    return resolveSourcePageIndexForAnchor(payload, {
+      chunkIndex: resolvedChunkIndex,
+      paragraphIndex: activeChunk?.paragraphIndex,
+      sourcePageIndex: activeChunk?.sourcePageIndex,
+      tokenIndex: activeChunk?.anchorTokenIndex,
+    });
+  }, [
+    activeChunk?.anchorTokenIndex,
+    activeChunk?.paragraphIndex,
+    activeChunk?.sourcePageIndex,
+    payload,
+    resolvedChunkIndex,
+  ]);
   const runtimeChunkIndexBySourcePage = useMemo(() => {
     const chunkIndexByPage = new Map<number, number>();
 
@@ -496,7 +516,11 @@ export function ReaderWorkspace({
     [activePayload],
   );
   const modeLabel = {
-    "pdf-page": { en: "Standard", es: "PDF estándar", pt: "Standard" },
+    "pdf-page": {
+      en: "In-app PDF beta",
+      es: "PDF beta en la app",
+      pt: "PDF beta no app",
+    },
     "focus-word": {
       en: "Focus Word",
       es: "Foco por palabra",
@@ -1444,6 +1468,90 @@ export function ReaderWorkspace({
       ],
   );
 
+  const handleOpenBrowserPdf = useCallback(
+    ({ pageIndex }: { pageIndex?: number }) => {
+      if (!document || document.sourceKind !== "pdf") {
+        return;
+      }
+
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const browserPdfUrl = new URL("/browser-pdf", window.location.origin);
+      browserPdfUrl.searchParams.set("document", document.id);
+
+      if (typeof pageIndex === "number") {
+        browserPdfUrl.searchParams.set("page", String(pageIndex + 1));
+      }
+
+      const browserWindow = window.open(browserPdfUrl.toString(), "_blank");
+
+      if (!browserWindow) {
+        announce(
+          getLocalizedCopy(locale, {
+            en: "The browser blocked the new tab for this PDF.",
+            es: "El navegador bloqueo la nueva pestana para este PDF.",
+            pt: "O navegador bloqueou a nova aba para este PDF.",
+          }),
+        );
+        return;
+      }
+
+      browserWindow.opener = null;
+      announce(
+        getLocalizedCopy(locale, {
+          en:
+            typeof pageIndex === "number"
+              ? `Opening the original PDF on page ${pageIndex + 1} in a new tab.`
+              : "Opening the original PDF in a new tab.",
+          es:
+            typeof pageIndex === "number"
+              ? `Abriendo el PDF original en la pagina ${pageIndex + 1} en una nueva pestana.`
+              : "Abriendo el PDF original en una nueva pestana.",
+          pt:
+            typeof pageIndex === "number"
+              ? `Abrindo o PDF original na pagina ${pageIndex + 1} em uma nova aba.`
+              : "Abrindo o PDF original em uma nova aba.",
+        }),
+      );
+    },
+    [announce, document, locale],
+  );
+
+  const handleReadPdfPageInClassic = useCallback(
+    (pageIndex: number) => {
+      const chunkIndexForPage = runtimeChunkIndexBySourcePage.get(pageIndex);
+
+      if (
+        typeof chunkIndexForPage === "number" &&
+        chunkIndexForPage >= 0 &&
+        chunkIndexForPage !== resolvedChunkIndex
+      ) {
+        startTransition(() => {
+          setChunkIndex(chunkIndexForPage);
+        });
+      }
+
+      handleModeSelection("classic-reader");
+    },
+    [
+      handleModeSelection,
+      resolvedChunkIndex,
+      runtimeChunkIndexBySourcePage,
+      setChunkIndex,
+    ],
+  );
+
+  const handleReturnToOriginalPdfPage = useCallback(() => {
+    void handleOpenBrowserPdf({
+      pageIndex:
+        typeof currentPdfSourcePageIndex === "number"
+          ? currentPdfSourcePageIndex
+          : undefined,
+    });
+  }, [currentPdfSourcePageIndex, handleOpenBrowserPdf]);
+
   const handleDecreaseChunkSize = useCallback(() => {
       const nextChunkSize = Math.max(1, getQueuedPreferenceValue("chunkSize") - 1);
       queueBurstPreferenceChanges(
@@ -1804,6 +1912,9 @@ export function ReaderWorkspace({
             }}
             onJumpToBookmark={jumpToBookmark}
             onJumpToHighlight={jumpToHighlight}
+            onOpenBrowserPdf={(args) => {
+              handleOpenBrowserPdf(args);
+            }}
             onPageChange={(pageIndex) => {
               if (!hasExtractedText) {
                 return;
@@ -1821,6 +1932,9 @@ export function ReaderWorkspace({
                 });
               }
             }}
+            onReadCurrentPageInClassic={
+              hasExtractedText ? handleReadPdfPageInClassic : undefined
+            }
             onSaveBookmark={(args) => {
               void handleSavePdfBookmark(args);
             }}
@@ -1869,6 +1983,9 @@ export function ReaderWorkspace({
               moveToChunk(
                 restartParagraphChunkIndex(runtimeChunks, resolvedChunkIndex),
               )
+            }
+            onReturnToOriginalPage={
+              canOpenBrowserPdf ? handleReturnToOriginalPdfPage : undefined
             }
             onSaveBookmark={() => {
               void handleSaveBookmark();

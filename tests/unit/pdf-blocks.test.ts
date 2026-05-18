@@ -184,4 +184,75 @@ describe("pdf block normalization", () => {
       }),
     ]);
   });
+
+  it("merges centered body text lines into a single paragraph for book layouts", () => {
+    const lines: PdfLine[] = [
+      {
+        center: 300,
+        entryKind: "text",
+        fontSize: 12,
+        left: 120,
+        pageIndex: 2,
+        pageWidth: 600,
+        right: 480,
+        text: "IKE millions of others, I am a big fan of Napoleon Hill's timeless",
+        y: 600,
+      },
+      {
+        center: 300,
+        entryKind: "text",
+        fontSize: 12,
+        left: 125,
+        pageIndex: 2,
+        pageWidth: 600,
+        right: 475,
+        text: "classic, Think and Grow Rich. First published in 1937, it has the",
+        y: 584,
+      },
+      {
+        center: 300,
+        entryKind: "text",
+        fontSize: 12,
+        left: 122,
+        pageIndex: 2,
+        pageWidth: 600,
+        right: 478,
+        text: "distinction of being the best read self-help book of the twentieth century.",
+        y: 568,
+      },
+    ];
+
+    const blocks = buildPdfBlocks(lines);
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toEqual(
+      expect.objectContaining({
+        kind: "paragraph",
+        text: expect.stringContaining(
+          "IKE millions of others, I am a big fan of Napoleon Hill's timeless classic, Think and Grow Rich.",
+        ),
+      }),
+    );
+  });
+
+  it("inserts space on font change even when gap is small (bold/regular transitions)", () => {
+    const lines: PdfLine[] = [
+      {
+        center: 300,
+        entryKind: "text",
+        fontSize: 10,
+        left: 72,
+        pageIndex: 0,
+        pageWidth: 600,
+        right: 500,
+        text: "Que, por Resolución Electrónica Exenta N°1.424, de 2024",
+        y: 700,
+      },
+    ];
+
+    const blocks = buildPdfBlocks(lines);
+
+    expect(blocks[0]!.text).toContain("por Resolución");
+    expect(blocks[0]!.text).not.toContain("porResolución");
+  });
 });

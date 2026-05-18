@@ -65,6 +65,7 @@ interface ReaderCanvasProps {
   onRepeatChunk: () => void;
   onRestart: () => void;
   onRestartParagraph: () => void;
+  onReturnToOriginalPage?: () => void;
   onSaveBookmark: () => void;
   onSaveHighlight: () => void;
   onSelectMode: (mode: (typeof readerModes)[number]) => void;
@@ -131,6 +132,7 @@ export function ReaderCanvas({
   onRepeatChunk,
   onRestart,
   onRestartParagraph,
+  onReturnToOriginalPage,
   onSaveBookmark,
   onSaveHighlight,
   onSelectMode,
@@ -705,6 +707,15 @@ export function ReaderCanvas({
                   </div>
                 ) : null}
               </div>
+            ) : null}
+            {onReturnToOriginalPage ? (
+              <button
+                type="button"
+                onClick={onReturnToOriginalPage}
+                className={topControlButtonClass}
+              >
+                {copy.returnToOriginalPage}
+              </button>
             ) : null}
             {!isCompactReaderChrome ? (
               <div ref={themeMenuRef} className="relative z-40">
@@ -1347,6 +1358,7 @@ export function ReaderCanvas({
           onRepeatChunk={onRepeatChunk}
           onRestart={onRestart}
           onRestartParagraph={onRestartParagraph}
+          onReturnToOriginalPage={onReturnToOriginalPage}
           onSaveBookmark={onSaveBookmark}
           onSaveHighlight={onSaveHighlight}
           onSelectTextPresentation={onSelectTextPresentation}

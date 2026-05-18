@@ -268,7 +268,7 @@ export function UploadPanel() {
     const modeLabel = getLocalizedCopy(locale, {
       en:
         recommendedMode === "pdf-page"
-          ? "Standard PDF"
+          ? "Browser PDF"
           : recommendedMode === "focus-word"
             ? "Focus Word"
             : recommendedMode === "phrase-chunk"
@@ -278,7 +278,7 @@ export function UploadPanel() {
                 : "Classic Reader",
       es:
         recommendedMode === "pdf-page"
-          ? "PDF estándar"
+          ? "PDF en navegador"
           : recommendedMode === "focus-word"
             ? "Foco por palabra"
             : recommendedMode === "phrase-chunk"
@@ -288,7 +288,7 @@ export function UploadPanel() {
                 : "Lector clásico",
       pt:
         recommendedMode === "pdf-page"
-          ? "PDF standard"
+          ? "PDF no navegador"
           : recommendedMode === "focus-word"
             ? "Palavra foco"
             : recommendedMode === "phrase-chunk"

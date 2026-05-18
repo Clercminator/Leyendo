@@ -157,7 +157,9 @@ interface PdfReaderWorkspaceProps {
   onDeleteHighlight: (highlightId: string) => void;
   onJumpToBookmark: (bookmark: Bookmark) => void;
   onJumpToHighlight: (highlight: Highlight) => void;
+  onOpenBrowserPdf: (args: { pageIndex: number }) => void;
   onPageChange: (pageIndex: number) => void;
+  onReadCurrentPageInClassic?: (pageIndex: number) => void;
   onSaveBookmark: (args: { pageIndex: number }) => void;
   onSaveHighlight: (args: {
     pageIndex: number;
@@ -181,7 +183,9 @@ export function PdfReaderWorkspace({
   onDeleteHighlight,
   onJumpToBookmark,
   onJumpToHighlight,
+  onOpenBrowserPdf,
   onPageChange,
+  onReadCurrentPageInClassic,
   onSaveBookmark,
   onSaveHighlight,
   onSelectMode,
@@ -483,9 +487,9 @@ export function PdfReaderWorkspace({
           if (!cancelled) {
             setError(
               getLocalizedCopy(locale, {
-                en: "The original PDF is not stored on this device. Re-import the PDF locally to use the Standard view.",
-                es: "El PDF original no esta guardado en este dispositivo. Importalo otra vez localmente para usar la vista Standard.",
-                pt: "O PDF original nao esta salvo neste dispositivo. Importe o PDF novamente localmente para usar a visualizacao Standard.",
+                en: "The original PDF is not stored on this device. Re-import the PDF locally to use the in-app PDF beta fallback or open it in your browser.",
+                es: "El PDF original no esta guardado en este dispositivo. Importalo otra vez localmente para usar el PDF beta en la app o abrirlo en el navegador.",
+                pt: "O PDF original nao esta salvo neste dispositivo. Importe o PDF novamente localmente para usar o PDF beta no app ou abri-lo no navegador.",
               }),
             );
           }
@@ -1233,6 +1237,21 @@ export function PdfReaderWorkspace({
     es: "Cerrar",
     pt: "Fechar",
   });
+  const openBrowserPdfLabel = getLocalizedCopy(locale, {
+    en: "Open Browser PDF",
+    es: "Abrir PDF en el navegador",
+    pt: "Abrir PDF no navegador",
+  });
+  const openBrowserPdfInsteadLabel = getLocalizedCopy(locale, {
+    en: "Open Browser PDF instead",
+    es: "Abrir PDF en el navegador",
+    pt: "Abrir PDF no navegador",
+  });
+  const readThisPageInClassicLabel = getLocalizedCopy(locale, {
+    en: "Read this page in Classic",
+    es: "Leer esta pagina en Clasico",
+    pt: "Ler esta pagina no Classico",
+  });
 
   const handleFindPrevious = useCallback(() => {
     const runtime = viewerRuntimeRef.current;
@@ -1429,14 +1448,36 @@ export function PdfReaderWorkspace({
         <FileWarning className="mx-auto h-8 w-8 text-amber-700" />
         <h2 className="mt-5 text-3xl font-semibold tracking-tight">
           {getLocalizedCopy(locale, {
-            en: "The Standard PDF view is unavailable",
-            es: "La vista Standard PDF no esta disponible",
-            pt: "A visualizacao Standard PDF nao esta disponivel",
+            en: "The in-app PDF beta view is unavailable",
+            es: "La vista PDF beta en la app no esta disponible",
+            pt: "A visualizacao PDF beta no app nao esta disponivel",
             })}
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-amber-900/80">
           {error}
         </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              onOpenBrowserPdf({ pageIndex: currentPageIndex });
+            }}
+            className={toolbarButtonClass}
+          >
+            {openBrowserPdfInsteadLabel}
+          </button>
+          {hasExtractedText && onReadCurrentPageInClassic ? (
+            <button
+              type="button"
+              onClick={() => {
+                onReadCurrentPageInClassic(currentPageIndex);
+              }}
+              className={toolbarButtonClass}
+            >
+              {readThisPageInClassicLabel}
+            </button>
+          ) : null}
+        </div>
       </section>
     );
   }
@@ -1503,6 +1544,28 @@ export function PdfReaderWorkspace({
                 </div>
               ) : null}
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                onOpenBrowserPdf({ pageIndex: currentPageIndex });
+              }}
+              className={toolbarButtonClass}
+            >
+              {openBrowserPdfLabel}
+            </button>
+
+            {hasExtractedText && onReadCurrentPageInClassic ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onReadCurrentPageInClassic(currentPageIndex);
+                }}
+                className={toolbarButtonClass}
+              >
+                {readThisPageInClassicLabel}
+              </button>
+            ) : null}
 
             <div className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-slate-700">
               <button

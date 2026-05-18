@@ -616,4 +616,98 @@ describe("extractDocumentFromFile", () => {
       /not supported/i,
     );
   });
+
+  it("inserts space between regular and bold fragments when gap is small (font-change detection)", async () => {
+    pdfjsMock.getDocument.mockImplementationOnce(() => ({
+      promise: Promise.resolve({
+        numPages: 1,
+        getPage: async () => ({
+          getViewport: () => ({ width: 612 }),
+          getOperatorList: async () => ({
+            argsArray: [],
+            fnArray: [],
+          }),
+          getTextContent: async () => ({
+            items: [
+              {
+                fontName: "TimesNewRoman",
+                str: "Que, por",
+                transform: [1, 0, 0, 10, 72, 700],
+                width: 48,
+                height: 10,
+              },
+              {
+                fontName: "TimesNewRoman-Bold",
+                str: "Resolución Electrónica Exenta N°1.424,",
+                transform: [1, 0, 0, 10, 121.5, 700],
+                width: 200,
+                height: 10,
+              },
+              {
+                fontName: "TimesNewRoman",
+                str: "de Corfo",
+                transform: [1, 0, 0, 10, 323, 700],
+                width: 50,
+                height: 10,
+              },
+            ],
+          }),
+        }),
+      }),
+    }));
+
+    const file = new File([new Uint8Array([10, 20])], "corfo.pdf", {
+      type: "application/pdf",
+    });
+
+    const extracted = await extractDocumentFromFile(file);
+
+    expect(extracted.sourceBlocks?.[0]?.text).toContain("por Resolución");
+    expect(extracted.sourceBlocks?.[0]?.text).not.toContain("porResolución");
+    expect(extracted.sourceBlocks?.[0]?.text).toContain(
+      "N°1.424, de Corfo",
+    );
+  });
+
+  it("suppresses space between drop cap and continuation text", async () => {
+    pdfjsMock.getDocument.mockImplementationOnce(() => ({
+      promise: Promise.resolve({
+        numPages: 1,
+        getPage: async () => ({
+          getViewport: () => ({ width: 612 }),
+          getOperatorList: async () => ({
+            argsArray: [],
+            fnArray: [],
+          }),
+          getTextContent: async () => ({
+            items: [
+              {
+                fontName: "TimesNewRoman",
+                str: "L",
+                transform: [1, 0, 0, 28, 72, 700],
+                width: 18,
+                height: 28,
+              },
+              {
+                fontName: "TimesNewRoman",
+                str: "IKE millions of others, I am a big fan",
+                transform: [1, 0, 0, 12, 96, 710],
+                width: 240,
+                height: 12,
+              },
+            ],
+          }),
+        }),
+      }),
+    }));
+
+    const file = new File([new Uint8Array([11, 22])], "hill.pdf", {
+      type: "application/pdf",
+    });
+
+    const extracted = await extractDocumentFromFile(file);
+
+    expect(extracted.sourceBlocks?.[0]?.text).toContain("LIKE millions");
+    expect(extracted.sourceBlocks?.[0]?.text).not.toContain("L IKE");
+  });
 });
