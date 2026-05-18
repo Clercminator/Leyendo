@@ -1028,6 +1028,57 @@ export function ReaderWorkspace({
     [announce, applyPreferenceChanges, setMode],
   );
 
+  const handleOpenBrowserPdf = useCallback(
+    ({ pageIndex }: { pageIndex?: number }) => {
+      if (!document || document.sourceKind !== "pdf") {
+        return;
+      }
+
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const browserPdfUrl = new URL("/browser-pdf", window.location.origin);
+      browserPdfUrl.searchParams.set("document", document.id);
+
+      if (typeof pageIndex === "number") {
+        browserPdfUrl.searchParams.set("page", String(pageIndex + 1));
+      }
+
+      const browserWindow = window.open(browserPdfUrl.toString(), "_blank");
+
+      if (!browserWindow) {
+        announce(
+          getLocalizedCopy(locale, {
+            en: "The browser blocked the new tab for this PDF.",
+            es: "El navegador bloqueo la nueva pestana para este PDF.",
+            pt: "O navegador bloqueou a nova aba para este PDF.",
+          }),
+        );
+        return;
+      }
+
+      browserWindow.opener = null;
+      announce(
+        getLocalizedCopy(locale, {
+          en:
+            typeof pageIndex === "number"
+              ? `Opening the original PDF on page ${pageIndex + 1} in a new tab.`
+              : "Opening the original PDF in a new tab.",
+          es:
+            typeof pageIndex === "number"
+              ? `Abriendo el PDF original en la pagina ${pageIndex + 1} en una nueva pestana.`
+              : "Abriendo el PDF original en una nueva pestana.",
+          pt:
+            typeof pageIndex === "number"
+              ? `Abrindo o PDF original na pagina ${pageIndex + 1} em uma nova aba.`
+              : "Abrindo o PDF original em uma nova aba.",
+        }),
+      );
+    },
+    [announce, document, locale],
+  );
+
   const handleDecreaseChunkSize = useCallback(() => {
     const nextChunkSize = Math.max(1, preferences.chunkSize - 1);
     applyPreferenceChanges({ chunkSize: nextChunkSize });
@@ -1323,6 +1374,9 @@ export function ReaderWorkspace({
             }}
             onJumpToBookmark={jumpToBookmark}
             onJumpToHighlight={jumpToHighlight}
+            onOpenBrowserPdf={(args) => {
+              handleOpenBrowserPdf(args);
+            }}
             onPageChange={(pageIndex) => {
               if (!hasExtractedText) {
                 return;
