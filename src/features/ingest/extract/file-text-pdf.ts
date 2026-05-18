@@ -945,8 +945,18 @@ function shouldMergePdfParagraphBlocks(
 
   const previousAlignment = previousBlock.alignment ?? "left";
   const currentAlignment = currentBlock.alignment ?? "left";
-  if (previousAlignment !== currentAlignment || currentAlignment !== "left") {
+  if (previousAlignment !== currentAlignment) {
     return false;
+  }
+
+  // For centered blocks, only allow merging when both look like body text
+  // (long enough to be paragraph content, not short titles/captions).
+  if (currentAlignment === "center") {
+    const previousLong = (previousBlock.text?.length ?? 0) >= 30;
+    const currentLong = (currentBlock.text?.length ?? 0) >= 30;
+    if (!previousLong && !currentLong) {
+      return false;
+    }
   }
 
   if (
