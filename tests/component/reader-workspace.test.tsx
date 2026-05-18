@@ -34,7 +34,7 @@ vi.mock("@/components/auth/supabase-provider", () => ({
   }),
 }));
 
-vi.mock("@/components/reader/pdf-reader-workspace", () => ({
+vi.mock("@/components/reader/pdf-workspace/pdf-reader-workspace", () => ({
   PdfReaderWorkspace: ({
     availableModes,
     hasExtractedText,

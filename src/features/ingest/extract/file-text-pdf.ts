@@ -294,6 +294,11 @@ function buildPdfLineContent(fragments: PdfFragment[]) {
   let output = "";
   let currentStrongText = "";
   const inlineSpans: DocumentInlineSpanInput[] = [];
+  // Track the last fragment that produced actual content for accurate gap
+  // calculation, since PDFs may insert zero-height space fragments as
+  // explicit word separators.
+  let lastContentFragment: PdfFragment | undefined;
+  let hasExplicitSeparator = false;
 
   const flushStrongText = () => {
     const text = normalizePdfBlockText(currentStrongText);
@@ -310,51 +315,62 @@ function buildPdfLineContent(fragments: PdfFragment[]) {
     });
   };
 
-  fragments.forEach((fragment, index) => {
+  fragments.forEach((fragment) => {
     const content = normalizePdfFragmentText(fragment.text);
     if (!content) {
+      // This is a whitespace-only or empty fragment (common in PDFs as
+      // explicit word separators with zero height). Mark that a separator
+      // exists so adjacent content fragments get a space between them.
+      if (lastContentFragment && /^\s+$/.test(fragment.text)) {
+        hasExplicitSeparator = true;
+      }
       return;
     }
 
     let prefix = "";
 
-    if (index > 0) {
-      const previous = fragments[index - 1];
-      if (previous) {
-        const gap = fragment.x - previous.right;
-        const referenceHeight = Math.min(previous.height, fragment.height);
-        const separatorThreshold = Math.max(2.5, referenceHeight * 0.28);
-        const startsWithPunctuation = /^[,.;:!?%)\]]/u.test(content);
+    if (lastContentFragment) {
+      const gap = fragment.x - lastContentFragment.right;
+      const referenceHeight = Math.min(
+        lastContentFragment.height,
+        fragment.height,
+      );
+      const separatorThreshold = Math.max(2.5, referenceHeight * 0.28);
+      const startsWithPunctuation = /^[,.;:!?%)\]]/u.test(content);
 
-        // Use a lower threshold when fonts change (bold↔regular) since
-        // reported widths may be slightly inaccurate across font switches.
-        const fontChanged =
-          isBoldPdfFontName(previous.fontName) !==
-          isBoldPdfFontName(fragment.fontName);
-        const fontChangeThreshold = fontChanged
-          ? Math.max(1.2, referenceHeight * 0.12)
-          : separatorThreshold;
-        const effectiveThreshold = Math.min(
-          separatorThreshold,
-          fontChangeThreshold,
-        );
+      // Use a lower threshold when fonts change (bold↔regular) since
+      // reported widths may be slightly inaccurate across font switches.
+      const fontChanged =
+        isBoldPdfFontName(lastContentFragment.fontName) !==
+        isBoldPdfFontName(fragment.fontName);
+      const fontChangeThreshold = fontChanged
+        ? Math.max(1.2, referenceHeight * 0.12)
+        : separatorThreshold;
+      const effectiveThreshold = Math.min(
+        separatorThreshold,
+        fontChangeThreshold,
+      );
 
-        // Suppress space insertion between a drop cap and its continuation
-        const previousIsDropCap = isDropCapFragment(previous, fragments);
-        const suppressDropCapSpace =
-          previousIsDropCap && /^[A-ZÁÉÍÓÚÜÑ]/u.test(content);
+      // Suppress space insertion between a drop cap and its continuation
+      const previousIsDropCap = isDropCapFragment(
+        lastContentFragment,
+        fragments,
+      );
+      const suppressDropCapSpace =
+        previousIsDropCap && /^[A-ZÁÉÍÓÚÜÑ]/u.test(content);
 
-        if (
-          gap > effectiveThreshold &&
-          !startsWithPunctuation &&
-          !output.endsWith("-") &&
-          !suppressDropCapSpace
-        ) {
-          prefix = " ";
-        }
+      if (
+        !startsWithPunctuation &&
+        !output.endsWith("-") &&
+        !suppressDropCapSpace &&
+        (hasExplicitSeparator || gap > effectiveThreshold)
+      ) {
+        prefix = " ";
       }
     }
 
+    hasExplicitSeparator = false;
+    lastContentFragment = fragment;
     output += prefix;
 
     if (isBoldPdfFontName(fragment.fontName)) {

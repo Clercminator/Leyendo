@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PdfReaderWorkspace } from "@/components/reader/pdf-reader-workspace";
+import { PdfReaderWorkspace } from "@/components/reader/pdf-workspace/pdf-reader-workspace";
 import { defaultPdfViewerState } from "@/types/reader";
 
 vi.mock("next/image", () => ({
@@ -10,9 +10,23 @@ vi.mock("next/image", () => ({
     alt,
     src,
     ...props
-  }: React.ImgHTMLAttributes<HTMLImageElement>) => (
-    <img alt={alt} src={src} {...props} />
-  ),
+  }: React.ImgHTMLAttributes<HTMLImageElement> & {
+    fill?: boolean;
+    priority?: boolean;
+    unoptimized?: boolean;
+  }) => {
+    const imageProps = { ...props } as React.ImgHTMLAttributes<HTMLImageElement> & {
+      fill?: boolean;
+      priority?: boolean;
+      unoptimized?: boolean;
+    };
+
+    delete imageProps.fill;
+    delete imageProps.priority;
+    delete imageProps.unoptimized;
+
+    return <img alt={alt} src={src} {...imageProps} />;
+  },
 }));
 
 vi.mock("@/components/layout/locale-provider", () => ({
@@ -120,6 +134,19 @@ describe("PdfReaderWorkspace", () => {
     vi.unstubAllGlobals();
     eventHandlers.clear();
     vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockImplementation((query: string) => ({
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        matches: false,
+        media: query,
+        onchange: null,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      })),
+    );
     HTMLCanvasElement.prototype.getContext = vi.fn(() => {
       return {
         fillRect: vi.fn(),
@@ -205,6 +232,7 @@ describe("PdfReaderWorkspace", () => {
         onDeleteHighlight={vi.fn()}
         onJumpToBookmark={vi.fn()}
         onJumpToHighlight={vi.fn()}
+        onOpenBrowserPdf={vi.fn()}
         onPageChange={vi.fn()}
         onSaveBookmark={onSaveBookmark}
         onSaveHighlight={vi.fn()}
@@ -228,8 +256,10 @@ describe("PdfReaderWorkspace", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows Standard tools, selected highlight guidance, and the mobile PDF sheet", async () => {
+  it("shows PDF tools, selected highlight guidance, and the mobile PDF sheet", async () => {
     const user = userEvent.setup();
+    const onOpenBrowserPdf = vi.fn();
+    const onReadCurrentPageInClassic = vi.fn();
 
     render(
       <PdfReaderWorkspace
@@ -253,7 +283,9 @@ describe("PdfReaderWorkspace", () => {
         onDeleteHighlight={vi.fn()}
         onJumpToBookmark={vi.fn()}
         onJumpToHighlight={vi.fn()}
+        onOpenBrowserPdf={onOpenBrowserPdf}
         onPageChange={vi.fn()}
+        onReadCurrentPageInClassic={onReadCurrentPageInClassic}
         onSaveBookmark={vi.fn()}
         onSaveHighlight={vi.fn()}
         onSelectMode={vi.fn()}
@@ -262,9 +294,16 @@ describe("PdfReaderWorkspace", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /^standard$/i }),
+        screen.getByRole("button", { name: /^in-app pdf beta$/i }),
       ).toBeInTheDocument();
     });
+
+    expect(
+      screen.getByRole("button", { name: /open browser pdf/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /read this page in classic/i }),
+    ).toBeInTheDocument();
 
     expect(screen.getByRole("textbox", { name: /jump to page/i })).toHaveValue(
       "1",
@@ -306,6 +345,20 @@ describe("PdfReaderWorkspace", () => {
   });
 
   it("renders only the requested thumbnail window instead of every page eagerly", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockImplementation((query: string) => ({
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        matches: query === "(min-width: 1024px)",
+        media: query,
+        onchange: null,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      })),
+    );
+
     const getPage = vi.fn().mockResolvedValue({
       cleanup: vi.fn(),
       getViewport: ({ scale }: { scale: number }) => ({
@@ -358,6 +411,7 @@ describe("PdfReaderWorkspace", () => {
         onDeleteHighlight={vi.fn()}
         onJumpToBookmark={vi.fn()}
         onJumpToHighlight={vi.fn()}
+        onOpenBrowserPdf={vi.fn()}
         onPageChange={vi.fn()}
         onSaveBookmark={vi.fn()}
         onSaveHighlight={vi.fn()}

@@ -33,7 +33,7 @@ describe("LandingReaderDemo", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/standard pdf mode is not part of this sample/i),
+      screen.getByText(/browser pdf is not part of this sample/i),
     ).toBeInTheDocument();
     expect(
       screen.getByLabelText(/classic reader document/i),

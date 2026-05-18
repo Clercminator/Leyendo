@@ -670,11 +670,14 @@ describe("extractDocumentFromFile", () => {
   });
 
   it("suppresses space between drop cap and continuation text", async () => {
+    // Real fragment layout from "How To Sell Your Way Through Life" page 13:
+    // "L" is at y=443 (h=30.4), "IKE..." at y=456 (h=11), with a space
+    // fragment between them at y=443 (h=0)
     pdfjsMock.getDocument.mockImplementationOnce(() => ({
       promise: Promise.resolve({
         numPages: 1,
         getPage: async () => ({
-          getViewport: () => ({ width: 612 }),
+          getViewport: () => ({ width: 435 }),
           getOperatorList: async () => ({
             argsArray: [],
             fnArray: [],
@@ -682,18 +685,32 @@ describe("extractDocumentFromFile", () => {
           getTextContent: async () => ({
             items: [
               {
-                fontName: "TimesNewRoman",
-                str: "L",
-                transform: [1, 0, 0, 28, 72, 700],
-                width: 18,
-                height: 28,
+                fontName: "TimesNewRoman-Italic",
+                str: "IKE millions of others, I am a big fan of Napoleon Hill's timeless",
+                transform: [1, 0, 0, 11, 134, 456],
+                width: 277,
+                height: 11,
               },
               {
                 fontName: "TimesNewRoman",
-                str: "IKE millions of others, I am a big fan",
-                transform: [1, 0, 0, 12, 96, 710],
-                width: 240,
-                height: 12,
+                str: "L",
+                transform: [1, 0, 0, 30.4, 100.4, 443.1],
+                width: 26.9,
+                height: 30.4,
+              },
+              {
+                fontName: "TimesNewRoman",
+                str: " ",
+                transform: [1, 0, 0, 0, 127.3, 443.1],
+                width: 0.6,
+                height: 0,
+              },
+              {
+                fontName: "TimesNewRoman-Italic",
+                str: "classic, Think and Grow Rich. First published in 1937, it has the",
+                transform: [1, 0, 0, 11, 136.8, 443.1],
+                width: 274,
+                height: 11,
               },
             ],
           }),
@@ -709,5 +726,96 @@ describe("extractDocumentFromFile", () => {
 
     expect(extracted.sourceBlocks?.[0]?.text).toContain("LIKE millions");
     expect(extracted.sourceBlocks?.[0]?.text).not.toContain("L IKE");
+  });
+
+  it("preserves spaces from zero-height separator fragments between fonts", async () => {
+    // Real fragment layout from Corfo PDF: zero-height space fragments
+    // serve as explicit word separators between bold and regular text
+    pdfjsMock.getDocument.mockImplementationOnce(() => ({
+      promise: Promise.resolve({
+        numPages: 1,
+        getPage: async () => ({
+          getViewport: () => ({ width: 612 }),
+          getOperatorList: async () => ({
+            argsArray: [],
+            fnArray: [],
+          }),
+          getTextContent: async () => ({
+            items: [
+              {
+                fontName: "TimesNewRoman",
+                str: "Que, por",
+                transform: [1, 0, 0, 11, 113.5, 418],
+                width: 42.8,
+                height: 11,
+              },
+              {
+                fontName: "TimesNewRoman",
+                str: " ",
+                transform: [1, 0, 0, 0, 156.3, 418],
+                width: 3,
+                height: 0,
+              },
+              {
+                fontName: "TimesNewRoman-Bold",
+                str: "Acuerdo Único",
+                transform: [1, 0, 0, 11, 159.3, 418],
+                width: 78,
+                height: 11,
+              },
+              {
+                fontName: "TimesNewRoman",
+                str: ", adoptado en la",
+                transform: [1, 0, 0, 11, 237.3, 418],
+                width: 78.6,
+                height: 11,
+              },
+              {
+                fontName: "TimesNewRoman",
+                str: " ",
+                transform: [1, 0, 0, 0, 315.9, 418],
+                width: 3,
+                height: 0,
+              },
+              {
+                fontName: "TimesNewRoman-Bold",
+                str: "Sesión N°62",
+                transform: [1, 0, 0, 11, 318.9, 418],
+                width: 63.6,
+                height: 11,
+              },
+              {
+                fontName: "TimesNewRoman-Bold",
+                str: " ",
+                transform: [1, 0, 0, 0, 382.5, 418],
+                width: 3,
+                height: 0,
+              },
+              {
+                fontName: "TimesNewRoman",
+                str: "del Subcomité Start-Up Chile",
+                transform: [1, 0, 0, 11, 385.5, 418],
+                width: 141.4,
+                height: 11,
+              },
+            ],
+          }),
+        }),
+      }),
+    }));
+
+    const file = new File([new Uint8Array([30, 40])], "corfo-spaces.pdf", {
+      type: "application/pdf",
+    });
+
+    const extracted = await extractDocumentFromFile(file);
+    const text = extracted.sourceBlocks?.[0]?.text ?? "";
+
+    // Spaces should be preserved around bold text
+    expect(text).toContain("por Acuerdo Único, adoptado");
+    expect(text).not.toContain("porAcuerdo");
+    expect(text).toContain("la Sesión N°62 del");
+    expect(text).not.toContain("laSesión");
+    expect(text).not.toContain("N°62del");
   });
 });

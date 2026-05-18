@@ -18,7 +18,7 @@ import {
 } from "@/db/repositories";
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { useLocale } from "@/components/layout/locale-provider";
-import { PdfReaderWorkspace } from "@/components/reader/pdf-reader-workspace";
+import { PdfReaderWorkspace } from "@/components/reader/pdf-workspace/pdf-reader-workspace";
 import { ReaderAdBreakOverlay } from "@/components/reader/reader-ad-break-overlay";
 import { ReaderCanvas } from "@/components/reader/reader-canvas";
 import { ReaderWorkspaceMobileSidebar } from "@/components/reader/workspace/reader-workspace-mobile-sidebar";
