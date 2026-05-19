@@ -131,6 +131,8 @@ type DesktopBottomMenu = Extract<
   "save" | "font-scale" | "line-height" | "playback" | "more"
 >;
 
+type DesktopResponsiveMenu = DesktopBottomMenu | "theme";
+
 const desktopBottomMenus = new Set<DesktopBottomMenu>([
   "save",
   "font-scale",
@@ -143,6 +145,12 @@ function isDesktopBottomMenu(
   value: ReaderCanvasMenu | null,
 ): value is DesktopBottomMenu {
   return value !== null && desktopBottomMenus.has(value as DesktopBottomMenu);
+}
+
+function isDesktopResponsiveMenu(
+  value: ReaderCanvasMenu | null,
+): value is DesktopResponsiveMenu {
+  return value === "theme" || isDesktopBottomMenu(value);
 }
 
 function shouldBlockPlaybackShortcut(args: {
@@ -238,6 +246,12 @@ export function ReaderCanvas({
   const [isReaderDetailsPinned, setIsReaderDetailsPinned] = useState(false);
   const [isReaderDetailsHovered, setIsReaderDetailsHovered] = useState(false);
   const [isReaderDetailsFocused, setIsReaderDetailsFocused] = useState(false);
+  const [isFullscreenChromeVisible, setIsFullscreenChromeVisible] =
+    useState(false);
+  const [isFullscreenChromeHovered, setIsFullscreenChromeHovered] =
+    useState(false);
+  const [isFullscreenChromeFocused, setIsFullscreenChromeFocused] =
+    useState(false);
   const [desktopBottomMenuPanelStyle, setDesktopBottomMenuPanelStyle] =
     useState<CSSProperties>();
   const modeMenuRef = useRef<HTMLDivElement>(null);
@@ -254,6 +268,12 @@ export function ReaderCanvas({
   const readerDetailsId = useId();
   const isReaderDetailsOpen =
     isReaderDetailsPinned || isReaderDetailsHovered || isReaderDetailsFocused;
+  const isImmersiveFullscreen = isFullscreen && !isCompactReaderChrome;
+  const shouldKeepFullscreenChromeVisible =
+    Boolean(openMenu) ||
+    isReaderDetailsOpen ||
+    isFullscreenChromeHovered ||
+    isFullscreenChromeFocused;
   const transportButtonClass =
     "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:w-auto sm:rounded-full sm:px-3.5";
   const compactStepButtonClass =
@@ -298,6 +318,27 @@ export function ReaderCanvas({
     "inline-flex min-h-10 touch-manipulation items-center justify-center gap-2 rounded-full px-3 py-2 text-[11px] tracking-[0.16em] text-(--text-strong) uppercase transition hover:bg-(--surface-soft) active:scale-[0.985]";
   const compactDockIconButtonClass =
     "inline-flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-(--text-strong) transition hover:bg-(--surface-soft) active:scale-[0.985]";
+  const immersiveTopChromeClass = cn(
+    "space-y-2 sm:space-y-3.5",
+    isImmersiveFullscreen &&
+      "absolute inset-x-3 top-3 z-40 transition duration-200 sm:inset-x-4 sm:top-4",
+    isImmersiveFullscreen &&
+      (isFullscreenChromeVisible
+        ? "pointer-events-auto translate-y-0 opacity-100"
+        : "pointer-events-none -translate-y-3 opacity-0"),
+  );
+  const immersiveBottomChromeClass = cn(
+    isCompactReaderChrome
+      ? "pointer-events-none absolute inset-x-2 bottom-16 z-30 lg:hidden"
+      : isImmersiveFullscreen
+        ? "absolute inset-x-3 bottom-3 z-40 transition duration-200 sm:inset-x-4 sm:bottom-4"
+        : "shrink-0 space-y-3 border-t border-(--border-soft) pt-4 sm:pt-5",
+    isCompactReaderChrome && !isMobileChromeVisible && "hidden",
+    isImmersiveFullscreen &&
+      (isFullscreenChromeVisible
+        ? "pointer-events-auto translate-y-0 opacity-100"
+        : "pointer-events-none translate-y-3 opacity-0"),
+  );
 
   const getDesktopBottomMenuElement = useCallback(
     (menu: DesktopBottomMenu) => {
@@ -317,18 +358,29 @@ export function ReaderCanvas({
     [],
   );
 
+  const getDesktopResponsiveMenuElement = useCallback(
+    (menu: DesktopResponsiveMenu) => {
+      if (menu === "theme") {
+        return themeMenuRef.current;
+      }
+
+      return getDesktopBottomMenuElement(menu);
+    },
+    [getDesktopBottomMenuElement],
+  );
+
   useLayoutEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    if (!isDesktopBottomMenu(openMenu) || isCompactReaderChrome) {
+    if (!isDesktopResponsiveMenu(openMenu) || isCompactReaderChrome) {
       setDesktopBottomMenuPanelStyle(undefined);
       return;
     }
 
     const updateDesktopBottomMenuPanelStyle = () => {
-      const menuElement = getDesktopBottomMenuElement(openMenu);
+      const menuElement = getDesktopResponsiveMenuElement(openMenu);
       const panelElement = menuElement?.querySelector<HTMLElement>(
         ".reader-dropdown-panel",
       );
@@ -360,8 +412,9 @@ export function ReaderCanvas({
         boundaryRight - boundaryLeft,
       );
       const panelWidth = Math.min(panelRect.width, availableWidth);
+      const alignPanelToEnd = openMenu === "more" || openMenu === "theme";
       const baseLeft =
-        openMenu === "more"
+        alignPanelToEnd
           ? triggerRect.right - panelWidth
           : triggerRect.left;
       const clampedLeft = Math.min(
@@ -380,7 +433,15 @@ export function ReaderCanvas({
 
       let openAbove = false;
 
-      if (isFullscreen && spaceAbove > 0) {
+      if (openMenu === "theme") {
+        if (spaceBelow >= panelRect.height) {
+          openAbove = false;
+        } else if (spaceAbove >= panelRect.height) {
+          openAbove = true;
+        } else {
+          openAbove = spaceAbove > spaceBelow;
+        }
+      } else if (isFullscreen && spaceAbove > 0) {
         openAbove = true;
       } else if (spaceBelow >= panelRect.height) {
         openAbove = false;
@@ -426,7 +487,12 @@ export function ReaderCanvas({
         updateDesktopBottomMenuPanelStyle,
       );
     };
-  }, [getDesktopBottomMenuElement, isCompactReaderChrome, isFullscreen, openMenu]);
+  }, [
+    getDesktopResponsiveMenuElement,
+    isCompactReaderChrome,
+    isFullscreen,
+    openMenu,
+  ]);
 
   const closeReaderDetails = useCallback(() => {
     setIsReaderDetailsPinned(false);
@@ -537,6 +603,70 @@ export function ReaderCanvas({
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isImmersiveFullscreen) {
+      setIsFullscreenChromeVisible(false);
+      setIsFullscreenChromeHovered(false);
+      setIsFullscreenChromeFocused(false);
+      return;
+    }
+
+    setIsFullscreenChromeVisible(true);
+  }, [isImmersiveFullscreen]);
+
+  useEffect(() => {
+    if (!isImmersiveFullscreen || !isFullscreenChromeVisible) {
+      return;
+    }
+
+    if (shouldKeepFullscreenChromeVisible) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsFullscreenChromeVisible(false);
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    isFullscreenChromeVisible,
+    isImmersiveFullscreen,
+    shouldKeepFullscreenChromeVisible,
+  ]);
+
+  useEffect(() => {
+    if (!isImmersiveFullscreen) {
+      return;
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const edgeThreshold = Math.max(72, Math.round(window.innerHeight * 0.1));
+
+      if (
+        event.clientY <= edgeThreshold ||
+        event.clientY >= window.innerHeight - edgeThreshold
+      ) {
+        setIsFullscreenChromeVisible(true);
+      }
+    };
+
+    const handleFocusIn = (event: FocusEvent) => {
+      if (canvasRef.current?.contains(event.target as Node | null)) {
+        setIsFullscreenChromeVisible(true);
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("focusin", handleFocusIn);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("focusin", handleFocusIn);
+    };
+  }, [isImmersiveFullscreen]);
 
   useEffect(() => {
     if (!isMobileToolsOpen) {
@@ -779,7 +909,47 @@ export function ReaderCanvas({
         {copy.readerCanvas}
       </h2>
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="space-y-2 sm:space-y-3.5">
+        <div
+          data-reader-fullscreen-chrome="top"
+          className={immersiveTopChromeClass}
+          inert={isImmersiveFullscreen && !isFullscreenChromeVisible}
+          onMouseEnter={() => {
+            if (!isImmersiveFullscreen) {
+              return;
+            }
+
+            setIsFullscreenChromeHovered(true);
+            setIsFullscreenChromeVisible(true);
+          }}
+          onMouseLeave={() => {
+            if (!isImmersiveFullscreen) {
+              return;
+            }
+
+            setIsFullscreenChromeHovered(false);
+          }}
+          onFocusCapture={() => {
+            if (!isImmersiveFullscreen) {
+              return;
+            }
+
+            setIsFullscreenChromeFocused(true);
+            setIsFullscreenChromeVisible(true);
+          }}
+          onBlurCapture={(event) => {
+            if (!isImmersiveFullscreen) {
+              return;
+            }
+
+            if (
+              event.currentTarget.contains(event.relatedTarget as Node | null)
+            ) {
+              return;
+            }
+
+            setIsFullscreenChromeFocused(false);
+          }}
+        >
           <div
             className={cn(
               isCompactReaderChrome
@@ -927,7 +1097,10 @@ export function ReaderCanvas({
                   />
                 </button>
                 {openMenu === "theme" ? (
-                  <div className="reader-dropdown-panel absolute top-full right-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl">
+                  <div
+                    className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl"
+                    style={desktopBottomMenuPanelStyle}
+                  >
                     <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                       {copy.themeMenu}
                     </p>
@@ -1184,12 +1357,39 @@ export function ReaderCanvas({
             ) : null
           ) : null}
         </div>
-        <div className="mt-2 flex min-h-0 flex-1 sm:mt-6">
+        <div className={cn("mt-2 flex min-h-0 flex-1 sm:mt-6", isImmersiveFullscreen && "mt-0 sm:mt-0")}>
           <div className="relative flex min-h-0 min-w-0 flex-1 items-stretch overflow-hidden *:h-full">
             {modeView}
           </div>
         </div>
       </div>
+
+      {isImmersiveFullscreen && !isFullscreenChromeVisible ? (
+        <div className="pointer-events-none absolute top-3 right-3 z-50 sm:top-4 sm:right-4">
+          <div className={compactDockSurfaceClass}>
+            <button
+              type="button"
+              aria-label={copy.controls}
+              onClick={() => {
+                setIsFullscreenChromeVisible(true);
+              }}
+              className={compactDockIconButtonClass}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label={copy.exitFullscreen}
+              onClick={() => {
+                void toggleFullscreen();
+              }}
+              className={compactDockIconButtonClass}
+            >
+              <Minimize2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {isCompactReaderChrome ? (
         <div className="pointer-events-none absolute right-3 bottom-3 z-40 lg:hidden">
@@ -1213,13 +1413,46 @@ export function ReaderCanvas({
       ) : null}
 
       <div
+        data-reader-fullscreen-chrome="bottom"
         className={cn(
-          isCompactReaderChrome
-            ? "pointer-events-none absolute inset-x-2 bottom-16 z-30 lg:hidden"
-            : "shrink-0 space-y-3 border-t border-(--border-soft) pt-4 sm:pt-5",
-          isCompactReaderChrome && !isMobileChromeVisible && "hidden",
+          immersiveBottomChromeClass,
         )}
         aria-label="Reader transport and annotation controls"
+        inert={isImmersiveFullscreen && !isFullscreenChromeVisible}
+        onMouseEnter={() => {
+          if (!isImmersiveFullscreen) {
+            return;
+          }
+
+          setIsFullscreenChromeHovered(true);
+          setIsFullscreenChromeVisible(true);
+        }}
+        onMouseLeave={() => {
+          if (!isImmersiveFullscreen) {
+            return;
+          }
+
+          setIsFullscreenChromeHovered(false);
+        }}
+        onFocusCapture={() => {
+          if (!isImmersiveFullscreen) {
+            return;
+          }
+
+          setIsFullscreenChromeFocused(true);
+          setIsFullscreenChromeVisible(true);
+        }}
+        onBlurCapture={(event) => {
+          if (!isImmersiveFullscreen) {
+            return;
+          }
+
+          if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            return;
+          }
+
+          setIsFullscreenChromeFocused(false);
+        }}
       >
         {isCompactReaderChrome ? (
           <div className="pointer-events-auto rounded-[1.2rem] border border-(--border-strong) bg-(--surface-card)/96 p-2 shadow-[0_20px_50px_rgba(20,26,56,0.2)] backdrop-blur-xl">
@@ -1275,7 +1508,13 @@ export function ReaderCanvas({
           </div>
         ) : null}
         {!isCompactReaderChrome ? (
-          <div className="flex flex-wrap items-center gap-3">
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-3",
+              isImmersiveFullscreen &&
+                "rounded-[1.2rem] border border-(--border-strong) bg-(--surface-card)/94 p-2 shadow-[0_20px_50px_rgba(20,26,56,0.2)] backdrop-blur-xl",
+            )}
+          >
             <div ref={saveMenuRef} className="relative z-30">
               <button
                 type="button"

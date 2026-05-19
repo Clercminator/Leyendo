@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ReaderCanvas } from "@/components/reader/reader-canvas";
 import { defaultReaderPreferences } from "@/types/reader";
@@ -133,6 +133,10 @@ function renderReaderCanvas(args?: {
 }
 
 describe("ReaderCanvas", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     mockViewportWidth = 1280;
     installMatchMedia();
@@ -206,6 +210,48 @@ describe("ReaderCanvas", () => {
     await user.click(exitButton);
 
     expect(document.exitFullscreen).toHaveBeenCalledTimes(1);
+  });
+
+  it("collapses fullscreen desktop chrome behind a reveal dock and restores it on edge hover", async () => {
+    const user = userEvent.setup();
+
+    renderReaderCanvas();
+
+    await user.click(
+      screen.getByRole("button", { name: /enter fullscreen/i }),
+    );
+
+    const topChrome = document.querySelector(
+      '[data-reader-fullscreen-chrome="top"]',
+    ) as HTMLElement;
+    const bottomChrome = document.querySelector(
+      '[data-reader-fullscreen-chrome="bottom"]',
+    ) as HTMLElement;
+
+    expect(screen.queryByRole("button", { name: /^controls$/i })).not.toBeInTheDocument();
+
+    await act(async () => {
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 1900);
+      });
+    });
+
+    expect(screen.getByRole("button", { name: /^controls$/i })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: /exit fullscreen/i }).length,
+    ).toBeGreaterThan(0);
+    expect(topChrome).toHaveClass("pointer-events-none");
+    expect(bottomChrome).toHaveClass("pointer-events-none");
+
+    act(() => {
+      fireEvent.mouseMove(document, { clientY: 8 });
+    });
+
+    expect(screen.queryByRole("button", { name: /^controls$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /change theme/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeInTheDocument();
+    expect(topChrome).toHaveClass("pointer-events-auto");
+    expect(bottomChrome).toHaveClass("pointer-events-auto");
   });
 
   it("opens the mobile tools sheet and keeps save actions available", async () => {
