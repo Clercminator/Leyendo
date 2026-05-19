@@ -279,6 +279,11 @@ export function getReaderCanvasCopy(
       es: "Volver a la pagina original",
       pt: "Voltar para a pagina original",
     }),
+    backToPdfView: getLocalizedCopy(locale, {
+      en: "Back to PDF view",
+      es: "Volver a la vista PDF",
+      pt: "Voltar para a vista em PDF",
+    }),
     pause: getLocalizedCopy(locale, {
       en: "Pause",
       es: "Pausar",

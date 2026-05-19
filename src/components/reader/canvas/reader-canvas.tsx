@@ -100,6 +100,7 @@ interface ReaderCanvasProps {
   onRepeatChunk: () => void;
   onRestart: () => void;
   onRestartParagraph: () => void;
+  onReturnToPdfWorkspace?: () => void;
   onReturnToOriginalPage?: () => void;
   onSaveBookmark: () => void;
   onSaveHighlight: () => void;
@@ -223,6 +224,7 @@ export function ReaderCanvas({
   onRepeatChunk,
   onRestart,
   onRestartParagraph,
+  onReturnToPdfWorkspace,
   onReturnToOriginalPage,
   onSaveBookmark,
   onSaveHighlight,
@@ -1061,6 +1063,15 @@ export function ReaderCanvas({
                   </div>
                 ) : null}
               </div>
+            ) : null}
+            {onReturnToPdfWorkspace ? (
+              <button
+                type="button"
+                onClick={onReturnToPdfWorkspace}
+                className={compactTopControlButtonClass}
+              >
+                {copy.backToPdfView}
+              </button>
             ) : null}
             {onReturnToOriginalPage ? (
               <button
@@ -2034,6 +2045,7 @@ export function ReaderCanvas({
           onRepeatChunk={onRepeatChunk}
           onRestart={onRestart}
           onRestartParagraph={onRestartParagraph}
+          onReturnToPdfWorkspace={onReturnToPdfWorkspace}
           onReturnToOriginalPage={onReturnToOriginalPage}
           onSaveBookmark={onSaveBookmark}
           onSaveHighlight={onSaveHighlight}

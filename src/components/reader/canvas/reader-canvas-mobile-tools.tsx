@@ -70,6 +70,7 @@ interface ReaderCanvasMobileToolsProps {
   onRepeatChunk: () => void;
   onRestart: () => void;
   onRestartParagraph: () => void;
+  onReturnToPdfWorkspace?: () => void;
   onReturnToOriginalPage?: () => void;
   onSaveBookmark: () => void;
   onSaveHighlight: () => void;
@@ -115,6 +116,7 @@ export function ReaderCanvasMobileTools({
   onRepeatChunk,
   onRestart,
   onRestartParagraph,
+  onReturnToPdfWorkspace,
   onReturnToOriginalPage,
   onSaveBookmark,
   onSaveHighlight,
@@ -193,22 +195,36 @@ export function ReaderCanvasMobileTools({
         </div>
 
         <div className="mt-4 space-y-2.5">
-          {onReturnToOriginalPage ? (
+          {onReturnToPdfWorkspace || onReturnToOriginalPage ? (
             <section className={mobileToolsSectionClass}>
               <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
                 {copy.pdfCompanion}
               </p>
               <div className="mt-3 grid gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onReturnToOriginalPage();
-                    onClose();
-                  }}
-                  className={sheetActionButtonClass}
-                >
-                  {copy.returnToOriginalPage}
-                </button>
+                {onReturnToPdfWorkspace ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onReturnToPdfWorkspace();
+                      onClose();
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    {copy.backToPdfView}
+                  </button>
+                ) : null}
+                {onReturnToOriginalPage ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onReturnToOriginalPage();
+                      onClose();
+                    }}
+                    className={sheetActionButtonClass}
+                  >
+                    {copy.returnToOriginalPage}
+                  </button>
+                ) : null}
               </div>
             </section>
           ) : null}
