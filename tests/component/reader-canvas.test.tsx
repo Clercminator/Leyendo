@@ -354,7 +354,7 @@ describe("ReaderCanvas", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: /return to original page/i }),
+      screen.getByRole("button", { name: /original pdf/i }),
     ).toBeInTheDocument();
     expect(screen.getByText("1 of 3")).toBeInTheDocument();
     expect(

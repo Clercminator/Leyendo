@@ -8,8 +8,11 @@ import {
   ChevronRight,
   FileWarning,
   LoaderCircle,
+  Pause,
+  Play,
   RotateCw,
   Search,
+  X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -143,6 +146,25 @@ function compareThumbnailPagePriority(
 interface PdfReaderWorkspaceProps {
   availableModes: ReaderMode[];
   bookmarks: Bookmark[];
+  classicOverlay?: {
+    activeChunkText: string;
+    activeTokenIndexes: number[];
+    canMoveBackward: boolean;
+    canMoveForward: boolean;
+    isActive: boolean;
+    isPlaying: boolean;
+    pageLabel: string;
+    paragraphLabel: string;
+    paragraphTokens: Array<{
+      index: number;
+      value: string;
+    }>;
+    onActivate: (pageIndex: number) => void;
+    onClose: () => void;
+    onMoveBackward: () => void;
+    onMoveForward: () => void;
+    onTogglePlayback: () => void;
+  };
   document: DocumentRecord;
   hasExtractedText: boolean;
   highlightNote: string;
@@ -172,6 +194,7 @@ interface PdfReaderWorkspaceProps {
 export function PdfReaderWorkspace({
   availableModes,
   bookmarks,
+  classicOverlay,
   document: readerDocument,
   hasExtractedText,
   highlightNote,
@@ -1241,6 +1264,16 @@ export function PdfReaderWorkspace({
     es: "Abrir PDF en el navegador",
     pt: "Abrir PDF no navegador",
   });
+  const classicOverlayLabel = getLocalizedCopy(locale, {
+    en: "Classic overlay",
+    es: "Superposicion clasica",
+    pt: "Sobreposicao classica",
+  });
+  const hideClassicOverlayLabel = getLocalizedCopy(locale, {
+    en: "Hide Classic overlay",
+    es: "Ocultar superposicion clasica",
+    pt: "Ocultar sobreposicao classica",
+  });
   const browserPdfModeLabel = getLocalizedCopy(locale, {
     en: "Browser PDF",
     es: "PDF en navegador",
@@ -1256,6 +1289,9 @@ export function PdfReaderWorkspace({
     es: "Leer esta pagina en Clasico",
     pt: "Ler esta pagina no Classico",
   });
+  const classicOverlayActiveTokenIndexes = useMemo(() => {
+    return new Set(classicOverlay?.activeTokenIndexes ?? []);
+  }, [classicOverlay?.activeTokenIndexes]);
 
   const handleFindPrevious = useCallback(() => {
     const runtime = viewerRuntimeRef.current;
@@ -1581,6 +1617,25 @@ export function PdfReaderWorkspace({
             >
               {openBrowserPdfLabel}
             </button>
+
+            {hasExtractedText && classicOverlay ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (classicOverlay.isActive) {
+                    classicOverlay.onClose();
+                    return;
+                  }
+
+                  classicOverlay.onActivate(currentPageIndex);
+                }}
+                className={toolbarButtonClass}
+              >
+                {classicOverlay.isActive
+                  ? hideClassicOverlayLabel
+                  : classicOverlayLabel}
+              </button>
+            ) : null}
 
             {hasExtractedText && onReadCurrentPageInClassic ? (
               <button
@@ -1922,6 +1977,131 @@ export function PdfReaderWorkspace({
           >
             <div ref={viewerElementRef} className="pdfViewer" />
           </div>
+          {classicOverlay?.isActive ? (
+            <div className="pointer-events-none absolute inset-x-2 bottom-2 z-30 flex justify-center sm:inset-x-4 sm:bottom-4 lg:inset-x-6 lg:bottom-5">
+              <section
+                aria-label="Classic overlay"
+                data-testid="pdf-classic-overlay"
+                className="pointer-events-auto w-full max-w-[68rem] rounded-[1.35rem] border border-slate-900/10 bg-white/95 p-2.5 text-slate-900 shadow-[0_18px_60px_rgba(15,23,42,0.17)] backdrop-blur-xl sm:p-3.5"
+              >
+                <div className="grid gap-2.5 lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] lg:items-start lg:gap-3">
+                  <div className="space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] tracking-[0.24em] text-slate-500 uppercase sm:text-[11px]">
+                          {classicOverlayLabel}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-600 sm:text-xs">
+                          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-700">
+                            {classicOverlay.pageLabel}
+                          </span>
+                          <span className="inline-flex rounded-full border border-slate-200/80 bg-white px-2 py-0.5">
+                            {classicOverlay.paragraphLabel}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={hideClassicOverlayLabel}
+                        onClick={classicOverlay.onClose}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div
+                      data-testid="pdf-classic-overlay-active-chunk"
+                      className="rounded-[1rem] border border-slate-200 bg-slate-50/95 px-2.5 py-2 text-slate-700"
+                    >
+                      <div className="flex items-center gap-2 text-[10px] tracking-[0.18em] text-slate-500 uppercase">
+                        <span className="inline-flex h-2 w-2 rounded-full bg-sky-600" />
+                        Active cell
+                      </div>
+                      <p className="mt-1 text-sm font-semibold leading-6 text-slate-900 sm:text-[15px]">
+                        {classicOverlay.activeChunkText}
+                      </p>
+                    </div>
+
+                    <p className="hidden text-[11px] leading-5 text-slate-500 lg:block">
+                      Stay anchored to the PDF page while the active clause advances.
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={classicOverlay.onMoveBackward}
+                        disabled={!classicOverlay.canMoveBackward}
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-slate-300 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={classicOverlay.onTogglePlayback}
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-sky-300 bg-sky-950 px-3 py-1.5 text-sm text-white transition hover:border-sky-200 hover:bg-sky-900"
+                      >
+                        {classicOverlay.isPlaying ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                        {classicOverlay.isPlaying
+                          ? getLocalizedCopy(locale, {
+                              en: "Pause",
+                              es: "Pausar",
+                              pt: "Pausar",
+                            })
+                          : getLocalizedCopy(locale, {
+                              en: "Play",
+                              es: "Reproducir",
+                              pt: "Reproduzir",
+                            })}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={classicOverlay.onMoveForward}
+                        disabled={!classicOverlay.canMoveForward}
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-slate-300 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] tracking-[0.2em] text-slate-500 uppercase sm:text-[11px]">
+                        Page-grounded paragraph
+                      </p>
+                      <span className="text-[11px] text-slate-500">
+                        Current paragraph tokens
+                      </span>
+                    </div>
+                    <div
+                      data-testid="pdf-classic-overlay-paragraph"
+                      className="mt-2 max-h-32 overflow-auto rounded-[1rem] border border-slate-200 bg-white/92 px-3 py-2.5 text-[14px] leading-7 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] sm:max-h-40 sm:px-3.5 sm:text-[15px] sm:leading-[1.7rem] lg:max-h-44"
+                    >
+                      {classicOverlay.paragraphTokens.map((token) => (
+                        <span
+                          key={token.index}
+                          className={`transition ${
+                            classicOverlayActiveTokenIndexes.has(token.index)
+                              ? "rounded-[0.45rem] bg-sky-900 px-1 py-[2px] text-white shadow-[0_6px_18px_rgba(14,116,144,0.2)]"
+                              : "px-px text-slate-700/95"
+                          }`}
+                        >
+                          {token.value}{" "}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          ) : null}
         </div>
       </div>
 

@@ -212,6 +212,13 @@ export function ReaderWorkspace({
     documentId: undefined,
     value: "auto",
   });
+  const [pdfClassicOverlayState, setPdfClassicOverlayState] = useState<{
+    active: boolean;
+    documentId: string | undefined;
+  }>({
+    active: false,
+    documentId: undefined,
+  });
   const [pdfPageJumpRequest, setPdfPageJumpRequest] = useState<
     | {
         nonce: number;
@@ -306,6 +313,9 @@ export function ReaderWorkspace({
   const isPdfWorkspaceActive =
     canOpenBrowserPdf &&
     (pdfWorkspaceViewValue === "auto" || pdfWorkspaceViewValue === "pdf");
+  const isPdfClassicOverlayActive =
+    pdfClassicOverlayState.documentId === document?.id &&
+    pdfClassicOverlayState.active;
   const availableModes = useMemo<ReaderMode[]>(() => {
     return [...readerModes];
   }, []);
@@ -327,6 +337,10 @@ export function ReaderWorkspace({
       value: "auto",
     });
     setPdfPageJumpRequest(undefined);
+    setPdfClassicOverlayState({
+      active: false,
+      documentId: document?.id,
+    });
   }, [document?.id]);
 
   const canvasMode = resolveReaderCanvasMode({
@@ -1897,6 +1911,10 @@ export function ReaderWorkspace({
 
   const handlePdfWorkspaceModeSelection = useCallback(
     (mode: ReaderPreferences["mode"]) => {
+      setPdfClassicOverlayState({
+        active: false,
+        documentId: document?.id,
+      });
       setPdfWorkspaceView({
         documentId: document?.id,
         value: "text",
@@ -1971,8 +1989,32 @@ export function ReaderWorkspace({
     issuePdfWorkspaceJump(currentPdfCompanionPageIndex);
   }, [currentPdfCompanionPageIndex, document?.id, issuePdfWorkspaceJump]);
 
+  const handleActivatePdfClassicOverlay = useCallback(
+    (pageIndex: number) => {
+      setPdfClassicOverlayState({
+        active: true,
+        documentId: document?.id,
+      });
+      issuePdfWorkspaceJump(pageIndex);
+      announce(`Classic overlay ready on page ${pageIndex + 1}.`);
+    },
+    [announce, document?.id, issuePdfWorkspaceJump],
+  );
+
+  const handleClosePdfClassicOverlay = useCallback(() => {
+    setPdfClassicOverlayState({
+      active: false,
+      documentId: document?.id,
+    });
+    announce("Classic overlay hidden.");
+  }, [announce, document?.id]);
+
   const handleReadCurrentPdfPageInClassic = useCallback(
     (pageIndex: number) => {
+      setPdfClassicOverlayState({
+        active: false,
+        documentId: document?.id,
+      });
       setPdfWorkspaceView({
         documentId: document?.id,
         value: "text",
@@ -1997,6 +2039,53 @@ export function ReaderWorkspace({
     },
     [document?.id, pdfPageLabels, runtimeChunkIndexBySourcePage, setChunkIndex],
   );
+
+  const moveToPdfClassicOverlayChunk = useCallback(
+    (nextIndex: number) => {
+      if (runtimeChunks.length === 0) {
+        return;
+      }
+
+      const boundedIndex = Math.max(0, Math.min(nextIndex, runtimeChunks.length - 1));
+      const nextChunk = runtimeChunks[boundedIndex];
+
+      moveToChunk(boundedIndex);
+
+      if (
+        typeof nextChunk?.sourcePageIndex === "number" &&
+        nextChunk.sourcePageIndex !== currentPdfCompanionPageIndex
+      ) {
+        issuePdfWorkspaceJump(nextChunk.sourcePageIndex);
+      }
+    },
+    [
+      currentPdfCompanionPageIndex,
+      issuePdfWorkspaceJump,
+      moveToChunk,
+      runtimeChunks,
+    ],
+  );
+
+  useEffect(() => {
+    if (!isPdfWorkspaceActive || !isPdfClassicOverlayActive) {
+      return;
+    }
+
+    if (
+      typeof activeChunk?.sourcePageIndex !== "number" ||
+      activeChunk.sourcePageIndex === currentPdfCompanionPageIndex
+    ) {
+      return;
+    }
+
+    issuePdfWorkspaceJump(activeChunk.sourcePageIndex);
+  }, [
+    activeChunk?.sourcePageIndex,
+    currentPdfCompanionPageIndex,
+    isPdfClassicOverlayActive,
+    isPdfWorkspaceActive,
+    issuePdfWorkspaceJump,
+  ]);
 
   const handlePdfCompanionSearchQueryChange = useCallback((value: string) => {
     setPdfCompanionState((currentState) => ({
@@ -2190,6 +2279,67 @@ export function ReaderWorkspace({
     setPlaying(!isPlaying);
     announce(isPlaying ? "Playback paused." : "Playback resumed.");
   }, [activeChunk, announce, isPlaying, setPlaying]);
+
+  const pdfClassicOverlayControls = useMemo(() => {
+    if (
+      !isPdfDocument ||
+      !hasExtractedText ||
+      !payload ||
+      !activeChunk ||
+      !currentParagraph
+    ) {
+      return undefined;
+    }
+
+    const paragraphTokens = payload.tokens
+      .slice(currentParagraph.tokenStart, currentParagraph.tokenEnd + 1)
+      .map((token) => ({
+        index: token.index,
+        value: token.value,
+      }));
+
+    return {
+      activeChunkText: activeChunk.text,
+      activeTokenIndexes: activeChunk.tokenIndexes,
+      canMoveBackward: resolvedChunkIndex > 0,
+      canMoveForward: resolvedChunkIndex < runtimeChunks.length - 1,
+      isActive: isPdfClassicOverlayActive,
+      isPlaying,
+      pageLabel: getPdfPageLabel(currentPdfCompanionPageIndex, pdfPageLabels),
+      paragraphLabel: getLocalizedCopy(locale, {
+        en: `Paragraph ${currentParagraph.index + 1}`,
+        es: `Parrafo ${currentParagraph.index + 1}`,
+        pt: `Paragrafo ${currentParagraph.index + 1}`,
+      }),
+      paragraphTokens,
+      onActivate: handleActivatePdfClassicOverlay,
+      onClose: handleClosePdfClassicOverlay,
+      onMoveBackward: () => {
+        moveToPdfClassicOverlayChunk(resolvedChunkIndex - 1);
+      },
+      onMoveForward: () => {
+        moveToPdfClassicOverlayChunk(resolvedChunkIndex + 1);
+      },
+      onTogglePlayback: handlePlaybackToggle,
+    };
+  }, [
+    activeChunk,
+    currentParagraph,
+    currentPdfCompanionPageIndex,
+    handleActivatePdfClassicOverlay,
+    handleClosePdfClassicOverlay,
+    handlePlaybackToggle,
+    hasExtractedText,
+    isPdfClassicOverlayActive,
+    isPdfDocument,
+    isPlaying,
+    locale,
+    moveToPdfClassicOverlayChunk,
+    payload,
+    pdfPageLabels,
+    resolvedChunkIndex,
+    runtimeChunks.length,
+  ]);
 
   const lastAnnouncedAdPhaseRef = useRef<typeof readerAds.phase | undefined>(
     undefined,
@@ -2496,6 +2646,7 @@ export function ReaderWorkspace({
           <PdfReaderWorkspace
             availableModes={availableModes}
             bookmarks={bookmarks}
+            classicOverlay={pdfClassicOverlayControls}
             document={document}
             hasExtractedText={hasExtractedText}
             highlightNote={highlightNote}

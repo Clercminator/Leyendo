@@ -275,9 +275,9 @@ export function getReaderCanvasCopy(
         pt: `Pagina ${args.currentPageLabel}`,
       }),
     returnToOriginalPage: getLocalizedCopy(locale, {
-      en: "Return to original page",
-      es: "Volver a la pagina original",
-      pt: "Voltar para a pagina original",
+      en: "Original PDF",
+      es: "PDF original",
+      pt: "PDF original",
     }),
     backToPdfView: getLocalizedCopy(locale, {
       en: "Back to PDF view",
