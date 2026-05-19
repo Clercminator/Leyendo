@@ -246,6 +246,8 @@ export function ReaderCanvas({
     "inline-flex min-h-9 items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) px-2 py-1.5 text-center text-[11px] leading-tight text-(--text-strong) sm:min-h-auto sm:px-3 sm:text-sm";
   const statusIconButtonClass =
     "inline-flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-full border border-(--border-soft) bg-(--surface-soft) text-(--text-muted) transition hover:border-(--border-strong) hover:bg-(--surface-chip) hover:text-(--text-strong) active:scale-[0.985] sm:h-10 sm:w-10";
+  const readerDetailsStatClass =
+    "flex min-h-11 items-center rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong)";
   const mobileStatCardClass =
     "rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-left";
   const mobilePrimaryButtonClass =
@@ -447,98 +449,98 @@ export function ReaderCanvas({
     : null;
 
   const copy = getReaderCanvasCopy(locale, activeGoalLabel);
-    const sessionCountSummary =
-      typeof remainingWords === "number"
-        ? locale === "en"
-          ? `${sentenceCount} ${copy.sentenceCount} · ${remainingWords} ${remainingWords === 1 ? copy.word : copy.words} left`
-          : locale === "es"
-            ? `${sentenceCount} ${copy.sentenceCount} · ${remainingWords} ${remainingWords === 1 ? copy.word : copy.words} por delante`
-            : `${sentenceCount} ${copy.sentenceCount} · ${remainingWords} ${remainingWords === 1 ? copy.word : copy.words} pela frente`
-        : `${sentenceCount} ${copy.sentenceCount}`;
+  const sessionCountSummary =
+    typeof remainingWords === "number"
+      ? locale === "en"
+        ? `${sentenceCount} ${copy.sentenceCount} · ${remainingWords} ${remainingWords === 1 ? copy.word : copy.words} left`
+        : locale === "es"
+          ? `${sentenceCount} ${copy.sentenceCount} · ${remainingWords} ${remainingWords === 1 ? copy.word : copy.words} por delante`
+          : `${sentenceCount} ${copy.sentenceCount} · ${remainingWords} ${remainingWords === 1 ? copy.word : copy.words} pela frente`
+      : `${sentenceCount} ${copy.sentenceCount}`;
 
-    const renderSessionCountChip = () => (
-      <span className={statusChipClass}>{sessionCountSummary}</span>
-    );
+  const renderReaderDetailsButton = (className?: string) => (
+    <div
+      ref={readerDetailsRef}
+      className={cn("relative inline-flex items-center", className)}
+      onMouseEnter={() => {
+        if (isCompactReaderChrome) {
+          return;
+        }
 
-    const renderRemainingTimeCluster = () => (
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
-          onClick={onAnnounceRemainingTime}
-          className={`${statusChipClass} gap-2 transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
-        >
-          <Clock3 className="h-4 w-4 text-(--accent-amber)" />
-          {remainingTimeLabel}
-        </button>
-        <div
-          ref={readerDetailsRef}
-          className="relative inline-flex items-center"
-          onMouseEnter={() => {
-            if (isCompactReaderChrome) {
-              return;
-            }
+        setIsReaderDetailsHovered(true);
+      }}
+      onMouseLeave={() => {
+        if (isCompactReaderChrome) {
+          return;
+        }
 
-            setIsReaderDetailsHovered(true);
-          }}
-          onMouseLeave={() => {
-            if (isCompactReaderChrome) {
-              return;
-            }
+        setIsReaderDetailsHovered(false);
+      }}
+      onFocusCapture={() => {
+        setIsReaderDetailsFocused(true);
+      }}
+      onBlurCapture={(event) => {
+        if (
+          event.currentTarget.contains(event.relatedTarget as Node | null)
+        ) {
+          return;
+        }
 
-            setIsReaderDetailsHovered(false);
-          }}
-          onFocusCapture={() => {
-            setIsReaderDetailsFocused(true);
-          }}
-          onBlurCapture={(event) => {
-            if (
-              event.currentTarget.contains(event.relatedTarget as Node | null)
-            ) {
-              return;
-            }
+        setIsReaderDetailsFocused(false);
+      }}
+    >
+      <button
+        type="button"
+        aria-controls={readerDetailsId}
+        aria-describedby={isReaderDetailsOpen ? readerDetailsId : undefined}
+        aria-expanded={isReaderDetailsOpen}
+        aria-label={copy.readerDetails}
+        onClick={(event) => {
+          const nextPinned = !isReaderDetailsPinned;
 
+          setIsReaderDetailsPinned(nextPinned);
+
+          if (!nextPinned) {
             setIsReaderDetailsFocused(false);
-          }}
+            event.currentTarget.blur();
+          }
+        }}
+        className={`${statusIconButtonClass} ${isReaderDetailsOpen ? "border-(--border-strong) bg-(--surface-chip) text-(--text-strong)" : ""}`}
+      >
+        <Info className="h-4 w-4" />
+      </button>
+      {isReaderDetailsOpen ? (
+        <div
+          id={readerDetailsId}
+          className="absolute top-full right-0 z-60 mt-2 w-[18rem] max-w-[calc(100vw-2rem)] rounded-[1rem] border border-(--border-strong) bg-(--surface-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:w-[24rem]"
         >
-          <button
-            type="button"
-            aria-controls={readerDetailsId}
-            aria-describedby={
-              isReaderDetailsOpen ? readerDetailsId : undefined
-            }
-            aria-expanded={isReaderDetailsOpen}
-            aria-label={copy.readerDetails}
-            onClick={(event) => {
-              const nextPinned = !isReaderDetailsPinned;
-
-              setIsReaderDetailsPinned(nextPinned);
-
-              if (!nextPinned) {
-                setIsReaderDetailsFocused(false);
-                event.currentTarget.blur();
-              }
-            }}
-            className={`${statusIconButtonClass} ${isReaderDetailsOpen ? "border-(--border-strong) bg-(--surface-chip) text-(--text-strong)" : ""}`}
-          >
-            <Info className="h-4 w-4" />
-          </button>
-          {isReaderDetailsOpen ? (
-            <div
-              id={readerDetailsId}
-              className="absolute top-full right-0 z-60 mt-2 w-[18rem] max-w-[calc(100vw-2rem)] rounded-[1rem] border border-(--border-strong) bg-(--surface-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:left-full sm:right-auto sm:top-1/2 sm:mt-0 sm:ml-2 sm:w-[22rem] sm:-translate-y-1/2"
+          <div className="grid gap-2">
+            <span className={readerDetailsStatClass}>
+              {progress}% {copy.complete}
+            </span>
+            <span className={readerDetailsStatClass}>{sessionCountSummary}</span>
+            <button
+              type="button"
+              aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
+              onClick={onAnnounceRemainingTime}
+              className={`${readerDetailsStatClass} gap-2 text-left transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
             >
-              <p className="text-[11px] leading-5 text-(--text-muted) sm:text-xs">
-                {copy.timeEstimateHelp}
-              </p>
-              <p className="mt-2 text-[11px] leading-5 text-(--text-muted) sm:text-xs sm:leading-6">
-                {copy.readingModeHelp}
-              </p>
-            </div>
-          ) : null}
+              <Clock3 className="h-4 w-4 text-(--accent-amber)" />
+              {remainingTimeLabel}
+            </button>
+          </div>
+          <div className="mt-3 border-t border-(--border-soft) pt-3">
+            <p className="text-[11px] leading-5 text-(--text-muted) sm:text-xs">
+              {copy.timeEstimateHelp}
+            </p>
+            <p className="mt-2 text-[11px] leading-5 text-(--text-muted) sm:text-xs sm:leading-6">
+              {copy.readingModeHelp}
+            </p>
+          </div>
         </div>
-      </div>
-    );
+      ) : null}
+    </div>
+  );
 
   const toggleFullscreen = async () => {
     if (!document.fullscreenEnabled) {
@@ -568,14 +570,13 @@ export function ReaderCanvas({
 
   const compactStatusPanel =
     isCompactReaderChrome && isMobileChromeVisible ? (
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <div className="contents">
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <div className="min-w-0">
           <span className={statusChipClass}>
-            {copy.paragraph} {currentParagraphNumber} · {progress}%
+            {copy.paragraph} {currentParagraphNumber}
           </span>
-          {renderSessionCountChip()}
-          {renderRemainingTimeCluster()}
         </div>
+        {renderReaderDetailsButton()}
       </div>
     ) : null;
 
@@ -593,6 +594,27 @@ export function ReaderCanvas({
       <h2 id="reader-canvas-title" className="sr-only">
         {copy.readerCanvas}
       </h2>
+      <div className="pointer-events-none fixed top-4 right-4 z-90 sm:top-5 sm:right-5 lg:top-6 lg:right-6">
+        <button
+          type="button"
+          aria-label={
+            isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
+          }
+          onClick={() => {
+            void toggleFullscreen();
+          }}
+          className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-(--border-strong) bg-(--surface-card)/94 text-(--text-strong) shadow-[0_18px_40px_rgba(20,26,56,0.18)] backdrop-blur-xl transition hover:bg-(--surface-chip)"
+        >
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+          <span className="sr-only">
+            {isFullscreen ? copy.collapse : copy.expand}
+          </span>
+        </button>
+      </div>
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="space-y-2 sm:space-y-3.5">
           <div
@@ -644,79 +666,6 @@ export function ReaderCanvas({
                         {getLocalizedCopy(locale, modeLabels[value])}
                       </button>
                     ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-            <div ref={presetMenuRef} className="relative z-40">
-              <button
-                type="button"
-                aria-label={copy.changePreset}
-                onClick={() => {
-                  setOpenMenu((current) =>
-                    current === "preset" ? null : "preset",
-                  );
-                }}
-                className={cn(compactTopControlButtonClass, "tracking-widest")}
-              >
-                {activePreset
-                  ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
-                  : copy.customPreset}
-                <ChevronDown
-                  className={`h-4 w-4 transition ${openMenu === "preset" ? "rotate-180" : ""}`}
-                />
-              </button>
-              {openMenu === "preset" ? (
-                <div className="reader-dropdown-panel absolute top-full left-0 z-60 mt-3 w-full min-w-0 rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:min-w-[18rem] lg:w-80 lg:max-w-[calc(100vw-2.5rem)]">
-                  <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
-                    {copy.presetMenu}
-                  </p>
-                  <div className="mt-3 grid gap-2">
-                    {readerPresets.map((preset) => {
-                      const isActive = activePreset?.id === preset.id;
-
-                      return (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => {
-                            onSelectPreset(preset.id);
-                            setOpenMenu(null);
-                          }}
-                          className={`rounded-[1rem] border px-3 py-3 text-left transition ${
-                            isActive
-                              ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
-                              : "border-(--border-soft) bg-(--surface-soft) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-semibold">
-                              {getLocalizedCopy(
-                                locale,
-                                presetCopy[preset.id].label,
-                              )}
-                            </p>
-                            <span
-                              className={`rounded-full border px-2 py-0.5 text-[11px] ${
-                                isActive
-                                  ? "border-white/20 bg-white/10 text-white/80"
-                                  : "border-(--border-soft) bg-(--surface-chip) text-(--text-muted)"
-                              }`}
-                            >
-                              {preset.wordsPerMinute} WPM
-                            </span>
-                          </div>
-                          <p
-                            className={`mt-1.5 text-xs leading-5 ${isActive ? "text-white/80" : "text-(--text-muted)"}`}
-                          >
-                            {getLocalizedCopy(
-                              locale,
-                              presetCopy[preset.id].summary,
-                            )}
-                          </p>
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
               ) : null}
@@ -842,44 +791,10 @@ export function ReaderCanvas({
                 ) : null}
               </div>
             ) : null}
-            {!isCompactReaderChrome && isFullscreen ? (
-              <>
-                <span className={statusChipClass}>
-                  {progress}% {copy.complete}
-                </span>
-                {renderSessionCountChip()}
-                {renderRemainingTimeCluster()}
-              </>
-            ) : null}
             {!isCompactReaderChrome ? (
-              <button
-                type="button"
-                aria-label={
-                  isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
-                }
-                onClick={() => {
-                  void toggleFullscreen();
-                }}
-                className={compactTopControlButtonClass}
-              >
-                {isFullscreen ? (
-                  <Minimize2 className="h-4 w-4" />
-                ) : (
-                  <Maximize2 className="h-4 w-4" />
-                )}
-                {isFullscreen ? copy.collapse : copy.expand}
-              </button>
+              renderReaderDetailsButton("justify-self-end lg:ml-auto")
             ) : null}
           </div>
-          {!isCompactReaderChrome ? (isFullscreen ? null : (
-            <div className="hidden flex-wrap items-center gap-3 text-sm lg:flex">
-              <span className={statusChipClass}>
-                {progress}% {copy.complete}
-              </span>
-              {renderSessionCountChip()}
-              {renderRemainingTimeCluster()}
-            </div>
-          )) : null}
           {activePresetSummary ? (
             <p className="hidden text-sm leading-6 text-(--text-muted) lg:block">
               <span className="mr-2 inline-flex rounded-full border border-(--border-soft) bg-(--surface-soft) px-2.5 py-1 text-[11px] tracking-[0.18em] text-(--accent-amber) uppercase">
@@ -907,8 +822,9 @@ export function ReaderCanvas({
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <span className="text-sm">
-                    {copy.currentPageSummary({
-                      currentPageLabel: pdfCompanion.currentPageLabel,
+                    {copy.pageCountSummary({
+                      currentPageNumber: pdfCompanion.currentPageIndex + 1,
+                      pageCount: pdfCompanion.pageCount,
                     })}
                   </span>
                   <button
@@ -923,13 +839,6 @@ export function ReaderCanvas({
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
-
-                <span className={pdfToolbarChipClass}>
-                  {copy.pageCountSummary({
-                    currentPageNumber: pdfCompanion.currentPageIndex + 1,
-                    pageCount: pdfCompanion.pageCount,
-                  })}
-                </span>
 
                 <div className={pdfToolbarChipClass}>
                   <input
@@ -956,36 +865,10 @@ export function ReaderCanvas({
                   </button>
                 </div>
 
-                <div className={pdfToolbarChipClass}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      pdfCompanion.onZoomStep(-1);
-                    }}
-                    aria-label={copy.zoomOut}
-                    title={copy.zoomOut}
-                    className={pdfToolbarIconButtonClass}
-                  >
-                    <ZoomOut className="h-4 w-4" />
-                  </button>
-                  <span>{pdfCompanion.zoomLabel}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      pdfCompanion.onZoomStep(1);
-                    }}
-                    aria-label={copy.zoomIn}
-                    title={copy.zoomIn}
-                    className={pdfToolbarIconButtonClass}
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </button>
-                </div>
-
                 <div ref={pdfViewMenuRef} className="relative z-40">
                   <button
                     type="button"
-                    aria-label={copy.view}
+                    aria-label={`${copy.view}: ${pdfCompanion.zoomLabel}`}
                     onClick={() => {
                       setOpenMenu((current) =>
                         current === "pdf-view" ? null : "pdf-view",
@@ -994,6 +877,9 @@ export function ReaderCanvas({
                     className={pdfToolbarButtonClass}
                   >
                     {copy.view}
+                    <span className="text-(--text-muted) normal-case tracking-normal">
+                      {pdfCompanion.zoomLabel}
+                    </span>
                     <ChevronDown
                       className={`h-4 w-4 transition ${openMenu === "pdf-view" ? "rotate-180" : ""}`}
                     />
@@ -1009,6 +895,31 @@ export function ReaderCanvas({
                         {copy.viewMenu}
                       </p>
                       <div className="mt-3 grid gap-2">
+                        <div className="flex items-center justify-between rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong)">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              pdfCompanion.onZoomStep(-1);
+                            }}
+                            aria-label={copy.zoomOut}
+                            title={copy.zoomOut}
+                            className={pdfToolbarIconButtonClass}
+                          >
+                            <ZoomOut className="h-4 w-4" />
+                          </button>
+                          <span>{pdfCompanion.zoomLabel}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              pdfCompanion.onZoomStep(1);
+                            }}
+                            aria-label={copy.zoomIn}
+                            title={copy.zoomIn}
+                            className={pdfToolbarIconButtonClass}
+                          >
+                            <ZoomIn className="h-4 w-4" />
+                          </button>
+                        </div>
                         <div className="grid gap-2 sm:grid-cols-3">
                           {[
                             { label: copy.fitWidth, value: "page-width" },
@@ -1117,25 +1028,6 @@ export function ReaderCanvas({
       {isCompactReaderChrome ? (
         <div className="pointer-events-none absolute right-3 bottom-3 z-40 lg:hidden">
           <div className={compactDockSurfaceClass}>
-            <button
-              type="button"
-              aria-label={
-                isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
-              }
-              onClick={() => {
-                void toggleFullscreen();
-              }}
-              className={compactDockIconButtonClass}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="h-4 w-4" />
-              ) : (
-                <Maximize2 className="h-4 w-4" />
-              )}
-              <span className="sr-only">
-                {isFullscreen ? copy.collapse : copy.expand}
-              </span>
-            </button>
             <button
               type="button"
               aria-label={
@@ -1572,79 +1464,137 @@ export function ReaderCanvas({
               {openMenu === "more" ? (
                 <div
                   className={cn(
-                    "reader-dropdown-panel absolute right-0 z-60 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
+                    "reader-dropdown-panel absolute right-0 z-60 w-80 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
                     desktopBottomMenuPositionClass,
                   )}
                 >
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.moreActions}
                   </p>
-                  <div className="mt-3 grid gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onMoveBackwardFive();
-                        setOpenMenu(null);
-                      }}
-                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <SkipBack className="h-4 w-4" />
-                        {copy.backFive}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onRestart();
-                        setOpenMenu(null);
-                      }}
-                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <RotateCcw className="h-4 w-4" />
-                        {copy.restart}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onRestartParagraph();
-                        setOpenMenu(null);
-                      }}
-                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <Undo2 className="h-4 w-4" />
-                        {copy.restartParagraph}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onRepeatChunk();
-                        setOpenMenu(null);
-                      }}
-                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <RotateCcw className="h-4 w-4" />
-                        {copy.repeatChunk}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onMoveForwardFive();
-                        setOpenMenu(null);
-                      }}
-                      className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <SkipForward className="h-4 w-4" />
-                        {copy.forwardFive}
-                      </span>
-                    </button>
+                  <div className="mt-3 grid gap-3">
+                    <div className="rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                            {copy.presets}
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-(--text-strong)">
+                            {activePreset
+                              ? getLocalizedCopy(
+                                  locale,
+                                  presetCopy[activePreset.id].label,
+                                )
+                              : copy.customPreset}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid gap-2">
+                        {readerPresets.map((preset) => {
+                          const isActive = activePreset?.id === preset.id;
+
+                          return (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              onClick={() => {
+                                onSelectPreset(preset.id);
+                                setOpenMenu(null);
+                              }}
+                              className={`rounded-[1rem] border px-3 py-2.5 text-left transition ${
+                                isActive
+                                  ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                                  : "border-(--border-soft) bg-(--surface-card) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-sm font-medium">
+                                  {getLocalizedCopy(
+                                    locale,
+                                    presetCopy[preset.id].label,
+                                  )}
+                                </span>
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                                    isActive
+                                      ? "border-white/20 bg-white/10 text-white/80"
+                                      : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted)"
+                                  }`}
+                                >
+                                  {preset.wordsPerMinute} WPM
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onMoveBackwardFive();
+                          setOpenMenu(null);
+                        }}
+                        className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <SkipBack className="h-4 w-4" />
+                          {copy.backFive}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onRestart();
+                          setOpenMenu(null);
+                        }}
+                        className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <RotateCcw className="h-4 w-4" />
+                          {copy.restart}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onRestartParagraph();
+                          setOpenMenu(null);
+                        }}
+                        className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <Undo2 className="h-4 w-4" />
+                          {copy.restartParagraph}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onRepeatChunk();
+                          setOpenMenu(null);
+                        }}
+                        className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <RotateCcw className="h-4 w-4" />
+                          {copy.repeatChunk}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onMoveForwardFive();
+                          setOpenMenu(null);
+                        }}
+                        className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-left text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <SkipForward className="h-4 w-4" />
+                          {copy.forwardFive}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -1680,6 +1630,7 @@ export function ReaderCanvas({
           onReturnToOriginalPage={onReturnToOriginalPage}
           onSaveBookmark={onSaveBookmark}
           onSaveHighlight={onSaveHighlight}
+          onSelectPreset={onSelectPreset}
           onSelectTextPresentation={onSelectTextPresentation}
           onSelectTheme={onSelectTheme}
           onToggleFullscreen={toggleFullscreen}

@@ -20,6 +20,9 @@ test("@mobile reader route stays usable at phone width for text modes", async ({
   });
   await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /controls/i })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /change preset/i }),
+  ).toHaveCount(0);
 
   const mobileSidebarToggle = page.getByRole("button", {
     name: /notes, highlights, and bookmarks/i,
@@ -82,6 +85,7 @@ test("@mobile phone users can save PDF bookmarks and highlights from a real impo
   const toolsDialog = page.getByRole("dialog", { name: /reading tools/i });
 
   await expect(toolsDialog).toBeVisible();
+  await expect(toolsDialog.getByText(/presets/i)).toBeVisible();
   await expect(
     toolsDialog.getByRole("button", { name: /return to original page/i }),
   ).toBeVisible();

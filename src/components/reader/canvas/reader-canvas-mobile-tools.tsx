@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import {
+  presetCopy,
   pdfViewModeLabels,
   themeLabels,
   themePreviewSwatchClassNames,
@@ -22,7 +23,11 @@ import {
 } from "@/components/reader/canvas/reader-canvas-content";
 import { getLocalizedCopy, type AppLocale } from "@/lib/locale";
 import type { TextPresentation } from "@/types/document";
-import type { PdfScrollMode, ReaderPreferences } from "@/types/reader";
+import {
+  readerPresets,
+  type PdfScrollMode,
+  type ReaderPreferences,
+} from "@/types/reader";
 
 interface ReaderCanvasPdfCompanionProps {
   currentPageIndex: number;
@@ -68,6 +73,7 @@ interface ReaderCanvasMobileToolsProps {
   onReturnToOriginalPage?: () => void;
   onSaveBookmark: () => void;
   onSaveHighlight: () => void;
+  onSelectPreset: (presetId: (typeof readerPresets)[number]["id"]) => void;
   onSelectTextPresentation?: (presentation: TextPresentation) => void;
   onSelectTheme: (theme: ReaderPreferences["theme"]) => void;
   onToggleFullscreen: () => Promise<void> | void;
@@ -112,12 +118,25 @@ export function ReaderCanvasMobileTools({
   onReturnToOriginalPage,
   onSaveBookmark,
   onSaveHighlight,
+  onSelectPreset,
   onSelectTextPresentation,
   onSelectTheme,
   onToggleFullscreen,
   onToggleNaturalPauses,
   onToggleReduceMotion,
 }: ReaderCanvasMobileToolsProps) {
+  const activePreset = readerPresets.find((preset) => {
+    return (
+      preset.mode === preferences.mode &&
+      preset.wordsPerMinute === preferences.wordsPerMinute &&
+      preset.chunkSize === chunkSize &&
+      preset.focusWindow === preferences.focusWindow &&
+      preset.naturalPauses === preferences.naturalPauses &&
+      preset.smartPacing === preferences.smartPacing &&
+      preset.reduceMotion === preferences.reduceMotion
+    );
+  });
+
   return (
     <div className="fixed inset-0 z-80 bg-slate-950/55 backdrop-blur-sm lg:hidden">
       <button
@@ -141,36 +160,14 @@ export function ReaderCanvasMobileTools({
               {copy.readingTools}
             </h3>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label={
-                isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
-              }
-              onClick={() => {
-                void onToggleFullscreen();
-                onClose();
-              }}
-              className={sheetHeaderButtonClass}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="h-4 w-4" />
-              ) : (
-                <Maximize2 className="h-4 w-4" />
-              )}
-              <span className="sr-only">
-                {isFullscreen ? copy.collapse : copy.expand}
-              </span>
-            </button>
-            <button
-              type="button"
-              aria-label={copy.closeTools}
-              onClick={onClose}
-              className={sheetHeaderButtonClass}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            aria-label={copy.closeTools}
+            onClick={onClose}
+            className={sheetHeaderButtonClass}
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         <div className="mt-4 space-y-2.5">
@@ -213,8 +210,9 @@ export function ReaderCanvasMobileTools({
                       {copy.previousPage}
                     </button>
                     <div className="flex items-center justify-center rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-center text-sm text-(--text-strong)">
-                      {copy.currentPageSummary({
-                        currentPageLabel: pdfCompanion.currentPageLabel,
+                      {copy.pageCountSummary({
+                        currentPageNumber: pdfCompanion.currentPageIndex + 1,
+                        pageCount: pdfCompanion.pageCount,
                       })}
                     </div>
                     <button
@@ -316,12 +314,6 @@ export function ReaderCanvasMobileTools({
                         {getLocalizedCopy(locale, labels)}
                       </button>
                     ))}
-                  </div>
-                  <div className="rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2 text-center text-sm text-(--text-muted)">
-                    {copy.pageCountSummary({
-                      currentPageNumber: pdfCompanion.currentPageIndex + 1,
-                      pageCount: pdfCompanion.pageCount,
-                    })}
                   </div>
                   {pdfCompanion.pageJumpError ? (
                     <p className="text-sm text-(--accent-amber)">
@@ -650,62 +642,110 @@ export function ReaderCanvasMobileTools({
             <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
               {copy.moreActions}
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onMoveBackwardFive();
-                  onClose();
-                }}
-                className={sheetActionButtonClass}
-              >
-                <SkipBack className="h-4 w-4" />
-                {copy.backFive}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onMoveForwardFive();
-                  onClose();
-                }}
-                className={sheetActionButtonClass}
-              >
-                <SkipForward className="h-4 w-4" />
-                {copy.forwardFive}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onRestart();
-                  onClose();
-                }}
-                className={sheetActionButtonClass}
-              >
-                <RotateCcw className="h-4 w-4" />
-                {copy.restart}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onRestartParagraph();
-                  onClose();
-                }}
-                className={sheetActionButtonClass}
-              >
-                <Undo2 className="h-4 w-4" />
-                {copy.restartParagraph}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onRepeatChunk();
-                  onClose();
-                }}
-                className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-              >
-                <RotateCcw className="h-4 w-4" />
-                {copy.repeatChunk}
-              </button>
+            <div className="mt-3 grid gap-3">
+              <div className="rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) p-3">
+                <p className="text-xs tracking-[0.18em] text-(--text-muted) uppercase">
+                  {copy.presets}
+                </p>
+                <p className="mt-1 text-sm font-medium text-(--text-strong)">
+                  {activePreset
+                    ? getLocalizedCopy(locale, presetCopy[activePreset.id].label)
+                    : copy.customPreset}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  {readerPresets.map((preset) => {
+                    const isActive = activePreset?.id === preset.id;
+
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          onSelectPreset(preset.id);
+                          onClose();
+                        }}
+                        className={`rounded-[1rem] border px-3 py-2.5 text-left transition ${
+                          isActive
+                            ? "border-(--border-strong) bg-(--text-strong) text-(--text-on-accent)"
+                            : "border-(--border-soft) bg-(--surface-card) text-(--text-strong) hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-medium">
+                            {getLocalizedCopy(locale, presetCopy[preset.id].label)}
+                          </span>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                              isActive
+                                ? "border-white/20 bg-white/10 text-white/80"
+                                : "border-(--border-soft) bg-(--surface-soft) text-(--text-muted)"
+                            }`}
+                          >
+                            {preset.wordsPerMinute} WPM
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onMoveBackwardFive();
+                    onClose();
+                  }}
+                  className={sheetActionButtonClass}
+                >
+                  <SkipBack className="h-4 w-4" />
+                  {copy.backFive}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onMoveForwardFive();
+                    onClose();
+                  }}
+                  className={sheetActionButtonClass}
+                >
+                  <SkipForward className="h-4 w-4" />
+                  {copy.forwardFive}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRestart();
+                    onClose();
+                  }}
+                  className={sheetActionButtonClass}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {copy.restart}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRestartParagraph();
+                    onClose();
+                  }}
+                  className={sheetActionButtonClass}
+                >
+                  <Undo2 className="h-4 w-4" />
+                  {copy.restartParagraph}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRepeatChunk();
+                    onClose();
+                  }}
+                  className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {copy.repeatChunk}
+                </button>
+              </div>
             </div>
           </section>
         </div>
