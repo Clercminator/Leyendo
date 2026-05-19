@@ -27,19 +27,15 @@ import {
   type PdfMatchCount,
   type PdfOutlineNodeHandle,
   type PdfPageChangingEvent,
-  type PdfPageHandle,
-  type PdfRenderTask,
   type PdfRotationChangingEvent,
   type PdfScaleChangingEvent,
   type PdfScrollModeChangedEvent,
   type PdfViewerModule,
   type PdfViewerRuntime,
-  type PdfViewport,
 } from "@/components/reader/pdf-workspace/pdf-reader-workspace-helpers";
 import { getPdfReaderWorkspaceCopy } from "@/components/reader/pdf-workspace/pdf-reader-workspace-copy";
 import { PdfReaderWorkspaceMobileSidebar } from "@/components/reader/pdf-workspace/pdf-reader-workspace-mobile-sidebar";
 import { PdfReaderWorkspaceSidebar } from "@/components/reader/pdf-workspace/pdf-reader-workspace-sidebar";
-import type { PdfThumbnailItem } from "@/components/reader/reader-sidebar";
 import {
   getDocumentAsset,
   getStoredPdfViewerState,
@@ -52,7 +48,7 @@ import {
   type PdfOutlineItem,
 } from "@/features/reader/pdf/navigation";
 import { getLocalizedCopy } from "@/lib/locale";
-import { measureAsync, recordPerfMetric } from "@/lib/perf/instrumentation";
+import { recordPerfMetric } from "@/lib/perf/instrumentation";
 import { getPdfAssetUrl, loadPdfJs, loadPdfJsViewer } from "@/lib/pdf/pdfjs";
 import type { DocumentRecord } from "@/types/document";
 import {
@@ -64,80 +60,8 @@ import {
 } from "@/types/reader";
 
 const PDF_VIEWER_STATE_SAVE_DELAY_MS = 700;
-const PDF_THUMBNAIL_BATCH_SIZE = 4;
-const PDF_THUMBNAIL_BATCH_SIZE_CONSTRAINED = 2;
-const PDF_THUMBNAIL_INITIAL_BATCH_SIZE = 2;
-const PDF_THUMBNAIL_INITIAL_BATCH_SIZE_CONSTRAINED = 1;
-const PDF_THUMBNAIL_PINNED_PAGES = 4;
-const PDF_THUMBNAIL_PINNED_PAGES_CONSTRAINED = 2;
-const PDF_THUMBNAIL_WINDOW_RADIUS = 2;
-const PDF_THUMBNAIL_WINDOW_RADIUS_CONSTRAINED = 1;
-const PDF_THUMBNAIL_RENDER_DELAY_MS_CONSTRAINED = 48;
-const PDF_DESKTOP_SIDEBAR_MEDIA_QUERY = "(min-width: 1024px)";
-
 function getPerfNow() {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
-}
-
-function shouldUseConstrainedPdfMode() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const coarsePointer =
-    window.matchMedia?.("(hover: none), (pointer: coarse)").matches ?? false;
-  const lowConcurrency =
-    typeof navigator.hardwareConcurrency === "number" &&
-    navigator.hardwareConcurrency <= 4;
-  const deviceMemory = (
-    navigator as Navigator & { deviceMemory?: number }
-  ).deviceMemory;
-  const lowMemory = typeof deviceMemory === "number" && deviceMemory <= 4;
-
-  return coarsePointer || lowConcurrency || lowMemory;
-}
-
-function yieldToBrowser(delayMs = 0) {
-  return new Promise<void>((resolve) => {
-    if (delayMs > 0) {
-      window.setTimeout(resolve, delayMs);
-      return;
-    }
-
-    window.requestAnimationFrame(() => {
-      resolve();
-    });
-  });
-}
-
-function compareThumbnailPagePriority(
-  left: number,
-  right: number,
-  currentPageIndex: number,
-) {
-  if (left === currentPageIndex) {
-    return -1;
-  }
-
-  if (right === currentPageIndex) {
-    return 1;
-  }
-
-  const leftDistance = Math.abs(left - currentPageIndex);
-  const rightDistance = Math.abs(right - currentPageIndex);
-
-  if (leftDistance !== rightDistance) {
-    return leftDistance - rightDistance;
-  }
-
-  const leftIsBehind = left < currentPageIndex;
-  const rightIsBehind = right < currentPageIndex;
-
-  if (leftIsBehind !== rightIsBehind) {
-    return leftIsBehind ? 1 : -1;
-  }
-
-  return left - right;
 }
 
 interface PdfReaderWorkspaceProps {
@@ -199,13 +123,6 @@ export function PdfReaderWorkspace({
   const [error, setError] = useState<string>();
   const [findMatches, setFindMatches] = useState({ current: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
-  const [hasDesktopSidebar, setHasDesktopSidebar] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    return window.matchMedia(PDF_DESKTOP_SIDEBAR_MEDIA_QUERY).matches;
-  });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isModeMenuOpen, setIsModeMenuOpen] = useState(false);
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
@@ -221,22 +138,14 @@ export function PdfReaderWorkspace({
   const [searchStatus, setSearchStatus] = useState<
     "idle" | "not-found" | "pending" | "ready"
   >("idle");
-  const [thumbnails, setThumbnails] = useState<PdfThumbnailItem[]>([]);
-  const [requestedThumbnailPages, setRequestedThumbnailPages] = useState<
-    number[]
-  >([]);
-  const [thumbnailRenderCycle, setThumbnailRenderCycle] = useState(0);
   const [viewerState, setViewerState] = useState<PdfViewerState>(
     defaultPdfViewerState,
   );
   const [zoomPercent, setZoomPercent] = useState(100);
   const [selectedPdfText, setSelectedPdfText] = useState<string>();
-  const isConstrainedPdfMode = useMemo(() => shouldUseConstrainedPdfMode(), []);
   const isViewerReadyRef = useRef(false);
   const pendingPageNumberRef = useRef<number | undefined>(undefined);
   const pendingViewerStateRef = useRef(viewerState);
-  const renderedThumbnailPagesRef = useRef(new Set<number>());
-  const renderingThumbnailPagesRef = useRef(new Set<number>());
   const viewerStateSaveTimeoutRef = useRef<number | undefined>(undefined);
   const viewerStateRef = useRef(viewerState);
   const searchQueryRef = useRef(viewerState.searchQuery);
@@ -251,20 +160,6 @@ export function PdfReaderWorkspace({
       }
     | undefined
   >(undefined);
-  const thumbnailPinnedPageCount = isConstrainedPdfMode
-    ? PDF_THUMBNAIL_PINNED_PAGES_CONSTRAINED
-    : PDF_THUMBNAIL_PINNED_PAGES;
-  const thumbnailRenderBatchSize = isConstrainedPdfMode
-    ? PDF_THUMBNAIL_BATCH_SIZE_CONSTRAINED
-    : PDF_THUMBNAIL_BATCH_SIZE;
-  const initialThumbnailRenderBatchSize = isConstrainedPdfMode
-    ? PDF_THUMBNAIL_INITIAL_BATCH_SIZE_CONSTRAINED
-    : PDF_THUMBNAIL_INITIAL_BATCH_SIZE;
-  const thumbnailWindowRadius = isConstrainedPdfMode
-    ? PDF_THUMBNAIL_WINDOW_RADIUS_CONSTRAINED
-    : PDF_THUMBNAIL_WINDOW_RADIUS;
-  const shouldEagerlyRenderThumbnails =
-    hasDesktopSidebar || isMobileSidebarOpen;
   const measurePdfBootstrapPhase = useCallback(
     async <T,>(phase: string, runId: number, callback: () => Promise<T>) => {
       const startedAt = getPerfNow();
@@ -312,33 +207,6 @@ export function PdfReaderWorkspace({
   );
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const mediaQuery = window.matchMedia(PDF_DESKTOP_SIDEBAR_MEDIA_QUERY);
-    const handleChange = (event: MediaQueryListEvent) => {
-      setHasDesktopSidebar(event.matches);
-    };
-
-    setHasDesktopSidebar(mediaQuery.matches);
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", handleChange);
-
-      return () => {
-        mediaQuery.removeEventListener("change", handleChange);
-      };
-    }
-
-    mediaQuery.addListener(handleChange);
-
-    return () => {
-      mediaQuery.removeListener(handleChange);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!isModeMenuOpen && !isViewMenuOpen) {
       return;
     }
@@ -373,71 +241,6 @@ export function PdfReaderWorkspace({
     };
   }, [isModeMenuOpen, isViewMenuOpen]);
 
-  const requestThumbnailPage = useCallback(
-    (pageIndex: number) => {
-      const totalPages = pdfDocument?.numPages ?? 0;
-
-      if (
-        !Number.isInteger(pageIndex) ||
-        pageIndex < 0 ||
-        pageIndex >= totalPages
-      ) {
-        return;
-      }
-
-      setRequestedThumbnailPages((currentPages) => {
-        if (currentPages.includes(pageIndex)) {
-          return currentPages;
-        }
-
-        return [...currentPages, pageIndex].sort((left, right) => left - right);
-      });
-    },
-    [pdfDocument?.numPages],
-  );
-
-  const requestThumbnailWindow = useCallback(
-    (pageIndex: number) => {
-      const totalPages = pdfDocument?.numPages ?? 0;
-
-      if (totalPages === 0) {
-        return;
-      }
-
-      const nextPages = new Set<number>();
-
-      for (
-        let offset = -thumbnailWindowRadius;
-        offset <= thumbnailWindowRadius;
-        offset += 1
-      ) {
-        const nextPageIndex = pageIndex + offset;
-
-        if (nextPageIndex >= 0 && nextPageIndex < totalPages) {
-          nextPages.add(nextPageIndex);
-        }
-      }
-
-      for (
-        let nextPageIndex = 0;
-        nextPageIndex < Math.min(totalPages, thumbnailPinnedPageCount);
-        nextPageIndex += 1
-      ) {
-        nextPages.add(nextPageIndex);
-      }
-
-      setRequestedThumbnailPages((currentPages) => {
-        const mergedPages = new Set(currentPages);
-        nextPages.forEach((nextPage) => {
-          mergedPages.add(nextPage);
-        });
-
-        return [...mergedPages].sort((left, right) => left - right);
-      });
-    },
-    [pdfDocument?.numPages, thumbnailPinnedPageCount, thumbnailWindowRadius],
-  );
-
   useEffect(() => {
     viewerStateRef.current = viewerState;
     pendingViewerStateRef.current = viewerState;
@@ -464,8 +267,6 @@ export function PdfReaderWorkspace({
       setPdfDocument(null);
       setSearchStatus("idle");
       setFindMatches({ current: 0, total: 0 });
-      setThumbnails([]);
-      setRequestedThumbnailPages([]);
       pendingFirstPageReadyMetricRef.current = undefined;
       const bootstrapRunId = activeBootstrapRunIdRef.current + 1;
       activeBootstrapRunIdRef.current = bootstrapRunId;
@@ -985,186 +786,6 @@ export function PdfReaderWorkspace({
     };
   }, [viewerState.searchQuery]);
 
-  useEffect(() => {
-    if (!pdfDocument) {
-      setThumbnails([]);
-      setRequestedThumbnailPages([]);
-      renderedThumbnailPagesRef.current.clear();
-      renderingThumbnailPagesRef.current.clear();
-      return;
-    }
-
-    renderedThumbnailPagesRef.current.clear();
-    renderingThumbnailPagesRef.current.clear();
-
-    setThumbnails(
-      Array.from({ length: pdfDocument.numPages }, (_, pageIndex) => ({
-        pageIndex,
-        pageLabel: getPdfPageLabel(pageIndex, pageLabels),
-      })),
-    );
-
-    setRequestedThumbnailPages([]);
-    setThumbnailRenderCycle(0);
-  }, [pageLabels, pdfDocument, viewerState.rotation]);
-
-  useEffect(() => {
-    if (!pdfDocument || !shouldEagerlyRenderThumbnails) {
-      return;
-    }
-
-    requestThumbnailWindow(currentPageIndex);
-  }, [
-    currentPageIndex,
-    pdfDocument,
-    requestThumbnailWindow,
-    shouldEagerlyRenderThumbnails,
-  ]);
-
-  useEffect(() => {
-    if (!pdfDocument) {
-      return;
-    }
-
-    const pdfDocumentHandle = pdfDocument;
-    const queuedThumbnailPages = requestedThumbnailPages
-      .filter(
-        (pageIndex) =>
-          pageIndex >= 0 &&
-          pageIndex < pdfDocumentHandle.numPages &&
-          !renderedThumbnailPagesRef.current.has(pageIndex) &&
-          !renderingThumbnailPagesRef.current.has(pageIndex),
-      )
-      .sort((left, right) =>
-        compareThumbnailPagePriority(left, right, currentPageIndex),
-      );
-    const isInitialBatch = renderedThumbnailPagesRef.current.size === 0;
-    const effectiveBatchSize = isInitialBatch
-      ? Math.min(thumbnailRenderBatchSize, initialThumbnailRenderBatchSize)
-      : thumbnailRenderBatchSize;
-    const pagesToRender = queuedThumbnailPages.slice(0, effectiveBatchSize);
-    const pendingQueueSize = queuedThumbnailPages.length;
-
-    if (pagesToRender.length === 0) {
-      return;
-    }
-
-    let cancelled = false;
-
-    async function renderThumbnails() {
-      await measureAsync(
-        "reader.pdf-thumbnail-batch",
-        {
-          batchSize: pagesToRender.length,
-          constrained: isConstrainedPdfMode,
-          currentPageIndex,
-          isInitialBatch,
-          pendingQueueSize,
-          rotation: viewerState.rotation,
-        },
-        async () => {
-          for (const [renderIndex, pageIndex] of pagesToRender.entries()) {
-            let pageHandle: PdfPageHandle | undefined;
-
-            if (renderIndex > 0 || isConstrainedPdfMode) {
-              await yieldToBrowser(
-                isConstrainedPdfMode
-                  ? PDF_THUMBNAIL_RENDER_DELAY_MS_CONSTRAINED
-                  : 0,
-              );
-
-              if (cancelled) {
-                return;
-              }
-            }
-
-            renderingThumbnailPagesRef.current.add(pageIndex);
-
-            try {
-              pageHandle = await pdfDocumentHandle.getPage(pageIndex + 1);
-
-              if (cancelled) {
-                return;
-              }
-
-              const baseViewport = pageHandle.getViewport({
-                rotation: viewerState.rotation,
-                scale: 1,
-              });
-              const scale = 156 / Math.max(1, baseViewport.width);
-              const viewport = pageHandle.getViewport({
-                rotation: viewerState.rotation,
-                scale,
-              });
-              const canvas = globalThis.document.createElement("canvas");
-              const context = canvas.getContext("2d", { alpha: false });
-
-              if (!context) {
-                continue;
-              }
-
-              canvas.width = Math.ceil(viewport.width);
-              canvas.height = Math.ceil(viewport.height);
-
-              await pageHandle.render({
-                canvasContext: context,
-                transform: null,
-                viewport,
-              }).promise;
-
-              if (cancelled) {
-                return;
-              }
-
-              const imageUrl = canvas.toDataURL("image/png");
-              renderedThumbnailPagesRef.current.add(pageIndex);
-
-              setThumbnails((currentThumbnails) => {
-                const nextThumbnails = [...currentThumbnails];
-                const previousThumbnail = nextThumbnails[pageIndex];
-
-                nextThumbnails[pageIndex] = {
-                  imageUrl,
-                  pageIndex,
-                  pageLabel:
-                    previousThumbnail?.pageLabel ??
-                    getPdfPageLabel(pageIndex, pageLabels),
-                };
-
-                return nextThumbnails;
-              });
-            } catch {
-              continue;
-            } finally {
-              pageHandle?.cleanup?.();
-              renderingThumbnailPagesRef.current.delete(pageIndex);
-            }
-          }
-        },
-      );
-
-      if (!cancelled && pendingQueueSize > pagesToRender.length) {
-        setThumbnailRenderCycle((currentCycle) => currentCycle + 1);
-      }
-    }
-
-    void renderThumbnails();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    currentPageIndex,
-    isConstrainedPdfMode,
-    initialThumbnailRenderBatchSize,
-    pageLabels,
-    pdfDocument,
-    requestedThumbnailPages,
-    thumbnailRenderCycle,
-    thumbnailRenderBatchSize,
-    viewerState.rotation,
-  ]);
-
   const currentPageLabel = useMemo(() => {
     return getPdfPageLabel(currentPageIndex, pageLabels);
   }, [currentPageIndex, pageLabels]);
@@ -1418,12 +1039,9 @@ export function PdfReaderWorkspace({
     onJumpToBookmark,
     onJumpToHighlight,
     onJumpToOutlineItem: handleSidebarJumpToOutlineItem,
-    onJumpToThumbnail: goToPageIndex,
-    onRequestThumbnail: requestThumbnailPage,
     onSaveBookmark: handleSidebarSaveBookmark,
     onSaveHighlight: hasExtractedText ? handleSidebarSaveHighlight : undefined,
     outlineItems,
-    pdfThumbnails: thumbnails,
     saveHighlightDisabled: !hasExtractedText,
     saveHighlightLabel,
     showHighlightComposer: hasExtractedText,
@@ -1918,7 +1536,7 @@ export function PdfReaderWorkspace({
         <div className="relative h-[72vh] min-h-120 sm:h-[82vh] sm:min-h-152 lg:h-[86vh]">
           <div
             ref={viewerContainerRef}
-            className="absolute inset-0 overflow-auto bg-slate-300/70 px-2 py-4 sm:px-4 sm:py-6"
+            className="absolute inset-0 overflow-auto bg-(--surface-overlay) px-2 py-4 sm:px-4 sm:py-6"
           >
             <div ref={viewerElementRef} className="pdfViewer" />
           </div>

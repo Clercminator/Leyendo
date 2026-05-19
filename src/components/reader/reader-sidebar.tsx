@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { memo, useEffect, useId, useMemo, useRef, useState } from "react";
+import { memo, useId, useState } from "react";
 
 import { BookmarkPlus, ChevronDown, Highlighter, Trash2 } from "lucide-react";
 
@@ -9,17 +8,6 @@ import { useLocale } from "@/components/layout/locale-provider";
 import type { PdfOutlineItem } from "@/features/reader/pdf/navigation";
 import { getLocalizedCopy } from "@/lib/locale";
 import type { Bookmark, Highlight } from "@/types/reader";
-
-export interface PdfThumbnailItem {
-  pageIndex: number;
-  pageLabel: string;
-  imageUrl?: string;
-}
-
-const PDF_THUMBNAIL_DEFAULT_VIEWPORT_HEIGHT_PX = 352;
-const PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX = 264;
-const PDF_THUMBNAIL_OVERSCAN = 3;
-const PDF_THUMBNAIL_WINDOWING_THRESHOLD = 24;
 
 interface ReaderSidebarNotice {
   title: string;
@@ -29,7 +17,6 @@ interface ReaderSidebarNotice {
 
 interface ReaderSidebarProps {
   bookmarks: Bookmark[];
-  currentPdfPageIndex?: number;
   currentPdfPageLabel?: string;
   defaultHighlightsSectionExpanded?: boolean;
   highlightHelperText?: string;
@@ -45,11 +32,8 @@ interface ReaderSidebarProps {
   onJumpToBookmark: (bookmark: Bookmark) => void;
   onJumpToHighlight: (highlight: Highlight) => void;
   onJumpToOutlineItem?: (outlineItem: PdfOutlineItem) => void;
-  onJumpToThumbnail?: (pageIndex: number) => void;
-  onRequestThumbnail?: (pageIndex: number) => void;
   onSaveBookmark?: () => void;
   onSaveHighlight?: () => void;
-  pdfThumbnails?: PdfThumbnailItem[];
   saveHighlightLabel?: string;
   saveHighlightDisabled?: boolean;
   showHighlightComposer?: boolean;
@@ -57,7 +41,6 @@ interface ReaderSidebarProps {
 
 export const ReaderSidebar = memo(function ReaderSidebar({
   bookmarks,
-  currentPdfPageIndex,
   currentPdfPageLabel,
   defaultHighlightsSectionExpanded = false,
   highlightHelperText,
@@ -73,31 +56,14 @@ export const ReaderSidebar = memo(function ReaderSidebar({
   onJumpToBookmark,
   onJumpToHighlight,
   onJumpToOutlineItem,
-  onJumpToThumbnail,
-  onRequestThumbnail,
   onSaveBookmark,
   onSaveHighlight,
-  pdfThumbnails,
   saveHighlightLabel,
   saveHighlightDisabled = false,
   showHighlightComposer = true,
 }: ReaderSidebarProps) {
   const { locale } = useLocale();
   const highlightsSectionContentId = useId();
-  const thumbnailScrollerRef = useRef<HTMLDivElement | null>(null);
-  const thumbnailButtonRefs = useRef(new Map<number, HTMLButtonElement>());
-  const pdfThumbnailCount = pdfThumbnails?.length ?? 0;
-  const [thumbnailScrollState, setThumbnailScrollState] = useState({
-    key: pdfThumbnailCount,
-    top: 0,
-  });
-  const thumbnailScrollTop =
-    thumbnailScrollState.key === pdfThumbnailCount
-      ? thumbnailScrollState.top
-      : 0;
-  const [thumbnailViewportHeight, setThumbnailViewportHeight] = useState(
-    PDF_THUMBNAIL_DEFAULT_VIEWPORT_HEIGHT_PX,
-  );
   const hasSavedReaderAnchors =
     highlightNote.trim().length > 0 ||
     highlights.length > 0 ||
@@ -114,148 +80,6 @@ export const ReaderSidebar = memo(function ReaderSidebar({
     highlightsSectionState.key === highlightsSectionStateKey
       ? highlightsSectionState.expanded
       : defaultHighlightsSectionExpanded || hasSavedReaderAnchors;
-  const shouldWindowPdfThumbnails =
-    pdfThumbnailCount > PDF_THUMBNAIL_WINDOWING_THRESHOLD;
-  const renderedThumbnailWindow = useMemo(() => {
-    if (!shouldWindowPdfThumbnails) {
-      return {
-        end: pdfThumbnailCount,
-        start: 0,
-      };
-    }
-
-    const visibleCount = Math.max(
-      1,
-      Math.ceil(
-        thumbnailViewportHeight / PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX,
-      ),
-    );
-    const windowSize = visibleCount + PDF_THUMBNAIL_OVERSCAN * 2;
-    const rawStart = Math.max(
-      0,
-      Math.floor(thumbnailScrollTop / PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX) -
-        PDF_THUMBNAIL_OVERSCAN,
-    );
-    const maxStart = Math.max(0, pdfThumbnailCount - windowSize);
-    const start = Math.min(rawStart, maxStart);
-
-    return {
-      end: Math.min(pdfThumbnailCount, start + windowSize),
-      start,
-    };
-  }, [
-    pdfThumbnailCount,
-    shouldWindowPdfThumbnails,
-    thumbnailScrollTop,
-    thumbnailViewportHeight,
-  ]);
-  const renderedPdfThumbnails = useMemo(
-    () =>
-      pdfThumbnails?.slice(
-        renderedThumbnailWindow.start,
-        renderedThumbnailWindow.end,
-      ) ?? [],
-    [pdfThumbnails, renderedThumbnailWindow.end, renderedThumbnailWindow.start],
-  );
-  const topThumbnailSpacerHeight = shouldWindowPdfThumbnails
-    ? renderedThumbnailWindow.start * PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX
-    : 0;
-  const bottomThumbnailSpacerHeight = shouldWindowPdfThumbnails
-    ? Math.max(
-        0,
-        (pdfThumbnailCount - renderedThumbnailWindow.end) *
-          PDF_THUMBNAIL_ESTIMATED_HEIGHT_PX,
-      )
-    : 0;
-
-  useEffect(() => {
-    const scroller = thumbnailScrollerRef.current;
-
-    if (!scroller) {
-      return;
-    }
-
-    const updateViewportHeight = () => {
-      setThumbnailViewportHeight(
-        scroller.clientHeight || PDF_THUMBNAIL_DEFAULT_VIEWPORT_HEIGHT_PX,
-      );
-    };
-
-    updateViewportHeight();
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", updateViewportHeight);
-
-      return () => {
-        window.removeEventListener("resize", updateViewportHeight);
-      };
-    }
-
-    const resizeObserver = new ResizeObserver(() => {
-      updateViewportHeight();
-    });
-
-    resizeObserver.observe(scroller);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [pdfThumbnailCount]);
-
-  useEffect(() => {
-    const scroller = thumbnailScrollerRef.current;
-
-    if (!scroller) {
-      return;
-    }
-
-    scroller.scrollTop = 0;
-  }, [pdfThumbnailCount]);
-
-  useEffect(() => {
-    if (renderedPdfThumbnails.length === 0 || !onRequestThumbnail) {
-      return;
-    }
-
-    if (typeof IntersectionObserver === "undefined") {
-      renderedPdfThumbnails
-        .slice(0, Math.min(renderedPdfThumbnails.length, 8))
-        .forEach((thumbnail) => {
-          onRequestThumbnail(thumbnail.pageIndex);
-        });
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) {
-            return;
-          }
-
-          const pageIndex = Number(
-            (entry.target as HTMLElement).dataset.thumbnailPageIndex,
-          );
-
-          if (Number.isInteger(pageIndex)) {
-            onRequestThumbnail(pageIndex);
-          }
-        });
-      },
-      {
-        root: thumbnailScrollerRef.current,
-        rootMargin: "120px 0px",
-      },
-    );
-
-    thumbnailButtonRefs.current.forEach((button) => {
-      observer.observe(button);
-    });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [onRequestThumbnail, renderedPdfThumbnails]);
 
   const formatBookmarkLocation = (bookmark: Bookmark) => {
     if (typeof bookmark.sourcePageIndex === "number") {
@@ -358,8 +182,7 @@ export const ReaderSidebar = memo(function ReaderSidebar({
     es: "Colapsar",
     pt: "Recolher",
   });
-  const hasPdfNavigationSections =
-    (pdfThumbnails?.length ?? 0) > 0 || (outlineItems?.length ?? 0) > 0;
+  const hasPdfNavigationSections = (outlineItems?.length ?? 0) > 0;
 
   return (
     <aside aria-label="Reader details" className="relative z-0">
@@ -591,100 +414,6 @@ export const ReaderSidebar = memo(function ReaderSidebar({
 
         {hasPdfNavigationSections ? (
           <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
-            {pdfThumbnails && pdfThumbnails.length > 0 ? (
-              <div>
-                <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">
-                  {getLocalizedCopy(locale, {
-                    en: "Page thumbnails",
-                    es: "Miniaturas de página",
-                    pt: "Miniaturas de pagina",
-                  })}
-                </p>
-                <div
-                  ref={thumbnailScrollerRef}
-                  className="mt-3 grid max-h-88 gap-3 overflow-y-auto pr-1"
-                  onScroll={(event) => {
-                    if (!shouldWindowPdfThumbnails) {
-                      return;
-                    }
-
-                    setThumbnailScrollState({
-                      key: pdfThumbnailCount,
-                      top: event.currentTarget.scrollTop,
-                    });
-                  }}
-                >
-                  {topThumbnailSpacerHeight > 0 ? (
-                    <div
-                      aria-hidden="true"
-                      style={{ height: `${topThumbnailSpacerHeight}px` }}
-                    />
-                  ) : null}
-                  {renderedPdfThumbnails.map((thumbnail) => {
-                    const isCurrentPage =
-                      currentPdfPageIndex === thumbnail.pageIndex;
-
-                    return (
-                      <button
-                        key={thumbnail.pageIndex}
-                        ref={(node) => {
-                          if (node) {
-                            thumbnailButtonRefs.current.set(
-                              thumbnail.pageIndex,
-                              node,
-                            );
-                            return;
-                          }
-
-                          thumbnailButtonRefs.current.delete(thumbnail.pageIndex);
-                        }}
-                        type="button"
-                        data-thumbnail-page-index={thumbnail.pageIndex}
-                        onClick={() => onJumpToThumbnail?.(thumbnail.pageIndex)}
-                        className={`rounded-2xl border px-3 py-3 text-left transition ${
-                          isCurrentPage
-                            ? "border-(--accent-sky) bg-(--surface-chip)"
-                            : "border-(--border-soft) bg-(--surface-soft) hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                        }`}
-                      >
-                        <div className="overflow-hidden rounded-xl border border-(--border-soft) bg-white shadow-sm">
-                          {thumbnail.imageUrl ? (
-                            <Image
-                              src={thumbnail.imageUrl}
-                              alt={getLocalizedCopy(locale, {
-                                en: `Page ${thumbnail.pageLabel}`,
-                                es: `Página ${thumbnail.pageLabel}`,
-                                pt: `Pagina ${thumbnail.pageLabel}`,
-                              })}
-                              width={156}
-                              height={208}
-                              unoptimized
-                              className="block h-auto w-full"
-                            />
-                          ) : (
-                            <div className="aspect-3/4 w-full bg-slate-100" />
-                          )}
-                        </div>
-                        <p className="mt-2 text-xs font-semibold tracking-[0.18em] text-(--text-muted) uppercase">
-                          {getLocalizedCopy(locale, {
-                            en: `Page ${thumbnail.pageLabel}`,
-                            es: `Página ${thumbnail.pageLabel}`,
-                            pt: `Pagina ${thumbnail.pageLabel}`,
-                          })}
-                        </p>
-                      </button>
-                    );
-                  })}
-                  {bottomThumbnailSpacerHeight > 0 ? (
-                    <div
-                      aria-hidden="true"
-                      style={{ height: `${bottomThumbnailSpacerHeight}px` }}
-                    />
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
             {outlineItems && outlineItems.length > 0 ? (
               <div>
                 <p className="text-xs tracking-[0.24em] text-(--accent-sky) uppercase">

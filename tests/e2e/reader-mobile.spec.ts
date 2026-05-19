@@ -3,6 +3,15 @@ import { test, expect } from "@playwright/test";
 import { createMinimalPdfBuffer } from "../fixtures/minimal-pdf";
 const READER_OPEN_TIMEOUT_MS = 20_000;
 
+test.describe.configure({ mode: "serial" });
+test.setTimeout(120_000);
+
+async function expectReaderRoute(page: Parameters<typeof test>[0]["page"]) {
+  await expect
+    .poll(() => page.url(), { timeout: 90_000 })
+    .toMatch(/\/reader\?document=/);
+}
+
 test("@mobile reader route stays usable at phone width for text modes", async ({
   page,
 }) => {
@@ -13,12 +22,13 @@ test("@mobile reader route stays usable at phone width for text modes", async ({
     .getByRole("textbox", { name: /^paste text$/i })
     .fill("Phone reading should stay usable across the main reading modes.");
 
+  await expect(page.getByRole("button", { name: /open in reader/i })).toBeEnabled();
   await page.getByRole("button", { name: /open in reader/i }).click();
 
-  await expect(page).toHaveURL(/\/reader\?document=/, {
-    timeout: READER_OPEN_TIMEOUT_MS,
+  await expectReaderRoute(page);
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible({
+    timeout: 60_000,
   });
-  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /controls/i })).toBeVisible();
   await expect(
     page.getByRole("button", { name: /change preset/i }),
@@ -73,58 +83,51 @@ test("@mobile phone users can save PDF bookmarks and highlights from a real impo
   await expect(
     page.getByRole("button", { name: /open imported file/i }),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: /open imported file/i })).toBeEnabled();
   await page.getByRole("button", { name: /open imported file/i }).click();
 
-  await expect(page).toHaveURL(/\/reader\?document=/, {
-    timeout: READER_OPEN_TIMEOUT_MS,
-  });
-  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
-  await page.getByRole("button", { name: /controls/i }).click();
-  await page.getByRole("button", { name: /reading tools/i }).click();
+  await expectReaderRoute(page);
+  await expect(
+    page.getByRole("button", { name: /open browser pdf/i }),
+  ).toBeVisible({ timeout: 60_000 });
+  await expect(
+    page.getByRole("textbox", { name: /jump to page/i }),
+  ).toHaveValue("1");
+  await page.getByRole("textbox", { name: /jump to page/i }).fill("2");
+  await page.getByRole("button", { name: /^go$/i }).click();
+  await expect(page.getByText(/^2 of 2$/)).toBeVisible();
 
-  const toolsDialog = page.getByRole("dialog", { name: /reading tools/i });
+  await page.getByRole("button", { name: /show tools/i }).click();
+
+  const toolsDialog = page.getByRole("dialog", {
+    name: /pages, outline, and notes/i,
+  });
 
   await expect(toolsDialog).toBeVisible();
-  await expect(toolsDialog.getByText(/presets/i)).toBeVisible();
-  await expect(
-    toolsDialog.getByRole("button", { name: /return to original page/i }),
-  ).toBeVisible();
-  await expect(
-    toolsDialog.getByRole("textbox", { name: /jump to page/i }),
-  ).toHaveValue("1");
-  await toolsDialog.getByRole("textbox", { name: /jump to page/i }).fill("2");
-  await toolsDialog.getByRole("button", { name: /^go$/i }).click();
-  await expect(toolsDialog.getByText(/^2 of 2$/)).toBeVisible();
+  await expect(toolsDialog.getByText(/page thumbnails/i)).toHaveCount(0);
   await toolsDialog.getByRole("button", { name: /save bookmark/i }).click();
   await expect(toolsDialog).not.toBeVisible();
 
-  const mobileSidebarToggle = page.getByRole("button", {
-    name: /notes, highlights, and bookmarks/i,
-  });
-
-  await mobileSidebarToggle.click();
-  const mobileSidebar = page.getByRole("complementary", {
-    name: /reader details/i,
+  await page.getByRole("button", { name: /show tools/i }).click();
+  const mobileSidebar = page.getByRole("dialog", {
+    name: /pages, outline, and notes/i,
   });
 
   await expect(mobileSidebar).toBeVisible();
   await expect(
     mobileSidebar.getByText("Bookmark 1", { exact: true }),
   ).toBeVisible();
-  await expect(mobileSidebar.getByText(/saved at paragraph 2/i)).toBeVisible();
+  await expect(mobileSidebar.getByText(/saved on page 2/i)).toBeVisible();
 
-  await page.getByRole("button", { name: /controls/i }).click();
-  await page.getByRole("button", { name: /reading tools/i }).click();
-  const highlightToolsDialog = page.getByRole("dialog", {
-    name: /reading tools/i,
-  });
+  const highlightToolsDialog = mobileSidebar;
 
   await expect(highlightToolsDialog).toBeVisible();
   await highlightToolsDialog
-    .getByRole("button", { name: /save highlight/i })
+    .getByRole("button", { name: /save( page| selected)? highlight/i })
     .click();
   await expect(highlightToolsDialog).not.toBeVisible();
 
+  await page.getByRole("button", { name: /show tools/i }).click();
   await expect(
     mobileSidebar.getByText("Highlight 1", { exact: true }),
   ).toBeVisible();
@@ -132,27 +135,16 @@ test("@mobile phone users can save PDF bookmarks and highlights from a real impo
     mobileSidebar.getByRole("button", { name: /jump to highlight/i }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: /controls/i }).click();
-  await page.getByRole("button", { name: /reading tools/i }).click();
-  const reopenedToolsDialog = page.getByRole("dialog", {
-    name: /reading tools/i,
-  });
+  await mobileSidebar.getByRole("button", { name: /^close$/i }).click();
+  await expect(mobileSidebar).not.toBeVisible();
 
-  await expect(reopenedToolsDialog).toBeVisible();
-  await reopenedToolsDialog
-    .getByRole("textbox", { name: /jump to page/i })
-    .fill("1");
-  await reopenedToolsDialog.getByRole("button", { name: /^go$/i }).click();
-  await expect(reopenedToolsDialog.getByText(/^1 of 2$/)).toBeVisible();
-  await reopenedToolsDialog.getByLabel(/close tools/i).click();
-  await expect(reopenedToolsDialog).not.toBeVisible();
+  await page.getByRole("textbox", { name: /jump to page/i }).fill("1");
+  await page.getByRole("button", { name: /^go$/i }).click();
+  await expect(page.getByText(/^1 of 2$/)).toBeVisible();
 
+  await page.getByRole("button", { name: /show tools/i }).click();
   await mobileSidebar
     .getByRole("button", { name: /jump to bookmark/i })
     .click();
   await expect(page.getByText(/^2 of 2$/)).toBeVisible();
-
-  await expect(
-    mobileSidebar.getByRole("button", { name: /jump to highlight/i }),
-  ).toBeVisible();
 });

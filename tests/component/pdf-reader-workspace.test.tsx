@@ -256,7 +256,7 @@ describe("PdfReaderWorkspace", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows PDF tools, selected highlight guidance, and the mobile PDF sheet", async () => {
+  it("shows PDF tools, selected highlight guidance, and the mobile PDF sheet without thumbnails", async () => {
     const user = userEvent.setup();
     const onOpenBrowserPdf = vi.fn();
     const onReadCurrentPageInClassic = vi.fn();
@@ -342,87 +342,6 @@ describe("PdfReaderWorkspace", () => {
     expect(
       screen.getByRole("dialog", { name: /pages, outline, and notes/i }),
     ).toBeInTheDocument();
-  });
-
-  it("renders only the requested thumbnail window instead of every page eagerly", async () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockImplementation((query: string) => ({
-        addEventListener: vi.fn(),
-        addListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-        matches: query === "(min-width: 1024px)",
-        media: query,
-        onchange: null,
-        removeEventListener: vi.fn(),
-        removeListener: vi.fn(),
-      })),
-    );
-
-    const getPage = vi.fn().mockResolvedValue({
-      cleanup: vi.fn(),
-      getViewport: ({ scale }: { scale: number }) => ({
-        height: 200 * scale,
-        width: 100 * scale,
-      }),
-      render: vi.fn().mockReturnValue({
-        cancel: vi.fn(),
-        promise: Promise.resolve(),
-      }),
-    });
-
-    loadPdfJs.mockResolvedValue({
-      getDocument: () => ({
-        promise: Promise.resolve({
-          destroy: vi.fn(),
-          getDestination: vi.fn().mockResolvedValue(null),
-          getOutline: vi.fn().mockResolvedValue([]),
-          getPage,
-          getPageIndex: vi.fn().mockResolvedValue(0),
-          getPageLabels: vi
-            .fn()
-            .mockResolvedValue(
-              Array.from({ length: 6 }, (_, index) => String(index + 1)),
-            ),
-          numPages: 6,
-        }),
-      }),
-    });
-
-    render(
-      <PdfReaderWorkspace
-        availableModes={[]}
-        bookmarks={[]}
-        document={{
-          createdAt: "2026-03-30T10:00:00.000Z",
-          excerpt: "",
-          id: "pdf-multi",
-          sourceKind: "pdf",
-          title: "Scanned PDF",
-          totalChunks: 0,
-          totalSections: 0,
-          updatedAt: "2026-03-30T10:00:00.000Z",
-        }}
-        hasExtractedText={false}
-        highlightNote=""
-        highlights={[]}
-        onChangeHighlightNote={vi.fn()}
-        onDeleteBookmark={vi.fn()}
-        onDeleteHighlight={vi.fn()}
-        onJumpToBookmark={vi.fn()}
-        onJumpToHighlight={vi.fn()}
-        onOpenBrowserPdf={vi.fn()}
-        onPageChange={vi.fn()}
-        onSaveBookmark={vi.fn()}
-        onSaveHighlight={vi.fn()}
-        onSelectMode={vi.fn()}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(getPage).toHaveBeenCalled();
-    });
-
-    expect(getPage.mock.calls.length).toBeLessThan(6);
+    expect(screen.queryByText(/page thumbnails/i)).not.toBeInTheDocument();
   });
 });

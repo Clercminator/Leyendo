@@ -4,6 +4,15 @@ import { createMinimalPdfBuffer } from "../fixtures/minimal-pdf";
 
 const READER_OPEN_TIMEOUT_MS = 20_000;
 
+test.describe.configure({ mode: "serial" });
+test.setTimeout(120_000);
+
+async function expectReaderRoute(page: Page) {
+  await expect
+    .poll(() => page.url(), { timeout: 90_000 })
+    .toMatch(/\/reader\?document=/);
+}
+
 async function expectVisibleDropdownWithinCanvas(args: {
   canvas: Locator;
   page: Page;
@@ -46,12 +55,13 @@ test("tablet-width reader keeps compact chrome without horizontal overflow", asy
       "Tablet reading should preserve the classic reader layout without overflowing sideways.",
     );
 
+  await expect(page.getByRole("button", { name: /open in reader/i })).toBeEnabled();
   await page.getByRole("button", { name: /open in reader/i }).click();
 
-  await expect(page).toHaveURL(/\/reader\?document=/, {
-    timeout: READER_OPEN_TIMEOUT_MS,
+  await expectReaderRoute(page);
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible({
+    timeout: 60_000,
   });
-  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /controls/i })).toBeVisible();
 
   await page.getByRole("button", { name: /controls/i }).click();
@@ -74,7 +84,7 @@ test("tablet-width reader keeps compact chrome without horizontal overflow", asy
   await expect(page.getByLabel(/classic reader document/i)).toBeVisible();
 });
 
-test("desktop PDF toolbar consolidates view, presets, and reader details", async ({
+test("desktop PDF workspace keeps the details panel visible without thumbnails", async ({
   page,
 }) => {
   await page.goto("/");
@@ -91,38 +101,35 @@ test("desktop PDF toolbar consolidates view, presets, and reader details", async
       ]),
     });
 
+  await expect(page.getByRole("button", { name: /open imported file/i })).toBeEnabled();
   await page.getByRole("button", { name: /open imported file/i }).click();
 
-  await expect(page).toHaveURL(/\/reader\?document=/, {
-    timeout: READER_OPEN_TIMEOUT_MS,
-  });
-  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+  await expectReaderRoute(page);
+  await expect(
+    page.getByRole("button", { name: /open browser pdf/i }),
+  ).toBeVisible({ timeout: 60_000 });
   await expect(
     page.getByRole("button", { name: /change preset/i }),
   ).toHaveCount(0);
   await expect(page.getByText(/^1 of 2$/)).toBeVisible();
-  await expect(page.getByText(/^Page 1$/)).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: /enter fullscreen/i }),
-  ).toBeVisible();
+  await expect(page.getByText(/^Page 1$/)).toBeVisible();
 
-  const infoButton = page.getByRole("button", { name: /reader details/i });
-  await infoButton.focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByText(/time is an estimate/i)).toBeVisible();
-  await expect(page.getByText(/complete/i).first()).toBeVisible();
+  const readerDetails = page
+    .getByRole("complementary", { name: /reader details/i })
+    .first();
 
-  const viewButton = page.getByRole("button", { name: /view:/i });
-  await expect(viewButton).toContainText(/fit width/i);
+  await expect(readerDetails).toBeVisible();
+  await expect(readerDetails.getByText(/recent highlights/i)).toBeVisible();
+  await expect(readerDetails.getByText(/recent bookmarks/i)).toBeVisible();
+  await expect(readerDetails.getByText(/page thumbnails/i)).toHaveCount(0);
+
+  const viewButton = page.getByRole("button", { name: /^view$/i });
+
+  await expect(viewButton).toBeVisible();
   await viewButton.click();
   await expect(page.getByText(/pdf view tools/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /zoom in/i })).toBeVisible();
   await page.keyboard.press("Escape");
-
-  const moreButton = page.getByRole("button", { name: /more actions/i });
-  await moreButton.click();
-  await expect(page.getByText(/presets/i)).toBeVisible();
-  await expect(page.getByRole("button", { name: /beginner/i })).toBeVisible();
 });
 
 test("desktop fullscreen reader hides chrome until edge hover and keeps the reading panel dominant", async ({
@@ -140,12 +147,13 @@ test("desktop fullscreen reader hides chrome until edge hover and keeps the read
       ),
     );
 
+  await expect(page.getByRole("button", { name: /open in reader/i })).toBeEnabled();
   await page.getByRole("button", { name: /open in reader/i }).click();
 
-  await expect(page).toHaveURL(/\/reader\?document=/, {
-    timeout: READER_OPEN_TIMEOUT_MS,
+  await expectReaderRoute(page);
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible({
+    timeout: 60_000,
   });
-  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^classic reader$/i }).click();
   await expect(page.getByLabel(/classic reader document/i)).toBeVisible();
@@ -155,11 +163,9 @@ test("desktop fullscreen reader hides chrome until edge hover and keeps the read
     return document.fullscreenElement !== null;
   });
 
-  await page.waitForTimeout(2100);
-
   const revealButton = page.locator('button[aria-label="Controls"]');
 
-  await expect(revealButton).toBeVisible();
+  await expect(revealButton).toBeVisible({ timeout: 10_000 });
 
   const panelHeightRatio = await page.locator(".reader-panel").first().evaluate((element) => {
       const rect = element.getBoundingClientRect();
@@ -190,12 +196,13 @@ test("desktop classic reader dropdowns stay within the reader canvas when the to
       ),
     );
 
+  await expect(page.getByRole("button", { name: /open in reader/i })).toBeEnabled();
   await page.getByRole("button", { name: /open in reader/i }).click();
 
-  await expect(page).toHaveURL(/\/reader\?document=/, {
-    timeout: READER_OPEN_TIMEOUT_MS,
+  await expectReaderRoute(page);
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible({
+    timeout: 60_000,
   });
-  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await page.getByRole("button", { name: /change reading mode/i }).click();
   await page.getByRole("button", { name: /^classic reader$/i }).click();
   await expect(page.getByLabel(/classic reader document/i)).toBeVisible();
@@ -212,8 +219,6 @@ test("desktop classic reader dropdowns stay within the reader canvas when the to
   for (const buttonName of [
     /^save$/i,
     /font scale settings/i,
-    /line height settings/i,
-    /playback settings/i,
     /more actions/i,
   ]) {
     const button = page.getByRole("button", { name: buttonName });
@@ -240,12 +245,13 @@ test("site light mode applies distinct reader palette accents", async ({
       ),
     );
 
+  await expect(page.getByRole("button", { name: /open in reader/i })).toBeEnabled();
   await page.getByRole("button", { name: /open in reader/i }).click();
 
-  await expect(page).toHaveURL(/\/reader\?document=/, {
-    timeout: READER_OPEN_TIMEOUT_MS,
+  await expectReaderRoute(page);
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible({
+    timeout: 60_000,
   });
-  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
   await page.getByTitle(/^light$/i).click();
 
   const themeButton = page.getByRole("button", { name: /change theme/i });

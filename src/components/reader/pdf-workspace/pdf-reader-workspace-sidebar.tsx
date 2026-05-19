@@ -11,7 +11,6 @@ export function PdfReaderWorkspaceSidebar({
   onJumpToBookmark,
   onJumpToHighlight,
   onJumpToOutlineItem,
-  onJumpToThumbnail,
   onSaveBookmark,
   onSaveHighlight,
   ...sidebarProps
@@ -31,14 +30,6 @@ export function PdfReaderWorkspaceSidebar({
         onJumpToOutlineItem
           ? (outlineItem) => {
               onJumpToOutlineItem(outlineItem);
-              onClose?.();
-            }
-          : undefined
-      }
-      onJumpToThumbnail={
-        onJumpToThumbnail
-          ? (pageIndex) => {
-              onJumpToThumbnail(pageIndex);
               onClose?.();
             }
           : undefined
