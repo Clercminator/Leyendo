@@ -23,6 +23,11 @@ export default function BrowserPdfPage({
   const documentId = getSingleSearchParam(resolvedSearchParams.document);
   const requestedPage = getSingleSearchParam(resolvedSearchParams.page);
   const [error, setError] = useState<string>();
+  const resolvedError =
+    error ??
+    (!documentId
+      ? "This browser tab is missing the PDF document reference."
+      : undefined);
 
   const pageIndex = useMemo(() => {
     const parsedPageNumber = Number.parseInt(requestedPage ?? "", 10);
@@ -36,7 +41,6 @@ export default function BrowserPdfPage({
 
   useEffect(() => {
     if (!documentId) {
-      setError("This browser tab is missing the PDF document reference.");
       return;
     }
 
@@ -83,10 +87,12 @@ export default function BrowserPdfPage({
           Browser PDF
         </p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-          {error ? "Could not open the original PDF" : "Opening the original PDF"}
+          {resolvedError
+            ? "Could not open the original PDF"
+            : "Opening the original PDF"}
         </h1>
         <p className="mt-4 text-base leading-7 text-slate-300">
-          {error ??
+          {resolvedError ??
             "Leyendo is opening the stored PDF in this tab so the browser can handle the original page layout directly."}
         </p>
       </div>

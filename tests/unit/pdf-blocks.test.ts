@@ -235,6 +235,57 @@ describe("pdf block normalization", () => {
     );
   });
 
+  it("keeps drop-cap book paragraphs merged even when the first line shifts off center", () => {
+    const lines: PdfLine[] = [
+      {
+        center: 272.5,
+        entryKind: "text",
+        fontSize: 11,
+        left: 134,
+        pageIndex: 12,
+        pageWidth: 435,
+        right: 411,
+        text: "IKE millions of others, I am a big fan of Napoleon Hill's timeless",
+        y: 456,
+      },
+      {
+        center: 255.6,
+        entryKind: "text",
+        fontSize: 11,
+        left: 100.4,
+        pageIndex: 12,
+        pageWidth: 435,
+        right: 410.8,
+        text: "classic, Think and Grow Rich. First published in 1937, it has the",
+        y: 443.1,
+      },
+      {
+        center: 255,
+        entryKind: "text",
+        fontSize: 11,
+        left: 102,
+        pageIndex: 12,
+        pageWidth: 435,
+        right: 408,
+        text: "distinction of being the best read self-help book of the twentieth century.",
+        y: 430,
+      },
+    ];
+
+    const blocks = buildPdfBlocks(lines);
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toEqual(
+      expect.objectContaining({
+        alignment: "left",
+        kind: "paragraph",
+        text: expect.stringContaining(
+          "IKE millions of others, I am a big fan of Napoleon Hill's timeless classic, Think and Grow Rich.",
+        ),
+      }),
+    );
+  });
+
   it("inserts space on font change even when gap is small (bold/regular transitions)", () => {
     const lines: PdfLine[] = [
       {

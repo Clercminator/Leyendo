@@ -1,5 +1,32 @@
 import { test, expect } from "@playwright/test";
 
+test("landing demo keeps fullscreen next to reader details in the reader toolbar", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const readerCanvas = page.getByLabel(/reader canvas/i);
+  const fullscreenButton = readerCanvas.getByRole("button", {
+    name: /enter fullscreen/i,
+  });
+  const infoButton = readerCanvas.getByRole("button", {
+    name: /reader details/i,
+  });
+
+  await expect(fullscreenButton).toBeVisible();
+  await expect(infoButton).toBeVisible();
+
+  const [fullscreenBox, infoBox] = await Promise.all([
+    fullscreenButton.boundingBox(),
+    infoButton.boundingBox(),
+  ]);
+
+  expect(fullscreenBox).not.toBeNull();
+  expect(infoBox).not.toBeNull();
+  expect(fullscreenBox!.x).toBeLessThan(infoBox!.x);
+  expect(Math.abs(fullscreenBox!.y - infoBox!.y)).toBeLessThan(12);
+});
+
 test("landing demo supports click-to-jump in classic and guided reader modes", async ({
   page,
 }) => {

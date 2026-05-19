@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import {
   BookmarkPlus,
@@ -106,6 +114,37 @@ interface ReaderCanvasProps {
   textPresentation?: TextPresentation;
 }
 
+type ReaderCanvasMenu =
+  | "mode"
+  | "preset"
+  | "text-presentation"
+  | "theme"
+  | "save"
+  | "font-scale"
+  | "line-height"
+  | "playback"
+  | "pdf-view"
+  | "more";
+
+type DesktopBottomMenu = Extract<
+  ReaderCanvasMenu,
+  "save" | "font-scale" | "line-height" | "playback" | "more"
+>;
+
+const desktopBottomMenus = new Set<DesktopBottomMenu>([
+  "save",
+  "font-scale",
+  "line-height",
+  "playback",
+  "more",
+]);
+
+function isDesktopBottomMenu(
+  value: ReaderCanvasMenu | null,
+): value is DesktopBottomMenu {
+  return value !== null && desktopBottomMenus.has(value as DesktopBottomMenu);
+}
+
 function shouldBlockPlaybackShortcut(args: {
   canvasElement: HTMLElement | null;
   target: EventTarget | null;
@@ -191,19 +230,7 @@ export function ReaderCanvas({
 }: ReaderCanvasProps) {
   const { locale } = useLocale();
   const canvasRef = useRef<HTMLElement>(null);
-  const [openMenu, setOpenMenu] = useState<
-    | "mode"
-    | "preset"
-    | "text-presentation"
-    | "theme"
-    | "save"
-    | "font-scale"
-    | "line-height"
-    | "playback"
-    | "pdf-view"
-    | "more"
-    | null
-  >(null);
+  const [openMenu, setOpenMenu] = useState<ReaderCanvasMenu | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCompactReaderChrome, setIsCompactReaderChrome] = useState(false);
   const [isMobileChromeVisible, setIsMobileChromeVisible] = useState(false);
@@ -211,6 +238,8 @@ export function ReaderCanvas({
   const [isReaderDetailsPinned, setIsReaderDetailsPinned] = useState(false);
   const [isReaderDetailsHovered, setIsReaderDetailsHovered] = useState(false);
   const [isReaderDetailsFocused, setIsReaderDetailsFocused] = useState(false);
+  const [desktopBottomMenuPanelStyle, setDesktopBottomMenuPanelStyle] =
+    useState<CSSProperties>();
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const presetMenuRef = useRef<HTMLDivElement>(null);
   const textPresentationMenuRef = useRef<HTMLDivElement>(null);
@@ -232,8 +261,8 @@ export function ReaderCanvas({
   const settingsTriggerClass =
     "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[1rem] border border-(--border-soft) bg-(--surface-soft) px-3 py-2.5 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip) sm:w-auto sm:rounded-full sm:px-3.5";
   const desktopBottomMenuPositionClass = isFullscreen
-    ? "bottom-full top-auto mb-3 mt-0"
-    : "top-full mt-3";
+    ? "bottom-full top-auto"
+    : "top-full bottom-auto";
   const settingsPanelClass = cn(
     "reader-dropdown-panel absolute left-0 z-60 w-[19rem] max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
     desktopBottomMenuPositionClass,
@@ -269,6 +298,135 @@ export function ReaderCanvas({
     "inline-flex min-h-10 touch-manipulation items-center justify-center gap-2 rounded-full px-3 py-2 text-[11px] tracking-[0.16em] text-(--text-strong) uppercase transition hover:bg-(--surface-soft) active:scale-[0.985]";
   const compactDockIconButtonClass =
     "inline-flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-(--text-strong) transition hover:bg-(--surface-soft) active:scale-[0.985]";
+
+  const getDesktopBottomMenuElement = useCallback(
+    (menu: DesktopBottomMenu) => {
+      switch (menu) {
+        case "save":
+          return saveMenuRef.current;
+        case "font-scale":
+          return fontScaleMenuRef.current;
+        case "line-height":
+          return lineHeightMenuRef.current;
+        case "playback":
+          return playbackMenuRef.current;
+        case "more":
+          return moreMenuRef.current;
+      }
+    },
+    [],
+  );
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!isDesktopBottomMenu(openMenu) || isCompactReaderChrome) {
+      setDesktopBottomMenuPanelStyle(undefined);
+      return;
+    }
+
+    const updateDesktopBottomMenuPanelStyle = () => {
+      const menuElement = getDesktopBottomMenuElement(openMenu);
+      const panelElement = menuElement?.querySelector<HTMLElement>(
+        ".reader-dropdown-panel",
+      );
+      const canvasElement = canvasRef.current;
+
+      if (!menuElement || !panelElement || !canvasElement) {
+        setDesktopBottomMenuPanelStyle(undefined);
+        return;
+      }
+
+      const triggerRect = menuElement.getBoundingClientRect();
+      const panelRect = panelElement.getBoundingClientRect();
+      const canvasRect = canvasElement.getBoundingClientRect();
+      const viewportPadding = 16;
+      const canvasPadding = 16;
+      const verticalGap = 12;
+      const boundaryLeft = Math.max(viewportPadding, canvasRect.left + canvasPadding);
+      const boundaryRight = Math.min(
+        window.innerWidth - viewportPadding,
+        canvasRect.right - canvasPadding,
+      );
+      const boundaryTop = Math.max(viewportPadding, canvasRect.top + canvasPadding);
+      const boundaryBottom = Math.min(
+        window.innerHeight - viewportPadding,
+        canvasRect.bottom - canvasPadding,
+      );
+      const availableWidth = Math.max(
+        triggerRect.width,
+        boundaryRight - boundaryLeft,
+      );
+      const panelWidth = Math.min(panelRect.width, availableWidth);
+      const baseLeft =
+        openMenu === "more"
+          ? triggerRect.right - panelWidth
+          : triggerRect.left;
+      const clampedLeft = Math.min(
+        Math.max(baseLeft, boundaryLeft),
+        Math.max(boundaryLeft, boundaryRight - panelWidth),
+      );
+      const horizontalOffset = clampedLeft - triggerRect.left;
+      const spaceBelow = Math.max(
+        0,
+        boundaryBottom - triggerRect.bottom - verticalGap,
+      );
+      const spaceAbove = Math.max(
+        0,
+        triggerRect.top - boundaryTop - verticalGap,
+      );
+
+      let openAbove = false;
+
+      if (isFullscreen && spaceAbove > 0) {
+        openAbove = true;
+      } else if (spaceBelow >= panelRect.height) {
+        openAbove = false;
+      } else if (spaceAbove >= panelRect.height) {
+        openAbove = true;
+      } else {
+        openAbove = spaceAbove > spaceBelow;
+      }
+
+      const availableHeight = Math.max(0, openAbove ? spaceAbove : spaceBelow);
+
+      setDesktopBottomMenuPanelStyle({
+        bottom: openAbove ? `calc(100% + ${verticalGap}px)` : "auto",
+        left: `${Math.round(horizontalOffset)}px`,
+        maxHeight:
+          availableHeight > 0 ? `${Math.round(availableHeight)}px` : undefined,
+        maxWidth: availableWidth > 0 ? `${Math.round(availableWidth)}px` : undefined,
+        overflowY: availableHeight < panelRect.height ? "auto" : undefined,
+        overscrollBehavior: "contain",
+        right: "auto",
+        top: openAbove ? "auto" : `calc(100% + ${verticalGap}px)`,
+      });
+    };
+
+    const frameId = window.requestAnimationFrame(
+      updateDesktopBottomMenuPanelStyle,
+    );
+    const viewport = window.visualViewport;
+
+    window.addEventListener("resize", updateDesktopBottomMenuPanelStyle);
+    viewport?.addEventListener("resize", updateDesktopBottomMenuPanelStyle);
+    viewport?.addEventListener("scroll", updateDesktopBottomMenuPanelStyle);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", updateDesktopBottomMenuPanelStyle);
+      viewport?.removeEventListener(
+        "resize",
+        updateDesktopBottomMenuPanelStyle,
+      );
+      viewport?.removeEventListener(
+        "scroll",
+        updateDesktopBottomMenuPanelStyle,
+      );
+    };
+  }, [getDesktopBottomMenuElement, isCompactReaderChrome, isFullscreen, openMenu]);
 
   const closeReaderDetails = useCallback(() => {
     setIsReaderDetailsPinned(false);
@@ -458,87 +616,113 @@ export function ReaderCanvas({
           : `${sentenceCount} ${copy.sentenceCount} · ${remainingWords} ${remainingWords === 1 ? copy.word : copy.words} pela frente`
       : `${sentenceCount} ${copy.sentenceCount}`;
 
-  const renderReaderDetailsButton = (className?: string) => (
-    <div
-      ref={readerDetailsRef}
-      className={cn("relative inline-flex items-center", className)}
-      onMouseEnter={() => {
-        if (isCompactReaderChrome) {
-          return;
-        }
-
-        setIsReaderDetailsHovered(true);
-      }}
-      onMouseLeave={() => {
-        if (isCompactReaderChrome) {
-          return;
-        }
-
-        setIsReaderDetailsHovered(false);
-      }}
-      onFocusCapture={() => {
-        setIsReaderDetailsFocused(true);
-      }}
-      onBlurCapture={(event) => {
-        if (
-          event.currentTarget.contains(event.relatedTarget as Node | null)
-        ) {
-          return;
-        }
-
-        setIsReaderDetailsFocused(false);
-      }}
-    >
-      <button
-        type="button"
-        aria-controls={readerDetailsId}
-        aria-describedby={isReaderDetailsOpen ? readerDetailsId : undefined}
-        aria-expanded={isReaderDetailsOpen}
-        aria-label={copy.readerDetails}
-        onClick={(event) => {
-          const nextPinned = !isReaderDetailsPinned;
-
-          setIsReaderDetailsPinned(nextPinned);
-
-          if (!nextPinned) {
-            setIsReaderDetailsFocused(false);
-            event.currentTarget.blur();
+  const renderReaderDetailsButton = (args?: {
+    className?: string;
+    showFullscreenToggle?: boolean;
+  }) => (
+    <div className={cn("inline-flex items-center gap-2", args?.className)}>
+      {args?.showFullscreenToggle ? (
+        <button
+          type="button"
+          aria-label={
+            isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
           }
-        }}
-        className={`${statusIconButtonClass} ${isReaderDetailsOpen ? "border-(--border-strong) bg-(--surface-chip) text-(--text-strong)" : ""}`}
-      >
-        <Info className="h-4 w-4" />
-      </button>
-      {isReaderDetailsOpen ? (
-        <div
-          id={readerDetailsId}
-          className="absolute top-full right-0 z-60 mt-2 w-[18rem] max-w-[calc(100vw-2rem)] rounded-[1rem] border border-(--border-strong) bg-(--surface-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:w-[24rem]"
+          onClick={() => {
+            void toggleFullscreen();
+          }}
+          className={statusIconButtonClass}
         >
-          <div className="grid gap-2">
-            <span className={readerDetailsStatClass}>
-              {progress}% {copy.complete}
-            </span>
-            <span className={readerDetailsStatClass}>{sessionCountSummary}</span>
-            <button
-              type="button"
-              aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
-              onClick={onAnnounceRemainingTime}
-              className={`${readerDetailsStatClass} gap-2 text-left transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
-            >
-              <Clock3 className="h-4 w-4 text-(--accent-amber)" />
-              {remainingTimeLabel}
-            </button>
-          </div>
-          <div className="mt-3 border-t border-(--border-soft) pt-3">
-            <p className="text-[11px] leading-5 text-(--text-muted) sm:text-xs">
-              {copy.timeEstimateHelp}
-            </p>
-            <p className="mt-2 text-[11px] leading-5 text-(--text-muted) sm:text-xs sm:leading-6">
-              {copy.readingModeHelp}
-            </p>
-          </div>
-        </div>
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+          <span className="sr-only">
+            {isFullscreen ? copy.collapse : copy.expand}
+          </span>
+        </button>
       ) : null}
+      <div
+        ref={readerDetailsRef}
+        className="relative inline-flex items-center"
+        onMouseEnter={() => {
+          if (isCompactReaderChrome) {
+            return;
+          }
+
+          setIsReaderDetailsHovered(true);
+        }}
+        onMouseLeave={() => {
+          if (isCompactReaderChrome) {
+            return;
+          }
+
+          setIsReaderDetailsHovered(false);
+        }}
+        onFocusCapture={() => {
+          setIsReaderDetailsFocused(true);
+        }}
+        onBlurCapture={(event) => {
+          if (
+            event.currentTarget.contains(event.relatedTarget as Node | null)
+          ) {
+            return;
+          }
+
+          setIsReaderDetailsFocused(false);
+        }}
+      >
+        <button
+          type="button"
+          aria-controls={readerDetailsId}
+          aria-describedby={isReaderDetailsOpen ? readerDetailsId : undefined}
+          aria-expanded={isReaderDetailsOpen}
+          aria-label={copy.readerDetails}
+          onClick={(event) => {
+            const nextPinned = !isReaderDetailsPinned;
+
+            setIsReaderDetailsPinned(nextPinned);
+
+            if (!nextPinned) {
+              setIsReaderDetailsFocused(false);
+              event.currentTarget.blur();
+            }
+          }}
+          className={`${statusIconButtonClass} ${isReaderDetailsOpen ? "border-(--border-strong) bg-(--surface-chip) text-(--text-strong)" : ""}`}
+        >
+          <Info className="h-4 w-4" />
+        </button>
+        {isReaderDetailsOpen ? (
+          <div
+            id={readerDetailsId}
+            className="absolute top-full right-0 z-60 mt-2 w-[18rem] max-w-[calc(100vw-2rem)] rounded-[1rem] border border-(--border-strong) bg-(--surface-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl sm:w-[24rem]"
+          >
+            <div className="grid gap-2">
+              <span className={readerDetailsStatClass}>
+                {progress}% {copy.complete}
+              </span>
+              <span className={readerDetailsStatClass}>{sessionCountSummary}</span>
+              <button
+                type="button"
+                aria-label={`${copy.timeLeft}: ${remainingTimeLabel}`}
+                onClick={onAnnounceRemainingTime}
+                className={`${readerDetailsStatClass} gap-2 text-left transition hover:border-(--border-strong) hover:bg-(--surface-chip)`}
+              >
+                <Clock3 className="h-4 w-4 text-(--accent-amber)" />
+                {remainingTimeLabel}
+              </button>
+            </div>
+            <div className="mt-3 border-t border-(--border-soft) pt-3">
+              <p className="text-[11px] leading-5 text-(--text-muted) sm:text-xs">
+                {copy.timeEstimateHelp}
+              </p>
+              <p className="mt-2 text-[11px] leading-5 text-(--text-muted) sm:text-xs sm:leading-6">
+                {copy.readingModeHelp}
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 
@@ -594,27 +778,6 @@ export function ReaderCanvas({
       <h2 id="reader-canvas-title" className="sr-only">
         {copy.readerCanvas}
       </h2>
-      <div className="pointer-events-none fixed top-4 right-4 z-90 sm:top-5 sm:right-5 lg:top-6 lg:right-6">
-        <button
-          type="button"
-          aria-label={
-            isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
-          }
-          onClick={() => {
-            void toggleFullscreen();
-          }}
-          className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-(--border-strong) bg-(--surface-card)/94 text-(--text-strong) shadow-[0_18px_40px_rgba(20,26,56,0.18)] backdrop-blur-xl transition hover:bg-(--surface-chip)"
-        >
-          {isFullscreen ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
-            <Maximize2 className="h-4 w-4" />
-          )}
-          <span className="sr-only">
-            {isFullscreen ? copy.collapse : copy.expand}
-          </span>
-        </button>
-      </div>
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="space-y-2 sm:space-y-3.5">
           <div
@@ -792,7 +955,10 @@ export function ReaderCanvas({
               </div>
             ) : null}
             {!isCompactReaderChrome ? (
-              renderReaderDetailsButton("justify-self-end lg:ml-auto")
+              renderReaderDetailsButton({
+                className: "justify-self-end lg:ml-auto",
+                showFullscreenToggle: true,
+              })
             ) : null}
           </div>
           {activePresetSummary ? (
@@ -888,7 +1054,7 @@ export function ReaderCanvas({
                     <div
                       className={cn(
                         "reader-dropdown-panel absolute left-0 z-60 w-[19rem] max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
-                        desktopBottomMenuPositionClass,
+                        "top-full mt-3",
                       )}
                     >
                       <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
@@ -1133,6 +1299,7 @@ export function ReaderCanvas({
                     "reader-dropdown-panel absolute left-0 z-60 w-56 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
                     desktopBottomMenuPositionClass,
                   )}
+                  style={desktopBottomMenuPanelStyle}
                 >
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.saveMenu}
@@ -1213,7 +1380,7 @@ export function ReaderCanvas({
                 />
               </button>
               {openMenu === "font-scale" ? (
-                <div className={settingsPanelClass}>
+                <div className={settingsPanelClass} style={desktopBottomMenuPanelStyle}>
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.fontScale}
                   </p>
@@ -1274,7 +1441,7 @@ export function ReaderCanvas({
                 />
               </button>
               {openMenu === "line-height" ? (
-                <div className={settingsPanelClass}>
+                <div className={settingsPanelClass} style={desktopBottomMenuPanelStyle}>
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.lineHeight}
                   </p>
@@ -1347,7 +1514,7 @@ export function ReaderCanvas({
                 />
               </button>
               {openMenu === "playback" ? (
-                <div className={settingsPanelClass}>
+                <div className={settingsPanelClass} style={desktopBottomMenuPanelStyle}>
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.playback}
                   </p>
@@ -1467,6 +1634,7 @@ export function ReaderCanvas({
                     "reader-dropdown-panel absolute right-0 z-60 w-80 max-w-[calc(100vw-2.5rem)] rounded-[1.25rem] border border-(--border-strong) p-3 shadow-[0_18px_60px_rgba(20,26,56,0.24)] backdrop-blur-xl",
                     desktopBottomMenuPositionClass,
                   )}
+                  style={desktopBottomMenuPanelStyle}
                 >
                   <p className="px-2 text-xs tracking-[0.24em] text-(--accent-amber) uppercase">
                     {copy.moreActions}

@@ -982,14 +982,14 @@ export function ClassicReaderView({
             {body}
           </HeadingTag>
         ) : block.kind === "list-item" ? (
-          <p className="reader-body reader-muted grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+          <p className="reader-body reader-list-body reader-muted grid grid-cols-[auto_minmax(0,1fr)] gap-3">
             {listMarker}
-            <span>{body}</span>
+            <span className="reader-body-justified">{body}</span>
           </p>
         ) : (
           <p
             className={`reader-body reader-muted ${
-              isCentered ? "text-center" : "text-left"
+              isCentered ? "text-center" : "reader-body-justified"
             }`}
           >
             {body}

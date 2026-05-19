@@ -14,6 +14,12 @@ const sampleFlag = process.argv.find((value) => value.startsWith("--sample="));
 const shouldPublish = process.argv.includes("--publish");
 const outputDir = path.resolve(process.cwd(), "test-results");
 const knownSamples = {
+  "how-to-sell": {
+    dataDir: path.resolve(process.cwd(), "data"),
+    defaultOutputPath: path.join(outputDir, "how-to-sell-scan.json"),
+    fileName: "How To Sell Your Way Through Life. ( PDFDrive ).pdf",
+    label: "How To Sell Your Way Through Life sample",
+  },
   "corfo-legal": {
     dataDir: path.resolve(process.cwd(), "data", "legal files"),
     defaultOutputPath: path.join(outputDir, "corfo-legal-scan.json"),
@@ -245,12 +251,19 @@ async function waitForReaderOpen(page, timeoutMs) {
         /(search in the document|buscar en el documento|buscar no documento)/i.test(
           bodyText,
         );
+      const looksLikeClassicPdfReader =
+        /(classic reader|lector clásico|leitor clássico)/i.test(bodyText) &&
+        (/(search in the document|buscar en el documento|buscar no documento)/i.test(
+          bodyText,
+        ) ||
+          /(reader canvas|lienzo del lector|canvas do leitor)/i.test(bodyText));
       const looksLikeTextReader =
         /(reader canvas|lienzo del lector|canvas do leitor)/i.test(bodyText) &&
         /(highlights and bookmarks|destacados y marcadores|destaques e marcadores)/i.test(
           bodyText,
         );
-      const looksLikeReaderWorkspace = looksLikePdfReader || looksLikeTextReader;
+      const looksLikeReaderWorkspace =
+        looksLikePdfReader || looksLikeClassicPdfReader || looksLikeTextReader;
 
       if (isReaderRoute && looksLikeReaderWorkspace) {
         const title =

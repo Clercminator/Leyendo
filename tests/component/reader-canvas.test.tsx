@@ -177,6 +177,7 @@ describe("ReaderCanvas", () => {
     const enterButton = screen.getByRole("button", {
       name: /enter fullscreen/i,
     });
+    const infoButton = screen.getByRole("button", { name: /reader details/i });
 
     await user.click(enterButton);
 
@@ -185,11 +186,10 @@ describe("ReaderCanvas", () => {
     const exitButton = await screen.findByRole("button", {
       name: /exit fullscreen/i,
     });
-    const floatingDock = exitButton.parentElement as HTMLElement;
+    const detailsCluster = infoButton.parentElement?.parentElement as HTMLElement;
 
-    expect(floatingDock).toHaveClass("fixed");
-    expect(floatingDock).toHaveClass("top-4");
-    expect(floatingDock).toHaveClass("right-4");
+    expect(detailsCluster).toContainElement(exitButton);
+    expect(detailsCluster).toContainElement(infoButton);
     expect(within(exitButton).getByText("Collapse")).toHaveClass("sr-only");
 
     await user.click(
@@ -231,8 +231,8 @@ describe("ReaderCanvas", () => {
       screen.queryByRole("button", { name: /change theme/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /enter fullscreen/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /enter fullscreen/i }),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /reading tools/i }));
 

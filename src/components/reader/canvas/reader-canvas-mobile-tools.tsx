@@ -160,14 +160,36 @@ export function ReaderCanvasMobileTools({
               {copy.readingTools}
             </h3>
           </div>
-          <button
-            type="button"
-            aria-label={copy.closeTools}
-            onClick={onClose}
-            className={sheetHeaderButtonClass}
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label={
+                isFullscreen ? copy.exitFullscreen : copy.enterFullscreen
+              }
+              onClick={() => {
+                void onToggleFullscreen();
+                onClose();
+              }}
+              className={sheetHeaderButtonClass}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+              <span className="sr-only">
+                {isFullscreen ? copy.collapse : copy.expand}
+              </span>
+            </button>
+            <button
+              type="button"
+              aria-label={copy.closeTools}
+              onClick={onClose}
+              className={sheetHeaderButtonClass}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 space-y-2.5">

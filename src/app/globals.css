@@ -1077,6 +1077,16 @@
     line-height: var(--reader-line-height, 1.6);
   }
 
+  .reader-body-justified {
+    text-align: justify;
+    text-align-last: start;
+    text-wrap: pretty;
+  }
+
+  .reader-list-body > :last-child {
+    min-width: 0;
+  }
+
   @media (min-width: 48rem) {
     .reader-focus-context {
       font-size: calc(1.62rem * var(--reader-font-scale, 1));

@@ -225,6 +225,44 @@ function isCenteredLine(line: PdfLine) {
   return Math.abs(line.center - line.pageWidth / 2) <= line.pageWidth * 0.12;
 }
 
+function isLikelyPdfBodyParagraphLine(line: PdfLine, bodyFontSize: number) {
+  return (
+    line.entryKind === "text" &&
+    line.text.trim().length >= 24 &&
+    line.fontSize <= bodyFontSize * 1.15 &&
+    !isLegalHeadingText(line.text) &&
+    !extractBlockMarker(line.text)
+  );
+}
+
+function hasCompatiblePdfParagraphAlignment(
+  previousLine: PdfLine,
+  currentLine: PdfLine,
+  bodyFontSize: number,
+) {
+  const previousCentered = isCenteredLine(previousLine);
+  const currentCentered = isCenteredLine(currentLine);
+
+  if (previousCentered === currentCentered) {
+    return true;
+  }
+
+  if (
+    !isLikelyPdfBodyParagraphLine(previousLine, bodyFontSize) ||
+    !isLikelyPdfBodyParagraphLine(currentLine, bodyFontSize)
+  ) {
+    return false;
+  }
+
+  const rightEdgeDelta = Math.abs(previousLine.right - currentLine.right);
+  const centerDelta = Math.abs(previousLine.center - currentLine.center);
+
+  return (
+    rightEdgeDelta <= Math.max(bodyFontSize * 4.5, 28) &&
+    centerDelta <= Math.max(bodyFontSize * 4.5, previousLine.pageWidth * 0.06)
+  );
+}
+
 function isLegalHeadingText(text: string) {
   const normalized = text.trim();
 
@@ -424,8 +462,11 @@ function buildPdfLines(items: unknown[], pageIndex: number, pageWidth: number) {
         "fontName" in item && typeof item.fontName === "string"
           ? item.fontName
           : undefined;
+      const normalizedText = normalizePdfFragmentText(text);
+      const isExplicitSeparatorFragment =
+        !normalizedText && /^\s+$/u.test(normalizePdfTextArtifacts(text));
 
-      if (!normalizePdfFragmentText(text)) {
+      if (!normalizedText && !isExplicitSeparatorFragment) {
         return [];
       }
 
@@ -462,15 +503,22 @@ function buildPdfLines(items: unknown[], pageIndex: number, pageWidth: number) {
     const referenceY =
       currentGroup.reduce((total, item) => total + item.y, 0) /
       currentGroup.length;
-    // Use the larger of the fragment's own tolerance and the group's max
-    // fragment height tolerance so drop caps can attract adjacent text.
-    const maxGroupHeight = Math.max(
-      ...currentGroup.map((item) => item.height),
-    );
+    const prospectiveGroup = [...currentGroup, fragment];
+    const fragmentIsDropCap = isDropCapFragment(fragment, prospectiveGroup);
+    const nonDropCapGroupHeights = currentGroup
+      .filter((item) => !isDropCapFragment(item, prospectiveGroup))
+      .map((item) => item.height);
+    // Let a drop cap attract its continuation line, but do not let the
+    // enlarged drop-cap height cause later body lines to collapse into the
+    // same line group.
+    const groupHeightForTolerance =
+      fragmentIsDropCap || nonDropCapGroupHeights.length === 0
+        ? Math.max(...currentGroup.map((item) => item.height))
+        : Math.max(...nonDropCapGroupHeights);
     const tolerance = Math.max(
       2,
       fragment.height * 0.45,
-      maxGroupHeight * 0.45,
+      groupHeightForTolerance * 0.45,
     );
 
     if (Math.abs(referenceY - fragment.y) <= tolerance) {
@@ -893,10 +941,15 @@ function shouldMergePdfParagraphLine(
 
   const previousCentered = isCenteredLine(previousLine);
   const currentCentered = isCenteredLine(currentLine);
+  const compatibleAlignment = hasCompatiblePdfParagraphAlignment(
+    previousLine,
+    currentLine,
+    bodyFontSize,
+  );
 
   // Allow merging when BOTH lines are centered if they look like body text
   // (similar font size to body, long enough to be paragraph content).
-  if (previousCentered !== currentCentered) {
+  if (!compatibleAlignment) {
     return false;
   }
 
@@ -1144,11 +1197,16 @@ export function buildPdfBlocks(lines: PdfLine[]) {
       return;
     }
 
+    const compatibleAlignment =
+      previousLine && currentBlock?.kind === "paragraph"
+        ? hasCompatiblePdfParagraphAlignment(previousLine, line, bodyFontSize)
+        : false;
+
     if (
       !currentBlock ||
       currentBlock.kind !== "paragraph" ||
       largeGap ||
-      currentBlock.alignment !== alignment
+      (currentBlock.alignment !== alignment && !compatibleAlignment)
     ) {
       flushCurrentBlock();
       currentBlock = {
@@ -1165,6 +1223,9 @@ export function buildPdfBlocks(lines: PdfLine[]) {
     currentBlock.text = `${currentBlock.text} ${line.text}`
       .replace(/\s+/g, " ")
       .trim();
+    if (currentBlock.alignment !== alignment) {
+      currentBlock.alignment = "left";
+    }
     currentBlock.inlineSpans = appendInlineSpanInputs(
       currentBlock.inlineSpans,
       line.inlineSpans,

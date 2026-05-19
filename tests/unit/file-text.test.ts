@@ -723,9 +723,88 @@ describe("extractDocumentFromFile", () => {
     });
 
     const extracted = await extractDocumentFromFile(file);
+    const normalizedExtractedText = (extracted.sourceBlocks ?? [])
+      .map((block) => block.text)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-    expect(extracted.sourceBlocks?.[0]?.text).toContain("LIKE millions");
-    expect(extracted.sourceBlocks?.[0]?.text).not.toContain("L IKE");
+    expect(normalizedExtractedText).toContain("LIKE millions");
+    expect(normalizedExtractedText).not.toContain("L IKE");
+    expect(normalizedExtractedText).toContain("timeless classic");
+    expect(normalizedExtractedText).not.toContain("timelessclassic");
+  });
+
+  it("preserves zero-height separator fragments around inline title spans", async () => {
+    // Real fragment row from "How To Sell Your Way Through Life" page 13.
+    pdfjsMock.getDocument.mockImplementationOnce(() => ({
+      promise: Promise.resolve({
+        numPages: 1,
+        getPage: async () => ({
+          getViewport: () => ({ width: 435 }),
+          getOperatorList: async () => ({
+            argsArray: [],
+            fnArray: [],
+          }),
+          getTextContent: async () => ({
+            items: [
+              {
+                fontName: "g_d0_f4",
+                str: "The information in",
+                transform: [1, 0, 0, 10.959, 112.399893, 326.511374],
+                width: 82.126746,
+                height: 10.959,
+              },
+              {
+                fontName: "g_d0_f4",
+                str: " ",
+                transform: [1, 0, 0, 0, 194.526639, 326.511374],
+                width: 0.245,
+                height: 0,
+              },
+              {
+                fontName: "g_d0_f5",
+                str: "How to Sell Your Way Through Life",
+                transform: [1, 0, 0, 10.959, 197.211594, 326.511374],
+                width: 147.201288,
+                height: 10.959,
+              },
+              {
+                fontName: "g_d0_f5",
+                str: " ",
+                transform: [1, 0, 0, 0, 344.412882, 326.511374],
+                width: 0.246,
+                height: 0,
+              },
+              {
+                fontName: "g_d0_f4",
+                str: "is as relevant in",
+                transform: [1, 0, 0, 10.959, 347.108796, 326.511374],
+                width: 64.164945,
+                height: 10.959,
+              },
+            ],
+          }),
+        }),
+      }),
+    }));
+
+    const file = new File([new Uint8Array([41, 42])], "hill-inline-title.pdf", {
+      type: "application/pdf",
+    });
+
+    const extracted = await extractDocumentFromFile(file);
+    const normalizedExtractedText = (extracted.sourceBlocks ?? [])
+      .map((block) => block.text)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    expect(normalizedExtractedText).toContain(
+      "The information in How to Sell Your Way Through Life is as relevant in",
+    );
+    expect(normalizedExtractedText).not.toContain("inHow");
+    expect(normalizedExtractedText).not.toContain("Lifeis");
   });
 
   it("preserves spaces from zero-height separator fragments between fonts", async () => {

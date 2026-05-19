@@ -102,4 +102,33 @@ describe("buildDocumentModel", () => {
       },
     ]);
   });
+
+  it("skips leading PDF image placeholders when deriving the excerpt", () => {
+    const document = buildDocumentModel({
+      rawText:
+        "[Image omitted from PDF]\n\n[Image omitted from PDF]\n\nHow To Sell Your Way Through Life\n\nA book about selling.",
+      sourceBlocks: [
+        {
+          kind: "paragraph",
+          text: "[Image omitted from PDF]",
+        },
+        {
+          kind: "paragraph",
+          text: "[Image omitted from PDF]",
+        },
+        {
+          kind: "heading",
+          text: "How To Sell Your Way Through Life",
+        },
+        {
+          kind: "paragraph",
+          text: "A book about selling.",
+        },
+      ],
+      sourceKind: "pdf",
+    });
+
+    expect(document.excerpt).toContain("How To Sell Your Way Through Life");
+    expect(document.excerpt).not.toContain("[Image omitted from PDF]");
+  });
 });

@@ -178,6 +178,20 @@ function deriveTitle(
   return blocks[0]?.text.slice(0, 60) || "Untitled document";
 }
 
+function deriveExcerpt(
+  sourceKind: DocumentSourceKind,
+  blocks: DocumentBlockInput[],
+) {
+  const excerptBlocks =
+    sourceKind === "pdf"
+      ? blocks.filter((block) => block.text !== "[Image omitted from PDF]")
+      : blocks;
+  const excerptSourceBlocks =
+    excerptBlocks.length > 0 ? excerptBlocks : blocks;
+
+  return excerptSourceBlocks.map((block) => block.text).join("\n\n").slice(0, 180);
+}
+
 export function buildDocumentModel({
   title,
   rawText,
@@ -199,7 +213,7 @@ export function buildDocumentModel({
     sourceKind,
   });
   const normalizedText = resolvedBlocks.map((block) => block.text).join("\n\n");
-  const excerpt = normalizedText.slice(0, 180);
+  const excerpt = deriveExcerpt(sourceKind, resolvedBlocks);
 
   const blocks: Block[] = [];
   const sentences: Sentence[] = [];

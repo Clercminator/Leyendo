@@ -1,6 +1,35 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 import { createMinimalPdfBuffer } from "../fixtures/minimal-pdf";
+
+async function expectVisibleDropdownWithinCanvas(args: {
+  canvas: Locator;
+  page: Page;
+}) {
+  const { canvas, page } = args;
+  const panel = page.locator(".reader-dropdown-panel:visible").last();
+
+  await expect(panel).toBeVisible();
+
+  const [panelBox, canvasBox] = await Promise.all([
+    panel.boundingBox(),
+    canvas.boundingBox(),
+  ]);
+  const viewport = page.viewportSize();
+
+  if (!panelBox || !canvasBox || !viewport) {
+    throw new Error("Expected visible reader dropdown bounds.");
+  }
+
+  expect(panelBox.x).toBeGreaterThanOrEqual(canvasBox.x - 1);
+  expect(panelBox.y).toBeGreaterThanOrEqual(canvasBox.y - 1);
+  expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(
+    Math.min(canvasBox.x + canvasBox.width, viewport.width) + 1,
+  );
+  expect(panelBox.y + panelBox.height).toBeLessThanOrEqual(
+    Math.min(canvasBox.y + canvasBox.height, viewport.height) + 1,
+  );
+}
 
 test("tablet-width reader keeps compact chrome without horizontal overflow", async ({
   page,
@@ -88,4 +117,45 @@ test("desktop PDF toolbar consolidates view, presets, and reader details", async
   await moreButton.click();
   await expect(page.getByText(/presets/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /beginner/i })).toBeVisible();
+});
+
+test("desktop classic reader dropdowns stay within the reader canvas when the toolbar wraps", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1040, height: 900 });
+  await page.goto("/");
+
+  await page.getByLabel(/document title/i).fill("Classic reader bounds");
+  await page
+    .getByRole("textbox", { name: /^paste text$/i })
+    .fill(
+      "Classic Reader should keep its desktop dropdowns inside the reading panel even when the toolbar wraps across multiple lines. ".repeat(
+        12,
+      ),
+    );
+
+  await page.getByRole("button", { name: /open in reader/i }).click();
+
+  await expect(page).toHaveURL(/\/reader\?document=/);
+  await expect(page.getByLabel(/reader canvas/i)).toBeVisible();
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^classic reader$/i }).click();
+  await expect(page.getByLabel(/classic reader document/i)).toBeVisible();
+
+  const canvas = page.getByLabel(/reader canvas/i);
+
+  for (const buttonName of [
+    /^save$/i,
+    /font scale settings/i,
+    /line height settings/i,
+    /playback settings/i,
+    /more actions/i,
+  ]) {
+    const button = page.getByRole("button", { name: buttonName });
+
+    await button.scrollIntoViewIfNeeded();
+    await button.click();
+    await expectVisibleDropdownWithinCanvas({ canvas, page });
+    await button.click();
+  }
 });

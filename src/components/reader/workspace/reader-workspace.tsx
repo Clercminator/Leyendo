@@ -223,10 +223,6 @@ export function ReaderWorkspace({
   const lastAnchorTokenRef = useRef<number | undefined>(undefined);
   const liveStatusRegionRef = useRef<HTMLParagraphElement | null>(null);
   const liveStatusTimeoutRef = useRef<number | undefined>(undefined);
-  const literalPayloadCacheRef = useRef<{
-    source?: DocumentModel;
-    literal?: DocumentModel;
-  }>({});
   const preferencesRef = useRef(preferences);
   const pdfCompanionStateLoadedRef = useRef(false);
   const pdfCompanionStateSaveTimeoutRef = useRef<number | undefined>(undefined);
@@ -296,7 +292,13 @@ export function ReaderWorkspace({
   const requestedMode = documentModeOverride ?? preferences.mode;
 
   useEffect(() => {
-    setDocumentModeOverride(undefined);
+    const frameId = window.requestAnimationFrame(() => {
+      setDocumentModeOverride(undefined);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [document?.id]);
 
   const canvasMode = resolveReaderCanvasMode({
@@ -314,25 +316,12 @@ export function ReaderWorkspace({
     }),
     [deferredChunkSize, deferredFocusWindow, runtimeReaderMode],
   );
-  const getLiteralPayload = useCallback(() => {
+  const literalPayload = useMemo(() => {
     if (!payload || !canToggleTextPresentation) {
       return undefined;
     }
 
-    const cachedLiteralPayload = literalPayloadCacheRef.current;
-
-    if (cachedLiteralPayload.source === payload) {
-      return cachedLiteralPayload.literal;
-    }
-
-    const nextLiteralPayload = rebuildStoredTextDocument(payload, "plain-text");
-
-    literalPayloadCacheRef.current = {
-      source: payload,
-      literal: nextLiteralPayload,
-    };
-
-    return nextLiteralPayload;
+    return rebuildStoredTextDocument(payload, "plain-text");
   }, [canToggleTextPresentation, payload]);
   const shouldRestrictMarkdownToLiteral = useMemo(
     () =>
@@ -364,9 +353,9 @@ export function ReaderWorkspace({
         return payload;
       }
 
-      return getLiteralPayload() ?? payload;
+      return literalPayload ?? payload;
     },
-    [canToggleTextPresentation, getLiteralPayload, payload],
+    [canToggleTextPresentation, literalPayload, payload],
   );
   const activePayload = useMemo(
     () => getPayloadForPresentation(textPresentation),
@@ -559,7 +548,13 @@ export function ReaderWorkspace({
     [documentComplexityHints, locale],
   );
   useEffect(() => {
-    setIsDocumentComplexityNoticeExpanded(false);
+    const frameId = window.requestAnimationFrame(() => {
+      setIsDocumentComplexityNoticeExpanded(false);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [document?.id, documentComplexityNotice?.title]);
   const expandComplexityNoticeLabel = getLocalizedCopy(locale, {
     en: "Expand",
@@ -694,11 +689,16 @@ export function ReaderWorkspace({
   useEffect(() => {
     if (!document?.id || !isPdfDocument) {
       pdfCompanionStateLoadedRef.current = false;
-      setPdfCompanionState(defaultPdfViewerState);
-      setPdfPageJumpError(undefined);
-      setPdfPageJumpValue("");
-      setPdfSearchMatchIndex(undefined);
-      return;
+      const frameId = window.requestAnimationFrame(() => {
+        setPdfCompanionState(defaultPdfViewerState);
+        setPdfPageJumpError(undefined);
+        setPdfPageJumpValue("");
+        setPdfSearchMatchIndex(undefined);
+      });
+
+      return () => {
+        window.cancelAnimationFrame(frameId);
+      };
     }
 
     let cancelled = false;
@@ -771,29 +771,44 @@ export function ReaderWorkspace({
       return;
     }
 
-    setPdfPageJumpValue(
-      getPdfPageLabel(currentPdfCompanionPageIndex, pdfPageLabels),
-    );
+    const frameId = window.requestAnimationFrame(() => {
+      setPdfPageJumpValue(
+        getPdfPageLabel(currentPdfCompanionPageIndex, pdfPageLabels),
+      );
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [currentPdfCompanionPageIndex, isPdfDocument, pdfPageLabels]);
 
   useEffect(() => {
-    if (!pdfCompanionState.searchQuery.trim()) {
-      setPdfSearchMatchIndex(undefined);
-      return;
-    }
-
-    if (pdfSearchTokenIndexes.length === 0) {
-      setPdfSearchMatchIndex(undefined);
-      return;
-    }
-
-    setPdfSearchMatchIndex((current) => {
-      if (typeof current === "number" && current < pdfSearchTokenIndexes.length) {
-        return current;
+    const frameId = window.requestAnimationFrame(() => {
+      if (!pdfCompanionState.searchQuery.trim()) {
+        setPdfSearchMatchIndex(undefined);
+        return;
       }
 
-      return 0;
+      if (pdfSearchTokenIndexes.length === 0) {
+        setPdfSearchMatchIndex(undefined);
+        return;
+      }
+
+      setPdfSearchMatchIndex((current) => {
+        if (
+          typeof current === "number" &&
+          current < pdfSearchTokenIndexes.length
+        ) {
+          return current;
+        }
+
+        return 0;
+      });
     });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [pdfCompanionState.searchQuery, pdfSearchTokenIndexes.length]);
 
   useEffect(() => {
@@ -857,10 +872,12 @@ export function ReaderWorkspace({
 
     const sourcePageIndex = pageBookmark.sourcePageIndex;
 
-    setPdfCompanionState((currentState) => ({
-      ...currentState,
-      pageIndex: sourcePageIndex,
-    }));
+    const frameId = window.requestAnimationFrame(() => {
+      setPdfCompanionState((currentState) => ({
+        ...currentState,
+        pageIndex: sourcePageIndex,
+      }));
+    });
 
     const chunkIndexForPage = runtimeChunkIndexBySourcePage.get(sourcePageIndex);
 
@@ -869,6 +886,10 @@ export function ReaderWorkspace({
         setChunkIndex(chunkIndexForPage);
       }
     });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [
     bookmarkId,
     bookmarks,
@@ -1514,7 +1535,13 @@ export function ReaderWorkspace({
       return;
     }
 
-    jumpToToken(pdfSearchTokenIndexes[pdfSearchMatchIndex] ?? 0);
+    const frameId = window.requestAnimationFrame(() => {
+      jumpToToken(pdfSearchTokenIndexes[pdfSearchMatchIndex] ?? 0);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [hasExtractedText, jumpToToken, pdfSearchMatchIndex, pdfSearchTokenIndexes]);
 
   const goToPdfCompanionPage = useCallback(

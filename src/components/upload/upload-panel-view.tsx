@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useId,
   useRef,
   useState,
@@ -182,7 +181,16 @@ export function UploadPanelView({
       : locale === "es"
         ? "Método de entrada del documento"
         : "Metodo de entrada do documento";
-  const [isPasteEditorExpanded, setIsPasteEditorExpanded] = useState(true);
+  const hasPasteContent = content.trim().length > 0;
+  const pasteEditorStateKey = `${inputMode}:${hasPasteContent ? "filled" : "empty"}`;
+  const [pasteEditorState, setPasteEditorState] = useState({
+    expanded: true,
+    key: pasteEditorStateKey,
+  });
+  const isPasteEditorExpanded =
+    pasteEditorState.key === pasteEditorStateKey
+      ? pasteEditorState.expanded
+      : true;
 
   const showFileSuccessActions =
     inputMode === "file" &&
@@ -231,7 +239,7 @@ export function UploadPanelView({
             ? "Ocultar área de texto"
             : "Mostrar área de texto";
   const pasteEditorCollapsedSummary =
-    content.trim().length > 0
+    hasPasteContent
       ? locale === "en"
         ? `${content.trim().length} characters ready to open in the reader`
         : locale === "es"
@@ -239,28 +247,19 @@ export function UploadPanelView({
           : `${content.trim().length} caracteres prontos para abrir no leitor`
       : documentContentPlaceholder;
 
-  useEffect(() => {
-    setIsPasteEditorExpanded(true);
-  }, [inputMode]);
-
-  useEffect(() => {
-    if (inputMode === "paste" && content.trim().length > 0) {
-      setIsPasteEditorExpanded(true);
-    }
-  }, [content, inputMode]);
-
   function togglePasteEditor() {
-    setIsPasteEditorExpanded((currentValue) => {
-      const nextValue = !currentValue;
+    const nextValue = !isPasteEditorExpanded;
 
-      if (nextValue) {
-        requestAnimationFrame(() => {
-          contentTextareaRef.current?.focus();
-        });
-      }
-
-      return nextValue;
+    setPasteEditorState({
+      expanded: nextValue,
+      key: pasteEditorStateKey,
     });
+
+    if (nextValue) {
+      requestAnimationFrame(() => {
+        contentTextareaRef.current?.focus();
+      });
+    }
   }
 
   const statusToneClassName =

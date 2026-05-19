@@ -86,7 +86,15 @@ export const ReaderSidebar = memo(function ReaderSidebar({
   const highlightsSectionContentId = useId();
   const thumbnailScrollerRef = useRef<HTMLDivElement | null>(null);
   const thumbnailButtonRefs = useRef(new Map<number, HTMLButtonElement>());
-  const [thumbnailScrollTop, setThumbnailScrollTop] = useState(0);
+  const pdfThumbnailCount = pdfThumbnails?.length ?? 0;
+  const [thumbnailScrollState, setThumbnailScrollState] = useState({
+    key: pdfThumbnailCount,
+    top: 0,
+  });
+  const thumbnailScrollTop =
+    thumbnailScrollState.key === pdfThumbnailCount
+      ? thumbnailScrollState.top
+      : 0;
   const [thumbnailViewportHeight, setThumbnailViewportHeight] = useState(
     PDF_THUMBNAIL_DEFAULT_VIEWPORT_HEIGHT_PX,
   );
@@ -95,9 +103,17 @@ export const ReaderSidebar = memo(function ReaderSidebar({
     highlights.length > 0 ||
     bookmarks.length > 0 ||
     Boolean(notice);
-  const [isHighlightsSectionExpanded, setIsHighlightsSectionExpanded] =
-    useState(defaultHighlightsSectionExpanded || hasSavedReaderAnchors);
-  const pdfThumbnailCount = pdfThumbnails?.length ?? 0;
+  const highlightsSectionStateKey = hasSavedReaderAnchors
+    ? "with-saved-anchors"
+    : "without-saved-anchors";
+  const [highlightsSectionState, setHighlightsSectionState] = useState({
+    expanded: defaultHighlightsSectionExpanded || hasSavedReaderAnchors,
+    key: highlightsSectionStateKey,
+  });
+  const isHighlightsSectionExpanded =
+    highlightsSectionState.key === highlightsSectionStateKey
+      ? highlightsSectionState.expanded
+      : defaultHighlightsSectionExpanded || hasSavedReaderAnchors;
   const shouldWindowPdfThumbnails =
     pdfThumbnailCount > PDF_THUMBNAIL_WINDOWING_THRESHOLD;
   const renderedThumbnailWindow = useMemo(() => {
@@ -187,14 +203,14 @@ export const ReaderSidebar = memo(function ReaderSidebar({
   }, [pdfThumbnailCount]);
 
   useEffect(() => {
-    setThumbnailScrollTop(0);
-  }, [pdfThumbnailCount]);
+    const scroller = thumbnailScrollerRef.current;
 
-  useEffect(() => {
-    if (hasSavedReaderAnchors) {
-      setIsHighlightsSectionExpanded(true);
+    if (!scroller) {
+      return;
     }
-  }, [hasSavedReaderAnchors]);
+
+    scroller.scrollTop = 0;
+  }, [pdfThumbnailCount]);
 
   useEffect(() => {
     if (renderedPdfThumbnails.length === 0 || !onRequestThumbnail) {
@@ -354,7 +370,10 @@ export const ReaderSidebar = memo(function ReaderSidebar({
           aria-expanded={isHighlightsSectionExpanded}
           aria-label={`${isHighlightsSectionExpanded ? collapseSectionLabel : expandSectionLabel} ${highlightsAndBookmarksLabel}`}
           onClick={() => {
-            setIsHighlightsSectionExpanded((current) => !current);
+            setHighlightsSectionState({
+              expanded: !isHighlightsSectionExpanded,
+              key: highlightsSectionStateKey,
+            });
           }}
           className="flex w-full items-start justify-between gap-3 text-left"
         >
@@ -589,7 +608,10 @@ export const ReaderSidebar = memo(function ReaderSidebar({
                       return;
                     }
 
-                    setThumbnailScrollTop(event.currentTarget.scrollTop);
+                    setThumbnailScrollState({
+                      key: pdfThumbnailCount,
+                      top: event.currentTarget.scrollTop,
+                    });
                   }}
                 >
                   {topThumbnailSpacerHeight > 0 ? (
