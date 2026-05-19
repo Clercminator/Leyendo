@@ -11,7 +11,9 @@ import type {
   DocumentModel,
   DocumentRecord,
   DocumentSourceKind,
+  HeadingLevel,
   Section,
+  SourcePage,
   Sentence,
   Token,
 } from "@/types/document";
@@ -192,6 +194,63 @@ function deriveExcerpt(
   return excerptSourceBlocks.map((block) => block.text).join("\n\n").slice(0, 180);
 }
 
+function normalizeHeadingLevel(
+  headingLevel: number | undefined,
+): HeadingLevel | undefined {
+  if (typeof headingLevel !== "number" || !Number.isFinite(headingLevel)) {
+    return undefined;
+  }
+
+  return Math.max(1, Math.min(6, Math.round(headingLevel))) as HeadingLevel;
+}
+
+function normalizeDepthValue(value: number | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  return Math.max(0, Math.round(value));
+}
+
+function deriveSourcePages(blocks: Block[], tokens: Token[]): SourcePage[] {
+  const pages = new Map<number, SourcePage>();
+
+  blocks.forEach((block) => {
+    if (typeof block.sourcePageIndex !== "number") {
+      return;
+    }
+
+    const startToken = tokens[block.tokenStart];
+    const endToken = tokens[block.tokenEnd];
+    const sourceStartOffset = startToken?.absoluteOffset ?? 0;
+    const sourceEndOffset = endToken
+      ? endToken.absoluteOffset + endToken.value.length
+      : sourceStartOffset;
+    const existingPage = pages.get(block.sourcePageIndex);
+
+    if (existingPage) {
+      existingPage.sourceStartOffset = Math.min(
+        existingPage.sourceStartOffset,
+        sourceStartOffset,
+      );
+      existingPage.sourceEndOffset = Math.max(
+        existingPage.sourceEndOffset,
+        sourceEndOffset,
+      );
+      return;
+    }
+
+    pages.set(block.sourcePageIndex, {
+      index: block.sourcePageIndex,
+      label: String(block.sourcePageIndex + 1),
+      sourceStartOffset,
+      sourceEndOffset,
+    });
+  });
+
+  return [...pages.values()].sort((left, right) => left.index - right.index);
+}
+
 export function buildDocumentModel({
   title,
   rawText,
@@ -338,10 +397,14 @@ export function buildDocumentModel({
 
     blocks.push({
       alignment: sourceBlock.alignment,
+      headingLevel: normalizeHeadingLevel(sourceBlock.headingLevel),
+      indentLevel: normalizeDepthValue(sourceBlock.indentLevel),
       index: blockIndex,
       inlineSpans: blockInlineSpans,
       kind: sourceBlock.kind,
+      listDepth: normalizeDepthValue(sourceBlock.listDepth),
       marker: sourceBlock.marker,
+      pageBreakBefore: sourceBlock.pageBreakBefore === true,
       sourcePageIndex: sourceBlock.sourcePageIndex,
       text: sourceBlock.text,
       sentenceStart: blockSentenceStart,
@@ -374,7 +437,7 @@ export function buildDocumentModel({
     complexityHints,
     text: normalizedText,
     excerpt,
-    pages: [],
+    pages: deriveSourcePages(blocks, tokens),
     blocks,
     sentences,
     tokens,

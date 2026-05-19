@@ -1089,9 +1089,77 @@
     line-height: var(--reader-line-height, 1.6);
   }
 
+  .reader-classic-block {
+    --reader-classic-indent: 0rem;
+  }
+
+  .reader-classic-block-indented {
+    padding-inline-start: calc(var(--reader-classic-indent) + 0.15rem);
+  }
+
+  .reader-classic-heading {
+    color: var(--reader-classic-emphasis-text);
+    text-wrap: balance;
+  }
+
+  .reader-classic-heading-level-1 {
+    font-size: calc(2.55rem * var(--reader-font-scale, 1));
+    line-height: 0.94;
+  }
+
+  .reader-classic-heading-level-2 {
+    font-size: calc(2.05rem * var(--reader-font-scale, 1));
+    line-height: 1.02;
+  }
+
+  .reader-classic-heading-level-3 {
+    font-size: calc(1.6rem * var(--reader-font-scale, 1));
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+  }
+
+  .reader-classic-heading-level-4,
+  .reader-classic-heading-level-5,
+  .reader-classic-heading-level-6 {
+    font-size: calc(1.24rem * var(--reader-font-scale, 1));
+    line-height: 1.2;
+  }
+
+  .reader-classic-page-divider {
+    align-items: center;
+    color: var(--reader-dim);
+    display: flex;
+    gap: 0.85rem;
+    margin-block: 0.6rem 0.2rem;
+  }
+
+  .reader-classic-page-rule {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--reader-panel-card-border),
+      transparent
+    );
+    flex: 1 1 auto;
+    height: 1px;
+  }
+
+  .reader-classic-page-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
   .reader-body-justified {
     text-align: justify;
     text-align-last: start;
+    text-wrap: pretty;
+  }
+
+  .reader-classic-paragraph,
+  .reader-classic-list {
     text-wrap: pretty;
   }
 

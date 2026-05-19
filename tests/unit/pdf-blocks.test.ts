@@ -306,4 +306,122 @@ describe("pdf block normalization", () => {
     expect(blocks[0]!.text).toContain("por Resolución");
     expect(blocks[0]!.text).not.toContain("porResolución");
   });
+
+  it("preserves heading levels, indentation, list depth, and page breaks for legal layouts", () => {
+    const lines: PdfLine[] = [
+      {
+        center: 300,
+        entryKind: "text",
+        fontSize: 20,
+        left: 150,
+        pageIndex: 0,
+        pageWidth: 600,
+        right: 450,
+        text: "CONTRATO DE PRESTACION DE SERVICIOS",
+        y: 720,
+      },
+      {
+        center: 160,
+        entryKind: "text",
+        fontSize: 12,
+        left: 72,
+        pageIndex: 1,
+        pageWidth: 600,
+        right: 248,
+        text: "1. Objeto del contrato",
+        y: 720,
+      },
+      {
+        center: 190,
+        entryKind: "text",
+        fontSize: 12,
+        left: 96,
+        pageIndex: 1,
+        pageWidth: 600,
+        right: 284,
+        text: "1.1. Alcance del servicio",
+        y: 692,
+      },
+      {
+        center: 232,
+        entryKind: "text",
+        fontSize: 12,
+        left: 120,
+        pageIndex: 1,
+        pageWidth: 600,
+        right: 344,
+        text: "a) Incluye soporte y reportes periodicos",
+        y: 664,
+      },
+      {
+        center: 278,
+        entryKind: "text",
+        fontSize: 12,
+        left: 144,
+        pageIndex: 1,
+        pageWidth: 600,
+        right: 412,
+        text: "durante toda la vigencia del contrato",
+        y: 648,
+      },
+      {
+        center: 292,
+        entryKind: "text",
+        fontSize: 12,
+        left: 96,
+        pageIndex: 1,
+        pageWidth: 600,
+        right: 488,
+        text: "Que, por Resolucion Exenta vigente, se instruye su seguimiento",
+        y: 612,
+      },
+      {
+        center: 308,
+        entryKind: "text",
+        fontSize: 12,
+        left: 120,
+        pageIndex: 1,
+        pageWidth: 600,
+        right: 496,
+        text: "y control permanente por parte de la unidad tecnica.",
+        y: 596,
+      },
+    ];
+
+    const blocks = buildPdfBlocks(lines);
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        headingLevel: 1,
+        kind: "heading",
+        text: "CONTRATO DE PRESTACION DE SERVICIOS",
+      }),
+      expect.objectContaining({
+        kind: "list-item",
+        listDepth: 1,
+        marker: "1.",
+        pageBreakBefore: true,
+        text: "Objeto del contrato",
+      }),
+      expect.objectContaining({
+        indentLevel: 1,
+        kind: "list-item",
+        listDepth: 2,
+        marker: "1.1.",
+        text: "Alcance del servicio",
+      }),
+      expect.objectContaining({
+        indentLevel: 2,
+        kind: "list-item",
+        listDepth: 3,
+        marker: "a)",
+        text: "Incluye soporte y reportes periodicos durante toda la vigencia del contrato",
+      }),
+      expect.objectContaining({
+        indentLevel: 1,
+        kind: "paragraph",
+        text: "Que, por Resolucion Exenta vigente, se instruye su seguimiento y control permanente por parte de la unidad tecnica.",
+      }),
+    ]);
+  });
 });

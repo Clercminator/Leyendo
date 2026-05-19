@@ -26,6 +26,8 @@ export type BlockKind = "heading" | "paragraph" | "list-item";
 
 export type BlockAlignment = "left" | "center";
 
+export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+
 export type InlineSpanKind = "strong";
 
 export interface DocumentInlineSpanInput {
@@ -43,8 +45,12 @@ export interface DocumentBlockInput {
   kind: BlockKind;
   text: string;
   alignment?: BlockAlignment;
+  headingLevel?: HeadingLevel;
+  indentLevel?: number;
   inlineSpans?: DocumentInlineSpanInput[];
+  listDepth?: number;
   marker?: string;
+  pageBreakBefore?: boolean;
   sourcePageIndex?: number;
 }
 
@@ -76,10 +82,14 @@ export interface Sentence {
 
 export interface Block {
   alignment?: BlockAlignment;
+  headingLevel?: HeadingLevel;
+  indentLevel?: number;
   index: number;
   inlineSpans?: DocumentInlineSpan[];
   kind: BlockKind;
+  listDepth?: number;
   marker?: string;
+  pageBreakBefore?: boolean;
   text: string;
   sentenceStart: number;
   sentenceEnd: number;

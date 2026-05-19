@@ -41,14 +41,18 @@ describe("buildDocumentModel", () => {
       sourceBlocks: [
         {
           alignment: "center",
+          headingLevel: 1,
           kind: "heading",
+          pageBreakBefore: true,
           sourcePageIndex: 0,
           text: "Agreement",
         },
         {
+          indentLevel: 1,
           kind: "list-item",
+          listDepth: 2,
           marker: "1.1.",
-          sourcePageIndex: 0,
+          sourcePageIndex: 1,
           text: "First clause.",
         },
       ],
@@ -59,21 +63,35 @@ describe("buildDocumentModel", () => {
     expect(document.blocks[0]).toEqual(
       expect.objectContaining({
         alignment: "center",
+        headingLevel: 1,
         kind: "heading",
+        pageBreakBefore: true,
         sourcePageIndex: 0,
       }),
     );
     expect(document.blocks[1]).toEqual(
       expect.objectContaining({
+        indentLevel: 1,
         kind: "list-item",
+        listDepth: 2,
         marker: "1.1.",
-        sourcePageIndex: 0,
+        sourcePageIndex: 1,
       }),
     );
     expect(document.sentences[0]?.sourcePageIndex).toBe(0);
     expect(document.tokens[0]?.sourcePageIndex).toBe(0);
     expect(document.chunks[0]?.sourcePageIndex).toBe(0);
     expect(document.sections[0]?.sourcePageIndex).toBe(0);
+    expect(document.pages).toEqual([
+      expect.objectContaining({
+        index: 0,
+        label: "1",
+      }),
+      expect.objectContaining({
+        index: 1,
+        label: "2",
+      }),
+    ]);
   });
 
   it("resolves inline span hints into block token ranges", () => {

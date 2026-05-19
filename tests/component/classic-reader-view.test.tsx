@@ -123,6 +123,79 @@ describe("ClassicReaderView", () => {
     ).toHaveTextContent("Important terms");
   });
 
+  it("renders PDF page dividers, heading hierarchy, and legal indentation hints", () => {
+    const documentModel = buildDocumentModel({
+      rawText:
+        "Agreement\n\nOpening paragraph.\n\nArticle 1\n\nDetailed clause.\n\nIndented paragraph.",
+      sourceBlocks: [
+        {
+          headingLevel: 1,
+          kind: "heading",
+          sourcePageIndex: 0,
+          text: "Agreement",
+        },
+        {
+          kind: "paragraph",
+          sourcePageIndex: 0,
+          text: "Opening paragraph.",
+        },
+        {
+          headingLevel: 2,
+          kind: "heading",
+          pageBreakBefore: true,
+          sourcePageIndex: 1,
+          text: "Article 1",
+        },
+        {
+          indentLevel: 1,
+          kind: "list-item",
+          listDepth: 2,
+          marker: "1.1.",
+          sourcePageIndex: 1,
+          text: "Detailed clause.",
+        },
+        {
+          indentLevel: 1,
+          kind: "paragraph",
+          sourcePageIndex: 1,
+          text: "Indented paragraph.",
+        },
+      ],
+      sourceKind: "pdf",
+      chunkSize: 2,
+    });
+    const chunk = deriveRuntimeChunks(documentModel, 2)[0];
+
+    const { container } = render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        reduceMotion
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Agreement" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Article 1" }),
+    ).toBeVisible();
+    expect(screen.getByText("Page 2")).toBeVisible();
+    expect(
+      container.querySelector('[data-reader-page-divider="1"]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelector(
+        '[data-reader-paragraph-index="3"][data-reader-list-depth="2"][data-reader-indent-level="1"]',
+      ),
+    ).toBeTruthy();
+    expect(
+      container.querySelector(
+        '[data-reader-paragraph-index="4"][data-reader-indent-level="1"]',
+      ),
+    ).toBeTruthy();
+  });
+
   it("renders active chunks with a paint-only surface and explicit run spacing", () => {
     const documentModel = buildDocumentModel({
       title: "Classic spacing sample",

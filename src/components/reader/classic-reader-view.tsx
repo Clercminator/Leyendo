@@ -2,12 +2,14 @@
 
 import {
   Children,
+  Fragment,
   isValidElement,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ComponentPropsWithoutRef,
   type ReactNode,
 } from "react";
@@ -624,6 +626,38 @@ function renderTokens(args: {
   });
 }
 
+type HeadingTagName = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+
+function resolveClassicHeadingTagName(
+  block: DocumentModel["blocks"][number],
+  headingTagName?: HeadingTagName,
+): HeadingTagName {
+  if (headingTagName) {
+    return headingTagName;
+  }
+
+  if (block.kind !== "heading") {
+    return "h3";
+  }
+
+  return `h${block.headingLevel ?? 3}` as HeadingTagName;
+}
+
+function resolveClassicBlockStyle(block: DocumentModel["blocks"][number]) {
+  const indentLevel = block.indentLevel ?? 0;
+
+  if (indentLevel <= 0) {
+    return undefined;
+  }
+
+  const indentSize =
+    block.kind === "paragraph" ? indentLevel * 1.05 : indentLevel * 1.2;
+
+  return {
+    "--reader-classic-indent": `${indentSize}rem`,
+  } as CSSProperties;
+}
+
 export function ClassicReaderView({
   document: documentModel,
   chunk,
@@ -650,6 +684,14 @@ export function ClassicReaderView({
   const isSimplifiedMarkdownPreview =
     hasMarkdownPreviewSource && useMarkdownPreview && simplifyMarkdownPreview;
   const usesMarkdownPreview = hasMarkdownPreviewSource && useMarkdownPreview;
+  const pageLabelByIndex = useMemo(() => {
+    return new Map(
+      documentModel.pages.map((page) => [
+        page.index,
+        page.label || String(page.index + 1),
+      ]),
+    );
+  }, [documentModel.pages]);
   const renderableBlocks = useMemo(
     () =>
       documentModel.blocks.filter((block) => {
@@ -908,7 +950,7 @@ export function ClassicReaderView({
   const renderClassicDocumentBlock = (args: {
     activeTokenIndexes: Set<number>;
     block: DocumentModel["blocks"][number];
-    headingTagName?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+    headingTagName?: HeadingTagName;
     isActive: boolean;
     keyValue: string | number;
     renderPlainTextWhenInactive?: boolean;
@@ -928,7 +970,7 @@ export function ClassicReaderView({
       useArticleTag = true,
     } = args;
     const ContainerTag = useArticleTag ? "article" : "div";
-    const HeadingTag = headingTagName ?? "h3";
+    const HeadingTag = resolveClassicHeadingTagName(block, headingTagName);
     const body = renderTokens({
       activeIndexes: activeTokenIndexes,
       onJumpToToken:
@@ -938,6 +980,11 @@ export function ClassicReaderView({
       tokens,
     });
     const isCentered = block.alignment === "center";
+    const blockStyle = resolveClassicBlockStyle(block);
+    const resolvedHeadingLevel =
+      block.kind === "heading"
+        ? block.headingLevel ?? Number(HeadingTag.slice(1))
+        : undefined;
     const listMarker = block.marker ? (
       <span className="reader-accent pt-[0.1em] font-medium tabular-nums">
         {block.marker}
@@ -955,8 +1002,15 @@ export function ClassicReaderView({
           }
         }}
         data-reader-classic-active={isActive ? "true" : undefined}
+        data-reader-heading-level={resolvedHeadingLevel}
+        data-reader-indent-level={block.indentLevel}
+        data-reader-list-depth={block.kind === "list-item" ? block.listDepth : undefined}
         data-reader-paragraph-index={block.index}
-        className={`scroll-mt-4 rounded-[1.15rem] transition md:scroll-mt-6 md:rounded-[1.35rem] ${
+        data-reader-page-break-before={block.pageBreakBefore ? "true" : undefined}
+        style={blockStyle}
+        className={`reader-classic-block scroll-mt-4 rounded-[1.15rem] transition md:scroll-mt-6 md:rounded-[1.35rem] ${
+          block.indentLevel ? "reader-classic-block-indented " : ""
+        }${
           isActive
             ? "px-4 py-3 md:px-5 md:py-4"
             : block.kind === "heading"
@@ -975,20 +1029,20 @@ export function ClassicReaderView({
         {block.kind === "heading" ? (
           <HeadingTag
             aria-label={block.text}
-            className={`reader-panel-strong-text font-heading text-2xl font-semibold tracking-tight md:text-3xl lg:text-4xl ${
+            className={`reader-classic-heading reader-classic-heading-level-${resolvedHeadingLevel ?? 3} reader-panel-strong-text font-heading font-semibold tracking-tight ${
               isCentered ? "text-center" : "text-left"
             }`}
           >
             {body}
           </HeadingTag>
         ) : block.kind === "list-item" ? (
-          <p className="reader-body reader-list-body reader-muted grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+          <p className="reader-body reader-classic-list reader-list-body reader-muted grid grid-cols-[auto_minmax(0,1fr)] gap-3">
             {listMarker}
             <span className="reader-body-justified">{body}</span>
           </p>
         ) : (
           <p
-            className={`reader-body reader-muted ${
+            className={`reader-body reader-classic-paragraph reader-muted ${
               isCentered ? "text-center" : "reader-body-justified"
             }`}
           >
@@ -1228,16 +1282,52 @@ export function ClassicReaderView({
               </button>
             ) : null}
             {renderedBlocks.map(
-              ({ activeTokenIndexes, block, isActive, strongTokenIndexes, tokens }) =>
-                renderClassicDocumentBlock({
-                  activeTokenIndexes,
-                  block,
-                  isActive,
-                  keyValue: block.index,
-                  renderPlainTextWhenInactive: isSimplifiedMarkdownPreview,
-                  strongTokenIndexes,
-                  tokens,
-                }),
+              (
+                { activeTokenIndexes, block, isActive, strongTokenIndexes, tokens },
+                renderIndex,
+              ) => {
+                const shouldRenderPageDivider =
+                  documentModel.sourceKind === "pdf" &&
+                  typeof block.sourcePageIndex === "number" &&
+                  (block.pageBreakBefore === true ||
+                    (renderIndex === 0 &&
+                      typeof visibleSourcePageIndex === "number"));
+                const pageLabel =
+                  typeof block.sourcePageIndex === "number"
+                    ? pageLabelByIndex.get(block.sourcePageIndex) ??
+                      String(block.sourcePageIndex + 1)
+                    : undefined;
+
+                return (
+                  <Fragment key={`classic:${block.index}`}>
+                    {shouldRenderPageDivider && pageLabel ? (
+                      <div
+                        data-reader-page-divider={block.sourcePageIndex}
+                        className="reader-classic-page-divider"
+                      >
+                        <span className="reader-classic-page-rule" />
+                        <span className="reader-classic-page-label">
+                          {getLocalizedCopy(locale, {
+                            en: `Page ${pageLabel}`,
+                            es: `Pagina ${pageLabel}`,
+                            pt: `Pagina ${pageLabel}`,
+                          })}
+                        </span>
+                        <span className="reader-classic-page-rule" />
+                      </div>
+                    ) : null}
+                    {renderClassicDocumentBlock({
+                      activeTokenIndexes,
+                      block,
+                      isActive,
+                      keyValue: block.index,
+                      renderPlainTextWhenInactive: isSimplifiedMarkdownPreview,
+                      strongTokenIndexes,
+                      tokens,
+                    })}
+                  </Fragment>
+                );
+              },
             )}
             {shouldWindowClassicBlocks &&
             renderedBlockWindow.hiddenAfterCount > 0 ? (

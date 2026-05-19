@@ -72,6 +72,7 @@ const pdfUppercaseLegalHeadingPattern =
   /^(?:[A-ZÁÉÍÓÚÜÑ0-9][A-ZÁÉÍÓÚÜÑ0-9 ,;()\/-]{4,}:)$/u;
 const pdfSpacedUppercaseHeadingPattern =
   /(?:\b(?:[A-ZÁÉÍÓÚÜÑ]\s+){2,}[A-ZÁÉÍÓÚÜÑ](?=\s*[:.]))/gu;
+const pdfBulletMarkerPattern = /^(?:[•◦▪■●○◆◇‣⁃∙·]|[-*–—])$/u;
 
 function normalizeExtractedText(text: string) {
   return text.replace(/\r\n/g, "\n").trim();
@@ -222,7 +223,105 @@ function isMostlyUppercase(text: string) {
 }
 
 function isCenteredLine(line: PdfLine) {
-  return Math.abs(line.center - line.pageWidth / 2) <= line.pageWidth * 0.12;
+  const pageMidpoint = line.pageWidth / 2;
+  const lineWidth = Math.max(0, line.right - line.left);
+  const leftMargin = line.left;
+  const rightMargin = Math.max(0, line.pageWidth - line.right);
+
+  return (
+    Math.abs(line.center - pageMidpoint) <= line.pageWidth * 0.08 &&
+    Math.abs(leftMargin - rightMargin) <= Math.max(line.pageWidth * 0.06, 24) &&
+    lineWidth <= line.pageWidth * 0.58
+  );
+}
+
+function isWideCenteredHeadingLine(line: PdfLine, bodyFontSize: number) {
+  const lineWidth = Math.max(0, line.right - line.left);
+  const pageMidpoint = line.pageWidth / 2;
+  const leftMargin = line.left;
+  const rightMargin = Math.max(0, line.pageWidth - line.right);
+
+  if (
+    Math.abs(line.center - pageMidpoint) > line.pageWidth * 0.08 ||
+    Math.abs(leftMargin - rightMargin) > Math.max(line.pageWidth * 0.06, 24) ||
+    lineWidth <= line.pageWidth * 0.58
+  ) {
+    return false;
+  }
+
+  return (
+    line.text.length <= 120 &&
+    lineWidth <= line.pageWidth * 0.76 &&
+    (line.fontSize >= bodyFontSize * 1.08 || isMostlyUppercase(line.text))
+  );
+}
+
+function resolvePdfBaseLeft(lines: PdfLine[], bodyFontSize: number) {
+  const candidateLefts = lines
+    .filter((line) => {
+      return (
+        line.entryKind === "text" &&
+        !isCenteredLine(line) &&
+        line.text.trim().length >= 12 &&
+        line.fontSize <= bodyFontSize * 1.2 &&
+        !isPdfContentsLine(line.text) &&
+        !isPdfFrontMatterMetaLine(line.text) &&
+        !isLegalHeadingText(line.text)
+      );
+    })
+    .map((line) => line.left);
+
+  if (candidateLefts.length === 0) {
+    return median(
+      lines
+        .filter((line) => line.entryKind === "text")
+        .map((line) => line.left),
+    );
+  }
+
+  return Math.min(...candidateLefts);
+}
+
+function resolvePdfIndentLevel(
+  line: PdfLine,
+  baseLeft: number,
+  bodyFontSize: number,
+) {
+  if (isCenteredLine(line)) {
+    return 0;
+  }
+
+  const indentDelta = line.left - baseLeft;
+  const indentThreshold = Math.max(bodyFontSize * 1.25, 10);
+
+  if (indentDelta <= indentThreshold) {
+    return 0;
+  }
+
+  const indentUnit = Math.max(bodyFontSize * 2, 18);
+  return Math.max(1, Math.round(indentDelta / indentUnit));
+}
+
+function resolvePdfMarkerDepth(marker: string) {
+  if (pdfBulletMarkerPattern.test(marker)) {
+    return 1;
+  }
+
+  if (/^§/u.test(marker)) {
+    return Math.max(1, marker.match(/\d+/g)?.length ?? 1);
+  }
+
+  const numericSegments = marker.match(/\d+/g);
+
+  if (numericSegments?.length) {
+    return numericSegments.length;
+  }
+
+  return 1;
+}
+
+function resolvePdfListDepth(marker: string, indentLevel: number) {
+  return Math.max(resolvePdfMarkerDepth(marker), indentLevel + 1);
 }
 
 function isLikelyPdfBodyParagraphLine(line: PdfLine, bodyFontSize: number) {
@@ -811,6 +910,8 @@ function isHeadingLine(line: PdfLine, bodyFontSize: number) {
       (line.boldTextRatio === undefined || line.boldTextRatio >= 0.68) &&
       line.text.length <= 72,
   );
+  const centeredHeadingLine =
+    isCenteredLine(line) || isWideCenteredHeadingLine(line, bodyFontSize);
 
   if (!shortLine) {
     return false;
@@ -820,14 +921,44 @@ function isHeadingLine(line: PdfLine, bodyFontSize: number) {
     return true;
   }
 
-  if (
-    isCenteredLine(line) &&
-    (oversized || boldStandalone || isMostlyUppercase(line.text))
-  ) {
+  if (centeredHeadingLine && (oversized || boldStandalone || isMostlyUppercase(line.text))) {
     return true;
   }
 
   return (oversized || boldStandalone) && line.text.length <= 90;
+}
+
+function resolvePdfHeadingLevel(
+  line: PdfLine,
+  bodyFontSize: number,
+): DocumentBlockInput["headingLevel"] {
+  const fontRatio = line.fontSize / Math.max(bodyFontSize, 1);
+
+  if (fontRatio >= 1.65) {
+    return 1;
+  }
+
+  if (isCenteredLine(line) && fontRatio >= 1.4) {
+    return 1;
+  }
+
+  if (isLegalHeadingText(line.text)) {
+    return isCenteredLine(line) || isMostlyUppercase(line.text) ? 2 : 3;
+  }
+
+  if (isCenteredLine(line) && (isMostlyUppercase(line.text) || fontRatio >= 1.22)) {
+    return 2;
+  }
+
+  if (fontRatio >= 1.28) {
+    return 2;
+  }
+
+  if (fontRatio >= 1.18 || line.isBold) {
+    return 3;
+  }
+
+  return 4;
 }
 
 function isPdfContentsLine(text: string) {
@@ -1002,6 +1133,10 @@ function shouldMergePdfParagraphBlocks(
     return false;
   }
 
+  if ((previousBlock.indentLevel ?? 0) !== (currentBlock.indentLevel ?? 0)) {
+    return false;
+  }
+
   // For centered blocks, only allow merging when both look like body text
   // (long enough to be paragraph content, not short titles/captions).
   if (currentAlignment === "center") {
@@ -1096,6 +1231,7 @@ export function buildPdfBlocks(lines: PdfLine[]) {
     ) ||
     median(lines.map((line) => line.fontSize)) ||
     12;
+  const baseLeft = resolvePdfBaseLeft(lines, bodyFontSize);
   const blocks: DocumentBlockInput[] = [];
   let currentBlock: DocumentBlockInput | undefined;
   let previousLine: PdfLine | undefined;
@@ -1126,15 +1262,22 @@ export function buildPdfBlocks(lines: PdfLine[]) {
       !previousLine ||
       pageChanged ||
       !shouldMergePdfParagraphLine(previousLine, line, bodyFontSize);
-    const alignment = isCenteredLine(line) ? "center" : "left";
+    const alignment =
+      isCenteredLine(line) || isWideCenteredHeadingLine(line, bodyFontSize)
+        ? "center"
+        : "left";
+    const indentLevel = resolvePdfIndentLevel(line, baseLeft, bodyFontSize);
     const marker = extractBlockMarker(line.text);
+    const pageBreakBefore = pageChanged && blocks.length > 0;
 
     if (line.entryKind === "image-placeholder") {
       flushCurrentBlock();
       blocks.push({
         alignment,
         inlineSpans: line.inlineSpans,
+        indentLevel,
         kind: "paragraph",
+        pageBreakBefore,
         sourcePageIndex: line.pageIndex,
         text: line.text,
       });
@@ -1146,8 +1289,10 @@ export function buildPdfBlocks(lines: PdfLine[]) {
       flushCurrentBlock();
       blocks.push({
         alignment,
+        headingLevel: resolvePdfHeadingLevel(line, bodyFontSize),
         inlineSpans: line.inlineSpans,
         kind: "heading",
+        pageBreakBefore,
         sourcePageIndex: line.pageIndex,
         text: line.text,
       });
@@ -1160,7 +1305,9 @@ export function buildPdfBlocks(lines: PdfLine[]) {
       blocks.push({
         alignment,
         inlineSpans: line.inlineSpans,
+        indentLevel,
         kind: "paragraph",
+        pageBreakBefore,
         sourcePageIndex: line.pageIndex,
         text: line.text,
       });
@@ -1172,12 +1319,15 @@ export function buildPdfBlocks(lines: PdfLine[]) {
       flushCurrentBlock();
       currentBlock = {
         alignment: "left",
+        indentLevel,
         inlineSpans: stripLeadingMarkerFromInlineSpans(
           line.inlineSpans,
           marker.marker,
         ),
         kind: "list-item",
+        listDepth: resolvePdfListDepth(marker.marker, indentLevel),
         marker: marker.marker,
+        pageBreakBefore,
         sourcePageIndex: line.pageIndex,
         text: marker.text,
       };
@@ -1211,8 +1361,10 @@ export function buildPdfBlocks(lines: PdfLine[]) {
       flushCurrentBlock();
       currentBlock = {
         alignment,
+        indentLevel,
         inlineSpans: line.inlineSpans,
         kind: "paragraph",
+        pageBreakBefore,
         sourcePageIndex: line.pageIndex,
         text: line.text,
       };
