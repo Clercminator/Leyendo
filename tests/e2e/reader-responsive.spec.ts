@@ -42,6 +42,24 @@ async function expectVisibleDropdownWithinCanvas(args: {
   );
 }
 
+async function expectPanelToRightOfCanvas(args: {
+  canvas: Locator;
+  panel: Locator;
+}) {
+  const { canvas, panel } = args;
+  const [panelBox, canvasBox] = await Promise.all([
+    panel.boundingBox(),
+    canvas.boundingBox(),
+  ]);
+
+  if (!panelBox || !canvasBox) {
+    throw new Error("Expected visible reader canvas and details panel bounds.");
+  }
+
+  expect(panelBox.x).toBeGreaterThanOrEqual(canvasBox.x + canvasBox.width - 1);
+  expect(panelBox.y).toBeLessThan(canvasBox.y + canvasBox.height);
+}
+
 test("tablet-width reader keeps compact chrome without horizontal overflow", async ({
   page,
 }) => {
@@ -114,9 +132,13 @@ test("desktop PDF workspace keeps the details panel visible without thumbnails",
   await expect(page.getByText(/^1 of 2$/)).toBeVisible();
   await expect(page.getByText(/^Page 1$/)).toBeVisible();
 
-  const readerDetails = page
-    .getByRole("complementary", { name: /reader details/i })
-    .first();
+  const readerDetailsPanels = page.getByRole("complementary", {
+    name: /reader details/i,
+  });
+
+  await expect(readerDetailsPanels).toHaveCount(1);
+
+  const readerDetails = readerDetailsPanels.first();
 
   await expect(readerDetails).toBeVisible();
   await expect(readerDetails.getByText(/recent highlights/i)).toBeVisible();
@@ -208,7 +230,17 @@ test("desktop classic reader dropdowns stay within the reader canvas when the to
   await expect(page.getByLabel(/classic reader document/i)).toBeVisible();
 
   const canvas = page.getByLabel(/reader canvas/i);
+  const readerDetails = page.getByRole("complementary", {
+    name: /reader details/i,
+  });
   const themeButton = page.getByRole("button", { name: /change theme/i });
+
+  await expect(readerDetails).toHaveCount(1);
+  await expect(readerDetails.first()).toBeVisible();
+  await expectPanelToRightOfCanvas({
+    canvas,
+    panel: readerDetails.first(),
+  });
 
   await themeButton.scrollIntoViewIfNeeded();
   await themeButton.click();

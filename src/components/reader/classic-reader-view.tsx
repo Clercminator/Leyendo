@@ -336,6 +336,30 @@ function getExpectedBlockKinds(
   }
 }
 
+function hasMarkdownPreviewOnlySyntax(markdown: string) {
+  return (
+    /!\[[^\]]*\]\([^\)]*\)/.test(markdown) ||
+    /\[[^\]]+\]\([^\)]*\)/.test(markdown) ||
+    /`/.test(markdown) ||
+    /<[^>]+>/.test(markdown) ||
+    /^\s*(?:[-*+]|\d+\.)\s+\[[ xX]\]/m.test(markdown)
+  );
+}
+
+function shouldRenderMappedMarkdownBlockAsClassicDocument(
+  block: MarkdownPreviewBlock,
+) {
+  if (block.nodeType === "heading") {
+    return true;
+  }
+
+  if (block.nodeType !== "list" && block.nodeType !== "paragraph") {
+    return false;
+  }
+
+  return !hasMarkdownPreviewOnlySyntax(block.markdown);
+}
+
 function extractMermaidChart(children: ReactNode) {
   if (!isValidElement<{ children?: ReactNode; className?: string }>(children)) {
     return undefined;
@@ -985,6 +1009,10 @@ export function ClassicReaderView({
       block.kind === "heading"
         ? block.headingLevel ?? Number(HeadingTag.slice(1))
         : undefined;
+    const blockPaddingClass =
+      block.kind === "heading"
+        ? "px-1 py-1.5 md:px-2 md:py-2"
+        : "px-1 py-2 md:px-2 md:py-3";
     const listMarker = block.marker ? (
       <span className="reader-accent pt-[0.1em] font-medium tabular-nums">
         {block.marker}
@@ -1010,13 +1038,7 @@ export function ClassicReaderView({
         style={blockStyle}
         className={`reader-classic-block scroll-mt-4 rounded-[1.15rem] transition md:scroll-mt-6 md:rounded-[1.35rem] ${
           block.indentLevel ? "reader-classic-block-indented " : ""
-        }${
-          isActive
-            ? "px-4 py-3 md:px-5 md:py-4"
-            : block.kind === "heading"
-              ? "px-1 py-1.5 md:px-2 md:py-2"
-              : "px-1 py-2 md:px-2 md:py-3"
-        }`}
+        }${blockPaddingClass}`}
         onClick={
           onJumpToToken
             ? (event) => {
@@ -1159,7 +1181,7 @@ export function ClassicReaderView({
             {renderedMarkdownBlocks.map(({ block, index }) => {
               const isActive = index === effectiveActiveMarkdownBlockIndex;
               const tokenStart = block.tokenStart;
-              const activeMarkdownBlocks = block.paragraphIndexes
+              const mappedMarkdownBlocks = block.paragraphIndexes
                 .map((paragraphIndex) => documentModel.blocks[paragraphIndex])
                 .filter(
                   (
@@ -1170,13 +1192,16 @@ export function ClassicReaderView({
                         documentBlock.tokenEnd >= documentBlock.tokenStart,
                     ),
                 );
+              const renderMappedMarkdownBlocks =
+                mappedMarkdownBlocks.length > 0 &&
+                shouldRenderMappedMarkdownBlockAsClassicDocument(block);
 
               return (
                 <article
                   key={block.key}
                   id={block.headingId}
                   ref={
-                    isActive && activeMarkdownBlocks.length === 0
+                    isActive && mappedMarkdownBlocks.length === 0
                       ? activeParagraphRef
                       : null
                   }
@@ -1184,7 +1209,10 @@ export function ClassicReaderView({
                   data-reader-markdown-block-index={index}
                   className="reader-markdown-block scroll-mt-4 rounded-[1.15rem] px-4 py-3 transition md:scroll-mt-6 md:rounded-[1.35rem] md:px-5 md:py-4"
                   onClick={
-                    !isActive && onJumpToToken && typeof tokenStart === "number"
+                    !renderMappedMarkdownBlocks &&
+                    !isActive &&
+                    onJumpToToken &&
+                    typeof tokenStart === "number"
                       ? (event) => {
                           event.stopPropagation();
                           handleJumpToToken(tokenStart);
@@ -1192,9 +1220,9 @@ export function ClassicReaderView({
                       : undefined
                   }
                 >
-                  {isActive && activeMarkdownBlocks.length > 0 ? (
+                  {renderMappedMarkdownBlocks ? (
                     <div className="space-y-3 md:space-y-4">
-                      {activeMarkdownBlocks.map((documentBlock) => {
+                      {mappedMarkdownBlocks.map((documentBlock) => {
                         const tokens = documentModel.tokens.slice(
                           documentBlock.tokenStart,
                           documentBlock.tokenEnd + 1,

@@ -791,6 +791,100 @@ test("user can paste markdown and open a clean reader view", async ({
   await expect(classicDocument).not.toContainText("**bold**");
 });
 
+test("classic reader playback keeps simple markdown text locked while the active chunk advances", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await page.goto("/");
+  await waitForHomeInteractivity(page);
+
+  await choosePasteInput(page);
+  await page
+    .getByRole("textbox", { name: /^paste text$/i })
+    .fill(
+      "### How Do We Run It?\n\n- **What is the minimum setup?** PostgreSQL, the Optiland AI agent, the Optiland portal, OPENROUTER_API_KEY, Cross System access, and at least one enabled intake channel.\n- **What channels can be enabled?** WhatsApp and email are supported. The deployment can enable either or both depending on operating needs.",
+    );
+  await page.getByRole("radio", { name: /clean markdown/i }).click();
+
+  await openReaderDocument(page);
+  await openCompactControls(page);
+  await page.getByRole("button", { name: /change reading mode/i }).click();
+  await page.getByRole("button", { name: /^classic reader$/i }).click();
+
+  const classicDocument = page.getByLabel(/classic reader document/i);
+  const activeClassicBlock = page.locator(
+    '[data-reader-paragraph-index][data-reader-classic-active="true"]',
+  );
+  const headingBlock = page.locator('[data-reader-paragraph-index="0"]');
+  const firstListBlock = page.locator('[data-reader-paragraph-index="1"]');
+  const headingText = headingBlock.getByRole("heading", {
+    name: /how do we run it\?/i,
+  });
+  const firstListParagraph = firstListBlock.locator("p").first();
+
+  await expect(classicDocument).toBeVisible();
+  await expect(headingBlock).toBeVisible();
+  await expect(firstListBlock).toBeVisible();
+  await expect(activeClassicBlock).toHaveAttribute("data-reader-paragraph-index", "0");
+
+  if (process.env.PLAYWRIGHT_CAPTURE_CLASSIC_PLAYBACK === "1") {
+    await classicDocument.screenshot({
+      path: "test-results/classic-reader-playback-before.png",
+    });
+  }
+
+  const beforeActiveText = await getActiveClassicText(page);
+  const [beforeHeadingBox, beforeListBox, beforeHeadingFontSize, beforeListFontSize] =
+    await Promise.all([
+      headingBlock.boundingBox(),
+      firstListBlock.boundingBox(),
+      headingText.evaluate((element) => getComputedStyle(element).fontSize),
+      firstListParagraph.evaluate((element) => getComputedStyle(element).fontSize),
+    ]);
+
+  expect(beforeHeadingBox).not.toBeNull();
+  expect(beforeListBox).not.toBeNull();
+
+  await page.getByRole("button", { name: /^Play$/i }).click();
+
+  await expect.poll(
+    async () => activeClassicBlock.getAttribute("data-reader-paragraph-index"),
+    { timeout: 10_000 },
+  ).toBe("1");
+  await expect
+    .poll(async () => getActiveClassicText(page), { timeout: 10_000 })
+    .not.toBe(beforeActiveText);
+
+  const [afterHeadingBox, afterListBox, afterHeadingFontSize, afterListFontSize] =
+    await Promise.all([
+      headingBlock.boundingBox(),
+      firstListBlock.boundingBox(),
+      headingText.evaluate((element) => getComputedStyle(element).fontSize),
+      firstListParagraph.evaluate((element) => getComputedStyle(element).fontSize),
+    ]);
+
+  expect(afterHeadingBox).not.toBeNull();
+  expect(afterListBox).not.toBeNull();
+  expect(afterHeadingFontSize).toBe(beforeHeadingFontSize);
+  expect(afterListFontSize).toBe(beforeListFontSize);
+  expect(Math.abs((afterHeadingBox?.x ?? 0) - (beforeHeadingBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((afterHeadingBox?.y ?? 0) - (beforeHeadingBox?.y ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((afterHeadingBox?.width ?? 0) - (beforeHeadingBox?.width ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((afterHeadingBox?.height ?? 0) - (beforeHeadingBox?.height ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((afterListBox?.x ?? 0) - (beforeListBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((afterListBox?.y ?? 0) - (beforeListBox?.y ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((afterListBox?.width ?? 0) - (beforeListBox?.width ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((afterListBox?.height ?? 0) - (beforeListBox?.height ?? 0))).toBeLessThanOrEqual(1);
+
+  if (process.env.PLAYWRIGHT_CAPTURE_CLASSIC_PLAYBACK === "1") {
+    await classicDocument.screenshot({
+      path: "test-results/classic-reader-playback-after.png",
+    });
+  }
+
+  await page.getByRole("button", { name: /^Pause$/i }).click();
+});
+
 test("reader can switch a saved markdown document between clean and literal views", async ({
   page,
 }) => {

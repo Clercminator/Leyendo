@@ -1868,6 +1868,7 @@ export function ReaderWorkspace({
       <ReaderSidebar {...sidebarProps} />
     </ReaderWorkspaceMobileSidebar>
   );
+  const showClassicDesktopSidebarRail = requestedMode === "classic-reader";
 
   const handleModeSelection = useCallback(
     (mode: ReaderPreferences["mode"]) => {
@@ -2525,79 +2526,93 @@ export function ReaderWorkspace({
           />
         </div>
       ) : (
-        <div className="fade-rise-delayed relative z-20">
-          <p
-            ref={liveStatusRegionRef}
-            className="sr-only"
-            role="status"
-            aria-live="polite"
-          />
+        <div
+          className={`fade-rise-delayed relative z-20 ${
+            showClassicDesktopSidebarRail
+              ? "lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-4"
+              : ""
+          }`}
+        >
+          <div className={showClassicDesktopSidebarRail ? "min-w-0" : undefined}>
+            <p
+              ref={liveStatusRegionRef}
+              className="sr-only"
+              role="status"
+              aria-live="polite"
+            />
 
-          <ReaderCanvas
-            activeGoalLabel={activeGoalLabel}
-            availableModes={availableModes}
-            availableTextPresentations={availableTextPresentations}
-            chunkSize={preferences.chunkSize}
-            currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
-            isPlaying={isPlaying}
-            modeLabel={modeLabel}
-            modeView={modeView}
-            pdfCompanion={pdfCompanionControls}
-            remainingWords={remainingWords}
-            remainingTimeLabel={remainingTimeLabel}
-            preferences={preferences}
-            sentenceCount={sentenceCount}
-            onAnnounceRemainingTime={announceRemainingTime}
-            onChangeFontScale={handleFontScaleChange}
-            onChangeLineHeight={handleLineHeightChange}
-            onChangeWordsPerMinute={changeWordsPerMinute}
-            onDecreaseChunkSize={handleDecreaseChunkSize}
-            onIncreaseChunkSize={handleIncreaseChunkSize}
-            onMoveBackward={() => moveToChunk(resolvedChunkIndex - 1)}
-            onMoveBackwardFive={() =>
-              moveToChunk(
-                jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, -5),
-              )
-            }
-            onMoveForward={() => moveToChunk(resolvedChunkIndex + 1)}
-            onMoveForwardFive={() =>
-              moveToChunk(
-                jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, 5),
-              )
-            }
-            onRepeatChunk={() => moveToChunk(repeatChunkIndex(resolvedChunkIndex))}
-            onRestart={() => moveToChunk(0)}
-            onRestartParagraph={() =>
-              moveToChunk(
-                restartParagraphChunkIndex(runtimeChunks, resolvedChunkIndex),
-              )
-            }
-            onReturnToPdfWorkspace={
-              canOpenBrowserPdf ? handleReturnToPdfWorkspace : undefined
-            }
-            onReturnToOriginalPage={
-              canOpenBrowserPdf ? handleReturnToOriginalPdfPage : undefined
-            }
-            onSaveBookmark={() => {
-              void handleSaveBookmark();
-            }}
-            onSaveHighlight={() => {
-              void handleSaveHighlight();
-            }}
-            onSelectMode={handleModeSelection}
-            onSelectPreset={handlePresetSelection}
-            onSelectTextPresentation={
-              canToggleTextPresentation
-                ? handleTextPresentationSelection
-                : undefined
-            }
-            onSelectTheme={handleThemeSelection}
-            onToggleNaturalPauses={handleNaturalPausesToggle}
-            onTogglePlayback={handlePlaybackToggle}
-            onToggleReduceMotion={handleReduceMotionToggle}
-            progress={progress}
-            textPresentation={textPresentation}
-          />
+            <ReaderCanvas
+              activeGoalLabel={activeGoalLabel}
+              availableModes={availableModes}
+              availableTextPresentations={availableTextPresentations}
+              chunkSize={preferences.chunkSize}
+              currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
+              isPlaying={isPlaying}
+              modeLabel={modeLabel}
+              modeView={modeView}
+              pdfCompanion={pdfCompanionControls}
+              remainingWords={remainingWords}
+              remainingTimeLabel={remainingTimeLabel}
+              preferences={preferences}
+              sentenceCount={sentenceCount}
+              onAnnounceRemainingTime={announceRemainingTime}
+              onChangeFontScale={handleFontScaleChange}
+              onChangeLineHeight={handleLineHeightChange}
+              onChangeWordsPerMinute={changeWordsPerMinute}
+              onDecreaseChunkSize={handleDecreaseChunkSize}
+              onIncreaseChunkSize={handleIncreaseChunkSize}
+              onMoveBackward={() => moveToChunk(resolvedChunkIndex - 1)}
+              onMoveBackwardFive={() =>
+                moveToChunk(
+                  jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, -5),
+                )
+              }
+              onMoveForward={() => moveToChunk(resolvedChunkIndex + 1)}
+              onMoveForwardFive={() =>
+                moveToChunk(
+                  jumpChunkIndex(runtimeChunks.length, resolvedChunkIndex, 5),
+                )
+              }
+              onRepeatChunk={() => moveToChunk(repeatChunkIndex(resolvedChunkIndex))}
+              onRestart={() => moveToChunk(0)}
+              onRestartParagraph={() =>
+                moveToChunk(
+                  restartParagraphChunkIndex(runtimeChunks, resolvedChunkIndex),
+                )
+              }
+              onReturnToPdfWorkspace={
+                canOpenBrowserPdf ? handleReturnToPdfWorkspace : undefined
+              }
+              onReturnToOriginalPage={
+                canOpenBrowserPdf ? handleReturnToOriginalPdfPage : undefined
+              }
+              onSaveBookmark={() => {
+                void handleSaveBookmark();
+              }}
+              onSaveHighlight={() => {
+                void handleSaveHighlight();
+              }}
+              onSelectMode={handleModeSelection}
+              onSelectPreset={handlePresetSelection}
+              onSelectTextPresentation={
+                canToggleTextPresentation
+                  ? handleTextPresentationSelection
+                  : undefined
+              }
+              onSelectTheme={handleThemeSelection}
+              onToggleNaturalPauses={handleNaturalPausesToggle}
+              onTogglePlayback={handlePlaybackToggle}
+              onToggleReduceMotion={handleReduceMotionToggle}
+              progress={progress}
+              textPresentation={textPresentation}
+            />
+          </div>
+
+          {showClassicDesktopSidebarRail ? (
+            <div className="hidden min-w-0 lg:block lg:self-start">
+              <ReaderSidebar {...sidebarProps} />
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -2659,9 +2674,11 @@ export function ReaderWorkspace({
         />
       ) : null}
 
-      <div className="hidden lg:block">
-        <ReaderSidebar {...sidebarProps} />
-      </div>
+      {!isPdfWorkspaceActive && !showClassicDesktopSidebarRail ? (
+        <div className="hidden lg:block">
+          <ReaderSidebar {...sidebarProps} />
+        </div>
+      ) : null}
     </section>
   );
 }

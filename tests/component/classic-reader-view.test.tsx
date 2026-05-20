@@ -236,7 +236,7 @@ describe("ClassicReaderView", () => {
     });
     const chunk = deriveRuntimeChunks(documentModel, 3)[0];
 
-    render(
+    const { container } = render(
       <ClassicReaderView
         document={documentModel}
         chunk={chunk!}
@@ -257,7 +257,61 @@ describe("ClassicReaderView", () => {
       screen.getByRole("link", { name: /buyer handoff snapshot/i }),
     ).toHaveAttribute("href", "#buyer-handoff-snapshot");
     expect(screen.getByText(/for complete beginners/i)).toBeVisible();
-    expect(screen.getByText(/paragraph with/i)).toBeVisible();
+    expect(
+      Array.from(
+        container.querySelectorAll<HTMLElement>("[data-reader-paragraph-index]"),
+      ).find(
+        (block) =>
+          block.textContent?.replace(/\s+/g, " ").trim() ===
+          "Paragraph with bold text.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("keeps simple markdown block layout stable while the active chunk moves", () => {
+    const documentModel = buildDocumentModel({
+      title: "Stable markdown sample",
+      rawText:
+        "### How Do We Run It?\n\n- **What is the minimum setup?** PostgreSQL, the Optiland AI agent, the Optiland portal, OPENROUTER_API_KEY, Cross System access, and at least one enabled intake channel.\n- **What channels can be enabled?** WhatsApp and email are supported.",
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const chunks = deriveRuntimeChunks(documentModel, 3);
+    const headingChunk = chunks.find((candidate) => candidate.paragraphIndex === 0);
+    const listChunk = chunks.find((candidate) => candidate.paragraphIndex === 1);
+
+    expect(headingChunk).toBeDefined();
+    expect(listChunk).toBeDefined();
+
+    const { container, rerender } = render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={headingChunk!}
+        reduceMotion
+      />,
+    );
+
+    const describeBlocks = () => {
+      return Array.from(
+        container.querySelectorAll<HTMLElement>("[data-reader-paragraph-index]"),
+      ).map((block) => ({
+        className: block.className,
+        index: block.dataset.readerParagraphIndex,
+        text: block.textContent?.replace(/\s+/g, " ").trim(),
+      }));
+    };
+
+    const before = describeBlocks();
+
+    rerender(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={listChunk!}
+        reduceMotion
+      />,
+    );
+
+    expect(describeBlocks()).toEqual(before);
   });
 
   it("highlights only the exact active chunk words in markdown preview blocks", () => {
@@ -339,7 +393,7 @@ describe("ClassicReaderView", () => {
 
     expect(laterParagraph?.tokenStart).toBeTypeOf("number");
 
-    render(
+    const { container } = render(
       <ClassicReaderView
         document={documentModel}
         chunk={chunk!}
@@ -349,11 +403,47 @@ describe("ClassicReaderView", () => {
       />,
     );
 
-    await user.click(
-      screen.getByText("This later paragraph should stay clickable."),
+    const laterParagraphBlock = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-reader-paragraph-index]"),
+    ).find(
+      (block) =>
+        block.textContent?.replace(/\s+/g, " ").trim() ===
+        "This later paragraph should stay clickable.",
     );
 
+    expect(laterParagraphBlock).toBeTruthy();
+
+    await user.click(laterParagraphBlock as HTMLElement);
+
     expect(onJumpToToken).toHaveBeenCalledWith(laterParagraph?.tokenStart);
+  });
+
+  it("keeps plain-text paragraph block spacing identical for active and inactive blocks", () => {
+    const documentModel = buildDocumentModel({
+      title: "Stable paragraph spacing",
+      rawText:
+        "First paragraph keeps the active highlight without shifting the block.\n\nSecond paragraph should keep the same spacing when it is not active.",
+      sourceKind: "plain-text",
+      chunkSize: 1,
+    });
+    const chunk = deriveRuntimeChunks(documentModel, 3)[0];
+
+    const { container } = render(
+      <ClassicReaderView
+        document={documentModel}
+        chunk={chunk!}
+        reduceMotion
+      />,
+    );
+
+    const activeBlock = container.querySelector<HTMLElement>(
+      '[data-reader-paragraph-index="0"]',
+    );
+    const inactiveBlock = container.querySelector<HTMLElement>(
+      '[data-reader-paragraph-index="1"]',
+    );
+
+    expect(activeBlock?.className).toBe(inactiveBlock?.className);
   });
 
   it("renders mermaid fences as in-app diagrams in classic markdown view", async () => {
