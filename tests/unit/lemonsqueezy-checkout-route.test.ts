@@ -68,7 +68,7 @@ describe("LemonSqueezy checkout route", () => {
 
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
-        body: JSON.stringify({ locale: "en", plan: "focus" }),
+        body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       }) as never,
@@ -96,6 +96,11 @@ describe("LemonSqueezy checkout route", () => {
       String(fetchMock.mock.calls[0]?.[1]?.body ?? "{}"),
     ) as {
       data?: {
+        attributes?: {
+          checkout_data?: {
+            custom?: { user_id?: string };
+          };
+        };
         relationships?: {
           store?: { data?: { id?: string } };
           variant?: { data?: { id?: string } };
@@ -105,6 +110,9 @@ describe("LemonSqueezy checkout route", () => {
 
     expect(payload.data?.relationships?.store?.data?.id).toBe("98765");
     expect(payload.data?.relationships?.variant?.data?.id).toBe("1497164");
+    expect(payload.data?.attributes?.checkout_data?.custom?.user_id).toBe(
+      "user-123",
+    );
   });
 
   it("supports the preview max variant alias when it is configured", async () => {
@@ -130,7 +138,7 @@ describe("LemonSqueezy checkout route", () => {
 
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
-        body: JSON.stringify({ locale: "en", plan: "max" }),
+        body: JSON.stringify({ locale: "en", plan: "max", userId: "user-123" }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       }) as never,
@@ -181,7 +189,7 @@ describe("LemonSqueezy checkout route", () => {
 
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
-        body: JSON.stringify({ locale: "en", plan: "focus" }),
+        body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       }) as never,
@@ -202,6 +210,10 @@ describe("LemonSqueezy checkout route", () => {
       String(fetchMock.mock.calls[0]?.[1]?.body ?? "{}"),
     ) as {
       data?: {
+        attributes?: {
+          product_options?: { redirect_url?: string };
+          test_mode?: boolean;
+        };
         relationships?: {
           store?: { data?: { id?: string } };
           variant?: { data?: { id?: string } };
@@ -211,6 +223,31 @@ describe("LemonSqueezy checkout route", () => {
 
     expect(payload.data?.relationships?.store?.data?.id).toBe("98765");
     expect(payload.data?.relationships?.variant?.data?.id).toBe("1497164");
+    expect(payload.data?.attributes?.product_options?.redirect_url).toBe(
+      "http://localhost/account?plan=focus&payment=success&provider=lemonsqueezy",
+    );
+    expect(payload.data?.attributes?.test_mode).toBe(true);
+  });
+
+  it("rejects LemonSqueezy checkout when no Leyendo user id is provided", async () => {
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING = "1497164";
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/payments/lemonsqueezy", {
+        body: JSON.stringify({ locale: "en", plan: "focus" }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "LemonSqueezy checkout requires a signed-in Leyendo account so the subscription can be linked without depending on buyer email.",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("requires an explicit focus variant when no supported focus alias is configured", async () => {
@@ -219,7 +256,7 @@ describe("LemonSqueezy checkout route", () => {
 
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
-        body: JSON.stringify({ locale: "en", plan: "focus" }),
+        body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       }) as never,
@@ -256,7 +293,7 @@ describe("LemonSqueezy checkout route", () => {
 
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
-        body: JSON.stringify({ locale: "en", plan: "focus" }),
+        body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       }) as never,

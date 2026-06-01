@@ -408,6 +408,8 @@ export function ReaderWorkspace({
   const resolvedChunkIndex = runtimeChunks.length
     ? clampChunkIndex(runtimeChunks.length, currentChunkIndex)
     : 0;
+  const resolvedChunkIndexRef = useRef(resolvedChunkIndex);
+  resolvedChunkIndexRef.current = resolvedChunkIndex;
   const activeChunk = runtimeChunks[resolvedChunkIndex];
   const canonicalMetricChunkIndex = useMemo(() => {
     if (canonicalMetricChunks.length === 0) {
@@ -1602,14 +1604,14 @@ export function ReaderWorkspace({
       if (
         typeof chunkIndexForPage === "number" &&
         chunkIndexForPage >= 0 &&
-        chunkIndexForPage !== resolvedChunkIndex
+        chunkIndexForPage !== resolvedChunkIndexRef.current
       ) {
         startTransition(() => {
           setChunkIndex(chunkIndexForPage);
         });
       }
     },
-    [pdfPageCount, resolvedChunkIndex, runtimeChunkIndexBySourcePage, setChunkIndex],
+    [pdfPageCount, runtimeChunkIndexBySourcePage, setChunkIndex],
   );
 
   function issuePdfWorkspaceJump(pageIndex: number) {

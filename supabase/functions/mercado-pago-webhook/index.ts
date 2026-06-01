@@ -129,6 +129,44 @@ function okResponse() {
   return jsonResponse({ ok: true });
 }
 
+function compactLogContext(context: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(context).filter(([, value]) =>
+      value !== undefined && value !== null && value !== ""
+    ),
+  );
+}
+
+function logMercadoPagoEvent(
+  level: "error" | "info" | "warn",
+  event: string,
+  context: Record<string, unknown> = {},
+  error?: unknown,
+) {
+  const payload = compactLogContext({
+    event,
+    provider: "mercadopago",
+    ...context,
+  });
+
+  if (level === "error") {
+    if (error !== undefined) {
+      console.error("[mercado-pago-webhook]", payload, error);
+      return;
+    }
+
+    console.error("[mercado-pago-webhook]", payload);
+    return;
+  }
+
+  if (level === "warn") {
+    console.warn("[mercado-pago-webhook]", payload);
+    return;
+  }
+
+  console.info("[mercado-pago-webhook]", payload);
+}
+
 function asString(value: unknown): string | null {
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -270,18 +308,41 @@ async function findUserIdByEmail(
     return null;
   }
 
-  const { data, error } = await supabase.auth.admin.listUsers();
-  if (error) {
-    console.error("Failed to list users for MercadoPago email match:", error);
-    return null;
+  let page = 1;
+  const perPage = 200;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      logMercadoPagoEvent(
+        "error",
+        "user_lookup_failed",
+        { page, strategy: "email" },
+        error,
+      );
+      return null;
+    }
+
+    const users = data.users ?? [];
+    const match = users.find(
+      (user: { email?: string | null; id: string }) =>
+        user.email?.toLowerCase() === userEmail.toLowerCase(),
+    );
+
+    if (match) {
+      return match.id;
+    }
+
+    if (users.length < perPage) {
+      return null;
+    }
+
+    page += 1;
   }
-
-  const match = data.users.find(
-    (user: { email?: string | null; id: string }) =>
-      user.email?.toLowerCase() === userEmail.toLowerCase(),
-  );
-
-  return match?.id ?? null;
 }
 
 async function findUserIdBySubscriptionId(
@@ -337,7 +398,12 @@ async function syncProfileSubscription(userId: string) {
   );
 
   if (error) {
-    console.error("Failed to sync profile subscription from billing:", error);
+    logMercadoPagoEvent(
+      "error",
+      "profile_sync_failed",
+      { userId },
+      error,
+    );
     throw new Error("Failed to sync profile subscription state");
   }
 }
@@ -421,6 +487,11 @@ async function resolveMercadoPagoCredentials(
   );
 
   if (!credentialsWithSecret.length) {
+    logMercadoPagoEvent("warn", "signature_validation_disabled", {
+      configuredEnvironments: mercadoPagoCredentials
+        .map((credentials) => credentials.environment)
+        .join(","),
+    });
     return mercadoPagoCredentials;
   }
 
@@ -429,6 +500,12 @@ async function resolveMercadoPagoCredentials(
     if (await verifySignature(req, credentials.webhookSecret)) {
       matchingCredentials.push(credentials);
     }
+  }
+
+  if (!matchingCredentials.length) {
+    logMercadoPagoEvent("warn", "signature_validation_failed", {
+      requestId: req.headers.get("x-request-id"),
+    });
   }
 
   return matchingCredentials.length ? matchingCredentials : null;
@@ -449,8 +526,10 @@ async function resolveAuthenticatedReturnUser(
 
   const { data, error } = await supabase.auth.getUser(accessToken);
   if (error || !data.user) {
-    console.error(
-      "Failed to resolve signed-in MercadoPago return user:",
+    logMercadoPagoEvent(
+      "error",
+      "return_user_resolution_failed",
+      {},
       error,
     );
     return null;
@@ -500,7 +579,7 @@ function inferTierFromSubscriptionRecord(
 
 async function searchLatestSubscriptionPreapproval(params: {
   credentialsCandidates: MercadoPagoCredentials[];
-  plan: PaidTierId;
+  plan: PaidTierId | null;
   userEmail?: string | null;
   userId?: string | null;
 }): Promise<{
@@ -508,7 +587,9 @@ async function searchLatestSubscriptionPreapproval(params: {
   subscription: Record<string, unknown>;
 } | null> {
   for (const credentials of params.credentialsCandidates) {
-    const exactPlanId = getPlanIdForCredentials(credentials, params.plan);
+    const exactPlanId = params.plan
+      ? getPlanIdForCredentials(credentials, params.plan)
+      : null;
     const searchPlanIds = exactPlanId ? [exactPlanId, null] : [null];
 
     for (const searchPlanId of searchPlanIds) {
@@ -538,10 +619,17 @@ async function searchLatestSubscriptionPreapproval(params: {
       );
 
       if (!response.ok) {
-        console.error(
-          "Failed to search MercadoPago subscriptions",
-          credentials.environment,
-          response.status,
+        logMercadoPagoEvent(
+          "error",
+          "subscription_search_failed",
+          {
+            environment: credentials.environment,
+            plan: params.plan,
+            searchPlanId,
+            status: response.status,
+            userEmail: params.userEmail,
+            userId: params.userId,
+          },
           await response.text(),
         );
         break;
@@ -552,8 +640,9 @@ async function searchLatestSubscriptionPreapproval(params: {
       };
       const results = Array.isArray(payload.results) ? payload.results : [];
       const matchingSubscription = results.find((subscription) => {
-        if (params.userId) {
-          return pickString(subscription.external_reference) === params.userId;
+        const externalReference = pickString(subscription.external_reference);
+        if (params.userId && externalReference === params.userId) {
+          return true;
         }
 
         if (!params.userEmail) {
@@ -580,7 +669,11 @@ async function searchLatestSubscriptionPreapproval(params: {
           return subscriptionPlanId === searchPlanId;
         }
 
-        return inferTierFromSubscriptionRecord(subscription) === params.plan;
+        if (params.plan) {
+          return inferTierFromSubscriptionRecord(subscription) === params.plan;
+        }
+
+        return true;
       });
 
       if (matchingSubscription) {
@@ -680,11 +773,10 @@ async function fetchSubscriptionPreapproval(
     return { credentials: result.credentials, subscription: result.data };
   }
   if (result.status !== 404) {
-    console.error(
-      "Failed to fetch MercadoPago subscription",
-      result.status,
-      result.body,
-    );
+    logMercadoPagoEvent("error", "subscription_fetch_failed", {
+      status: result.status,
+      subscriptionId,
+    }, result.body);
   }
   return null;
 }
@@ -707,11 +799,10 @@ async function fetchAuthorizedPayment(
     };
   }
   if (result.status !== 404) {
-    console.error(
-      "Failed to fetch MercadoPago authorized payment",
-      result.status,
-      result.body,
-    );
+    logMercadoPagoEvent("error", "authorized_payment_fetch_failed", {
+      authorizedPaymentId,
+      status: result.status,
+    }, result.body);
   }
   return null;
 }
@@ -798,9 +889,21 @@ async function syncMercadoPagoSubscription(params: {
   );
 
   if (error) {
-    console.error("Failed to upsert MercadoPago subscription:", error);
+    logMercadoPagoEvent(
+      "error",
+      "subscription_upsert_failed",
+      { subscriptionId, userId: params.userId },
+      error,
+    );
     throw new Error("Failed to sync MercadoPago subscription state");
   }
+
+  logMercadoPagoEvent("info", "subscription_synced", {
+    status: normalizedStatus,
+    subscriptionId,
+    tier,
+    userId: params.userId,
+  });
 
   if (params.userId) {
     await syncProfileSubscription(params.userId);
@@ -831,6 +934,13 @@ async function handleSubscriptionPreapprovalNotification(
     userEmail: pickString(subscription.payer_email),
   });
 
+  if (!targetUserId) {
+    logMercadoPagoEvent("warn", "subscription_user_unresolved", {
+      fallbackUserId,
+      subscriptionId,
+    });
+  }
+
   await syncMercadoPagoSubscription({
     subscription,
     userId: targetUserId,
@@ -859,6 +969,10 @@ async function handleSubscriptionAuthorizedPaymentNotification(
     pickString(authorizedPayment.status, authorizedPayment.status_detail) ?? ""
   ).toLowerCase();
   if (!SUCCESSFUL_AUTHORIZED_PAYMENT_STATUSES.has(normalizedStatus)) {
+    logMercadoPagoEvent("info", "authorized_payment_skipped", {
+      authorizedPaymentId,
+      status: normalizedStatus,
+    });
     return okResponse();
   }
 
@@ -870,6 +984,9 @@ async function handleSubscriptionAuthorizedPaymentNotification(
     .limit(1)
     .maybeSingle();
   if (existing) {
+    logMercadoPagoEvent("info", "authorized_payment_duplicate", {
+      authorizedPaymentId,
+    });
     return okResponse();
   }
 
@@ -894,6 +1011,15 @@ async function handleSubscriptionAuthorizedPaymentNotification(
     subscriptionId,
     userEmail,
   });
+
+  if (!targetUserId) {
+    logMercadoPagoEvent("warn", "authorized_payment_user_unresolved", {
+      authorizedPaymentId,
+      fallbackUserId,
+      subscriptionId,
+      userEmail,
+    });
+  }
 
   let tier = await getExistingSubscriptionTier(subscriptionId);
   if (subscription) {
@@ -936,9 +1062,30 @@ async function handleSubscriptionAuthorizedPaymentNotification(
   });
 
   if (error) {
-    console.error("Failed to record MercadoPago recurring payment:", error);
+    logMercadoPagoEvent(
+      "error",
+      "authorized_payment_record_failed",
+      {
+        action,
+        authorizedPaymentId,
+        subscriptionId,
+        tier,
+        userId: targetUserId,
+      },
+      error,
+    );
     return jsonResponse({ error: "Failed to record recurring payment" }, 500);
   }
+
+  logMercadoPagoEvent("info", "authorized_payment_recorded", {
+    action,
+    authorizedPaymentId,
+    environment: credentials.environment,
+    status: normalizedStatus,
+    subscriptionId,
+    tier,
+    userId: targetUserId,
+  });
 
   if (targetUserId) {
     await syncProfileSubscription(targetUserId);
@@ -952,16 +1099,52 @@ async function handleReturnConfirmation(
   body: WebhookBody,
 ): Promise<Response> {
   const authenticatedUser = await resolveAuthenticatedReturnUser(req);
+  if (!authenticatedUser) {
+    logMercadoPagoEvent("warn", "confirm_return_unauthenticated", {
+      paymentId: pickString(body.paymentId, body.data?.id),
+      plan: normalizePaidTierId(body.plan),
+      subscriptionId: pickString(body.subscriptionId),
+    });
+    return jsonResponse({ error: "Authentication required" }, 401);
+  }
+
   const requestedPlan = normalizePaidTierId(body.plan);
   const paymentId = pickString(body.paymentId, body.data?.id);
   const subscriptionId = pickString(body.subscriptionId);
+
+  logMercadoPagoEvent("info", "confirm_return_received", {
+    paymentId,
+    plan: requestedPlan,
+    subscriptionId,
+    userId: authenticatedUser.id,
+  });
+
+  await syncProfileSubscription(authenticatedUser.id);
+
+  let linkedSubscription = await getLinkedMercadoPagoSubscriptionForUser({
+    plan: requestedPlan,
+    userId: authenticatedUser.id,
+  });
+
+  if (linkedSubscription) {
+    logMercadoPagoEvent("info", "confirm_return_already_linked", {
+      plan: requestedPlan,
+      subscriptionId: linkedSubscription.provider_subscription_id,
+      tier: linkedSubscription.tier,
+      userId: authenticatedUser.id,
+    });
+    return jsonResponse({
+      confirmed: true,
+      tier: linkedSubscription.tier ?? requestedPlan ?? null,
+    });
+  }
 
   if (paymentId) {
     await handleSubscriptionAuthorizedPaymentNotification(
       paymentId,
       "confirm_return",
       mercadoPagoCredentials,
-      authenticatedUser?.id ?? null,
+      authenticatedUser.id,
     );
   }
 
@@ -969,11 +1152,11 @@ async function handleReturnConfirmation(
     await handleSubscriptionPreapprovalNotification(
       subscriptionId,
       mercadoPagoCredentials,
-      authenticatedUser?.id ?? null,
+      authenticatedUser.id,
     );
   }
 
-  if (authenticatedUser?.email && requestedPlan) {
+  if (authenticatedUser.email) {
     const latestSubscription = await searchLatestSubscriptionPreapproval({
       credentialsCandidates: mercadoPagoCredentials,
       plan: requestedPlan,
@@ -989,12 +1172,23 @@ async function handleReturnConfirmation(
     }
   }
 
-  const linkedSubscription = authenticatedUser
-    ? await getLinkedMercadoPagoSubscriptionForUser({
-        plan: requestedPlan,
-        userId: authenticatedUser.id,
-      })
-    : null;
+  linkedSubscription = await getLinkedMercadoPagoSubscriptionForUser({
+    plan: requestedPlan,
+    userId: authenticatedUser.id,
+  });
+
+  logMercadoPagoEvent(
+    linkedSubscription ? "info" : "warn",
+    "confirm_return_completed",
+    {
+      confirmed: Boolean(linkedSubscription),
+      paymentId,
+      plan: requestedPlan,
+      subscriptionId: linkedSubscription?.provider_subscription_id ?? subscriptionId,
+      tier: linkedSubscription?.tier ?? requestedPlan,
+      userId: authenticatedUser.id,
+    },
+  );
 
   return jsonResponse({
     confirmed: Boolean(linkedSubscription),
@@ -1012,7 +1206,7 @@ async function handleWebhook(req: Request): Promise<Response> {
   }
 
   if (!mercadoPagoCredentials.length) {
-    console.error("MercadoPago credentials not set");
+    logMercadoPagoEvent("error", "credentials_missing");
     return jsonResponse({ error: "Server config error" }, 500);
   }
 
@@ -1043,7 +1237,23 @@ async function handleWebhook(req: Request): Promise<Response> {
     });
     const action = asString(body.action);
 
+    logMercadoPagoEvent("info", "webhook_received", {
+      action,
+      matchedEnvironments: credentialsCandidates
+        .map((credentials) => credentials.environment)
+        .join(","),
+      requestId: req.headers.get("x-request-id"),
+      resourceId,
+      topic,
+    });
+
     if (!topic || !resourceId) {
+      logMercadoPagoEvent("info", "webhook_ignored_missing_topic_or_resource", {
+        action,
+        requestId: req.headers.get("x-request-id"),
+        resourceId,
+        topic,
+      });
       return okResponse();
     }
 
@@ -1062,9 +1272,14 @@ async function handleWebhook(req: Request): Promise<Response> {
       );
     }
 
+    logMercadoPagoEvent("info", "webhook_ignored_topic", {
+      resourceId,
+      topic,
+    });
+
     return okResponse();
   } catch (error) {
-    console.error("MercadoPago webhook error:", error);
+    logMercadoPagoEvent("error", "webhook_failed", {}, error);
     return jsonResponse(
       { error: error instanceof Error ? error.message : String(error) },
       500,

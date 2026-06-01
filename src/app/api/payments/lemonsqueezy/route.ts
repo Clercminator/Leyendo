@@ -124,21 +124,33 @@ export async function POST(request: NextRequest) {
     origin: request.nextUrl.origin,
     planTier,
     paymentStatus: "success",
+    provider: "lemonsqueezy",
   });
   const userEmail =
     typeof body.userEmail === "string" ? body.userEmail.trim() : "";
   const userId = typeof body.userId === "string" ? body.userId.trim() : "";
 
+  if (!userId) {
+    return NextResponse.json(
+      {
+        error:
+          "LemonSqueezy checkout requires a signed-in Leyendo account so the subscription can be linked without depending on buyer email.",
+      },
+      { status: 400 },
+    );
+  }
+
   const payload = {
     data: {
       type: "checkouts",
       attributes: {
+        test_mode: process.env.VERCEL_ENV === "preview",
         product_options: {
           redirect_url: redirectUrl,
         },
         checkout_data: {
           ...(userEmail ? { email: userEmail } : {}),
-          ...(userId ? { custom: { user_id: userId } } : {}),
+          custom: { user_id: userId },
         },
       },
       relationships: {

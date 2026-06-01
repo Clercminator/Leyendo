@@ -708,9 +708,11 @@ describe("AccountPanel", () => {
       data: { confirmed: true },
       error: null,
     });
+    const rpc = vi.fn().mockResolvedValue({ data: 0, error: null });
     const refreshProfile = vi.fn().mockResolvedValue(undefined);
 
     getSupabaseBrowserClient.mockReturnValue({
+      rpc,
       functions: {
         invoke,
       },
@@ -775,6 +777,8 @@ describe("AccountPanel", () => {
       });
     });
 
+    expect(rpc).toHaveBeenCalledWith("reconcile_my_billing_subscriptions");
+
     await waitFor(() => {
       expect(refreshProfile).toHaveBeenCalledTimes(2);
     });
@@ -789,9 +793,11 @@ describe("AccountPanel", () => {
       data: { confirmed: true },
       error: null,
     });
+    const rpc = vi.fn().mockResolvedValue({ data: 0, error: null });
     const refreshProfile = vi.fn().mockResolvedValue(undefined);
 
     getSupabaseBrowserClient.mockReturnValue({
+      rpc,
       functions: {
         invoke,
       },
@@ -859,6 +865,92 @@ describe("AccountPanel", () => {
     await waitFor(() => {
       expect(refreshProfile).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("lets a signed-in user manually resync a LemonSqueezy payment from the pending notice", async () => {
+    const user = userEvent.setup();
+    const invoke = vi.fn().mockResolvedValue({
+      data: { confirmed: true },
+      error: null,
+    });
+    const rpc = vi.fn().mockResolvedValue({ data: 0, error: null });
+    const refreshProfile = vi.fn().mockResolvedValue(undefined);
+
+    getSupabaseBrowserClient.mockReturnValue({
+      rpc,
+      functions: {
+        invoke,
+      },
+    });
+    window.history.replaceState(
+      {},
+      "",
+      "/account?payment=success&plan=focus&provider=lemonsqueezy",
+    );
+    useSupabaseAuth.mockReturnValue({
+      errorMessage: undefined,
+      guestLibrarySummary: {
+        bookmarks: 0,
+        documents: 0,
+        highlights: 0,
+        sessions: 0,
+      },
+      isConfigured: true,
+      isLoading: false,
+      isProfileSaving: false,
+      lastSyncedAt: undefined,
+      lastSyncSummary: undefined,
+      profile: {
+        createdAt: "2026-04-14T10:00:00.000Z",
+        displayName: "Lee Reader",
+        fileUploadCount: 0,
+        marketingConsent: false,
+        planTier: "basic",
+        updatedAt: "2026-04-14T10:00:00.000Z",
+        userId: "user-1",
+      },
+      refreshProfile,
+      session: null,
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signOut: vi.fn(),
+      signUp: vi.fn(),
+      syncLocalLibraryToCloud: vi.fn(),
+      syncStatus: "idle",
+      syncWithCloud: vi.fn(),
+      updateProfile: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(
+      <AccountPanel paidSignupPlan="focus" paidSignupProvider="lemonsqueezy" />,
+    );
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith("lemonsqueezy-webhook", {
+        body: {
+          action: "confirm_return",
+          plan: "focus",
+          subscriptionId: null,
+        },
+      });
+    });
+
+    await user.click(screen.getByRole("button", { name: /resync payment/i }));
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledTimes(2);
+    });
+
+    expect(rpc).toHaveBeenCalledWith("reconcile_my_billing_subscriptions");
+    expect(
+      screen.getByText(/lemonsqueezy payment confirmed/i),
+    ).toBeInTheDocument();
   });
 
   it("lets a Focus user save a word to the dictionary", async () => {

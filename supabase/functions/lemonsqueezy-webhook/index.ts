@@ -1,9 +1,42 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+const LEMONSQUEEZY_API = "https://api.lemonsqueezy.com/v1";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const WEBHOOK_SECRET =
-  Deno.env.get("LEMONSQUEEZY_WEBHOOK_SECRET")?.trim() ?? "";
+
+function pickEnv(...names: string[]) {
+  for (const name of names) {
+    const value = Deno.env.get(name)?.trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+const LEMONSQUEEZY_API_KEY = Deno.env.get("LEMONSQUEEZY_API_KEY")?.trim() ?? "";
+const LEMONSQUEEZY_API_KEY_TESTING = pickEnv(
+  "LEMONSQUEEZY_API_KEY_TESTING",
+  "LEMONSQUEEZY_API_KEY_PRUEBA",
+  "LEMONSQUEEZY_TESTING_API_KEY",
+  "LEMONSQUEEZY_API_KEY_TESTING_ACCOUNT",
+);
+const LEMONSQUEEZY_STORE_ID = Deno.env.get("LEMONSQUEEZY_STORE_ID")?.trim() ?? "";
+const LEMONSQUEEZY_STORE_ID_TESTING = pickEnv(
+  "LEMONSQUEEZY_STORE_ID_TESTING",
+  "LEMONSQUEEZY_STORE_ID_PRUEBA",
+  "LEMONSQUEEZY_TESTING_STORE_ID",
+  "LEMONSQUEEZY_STORE_ID_TESTING_ACCOUNT",
+);
+const WEBHOOK_SECRETS = [
+  Deno.env.get("LEMONSQUEEZY_WEBHOOK_SECRET")?.trim() ?? "",
+  pickEnv(
+    "LEMONSQUEEZY_WEBHOOK_SECRET_TESTING",
+    "LEMONSQUEEZY_WEBHOOK_SECRET_PRUEBA",
+    "LEMONSQUEEZY_WEBHOOK_SECRET_TESTING_ACCOUNT",
+  ),
+].filter((value): value is string => Boolean(value));
 
 function getConfiguredVariantIds(...values: Array<string | undefined>) {
   return new Set(
@@ -35,6 +68,7 @@ const MAX_VARIANT_IDS = getConfiguredVariantIds(
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 type PaidTierId = "focus" | "max";
+type LemonSqueezyEnvironment = "live" | "test";
 type SubscriptionStatus =
   | "inactive"
   | "pending"
@@ -60,10 +94,43 @@ const SUBSCRIPTION_PAYMENT_EVENTS = new Set([
   "subscription_payment_recovered",
 ]);
 
+interface WebhookBody {
+  action?: string;
+  plan?: string;
+  subscriptionId?: string | number;
+}
+
+interface AuthenticatedReturnUser {
+  email: string | null;
+  id: string;
+}
+
+interface LemonSqueezyCredentials {
+  apiKey: string;
+  environment: LemonSqueezyEnvironment;
+  storeId: string;
+}
+
+const lemonSqueezyCredentials = [
+  {
+    apiKey: LEMONSQUEEZY_API_KEY,
+    environment: "live",
+    storeId: LEMONSQUEEZY_STORE_ID,
+  },
+  {
+    apiKey: LEMONSQUEEZY_API_KEY_TESTING,
+    environment: "test",
+    storeId: LEMONSQUEEZY_STORE_ID_TESTING,
+  },
+].filter((credentials): credentials is LemonSqueezyCredentials =>
+  Boolean(credentials.apiKey),
+);
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Signature, X-Event-Name",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, apikey, x-client-info, X-Signature, X-Event-Name",
 };
 
 function jsonResponse(payload: unknown, status = 200) {
@@ -75,6 +142,44 @@ function jsonResponse(payload: unknown, status = 200) {
 
 function okResponse() {
   return jsonResponse({ ok: true });
+}
+
+function compactLogContext(context: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(context).filter(([, value]) =>
+      value !== undefined && value !== null && value !== ""
+    ),
+  );
+}
+
+function logLemonSqueezyEvent(
+  level: "error" | "info" | "warn",
+  event: string,
+  context: Record<string, unknown> = {},
+  error?: unknown,
+) {
+  const payload = compactLogContext({
+    event,
+    provider: "lemonsqueezy",
+    ...context,
+  });
+
+  if (level === "error") {
+    if (error !== undefined) {
+      console.error("[lemonsqueezy-webhook]", payload, error);
+      return;
+    }
+
+    console.error("[lemonsqueezy-webhook]", payload);
+    return;
+  }
+
+  if (level === "warn") {
+    console.warn("[lemonsqueezy-webhook]", payload);
+    return;
+  }
+
+  console.info("[lemonsqueezy-webhook]", payload);
 }
 
 function asString(value: unknown): string | null {
@@ -141,6 +246,11 @@ function inferTierFromAmount(amountUsd: number): PaidTierId {
   return amountUsd >= 10 ? "max" : "focus";
 }
 
+function normalizePaidTierId(value: unknown): PaidTierId | null {
+  const normalized = asString(value)?.toLowerCase();
+  return normalized === "focus" || normalized === "max" ? normalized : null;
+}
+
 function normalizeSubscriptionStatus(params: {
   cancelRequested: boolean;
   endsAt: string | null;
@@ -194,17 +304,40 @@ async function findUserIdByEmail(
     return null;
   }
 
-  const { data, error } = await supabase.auth.admin.listUsers();
-  if (error) {
-    console.error("Failed to list users for LemonSqueezy email match:", error);
-    return null;
+  let page = 1;
+  const perPage = 200;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      logLemonSqueezyEvent(
+        "error",
+        "user_lookup_failed",
+        { page, strategy: "email" },
+        error,
+      );
+      return null;
+    }
+
+    const users = data.users ?? [];
+    const match = users.find(
+      (user) => user.email?.toLowerCase() === userEmail.toLowerCase(),
+    );
+
+    if (match) {
+      return match.id;
+    }
+
+    if (users.length < perPage) {
+      return null;
+    }
+
+    page += 1;
   }
-
-  const match = data.users.find(
-    (user) => user.email?.toLowerCase() === userEmail.toLowerCase(),
-  );
-
-  return match?.id ?? null;
 }
 
 async function findUserIdBySubscriptionId(
@@ -254,9 +387,246 @@ async function syncProfileSubscription(userId: string) {
   );
 
   if (error) {
-    console.error("Failed to sync profile subscription from billing:", error);
+    logLemonSqueezyEvent(
+      "error",
+      "profile_sync_failed",
+      { userId },
+      error,
+    );
     throw new Error("Failed to sync profile subscription state");
   }
+}
+
+async function resolveAuthenticatedReturnUser(
+  req: Request,
+): Promise<AuthenticatedReturnUser | null> {
+  const authorizationHeader = req.headers.get("authorization");
+  if (!authorizationHeader?.toLowerCase().startsWith("bearer ")) {
+    return null;
+  }
+
+  const accessToken = authorizationHeader.slice(7).trim();
+  if (!accessToken) {
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getUser(accessToken);
+  if (error || !data.user) {
+    logLemonSqueezyEvent(
+      "error",
+      "return_user_resolution_failed",
+      {},
+      error,
+    );
+    return null;
+  }
+
+  return {
+    email: data.user.email ?? null,
+    id: data.user.id,
+  };
+}
+
+async function getLinkedSubscriptionForUser(params: {
+  plan?: PaidTierId | null;
+  userId: string;
+}) {
+  let query = supabase
+    .from("billing_subscriptions")
+    .select("provider_subscription_id,tier,status,updated_at")
+    .eq("provider", "lemonsqueezy")
+    .eq("user_id", params.userId)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+
+  if (params.plan) {
+    query = query.eq("tier", params.plan);
+  }
+
+  const { data } = await query.maybeSingle();
+  return data ?? null;
+}
+
+function getVariantIdsForTier(plan: PaidTierId | null) {
+  if (plan === "focus") {
+    return Array.from(FOCUS_VARIANT_IDS);
+  }
+
+  if (plan === "max") {
+    return Array.from(MAX_VARIANT_IDS);
+  }
+
+  return Array.from(new Set([...FOCUS_VARIANT_IDS, ...MAX_VARIANT_IDS]));
+}
+
+async function fetchSubscriptionById(
+  subscriptionId: string,
+  credentialsCandidates: LemonSqueezyCredentials[],
+): Promise<
+  | {
+      credentials: LemonSqueezyCredentials;
+      subscription: Record<string, unknown>;
+      subscriptionId: string;
+    }
+  | null
+> {
+  for (const credentials of credentialsCandidates) {
+    const response = await fetch(
+      `${LEMONSQUEEZY_API}/subscriptions/${subscriptionId}`,
+      {
+        headers: {
+          Accept: "application/vnd.api+json",
+          "Content-Type": "application/vnd.api+json",
+          Authorization: `Bearer ${credentials.apiKey}`,
+        },
+      },
+    );
+
+    if (response.ok) {
+      const payload = (await response.json()) as {
+        data?: {
+          id?: string | number;
+          attributes?: Record<string, unknown>;
+        };
+      };
+      const resolvedId = asString(payload.data?.id);
+      const attributes = payload.data?.attributes;
+      if (resolvedId && attributes) {
+        return {
+          credentials,
+          subscription: attributes,
+          subscriptionId: resolvedId,
+        };
+      }
+    }
+
+    if (response.status !== 404) {
+      logLemonSqueezyEvent(
+        "error",
+        "subscription_fetch_failed",
+        {
+          environment: credentials.environment,
+          status: response.status,
+          subscriptionId,
+        },
+        await response.text(),
+      );
+    }
+  }
+
+  return null;
+}
+
+async function searchLatestSubscriptionByEmail(params: {
+  credentialsCandidates: LemonSqueezyCredentials[];
+  plan: PaidTierId | null;
+  userEmail: string;
+}): Promise<
+  | {
+      credentials: LemonSqueezyCredentials;
+      subscription: Record<string, unknown>;
+      subscriptionId: string;
+    }
+  | null
+> {
+  const variantIds = getVariantIdsForTier(params.plan);
+  const variantSearchValues = variantIds.length ? variantIds : [undefined];
+
+  for (const credentials of params.credentialsCandidates) {
+    for (const variantId of variantSearchValues) {
+      const searchParams = new URLSearchParams({
+        "filter[user_email]": params.userEmail,
+        "page[size]": "10",
+        sort: "-createdAt",
+      });
+
+      if (credentials.storeId) {
+        searchParams.set("filter[store_id]", credentials.storeId);
+      }
+
+      if (variantId) {
+        searchParams.set("filter[variant_id]", variantId);
+      }
+
+      const response = await fetch(
+        `${LEMONSQUEEZY_API}/subscriptions?${searchParams.toString()}`,
+        {
+          headers: {
+            Accept: "application/vnd.api+json",
+            "Content-Type": "application/vnd.api+json",
+            Authorization: `Bearer ${credentials.apiKey}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        logLemonSqueezyEvent(
+          "error",
+          "subscription_search_failed",
+          {
+            environment: credentials.environment,
+            plan: params.plan,
+            status: response.status,
+            userEmail: params.userEmail,
+            variantId,
+          },
+          await response.text(),
+        );
+        continue;
+      }
+
+      const payload = (await response.json()) as {
+        data?: Array<{
+          id?: string | number;
+          attributes?: Record<string, unknown>;
+        }>;
+      };
+
+      const result = (payload.data ?? []).find((entry) => {
+        const attributes = entry.attributes;
+        if (!attributes) {
+          return false;
+        }
+
+        if (
+          params.plan &&
+          inferTierFromVariant(attributes.variant_id, attributes.variant_name) !==
+            params.plan
+        ) {
+          return false;
+        }
+
+        const userEmail = asString(attributes.user_email);
+        if (!userEmail) {
+          return false;
+        }
+
+        const testMode = Boolean(attributes.test_mode);
+        if (credentials.environment === "live" && testMode) {
+          return false;
+        }
+
+        if (credentials.environment === "test" && !testMode) {
+          return false;
+        }
+
+        return userEmail.toLowerCase() === params.userEmail.toLowerCase();
+      });
+
+      if (result?.attributes) {
+        const subscriptionId = asString(result.id);
+        if (subscriptionId) {
+          return {
+            credentials,
+            subscription: result.attributes,
+            subscriptionId,
+          };
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 async function getExistingSubscriptionTier(
@@ -334,9 +704,21 @@ async function upsertSubscriptionRecord(params: {
   );
 
   if (error) {
-    console.error("Failed to upsert LemonSqueezy subscription:", error);
+    logLemonSqueezyEvent(
+      "error",
+      "subscription_upsert_failed",
+      { subscriptionId: params.subscriptionId, userId: params.userId },
+      error,
+    );
     throw new Error("Failed to sync LemonSqueezy subscription state");
   }
+
+  logLemonSqueezyEvent("info", "subscription_synced", {
+    status: normalizedStatus,
+    subscriptionId: params.subscriptionId,
+    tier,
+    userId: params.userId,
+  });
 
   if (params.userId) {
     await syncProfileSubscription(params.userId);
@@ -346,24 +728,136 @@ async function upsertSubscriptionRecord(params: {
 }
 
 async function verifySignature(rawBody: string, signature: string | null) {
-  if (!WEBHOOK_SECRET || !signature) {
+  if (!WEBHOOK_SECRETS.length || !signature) {
     return false;
   }
 
   const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(WEBHOOK_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signed = await crypto.subtle.sign("HMAC", key, encoder.encode(rawBody));
-  const hex = Array.from(new Uint8Array(signed))
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("");
+  for (const webhookSecret of WEBHOOK_SECRETS) {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(webhookSecret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const signed = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      encoder.encode(rawBody),
+    );
+    const hex = Array.from(new Uint8Array(signed))
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
 
-  return hex === signature;
+    if (hex === signature) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function handleReturnConfirmation(
+  req: Request,
+  body: WebhookBody,
+): Promise<Response> {
+  const authenticatedUser = await resolveAuthenticatedReturnUser(req);
+  if (!authenticatedUser) {
+    logLemonSqueezyEvent("warn", "confirm_return_unauthenticated", {
+      plan: normalizePaidTierId(body.plan),
+      subscriptionId: asString(body.subscriptionId),
+    });
+    return jsonResponse({ error: "Authentication required" }, 401);
+  }
+
+  const requestedPlan = normalizePaidTierId(body.plan);
+  const explicitSubscriptionId = asString(body.subscriptionId);
+
+  logLemonSqueezyEvent("info", "confirm_return_received", {
+    plan: requestedPlan,
+    subscriptionId: explicitSubscriptionId,
+    userId: authenticatedUser.id,
+  });
+
+  await syncProfileSubscription(authenticatedUser.id);
+
+  let linkedSubscription = await getLinkedSubscriptionForUser({
+    plan: requestedPlan,
+    userId: authenticatedUser.id,
+  });
+  if (linkedSubscription) {
+    logLemonSqueezyEvent("info", "confirm_return_already_linked", {
+      plan: requestedPlan,
+      subscriptionId: linkedSubscription.provider_subscription_id,
+      tier: linkedSubscription.tier,
+      userId: authenticatedUser.id,
+    });
+    return jsonResponse({
+      confirmed: true,
+      tier: linkedSubscription.tier ?? requestedPlan ?? null,
+    });
+  }
+
+  let subscriptionResult = explicitSubscriptionId
+    ? await fetchSubscriptionById(explicitSubscriptionId, lemonSqueezyCredentials)
+    : null;
+
+  if (!subscriptionResult && authenticatedUser.email) {
+    subscriptionResult = await searchLatestSubscriptionByEmail({
+      credentialsCandidates: lemonSqueezyCredentials,
+      plan: requestedPlan,
+      userEmail: authenticatedUser.email,
+    });
+  }
+
+  if (subscriptionResult) {
+    const userEmail =
+      asString(subscriptionResult.subscription.user_email) ??
+      authenticatedUser.email;
+
+    await upsertSubscriptionRecord({
+      attributes: subscriptionResult.subscription,
+      metadata: {
+        action: "confirm_return",
+        provider: "lemonsqueezy",
+        subscription: subscriptionResult.subscription,
+      },
+      subscriptionId: subscriptionResult.subscriptionId,
+      userEmail,
+      userId: authenticatedUser.id,
+    });
+  } else {
+    logLemonSqueezyEvent("warn", "confirm_return_subscription_not_found", {
+      plan: requestedPlan,
+      requestedSubscriptionId: explicitSubscriptionId,
+      userEmail: authenticatedUser.email,
+      userId: authenticatedUser.id,
+    });
+  }
+
+  linkedSubscription = await getLinkedSubscriptionForUser({
+    plan: requestedPlan,
+    userId: authenticatedUser.id,
+  });
+
+  logLemonSqueezyEvent(
+    linkedSubscription ? "info" : "warn",
+    "confirm_return_completed",
+    {
+      confirmed: Boolean(linkedSubscription),
+      plan: requestedPlan,
+      subscriptionId:
+        linkedSubscription?.provider_subscription_id ?? explicitSubscriptionId,
+      tier: linkedSubscription?.tier ?? requestedPlan,
+      userId: authenticatedUser.id,
+    },
+  );
+
+  return jsonResponse({
+    confirmed: Boolean(linkedSubscription),
+    tier: linkedSubscription?.tier ?? requestedPlan ?? null,
+  });
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -376,19 +870,38 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const rawBody = await req.text();
-  const signature = req.headers.get("X-Signature");
-  const eventName = req.headers.get("X-Event-Name");
-
-  if (!(await verifySignature(rawBody, signature))) {
-    return jsonResponse({ error: "Invalid signature" }, 401);
-  }
 
   try {
-    const body = JSON.parse(rawBody);
+    const body = JSON.parse(rawBody) as WebhookBody & Record<string, unknown>;
+
+    if (body.action === "confirm_return") {
+      return await handleReturnConfirmation(req, body);
+    }
+
+    const signature = req.headers.get("X-Signature");
+    const eventName = req.headers.get("X-Event-Name");
+
+    if (!(await verifySignature(rawBody, signature))) {
+      logLemonSqueezyEvent("warn", "signature_validation_failed", {
+        eventName,
+      });
+      return jsonResponse({ error: "Invalid signature" }, 401);
+    }
+
     const attrs = (body?.data?.attributes ?? {}) as Record<string, unknown>;
     const customData = body?.meta?.custom_data ?? {};
 
+    logLemonSqueezyEvent("info", "webhook_received", {
+      eventName,
+      resourceId: asString(body?.data?.id),
+      subscriptionId: asString(attrs.subscription_id),
+    });
+
     if (!eventName || eventName === "order_created") {
+      logLemonSqueezyEvent("info", "webhook_ignored_event", {
+        eventName,
+        resourceId: asString(body?.data?.id),
+      });
       return okResponse();
     }
 
@@ -402,7 +915,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
 
       if (!subscriptionId) {
+        logLemonSqueezyEvent("warn", "subscription_event_missing_id", {
+          eventName,
+        });
         return okResponse();
+      }
+
+      if (!targetUserId) {
+        logLemonSqueezyEvent("warn", "subscription_user_unresolved", {
+          eventName,
+          subscriptionId,
+          userEmail,
+        });
       }
 
       await upsertSubscriptionRecord({
@@ -417,12 +941,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     if (SUBSCRIPTION_PAYMENT_EVENTS.has(eventName)) {
+      const subscriptionId = asString(attrs.subscription_id);
+
       if ((asString(attrs.status) ?? "") !== "paid") {
+        logLemonSqueezyEvent("info", "invoice_skipped", {
+          eventName,
+          paymentStatus: asString(attrs.status),
+          subscriptionId,
+        });
         return okResponse();
       }
 
       const providerPaymentId = asString(body?.data?.id);
       if (!providerPaymentId) {
+        logLemonSqueezyEvent("warn", "invoice_missing_payment_id", {
+          eventName,
+          subscriptionId,
+        });
         return okResponse();
       }
 
@@ -435,16 +970,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
         .maybeSingle();
 
       if (existing) {
+        logLemonSqueezyEvent("info", "invoice_duplicate", {
+          eventName,
+          providerPaymentId,
+        });
         return okResponse();
       }
 
-      const subscriptionId = asString(attrs.subscription_id);
       const userEmail = asString(attrs.user_email);
       const targetUserId = await resolveTargetUserId({
         explicitUserId: customData.user_id,
         subscriptionId,
         userEmail,
       });
+
+      if (!targetUserId) {
+        logLemonSqueezyEvent("warn", "invoice_user_unresolved", {
+          eventName,
+          providerPaymentId,
+          subscriptionId,
+          userEmail,
+        });
+      }
 
       let tier = await getExistingSubscriptionTier(subscriptionId);
       tier ??= inferTierFromAmount(
@@ -469,12 +1016,31 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
 
       if (error) {
-        console.error("Failed to record LemonSqueezy invoice:", error);
+        logLemonSqueezyEvent(
+          "error",
+          "invoice_record_failed",
+          {
+            eventName,
+            providerPaymentId,
+            subscriptionId,
+            tier,
+            userId: targetUserId,
+          },
+          error,
+        );
         return jsonResponse(
           { error: "Failed to record recurring payment" },
           500,
         );
       }
+
+      logLemonSqueezyEvent("info", "invoice_recorded", {
+        eventName,
+        providerPaymentId,
+        subscriptionId,
+        tier,
+        userId: targetUserId,
+      });
 
       if (targetUserId) {
         await syncProfileSubscription(targetUserId);
@@ -483,9 +1049,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return okResponse();
     }
 
+    logLemonSqueezyEvent("info", "webhook_ignored_event", {
+      eventName,
+      resourceId: asString(body?.data?.id),
+    });
+
     return okResponse();
   } catch (error) {
-    console.error("LemonSqueezy webhook error:", error);
+    logLemonSqueezyEvent("error", "webhook_failed", {}, error);
     return jsonResponse(
       { error: error instanceof Error ? error.message : String(error) },
       500,

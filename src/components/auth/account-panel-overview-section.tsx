@@ -27,13 +27,17 @@ interface AccountPanelOverviewSectionProps {
   hasProfileChanges: boolean;
   helperCopy: AccountPanelCopy;
   isProfilePending: boolean;
+  isRecoveryActionPending?: boolean;
   locale: AppLocale;
   optionalSectionLabel: string;
   profileDetailsOpen: boolean;
   profileDetailsSectionId: string;
   profileNameInput: string;
+  recoveryActionLabel?: string;
+  recoveryHint?: string;
   showAvatarRemove: boolean;
   showAvatarUndo: boolean;
+  showRecoveryAction?: boolean;
   showSubscriptionLinkedNotice: boolean;
   showSubscriptionPendingNotice: boolean;
   showSubscriptionStatusCard: boolean;
@@ -60,6 +64,7 @@ interface AccountPanelOverviewSectionProps {
   onAvatarRenderError: () => void;
   onDisplayNameChange: (value: string) => void;
   onProfileDetailsToggle: () => void;
+  onRecoveryAction?: () => void;
   onProfileFieldChange: <Key extends keyof ProfileFormState>(
     key: Key,
     value: ProfileFormState[Key],
@@ -83,13 +88,17 @@ export function AccountPanelOverviewSection({
   hasProfileChanges,
   helperCopy,
   isProfilePending,
+  isRecoveryActionPending,
   locale,
   optionalSectionLabel,
   profileDetailsOpen,
   profileDetailsSectionId,
   profileNameInput,
+  recoveryActionLabel,
+  recoveryHint,
   showAvatarRemove,
   showAvatarUndo,
+  showRecoveryAction,
   showSubscriptionLinkedNotice,
   showSubscriptionPendingNotice,
   showSubscriptionStatusCard,
@@ -116,6 +125,7 @@ export function AccountPanelOverviewSection({
   onAvatarRenderError,
   onDisplayNameChange,
   onProfileDetailsToggle,
+  onRecoveryAction,
   onProfileFieldChange,
   onProfileSave,
   onSignOut,
@@ -123,30 +133,49 @@ export function AccountPanelOverviewSection({
   return (
     <article className="editorial-panel rounded-[2rem] border border-(--border-soft) bg-(--surface-card) p-8 shadow-[0_18px_60px_rgba(20,26,56,0.1)] backdrop-blur-xl">
       {showSubscriptionLinkedNotice ? (
-        <div className="mb-6 rounded-[1.75rem] border border-emerald-400/30 bg-emerald-500/10 px-5 py-4">
-          <p className="text-xs font-semibold tracking-[0.18em] text-emerald-200 uppercase">
+        <div className="mb-6 rounded-[1.75rem] border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 dark:border-emerald-400/30">
+          <p className="text-xs font-semibold tracking-[0.18em] text-emerald-700 uppercase dark:text-emerald-200">
             {subscriptionLinkedEyebrow}
           </p>
-          <h3 className="mt-2 text-xl font-semibold text-white">
+          <h3 className="mt-2 text-xl font-semibold text-(--text-strong) dark:text-white">
             {subscriptionLinkedHeading}
           </h3>
-          <p className="mt-2 text-sm leading-7 text-emerald-50/90">
+          <p className="mt-2 text-sm leading-7 text-emerald-800 dark:text-emerald-50/90">
             {subscriptionLinkedDescription}
           </p>
         </div>
       ) : null}
 
       {showSubscriptionPendingNotice ? (
-        <div className="mb-6 rounded-[1.75rem] border border-amber-300/30 bg-amber-500/10 px-5 py-4">
-          <p className="text-xs font-semibold tracking-[0.18em] text-amber-100 uppercase">
+        <div className="mb-6 rounded-[1.75rem] border border-amber-500/25 bg-amber-500/10 px-5 py-4 dark:border-amber-300/30">
+          <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase dark:text-amber-100">
             {subscriptionPendingEyebrow}
           </p>
-          <h3 className="mt-2 text-xl font-semibold text-white">
+          <h3 className="mt-2 text-xl font-semibold text-(--text-strong) dark:text-white">
             {subscriptionPendingHeading}
           </h3>
-          <p className="mt-2 text-sm leading-7 text-amber-50/90">
+          <p className="mt-2 text-sm leading-7 text-amber-800 dark:text-amber-50/90">
             {subscriptionPendingDescription}
           </p>
+          {showRecoveryAction && onRecoveryAction && recoveryActionLabel ? (
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {recoveryHint ? (
+                <p className="text-xs leading-6 text-amber-800/90 dark:text-amber-100/80">
+                  {recoveryHint}
+                </p>
+              ) : (
+                <span />
+              )}
+              <Button
+                variant="outline"
+                className="h-10 rounded-full border-amber-500/30 bg-amber-500/10 px-4 text-amber-900 hover:bg-amber-500/16 dark:border-amber-200/20 dark:bg-amber-50/10 dark:text-amber-50 dark:hover:bg-amber-50/16"
+                disabled={isRecoveryActionPending}
+                onClick={onRecoveryAction}
+              >
+                {recoveryActionLabel}
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

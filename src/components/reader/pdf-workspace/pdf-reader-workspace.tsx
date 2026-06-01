@@ -148,6 +148,8 @@ export function PdfReaderWorkspace({
   const pendingViewerStateRef = useRef(viewerState);
   const viewerStateSaveTimeoutRef = useRef<number | undefined>(undefined);
   const viewerStateRef = useRef(viewerState);
+  const onPageChangeRef = useRef(onPageChange);
+  onPageChangeRef.current = onPageChange;
   const searchQueryRef = useRef(viewerState.searchQuery);
   const activeBootstrapRunIdRef = useRef(0);
   const pendingFirstPageReadyMetricRef = useRef<
@@ -494,7 +496,7 @@ export function PdfReaderWorkspace({
           ? currentState
           : { ...currentState, pageIndex: nextPageIndex },
       );
-      onPageChange(nextPageIndex);
+      onPageChangeRef.current(nextPageIndex);
     };
 
     const handleScaleChanging = (event: PdfScaleChangingEvent) => {
@@ -628,7 +630,6 @@ export function PdfReaderWorkspace({
       viewerElement.replaceChildren();
     };
   }, [
-    onPageChange,
     pageLabels,
     pdfDocument,
     pdfViewerModule,

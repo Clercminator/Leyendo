@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   Cloud,
@@ -99,8 +99,10 @@ export function AccountPanel({
   const [cloudActivityOpen, setCloudActivityOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>();
   const [pendingAction, setPendingAction] = useState<string>();
+  const [isPaymentRecoveryPending, setIsPaymentRecoveryPending] =
+    useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
-  const mercadoPagoConfirmationStartedRef = useRef(false);
+  const paymentRecoveryStartedRef = useRef(false);
   const profileDetailsSectionId = useId();
   const dictionarySectionId = useId();
   const cloudActivitySectionId = useId();
@@ -362,6 +364,52 @@ export function AccountPanel({
       : locale === "es"
         ? "Sigue dentro de la cuenta de Leyendo que inicio el checkout. Si volviste con otra cuenta de Leyendo, cierra sesion y usa la original, luego espera un momento y recarga esta pagina."
         : "Permaneça na conta do Leyendo que iniciou o checkout. Se voce voltou com outra conta do Leyendo, saia e use a original, depois espere um momento e recarregue esta pagina.";
+  const paymentProviderLabel =
+    paidSignupProvider === "mercadopago"
+      ? "MercadoPago"
+      : paidSignupProvider === "lemonsqueezy"
+        ? "LemonSqueezy"
+        : locale === "es"
+          ? "el proveedor"
+          : locale === "pt"
+            ? "o provedor"
+            : "the provider";
+  const paymentConfirmingMessage =
+    locale === "en"
+      ? `${paymentProviderLabel} approved the payment. Leyendo is confirming the subscription on this account now.`
+      : locale === "es"
+        ? `${paymentProviderLabel} ya aprobo el pago. Leyendo esta confirmando ahora la suscripcion en esta cuenta.`
+        : `${paymentProviderLabel} ja aprovou o pagamento. O Leyendo esta confirmando agora a assinatura nesta conta.`;
+  const paymentLinkedMessage =
+    locale === "en"
+      ? `${paymentProviderLabel} payment confirmed. This account is refreshing the new plan now.`
+      : locale === "es"
+        ? `Pago de ${paymentProviderLabel} confirmado. Esta cuenta esta actualizando el nuevo plan.`
+        : `Pagamento de ${paymentProviderLabel} confirmado. Esta conta esta atualizando o novo plano.`;
+  const paymentPendingMessage =
+    locale === "en"
+      ? `${paymentProviderLabel} approved the payment, but the subscription is still syncing. Use Resync payment if the plan does not appear yet.`
+      : locale === "es"
+        ? `${paymentProviderLabel} aprobo el pago, pero la suscripcion todavia se esta sincronizando. Usa Reintentar pago si el plan aun no aparece.`
+        : `${paymentProviderLabel} aprovou o pagamento, mas a assinatura ainda esta sincronizando. Use Reenviar pagamento se o plano ainda nao aparecer.`;
+  const paymentRecoveryActionLabel =
+    isPaymentRecoveryPending
+      ? locale === "en"
+        ? "Resyncing payment..."
+        : locale === "es"
+          ? "Reintentando pago..."
+          : "Reenviando pagamento..."
+      : locale === "en"
+        ? "Resync payment"
+        : locale === "es"
+          ? "Reintentar pago"
+          : "Reenviar pagamento";
+  const paymentRecoveryHint =
+    locale === "en"
+      ? "Run another provider check if the upgraded plan is still missing on this account."
+      : locale === "es"
+        ? "Lanza otra comprobacion del proveedor si el plan mejorado todavia no aparece en esta cuenta."
+        : "Execute outra verificacao do provedor se o plano atualizado ainda nao aparecer nesta conta.";
   const activationSteps = isPreCheckoutFlow
     ? locale === "en"
       ? [
@@ -454,106 +502,134 @@ export function AccountPanel({
           : `${lastSyncSummary.documents} docs · ${lastSyncSummary.sessions} sessoes · ${lastSyncResultLabel ?? "sincronizacao recente"}`
     : syncCopy;
 
+  const runPaymentRecovery = useCallback(
+    async (attemptCount = 3) => {
+      if (
+        isPaymentRecoveryPending ||
+        !paidSignupPlan ||
+        !paidSignupProvider ||
+        !user
+      ) {
+        return false;
+      }
+
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        return false;
+      }
+
+      const rawHref = typeof window === "undefined" ? null : window.location.href;
+      const currentUrl = rawHref ? new URL(rawHref) : null;
+      const paymentId = getReturnUrlParam(currentUrl, rawHref, [
+        "collection_id",
+        "payment_id",
+        "authorized_payment_id",
+      ]);
+      const subscriptionId = getReturnUrlParam(currentUrl, rawHref, [
+        "preapproval_id",
+        "subscription_id",
+      ]);
+
+      setIsPaymentRecoveryPending(true);
+      setStatusMessage(paymentConfirmingMessage);
+
+      try {
+        for (let attempt = 0; attempt < attemptCount; attempt += 1) {
+          const { error: reconcileError } = await supabase.rpc(
+            "reconcile_my_billing_subscriptions",
+          );
+
+          if (reconcileError) {
+            console.error(
+              "Failed to reconcile billing subscriptions on payment return:",
+              reconcileError,
+            );
+          }
+
+          const functionName =
+            paidSignupProvider === "mercadopago"
+              ? "mercado-pago-webhook"
+              : "lemonsqueezy-webhook";
+          const body =
+            paidSignupProvider === "mercadopago"
+              ? {
+                  action: "confirm_return",
+                  paymentId,
+                  plan: paidSignupPlan,
+                  subscriptionId,
+                }
+              : {
+                  action: "confirm_return",
+                  plan: paidSignupPlan,
+                  subscriptionId,
+                };
+
+          const { data, error } = await supabase.functions.invoke(functionName, {
+            body,
+          });
+
+          await refreshProfile();
+
+          if (
+            !error &&
+            data &&
+            typeof data === "object" &&
+            "confirmed" in data &&
+            data.confirmed === true
+          ) {
+            setStatusMessage(paymentLinkedMessage);
+            return true;
+          }
+
+          if (attempt < attemptCount - 1) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1500));
+          }
+        }
+
+        setStatusMessage(paymentPendingMessage);
+        return false;
+      } catch (error) {
+        console.error("Payment recovery failed:", error);
+        setStatusMessage(paymentPendingMessage);
+        return false;
+      } finally {
+        setIsPaymentRecoveryPending(false);
+      }
+    },
+    [
+      isPaymentRecoveryPending,
+      paidSignupPlan,
+      paidSignupProvider,
+      paymentConfirmingMessage,
+      paymentLinkedMessage,
+      paymentPendingMessage,
+      refreshProfile,
+      user,
+    ],
+  );
+
   useEffect(() => {
-    mercadoPagoConfirmationStartedRef.current = false;
+    paymentRecoveryStartedRef.current = false;
   }, [paidSignupPlan, paidSignupProvider, user?.id]);
 
   useEffect(() => {
     if (
-      mercadoPagoConfirmationStartedRef.current ||
+      paymentRecoveryStartedRef.current ||
       !paidSignupPlan ||
+      !paidSignupProvider ||
       !user ||
       hasPaidAccountAccess
     ) {
       return;
     }
 
-    const rawHref = typeof window === "undefined" ? null : window.location.href;
-    const currentUrl = rawHref ? new URL(rawHref) : null;
-    const paymentId = getReturnUrlParam(currentUrl, rawHref, [
-      "collection_id",
-      "payment_id",
-      "authorized_payment_id",
-    ]);
-    const subscriptionId = getReturnUrlParam(currentUrl, rawHref, [
-      "preapproval_id",
-      "subscription_id",
-    ]);
-
-    if (paidSignupProvider !== "mercadopago" && !paymentId && !subscriptionId) {
-      return;
-    }
-
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
-      return;
-    }
-
-    mercadoPagoConfirmationStartedRef.current = true;
-    let cancelled = false;
-    setStatusMessage(helperCopy.mercadoPagoConfirming);
-
-    void (async () => {
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        const { data, error } = await supabase.functions.invoke(
-          "mercado-pago-webhook",
-          {
-            body: {
-              action: "confirm_return",
-              paymentId,
-              plan: paidSignupPlan,
-              subscriptionId,
-            },
-          },
-        );
-
-        if (cancelled) {
-          return;
-        }
-
-        if (!error) {
-          await refreshProfile();
-
-          if (cancelled) {
-            return;
-          }
-
-          if (
-            data &&
-            typeof data === "object" &&
-            "confirmed" in data &&
-            data.confirmed === true
-          ) {
-            setStatusMessage(helperCopy.mercadoPagoLinked);
-            return;
-          }
-        }
-
-        if (attempt < 2) {
-          await new Promise((resolve) => window.setTimeout(resolve, 1500));
-        }
-      }
-
-      if (!cancelled) {
-        setStatusMessage(helperCopy.mercadoPagoPending);
-      }
-    })().catch(() => {
-      if (!cancelled) {
-        setStatusMessage(helperCopy.mercadoPagoPending);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    paymentRecoveryStartedRef.current = true;
+    void runPaymentRecovery();
   }, [
     hasPaidAccountAccess,
-    helperCopy.mercadoPagoConfirming,
-    helperCopy.mercadoPagoLinked,
-    helperCopy.mercadoPagoPending,
     paidSignupPlan,
     paidSignupProvider,
-    refreshProfile,
+    runPaymentRecovery,
     user,
   ]);
   const isOAuthPending =
@@ -842,13 +918,17 @@ export function AccountPanel({
           hasProfileChanges={hasProfileChanges}
           helperCopy={helperCopy}
           isProfilePending={isProfilePending}
+          isRecoveryActionPending={isPaymentRecoveryPending}
           locale={locale}
           optionalSectionLabel={optionalSectionLabel}
           profileDetailsOpen={profileDetailsOpen}
           profileDetailsSectionId={profileDetailsSectionId}
           profileNameInput={profileNameInput}
+          recoveryActionLabel={paymentRecoveryActionLabel}
+          recoveryHint={paymentRecoveryHint}
           showAvatarRemove={showAvatarRemove}
           showAvatarUndo={showAvatarUndo}
+          showRecoveryAction={Boolean(showSubscriptionPendingNotice && paidSignupProvider)}
           showSubscriptionLinkedNotice={showSubscriptionLinkedNotice}
           showSubscriptionPendingNotice={showSubscriptionPendingNotice}
           showSubscriptionStatusCard={showSubscriptionStatusCard}
@@ -889,6 +969,9 @@ export function AccountPanel({
           }}
           onProfileDetailsToggle={() => {
             setProfileDetailsOpen((current) => !current);
+          }}
+          onRecoveryAction={() => {
+            void runPaymentRecovery(2);
           }}
           onProfileFieldChange={updateFormField}
           onProfileSave={() => {

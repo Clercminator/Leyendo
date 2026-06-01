@@ -100,37 +100,37 @@ function detectInitialRegion(locale: "en" | "es" | "pt"): PaymentRegion {
 
 function cardClassName(planId: PlanId) {
   const baseClassName =
-    "relative flex h-full flex-col rounded-4xl border bg-[rgba(24,25,31,0.96)] p-7 text-white shadow-[0_12px_36px_rgba(0,0,0,0.28)] transition-transform duration-200 lg:p-8";
+    "relative flex h-full flex-col rounded-4xl border bg-[rgba(255,255,255,0.88)] p-7 text-[var(--text-strong)] shadow-[0_16px_42px_rgba(22,32,51,0.12)] backdrop-blur-sm transition-transform duration-200 dark:bg-[rgba(24,25,31,0.96)] dark:text-white dark:shadow-[0_12px_36px_rgba(0,0,0,0.28)] lg:p-8";
 
   if (planId === "basic") {
-    return `${baseClassName} border-[#2f80ff] ring-1 ring-[#2f80ff]/40`;
+    return `${baseClassName} border-[var(--accent-sky)] ring-1 ring-[rgba(95,119,215,0.24)] dark:border-[#2f80ff] dark:ring-[#2f80ff]/40`;
   }
 
   if (planId === "max") {
-    return `${baseClassName} border-white/55 shadow-[0_18px_50px_rgba(0,0,0,0.34)] lg:-translate-y-2`;
+    return `${baseClassName} border-[rgba(213,138,83,0.38)] shadow-[0_22px_56px_rgba(22,32,51,0.14)] dark:border-white/55 dark:shadow-[0_18px_50px_rgba(0,0,0,0.34)] lg:-translate-y-2`;
   }
 
-  return `${baseClassName} border-white/8`;
+  return `${baseClassName} border-[rgba(22,32,51,0.12)] dark:border-white/8`;
 }
 
 function primaryButtonClass(planId: PlanId) {
   if (planId === "basic") {
-    return "flex min-h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#162541] px-5 py-4 text-sm font-bold text-[#2f80ff] transition-all hover:scale-[1.02] hover:bg-[#1b3158] active:scale-[0.98]";
+    return "flex min-h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[rgba(95,119,215,0.24)] bg-[rgba(95,119,215,0.14)] px-5 py-4 text-sm font-bold text-[var(--accent-sky)] shadow-[0_10px_24px_rgba(95,119,215,0.14)] transition-all hover:scale-[1.02] hover:bg-[rgba(95,119,215,0.2)] active:scale-[0.98] dark:border-transparent dark:bg-[#162541] dark:text-[#2f80ff] dark:shadow-none dark:hover:bg-[#1b3158]";
   }
 
   if (planId === "max") {
-    return "flex min-h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white px-5 py-4 text-sm font-bold text-black transition-all hover:scale-[1.02] hover:bg-zinc-100 active:scale-[0.98] shadow-xl shadow-black/20";
+    return "flex min-h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[var(--foreground)] px-5 py-4 text-sm font-bold text-[var(--text-on-accent)] transition-all hover:scale-[1.02] hover:bg-[rgba(22,32,51,0.92)] active:scale-[0.98] shadow-xl shadow-[rgba(22,32,51,0.18)] dark:bg-white dark:text-black dark:hover:bg-zinc-100 dark:shadow-black/20";
   }
 
-  return "flex min-h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#2c2d33] px-5 py-4 text-sm font-bold text-white transition-all hover:scale-[1.02] hover:bg-[#35363d] active:scale-[0.98]";
+  return "flex min-h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[rgba(22,32,51,0.12)] bg-[rgba(22,32,51,0.08)] px-5 py-4 text-sm font-bold text-[var(--text-strong)] transition-all hover:scale-[1.02] hover:bg-[rgba(22,32,51,0.12)] active:scale-[0.98] dark:border-transparent dark:bg-[#2c2d33] dark:text-white dark:hover:bg-[#35363d]";
 }
 
 function topBadgeClass(planId: PlanId) {
   if (planId === "basic") {
-    return "bg-[#2f80ff] text-white";
+    return "bg-[var(--accent-sky)] text-[var(--text-on-accent)] dark:bg-[#2f80ff] dark:text-white";
   }
 
-  return "bg-white text-black";
+  return "bg-[rgba(255,255,255,0.96)] text-[var(--foreground)] shadow-[0_12px_24px_rgba(22,32,51,0.12)] dark:bg-white dark:text-black dark:shadow-none";
 }
 
 interface PricingPageContentProps {
@@ -1028,24 +1028,30 @@ export function PricingPageContent({
     planLabel: authPlanLabel ?? "Focus",
     variant: "checkout",
   });
+  const uploadCapClassName =
+    "mt-5 inline-flex rounded-full border border-[rgba(213,138,83,0.18)] bg-[rgba(213,138,83,0.12)] px-4 py-2 text-sm font-semibold text-[var(--accent-amber)] shadow-[0_10px_30px_rgba(22,32,51,0.08)] dark:border-[#d49a61]/35 dark:bg-[#26170f] dark:text-[#ffd7ab] dark:shadow-[0_10px_30px_rgba(0,0,0,0.18)]";
+  const detailPanelSectionLabelClassName =
+    "text-[11px] tracking-[0.18em] text-[var(--text-muted)] uppercase";
+  const detailPanelCardClassName =
+    "rounded-[1.5rem] border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.62)] px-5 py-5 dark:border-white/10 dark:bg-black/18";
 
   return (
     <section className="w-full px-6 pt-12 pb-24">
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-14 text-center">
-          <p className="text-[0.68rem] font-bold tracking-[0.34em] text-[#d49a61] uppercase">
+          <p className="text-[0.68rem] font-bold tracking-[0.34em] text-[var(--accent-amber)] uppercase">
             {copy.comparisonEyebrow}
           </p>
-          <h1 className="mx-auto mt-4 max-w-4xl text-5xl font-bold tracking-tight text-white sm:text-6xl">
+          <h1 className="mx-auto mt-4 max-w-4xl text-5xl font-bold tracking-tight text-[var(--text-strong)] sm:text-6xl">
             {copy.heroTitle}
           </h1>
-          <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 font-light text-[#8f97ab]">
+          <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 font-light text-[var(--text-muted)]">
             {copy.heroDescription}
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-sm text-[#8f97ab]">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-sm text-[var(--text-muted)]">
             <span className="inline-flex items-center gap-2">
-              <Globe2 className="h-4 w-4 text-[#6b7280]" />
+              <Globe2 className="h-4 w-4 text-[var(--text-muted)]" />
               {paymentRegion === "latam" ? copy.latamState : copy.globalState}
             </span>
             <button
@@ -1056,26 +1062,26 @@ export function PricingPageContent({
                 );
                 setStatusMessage(undefined);
               }}
-              className="cursor-pointer text-sm font-medium text-[#d48dff] transition hover:text-[#ecb7ff] hover:underline"
+              className="cursor-pointer text-sm font-medium text-[var(--accent-sky)] transition hover:text-[#435fc2] hover:underline dark:text-[#d48dff] dark:hover:text-[#ecb7ff]"
             >
               {paymentRegion === "latam" ? copy.latamSwitch : copy.globalSwitch}
             </button>
           </div>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#6b7280]">
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[var(--text-muted)]">
             {copy.paymentNote}
           </p>
           {successMessage ? (
-            <div className="mx-auto mt-5 max-w-2xl rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 text-sm leading-7 text-emerald-100">
+            <div className="mx-auto mt-5 max-w-2xl rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm leading-7 text-emerald-900 dark:border-emerald-500/35 dark:text-emerald-100">
               <p>{successMessage}</p>
               {readySignupPlan ? (
                 <div className="mt-4">
-                  <p className="text-sm text-emerald-50/90">
+                  <p className="text-sm text-emerald-800 dark:text-emerald-50/90">
                     {copy.continueToAccountHint}
                   </p>
-                  <ol className="mt-4 space-y-3 text-sm text-emerald-50/90">
+                  <ol className="mt-4 space-y-3 text-sm text-emerald-800 dark:text-emerald-50/90">
                     {successSteps.map((step, index) => (
                       <li key={step} className="flex gap-3">
-                        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-emerald-200/30 bg-emerald-50/10 text-xs font-semibold text-emerald-50">
+                        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-600/10 text-xs font-semibold text-emerald-900 dark:border-emerald-200/30 dark:bg-emerald-50/10 dark:text-emerald-50">
                           {index + 1}
                         </span>
                         <span>{step}</span>
@@ -1087,7 +1093,7 @@ export function PricingPageContent({
                       readySignupPlan,
                       paymentReturnProvider,
                     )}
-                    className="mt-3 inline-flex min-h-11 items-center rounded-full border border-emerald-200/30 bg-emerald-50/10 px-5 py-2.5 font-semibold text-emerald-50 transition hover:bg-emerald-50/16"
+                    className="mt-3 inline-flex min-h-11 items-center rounded-full border border-emerald-600/20 bg-emerald-600/10 px-5 py-2.5 font-semibold text-emerald-900 transition hover:bg-emerald-600/16 dark:border-emerald-200/30 dark:bg-emerald-50/10 dark:text-emerald-50 dark:hover:bg-emerald-50/16"
                   >
                     {copy.continueToAccount}
                   </Link>
@@ -1096,7 +1102,7 @@ export function PricingPageContent({
             </div>
           ) : null}
           {statusMessage ? (
-            <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-[#553b20] bg-[#22160a] px-4 py-3 text-sm leading-7 text-[#f7d8a7]">
+            <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-[rgba(213,138,83,0.28)] bg-[rgba(213,138,83,0.12)] px-4 py-3 text-sm leading-7 text-[var(--foreground)] dark:border-[#553b20] dark:bg-[#22160a] dark:text-[#f7d8a7]">
               {statusMessage}
             </p>
           ) : null}
@@ -1111,7 +1117,7 @@ export function PricingPageContent({
               key={plan.id}
               className={`${cardClassName(plan.id)} ${
                 isSelected
-                  ? "shadow-[0_24px_64px_rgba(0,0,0,0.38)] ring-2 ring-[#d49a61]/50"
+                  ? "shadow-[0_26px_60px_rgba(22,32,51,0.16)] ring-2 ring-[rgba(213,138,83,0.28)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.38)] dark:ring-[#d49a61]/50"
                   : "hover:-translate-y-1"
               }`}
             >
@@ -1124,26 +1130,26 @@ export function PricingPageContent({
               ) : null}
 
               <div className="mb-8">
-                <h2 className="text-[2rem] font-bold tracking-tight text-white">
+                <h2 className="text-[2rem] font-bold tracking-tight text-[var(--text-strong)]">
                   {plan.label}
                 </h2>
                 <div className="mt-2 flex flex-wrap items-baseline gap-1.5">
-                  <span className="text-5xl font-bold tracking-tight text-white">
+                  <span className="text-5xl font-bold tracking-tight text-[var(--text-strong)]">
                     {plan.price === 0 ? "$0" : `$${plan.price.toFixed(2)}`}
                   </span>
                   {plan.price > 0 ? (
-                    <span className="text-sm text-[#7d8598]">
+                    <span className="text-sm text-[var(--text-muted)]">
                       ({copy.priceSuffix})
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-5 inline-flex rounded-full border border-[#d49a61]/35 bg-[#26170f] px-4 py-2 text-sm font-semibold text-[#ffd7ab] shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+                <div className={uploadCapClassName}>
                   {plan.uploadCapLabel}
                 </div>
-                <p className="mt-5 text-sm leading-8 text-[#94a3b8]">
+                <p className="mt-5 text-sm leading-8 text-[var(--text-muted)]">
                   {plan.description}
                 </p>
-                <p className="mt-4 text-sm leading-7 text-white/88">
+                <p className="mt-4 text-sm leading-7 text-[rgba(22,32,51,0.82)] dark:text-white/88">
                   {plan.bestFor}
                 </p>
               </div>
@@ -1151,14 +1157,13 @@ export function PricingPageContent({
               <div className="mt-auto space-y-3">
                 <button
                   type="button"
-                  aria-pressed={isSelected}
                   onClick={() => {
                     setSelectedPlanId(plan.id);
                   }}
                   className={`inline-flex min-h-11 w-full items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium transition ${
                     isSelected
-                      ? "border-[#d49a61]/55 bg-[#2a1a12] text-[#ffd7ab]"
-                      : "border-white/10 bg-white/4 text-[#d0d4dd] hover:border-white/18 hover:bg-white/8"
+                      ? "border-[rgba(213,138,83,0.32)] bg-[rgba(213,138,83,0.14)] text-[var(--accent-amber)] dark:border-[#d49a61]/55 dark:bg-[#2a1a12] dark:text-[#ffd7ab]"
+                      : "border-[rgba(22,32,51,0.12)] bg-[rgba(255,255,255,0.66)] text-[var(--text-muted)] hover:border-[rgba(22,32,51,0.18)] hover:bg-[rgba(255,255,255,0.82)] dark:border-white/10 dark:bg-white/4 dark:text-[#d0d4dd] dark:hover:border-white/18 dark:hover:bg-white/8"
                   }`}
                 >
                   {isSelected
@@ -1192,10 +1197,10 @@ export function PricingPageContent({
           })}
         </div>
 
-        <div className="mt-8 rounded-[2rem] border border-white/10 bg-[rgba(16,18,25,0.92)] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)] lg:p-8">
-          <div className="flex flex-col gap-5 border-b border-white/10 pb-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="mt-8 rounded-[2rem] border border-[rgba(22,32,51,0.12)] bg-[rgba(255,251,245,0.84)] p-6 shadow-[0_24px_70px_rgba(22,32,51,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-[rgba(16,18,25,0.92)] dark:shadow-[0_24px_70px_rgba(0,0,0,0.28)] lg:p-8">
+          <div className="flex flex-col gap-5 border-b border-[rgba(22,32,51,0.08)] pb-6 dark:border-white/10 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-[0.68rem] font-bold tracking-[0.28em] text-[#d49a61] uppercase">
+              <p className="text-[0.68rem] font-bold tracking-[0.28em] text-[var(--accent-amber)] uppercase">
                 {pricingPanelCopy.fullBreakdown}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -1204,49 +1209,49 @@ export function PricingPageContent({
                 >
                   {selectedPlan.label}
                 </span>
-                <span className="text-4xl font-bold tracking-tight text-white">
+                <span className="text-4xl font-bold tracking-tight text-[var(--text-strong)]">
                   {selectedPlan.price === 0
                     ? "$0"
                     : `$${selectedPlan.price.toFixed(2)}`}
                 </span>
                 {selectedPlan.price > 0 ? (
-                  <span className="text-sm text-[#7d8598]">
+                  <span className="text-sm text-[var(--text-muted)]">
                     ({copy.priceSuffix})
                   </span>
                 ) : null}
-                <span className="inline-flex rounded-full border border-[#d49a61]/35 bg-[#26170f] px-4 py-2 text-sm font-semibold text-[#ffd7ab] shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+                <span className={uploadCapClassName}>
                   {selectedPlan.uploadCapLabel}
                 </span>
               </div>
-              <p className="mt-4 max-w-3xl text-base leading-8 text-[#c6d1e3]">
+              <p className="mt-4 max-w-3xl text-base leading-8 text-[rgba(22,32,51,0.76)] dark:text-[#c6d1e3]">
                 {selectedPlan.description}
               </p>
-              <div className="mt-4 rounded-[1.35rem] border border-white/10 bg-black/16 px-4 py-4">
-                <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+              <div className="mt-4 rounded-[1.35rem] border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.62)] px-4 py-4 dark:border-white/10 dark:bg-black/16">
+                <p className={detailPanelSectionLabelClassName}>
                   {pricingPanelCopy.bestFit}
                 </p>
-                <p className="mt-2 text-sm leading-7 text-white/92">
+                <p className="mt-2 text-sm leading-7 text-[rgba(22,32,51,0.88)] dark:text-white/92">
                   {selectedPlan.bestFor}
                 </p>
               </div>
             </div>
-            <p className="max-w-sm text-sm leading-7 text-[#8f97ab]">
+            <p className="max-w-sm text-sm leading-7 text-[var(--text-muted)]">
               {pricingPanelCopy.compareHint}
             </p>
           </div>
 
           <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-            <div className="rounded-[1.5rem] border border-white/10 bg-black/18 px-5 py-5">
-              <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+            <div className={detailPanelCardClassName}>
+              <p className={detailPanelSectionLabelClassName}>
                 {pricingPanelCopy.whatChanges}
               </p>
-              <p className="mt-2 text-sm leading-7 text-white/92">
+              <p className="mt-2 text-sm leading-7 text-[rgba(22,32,51,0.88)] dark:text-white/92">
                 {selectedPlan.outcomeSummary}
               </p>
-              <ul className="mt-4 space-y-3 text-sm leading-7 text-[#c6d1e3]">
+              <ul className="mt-4 space-y-3 text-sm leading-7 text-[rgba(22,32,51,0.76)] dark:text-[#c6d1e3]">
                 {selectedPlan.outcomes.map((outcome) => (
                   <li key={outcome} className="flex gap-3">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f4b722]" />
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent-amber)] dark:bg-[#f4b722]" />
                     <span>{outcome}</span>
                   </li>
                 ))}
@@ -1254,11 +1259,11 @@ export function PricingPageContent({
             </div>
 
             <div className="space-y-5">
-              <div className="rounded-[1.5rem] border border-white/10 bg-black/18 px-5 py-5">
-                <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+              <div className={detailPanelCardClassName}>
+                <p className={detailPanelSectionLabelClassName}>
                   {pricingPanelCopy.included}
                 </p>
-                <ul className="mt-4 space-y-4 text-sm leading-8 text-[#d0d4dd]">
+                <ul className="mt-4 space-y-4 text-sm leading-8 text-[rgba(22,32,51,0.76)] dark:text-[#d0d4dd]">
                   {selectedPlan.features.map((feature) => (
                     <li key={feature} className="flex gap-3">
                       <Check className="mt-1 h-4 w-4 shrink-0 text-[#22c55e]" />
@@ -1269,26 +1274,26 @@ export function PricingPageContent({
               </div>
 
               {selectedPlan.id !== "basic" ? (
-                <div className="rounded-[1.5rem] border border-white/10 bg-black/18 px-5 py-5">
+                <div className={detailPanelCardClassName}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+                      <p className={detailPanelSectionLabelClassName}>
                         {pricingPanelCopy.paymentRoute}
                       </p>
-                      <p className="mt-2 text-sm leading-7 text-white/92">
+                      <p className="mt-2 text-sm leading-7 text-[rgba(22,32,51,0.88)] dark:text-white/92">
                         {primaryProviderDetail}
                       </p>
                     </div>
-                    <span className="inline-flex rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-semibold text-white/82">
+                    <span className="inline-flex rounded-full border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.74)] px-3 py-1 text-xs font-semibold text-[var(--text-strong)] dark:border-white/10 dark:bg-white/6 dark:text-white/82">
                       {primaryProviderLabel}
                     </span>
                   </div>
 
-                  <div className="mt-5 rounded-[1.2rem] border border-white/10 bg-white/4 px-4 py-4">
-                    <p className="text-[11px] tracking-[0.18em] text-[#94a3b8] uppercase">
+                  <div className="mt-5 rounded-[1.2rem] border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.72)] px-4 py-4 dark:border-white/10 dark:bg-white/4">
+                    <p className={detailPanelSectionLabelClassName}>
                       {pricingPanelCopy.manualFallback}
                     </p>
-                    <p className="mt-2 text-sm leading-7 text-[#c6d1e3]">
+                    <p className="mt-2 text-sm leading-7 text-[rgba(22,32,51,0.76)] dark:text-[#c6d1e3]">
                       {pricingPanelCopy.manualFallbackDetail}
                     </p>
                     <button
@@ -1297,7 +1302,7 @@ export function PricingPageContent({
                         setStatusMessage(undefined);
                         setBinancePlanId(selectedPlan.id);
                       }}
-                      className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#f4b722] transition hover:text-[#ffd176]"
+                      className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--accent-amber)] transition hover:text-[#b97443] dark:text-[#f4b722] dark:hover:text-[#ffd176]"
                     >
                       <Coins className="h-4 w-4" />
                       {copy.binanceCta}
@@ -1311,7 +1316,7 @@ export function PricingPageContent({
 
         {!user ? (
           <div className="mt-8 flex justify-center">
-            <p className="rounded-full border border-[#30415e] bg-[#111827]/86 px-5 py-3 text-sm text-[#c6d1e3] shadow-[0_14px_34px_rgba(0,0,0,0.18)]">
+            <p className="rounded-full border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.88)] px-5 py-3 text-sm text-[rgba(22,32,51,0.76)] shadow-[0_14px_34px_rgba(22,32,51,0.08)] dark:border-[#30415e] dark:bg-[#111827]/86 dark:text-[#c6d1e3] dark:shadow-[0_14px_34px_rgba(0,0,0,0.18)]">
               {authDialogCopy.accountRequired}
             </p>
           </div>

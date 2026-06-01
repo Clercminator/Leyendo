@@ -183,6 +183,22 @@ describe("PricingPageContent", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("uses theme-aware classes for the hero title and pricing cards", () => {
+    render(<PricingPageContent />);
+
+    const heroTitle = screen.getByRole("heading", {
+      name: /clear plans for a real-document reader/i,
+    });
+    const basicHeading = screen.getByRole("heading", { name: /basic reader/i });
+    const basicCard = basicHeading.closest("article");
+
+    expect(heroTitle.className).toContain("text-[var(--text-strong)]");
+    expect(heroTitle.className).not.toContain("text-white");
+    expect(basicCard).not.toBeNull();
+    expect(basicCard?.className).toContain("text-[var(--text-strong)]");
+    expect(basicCard?.className).toContain("dark:text-white");
+  });
+
   it("opens a clean auth modal for guests before starting MercadoPago checkout", async () => {
     const user = userEvent.setup();
 
