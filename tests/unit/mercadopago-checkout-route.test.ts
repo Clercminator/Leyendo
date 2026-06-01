@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { getAuthenticatedCheckoutContext } = vi.hoisted(() => ({
+  getAuthenticatedCheckoutContext: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/server-auth", () => ({
+  getAuthenticatedCheckoutContext,
+}));
+
 import { POST } from "@/app/api/payments/mercadopago/route";
 
 const originalFocusPlanId = process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID;
@@ -18,6 +26,14 @@ vi.stubGlobal("fetch", fetchMock);
 describe("MercadoPago checkout route", () => {
   beforeEach(() => {
     fetchMock.mockReset();
+    getAuthenticatedCheckoutContext.mockReset();
+    getAuthenticatedCheckoutContext.mockResolvedValue({
+      profile: undefined,
+      user: {
+        email: "reader@example.com",
+        id: "user-123",
+      },
+    });
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID = "";
     process.env.MERCADOPAGO_FOCUS_ID_TESTING = "";
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID = "";
@@ -54,7 +70,10 @@ describe("MercadoPago checkout route", () => {
           userEmail: "reader@example.com",
           userId: "user-123",
         }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -90,7 +109,10 @@ describe("MercadoPago checkout route", () => {
           plan: "focus",
           userEmail: "reader@example.com",
         }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -110,7 +132,10 @@ describe("MercadoPago checkout route", () => {
     const response = await POST(
       new Request("http://localhost/api/payments/mercadopago", {
         body: JSON.stringify({ plan: "focus", userId: "user-123" }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -135,7 +160,10 @@ describe("MercadoPago checkout route", () => {
     const response = await POST(
       new Request("http://localhost/api/payments/mercadopago", {
         body: JSON.stringify({ plan: "focus", userId: "user-123" }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -157,7 +185,10 @@ describe("MercadoPago checkout route", () => {
     const response = await POST(
       new Request("http://localhost/api/payments/mercadopago", {
         body: JSON.stringify({ plan: "focus", userId: "user-123" }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -185,7 +216,10 @@ describe("MercadoPago checkout route", () => {
           userEmail: "reader@example.com",
           userId: "user-123",
         }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -204,6 +238,104 @@ describe("MercadoPago checkout route", () => {
     );
     expect(checkoutUrl.searchParams.get("back_url")).toBe(
       "https://leyendo.vercel.app/account?plan=max&payment=success&provider=mercadopago",
+    );
+  });
+
+  it("rejects rebuying Focus when the signed-in account already has Focus", async () => {
+    process.env.VERCEL_ENV = "preview";
+    process.env.MERCADOPAGO_FOCUS_ID_TESTING =
+      "5870237243d3400bacd2d236caae7a20";
+    getAuthenticatedCheckoutContext.mockResolvedValue({
+      profile: {
+        planTier: "focus",
+        subscriptionStatus: "active",
+      },
+      user: {
+        email: "reader@example.com",
+        id: "user-123",
+      },
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/payments/mercadopago", {
+        body: JSON.stringify({ plan: "focus", userId: "user-123" }),
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Your account is already on Focus. Upgrade to Max if you need more access.",
+    });
+  });
+
+  it("rejects Focus checkout when the signed-in account already has Max", async () => {
+    process.env.VERCEL_ENV = "preview";
+    process.env.MERCADOPAGO_FOCUS_ID_TESTING =
+      "5870237243d3400bacd2d236caae7a20";
+    getAuthenticatedCheckoutContext.mockResolvedValue({
+      profile: {
+        planTier: "max",
+        subscriptionStatus: "active",
+      },
+      user: {
+        email: "reader@example.com",
+        id: "user-123",
+      },
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/payments/mercadopago", {
+        body: JSON.stringify({ plan: "focus", userId: "user-123" }),
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Your Max plan already includes Focus, so this account cannot buy a lower-tier plan.",
+    });
+  });
+
+  it("still allows a Focus account to upgrade to Max", async () => {
+    process.env.VERCEL_ENV = "preview";
+    process.env.MERCADOPAGO_MAX_ID_TESTING = "9f0352ccb88840e38f5241214e548df4";
+    getAuthenticatedCheckoutContext.mockResolvedValue({
+      profile: {
+        planTier: "focus",
+        subscriptionStatus: "active",
+      },
+      user: {
+        email: "reader@example.com",
+        id: "user-123",
+      },
+    });
+
+    const response = await POST(
+      new Request("https://leyendo.vercel.app/api/payments/mercadopago", {
+        body: JSON.stringify({ plan: "max", userId: "user-123" }),
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { checkoutUrl: string };
+    expect(new URL(payload.checkoutUrl).searchParams.get("preapproval_plan_id")).toBe(
+      "9f0352ccb88840e38f5241214e548df4",
     );
   });
 });

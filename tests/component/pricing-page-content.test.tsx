@@ -71,6 +71,7 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
+      profile: undefined,
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -227,6 +228,7 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
+      profile: undefined,
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -277,6 +279,7 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
+      profile: undefined,
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -334,6 +337,7 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
+      profile: undefined,
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -405,6 +409,7 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
+      profile: undefined,
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -445,6 +450,94 @@ describe("PricingPageContent", () => {
     ).toBeInTheDocument();
 
     openSpy.mockRestore();
+  });
+
+  it("lets Focus users upgrade to Max but blocks Start free", () => {
+    useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      profile: {
+        planTier: "focus",
+        subscriptionStatus: "active",
+      },
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<PricingPageContent />);
+
+    const basicCard = screen
+      .getByRole("heading", { name: /basic reader/i })
+      .closest("article");
+    const focusCard = screen
+      .getByRole("heading", { name: /^focus$/i })
+      .closest("article");
+
+    expect(basicCard).not.toBeNull();
+    expect(focusCard).not.toBeNull();
+    expect(
+      within(basicCard as HTMLElement).getByRole("button", {
+        name: /included with focus/i,
+      }),
+    ).toBeDisabled();
+    expect(
+      within(focusCard as HTMLElement).getByRole("button", {
+        name: /current plan/i,
+      }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /get max/i })).toBeEnabled();
+  });
+
+  it("blocks Max users from purchasing lower tiers", () => {
+    useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      profile: {
+        planTier: "max",
+        subscriptionStatus: "active",
+      },
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<PricingPageContent />);
+
+    const basicCard = screen
+      .getByRole("heading", { name: /basic reader/i })
+      .closest("article");
+    const focusCard = screen
+      .getByRole("heading", { name: /^focus$/i })
+      .closest("article");
+
+    expect(basicCard).not.toBeNull();
+    expect(focusCard).not.toBeNull();
+    expect(
+      within(basicCard as HTMLElement).getByRole("button", {
+        name: /included with max/i,
+      }),
+    ).toBeDisabled();
+    expect(
+      within(focusCard as HTMLElement).getByRole("button", {
+        name: /included with max/i,
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /current plan/i }),
+    ).toBeDisabled();
   });
 
   it("switches payment region and opens the Binance dialog", async () => {
@@ -500,6 +593,7 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
+      profile: undefined,
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -535,6 +629,7 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
+      profile: undefined,
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),

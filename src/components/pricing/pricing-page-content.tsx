@@ -13,7 +13,11 @@ import {
 import { PricingBinanceDialog } from "@/components/pricing/pricing-binance-dialog";
 import { useSupabaseAuth } from "@/components/auth/supabase-provider";
 import { useLocale } from "@/components/layout/locale-provider";
-import { focusFileUploadLimit, freeFileUploadLimit } from "@/lib/plans";
+import {
+  focusFileUploadLimit,
+  freeFileUploadLimit,
+  getEffectivePlanTier,
+} from "@/lib/plans";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
 
 type PaymentRegion = "global" | "latam";
@@ -21,6 +25,21 @@ type PaymentProvider = "binance" | "lemonsqueezy" | "mercadopago";
 type PlanId = "basic" | "focus" | "max";
 type PaidPlanId = Exclude<PlanId, "basic">;
 type HostedPaymentProvider = Exclude<PaymentProvider, "binance">;
+type PlanActionState =
+  | {
+      href: string;
+      kind: "link";
+      label: string;
+    }
+  | {
+      kind: "checkout";
+      label: string;
+      planId: PaidPlanId;
+    }
+  | {
+      kind: "disabled";
+      label: string;
+    };
 
 const paymentRegionStorageKey = "leyendo_payment_region";
 const paidSignupPlanStorageKey = "leyendo_paid_signup_plan";
@@ -177,6 +196,8 @@ export function PricingPageContent({
   const {
     isConfigured: isAuthConfigured,
     isLoading: isAuthLoading,
+    profile,
+    session,
     signIn,
     signInWithGitHub,
     signInWithGoogle,
@@ -211,6 +232,7 @@ export function PricingPageContent({
   const [selectedPlanId, setSelectedPlanId] = useState<PlanId>(() =>
     isPaidPlanId(initialPlanId) ? initialPlanId : "max",
   );
+  const activePlanTier = getEffectivePlanTier(profile);
 
   useEffect(() => {
     setPaymentRegion(
@@ -772,6 +794,30 @@ export function PricingPageContent({
           ];
   }, [locale, user]);
 
+  const planActionCopy = useMemo(() => {
+    if (locale === "es") {
+      return {
+        currentPlan: "Plan actual",
+        includedWithFocus: "Incluido con Focus",
+        includedWithMax: "Incluido con Max",
+      };
+    }
+
+    if (locale === "pt") {
+      return {
+        currentPlan: "Plano atual",
+        includedWithFocus: "Incluido com Focus",
+        includedWithMax: "Incluido com Max",
+      };
+    }
+
+    return {
+      currentPlan: "Current plan",
+      includedWithFocus: "Included with Focus",
+      includedWithMax: "Included with Max",
+    };
+  }, [locale]);
+
     const selectedPlan =
       plans.find((plan) => plan.id === selectedPlanId) ??
       plans.find((plan) => plan.id === "max") ??
@@ -825,6 +871,61 @@ export function PricingPageContent({
       paymentRegion === "latam" ? "mercadopago" : "lemonsqueezy";
     const primaryProviderLabel =
       primaryProvider === "mercadopago" ? "MercadoPago" : "LemonSqueezy";
+      const disabledButtonClassName =
+        "flex min-h-13 w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.58)] px-5 py-4 text-sm font-bold text-[var(--text-muted)] opacity-80 dark:border-white/10 dark:bg-white/6 dark:text-[#c6d1e3]";
+
+      function getPlanActionState(planId: PlanId): PlanActionState {
+        if (!user || activePlanTier === "basic") {
+          return planId === "basic"
+            ? {
+                kind: "link",
+                href: "/reader",
+                label: copy.basicCta,
+              }
+            : {
+                kind: "checkout",
+                label: planId === "focus" ? copy.focusCta : copy.maxCta,
+                planId,
+              };
+        }
+
+        if (planId === "basic") {
+          return {
+            kind: "disabled",
+            label:
+              activePlanTier === "max"
+                ? planActionCopy.includedWithMax
+                : planActionCopy.includedWithFocus,
+          };
+        }
+
+        if (planId === "focus") {
+          if (activePlanTier === "focus") {
+            return {
+              kind: "disabled",
+              label: planActionCopy.currentPlan,
+            };
+          }
+
+          return {
+            kind: "disabled",
+            label: planActionCopy.includedWithMax,
+          };
+        }
+
+        if (activePlanTier === "max") {
+          return {
+            kind: "disabled",
+            label: planActionCopy.currentPlan,
+          };
+        }
+
+        return {
+          kind: "checkout",
+          label: copy.maxCta,
+          planId: "max",
+        };
+      }
     const primaryProviderDetail =
       paymentRegion === "latam"
         ? locale === "es"
@@ -850,6 +951,9 @@ export function PricingPageContent({
         const response = await fetch("/api/payments/lemonsqueezy", {
           method: "POST",
           headers: {
+            ...(session?.access_token
+              ? { Authorization: `Bearer ${session.access_token}` }
+              : {}),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -888,6 +992,9 @@ export function PricingPageContent({
         const response = await fetch("/api/payments/mercadopago", {
           method: "POST",
           headers: {
+            ...(session?.access_token
+              ? { Authorization: `Bearer ${session.access_token}` }
+              : {}),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -1111,6 +1218,7 @@ export function PricingPageContent({
         <div className="grid gap-6 lg:grid-cols-3 xl:gap-8">
           {plans.map((plan) => {
             const isSelected = selectedPlan.id === plan.id;
+            const actionState = getPlanActionState(plan.id);
 
             return (
             <article
@@ -1170,26 +1278,32 @@ export function PricingPageContent({
                     ? pricingPanelCopy.detailsActive
                     : pricingPanelCopy.viewDetails}
                 </button>
-                {plan.id === "basic" ? (
+                {actionState.kind === "link" ? (
                   <Link
-                    href={plan.href}
+                    href={actionState.href}
                     className={primaryButtonClass(plan.id)}
                   >
-                    {plan.cta}
+                    {actionState.label}
                   </Link>
+                ) : actionState.kind === "checkout" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleProviderClick(actionState.planId, primaryProvider);
+                    }}
+                    className={primaryButtonClass(plan.id)}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {actionState.label}
+                  </button>
                 ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleProviderClick(plan.id, primaryProvider);
-                      }}
-                      className={primaryButtonClass(plan.id)}
-                    >
-                      <CreditCard className="h-4 w-4" />
-                      {plan.cta}
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    disabled
+                    className={disabledButtonClassName}
+                  >
+                    {actionState.label}
+                  </button>
                 )}
               </div>
             </article>

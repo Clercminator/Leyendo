@@ -6,6 +6,8 @@ import {
   normalizePaidPlanTier,
   pickPaymentEnvValue,
 } from "@/lib/payment-config";
+import { getPaidPlanCheckoutRestriction } from "@/lib/plans";
+import { getAuthenticatedCheckoutContext } from "@/lib/supabase/server-auth";
 
 const LEMONSQUEEZY_API = "https://api.lemonsqueezy.com/v1";
 
@@ -54,6 +56,20 @@ function resolveLemonSqueezyCheckoutError(
   }
 
   return providerMessage;
+}
+
+function getBearerAccessToken(request: NextRequest) {
+  const authorizationHeader = request.headers.get("authorization")?.trim();
+  if (!authorizationHeader) {
+    return undefined;
+  }
+
+  const [scheme, token] = authorizationHeader.split(/\s+/, 2);
+  if (!/^bearer$/i.test(scheme ?? "") || !token?.trim()) {
+    return undefined;
+  }
+
+  return token.trim();
 }
 
 export async function POST(request: NextRequest) {
@@ -140,6 +156,64 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const accessToken = getBearerAccessToken(request);
+  if (!accessToken) {
+    return NextResponse.json(
+      {
+        error:
+          "LemonSqueezy checkout requires the current Leyendo session. Sign in again and retry.",
+      },
+      { status: 401 },
+    );
+  }
+
+  let checkoutContext;
+
+  try {
+    checkoutContext = await getAuthenticatedCheckoutContext(accessToken);
+  } catch {
+    return NextResponse.json(
+      {
+        error: "LemonSqueezy could not validate the current Leyendo session.",
+      },
+      { status: 500 },
+    );
+  }
+
+  if (!checkoutContext) {
+    return NextResponse.json(
+      {
+        error:
+          "LemonSqueezy checkout requires the current Leyendo session. Sign in again and retry.",
+      },
+      { status: 401 },
+    );
+  }
+
+  if (checkoutContext.user.id !== userId) {
+    return NextResponse.json(
+      {
+        error:
+          "This checkout request does not match the signed-in Leyendo account.",
+      },
+      { status: 409 },
+    );
+  }
+
+  const checkoutRestriction = getPaidPlanCheckoutRestriction(
+    checkoutContext.profile,
+    planTier,
+  );
+
+  if (checkoutRestriction) {
+    return NextResponse.json(
+      {
+        error: checkoutRestriction,
+      },
+      { status: 409 },
+    );
+  }
+
   const payload = {
     data: {
       type: "checkouts",
@@ -149,8 +223,10 @@ export async function POST(request: NextRequest) {
           redirect_url: redirectUrl,
         },
         checkout_data: {
-          ...(userEmail ? { email: userEmail } : {}),
-          custom: { user_id: userId },
+          ...(checkoutContext.user.email || userEmail
+            ? { email: checkoutContext.user.email ?? userEmail }
+            : {}),
+          custom: { user_id: checkoutContext.user.id },
         },
       },
       relationships: {

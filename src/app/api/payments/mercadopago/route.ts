@@ -7,6 +7,8 @@ import {
   pickPaymentEnvValue,
   withMercadoPagoCheckoutParams,
 } from "@/lib/payment-config";
+import { getPaidPlanCheckoutRestriction } from "@/lib/plans";
+import { getAuthenticatedCheckoutContext } from "@/lib/supabase/server-auth";
 
 const MERCADOPAGO_PLAN_ID_PATTERN = /^[a-f0-9]{32}$/i;
 
@@ -107,6 +109,20 @@ function getMercadoPagoEnvAliases(planTier: "focus" | "max") {
   };
 }
 
+function getBearerAccessToken(request: NextRequest) {
+  const authorizationHeader = request.headers.get("authorization")?.trim();
+  if (!authorizationHeader) {
+    return undefined;
+  }
+
+  const [scheme, token] = authorizationHeader.split(/\s+/, 2);
+  if (!/^bearer$/i.test(scheme ?? "") || !token?.trim()) {
+    return undefined;
+  }
+
+  return token.trim();
+}
+
 export async function POST(request: NextRequest) {
   let body: CheckoutRequestBody;
 
@@ -141,6 +157,64 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const accessToken = getBearerAccessToken(request);
+  if (!accessToken) {
+    return NextResponse.json(
+      {
+        error:
+          "MercadoPago checkout requires the current Leyendo session. Sign in again and retry.",
+      },
+      { status: 401 },
+    );
+  }
+
+  let checkoutContext;
+
+  try {
+    checkoutContext = await getAuthenticatedCheckoutContext(accessToken);
+  } catch {
+    return NextResponse.json(
+      {
+        error: "MercadoPago could not validate the current Leyendo session.",
+      },
+      { status: 500 },
+    );
+  }
+
+  if (!checkoutContext) {
+    return NextResponse.json(
+      {
+        error:
+          "MercadoPago checkout requires the current Leyendo session. Sign in again and retry.",
+      },
+      { status: 401 },
+    );
+  }
+
+  if (checkoutContext.user.id !== userId) {
+    return NextResponse.json(
+      {
+        error:
+          "This checkout request does not match the signed-in Leyendo account.",
+      },
+      { status: 409 },
+    );
+  }
+
+  const checkoutRestriction = getPaidPlanCheckoutRestriction(
+    checkoutContext.profile,
+    planTier,
+  );
+
+  if (checkoutRestriction) {
+    return NextResponse.json(
+      {
+        error: checkoutRestriction,
+      },
+      { status: 409 },
+    );
+  }
+
   const requestOrigin = new URL(request.url).origin;
   const hostedCheckoutOptions = {
     backUrl: buildAccountReturnUrl({
@@ -149,8 +223,8 @@ export async function POST(request: NextRequest) {
       paymentStatus: "success",
       provider: "mercadopago",
     }),
-    externalReference: userId,
-    payerEmail: userEmail,
+    externalReference: checkoutContext.user.id,
+    payerEmail: checkoutContext.user.email ?? userEmail,
     reason: `Leyendo ${planTier === "max" ? "Max" : "Focus"}`,
   };
 

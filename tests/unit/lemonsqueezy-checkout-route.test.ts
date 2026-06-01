@@ -1,6 +1,14 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
+const { getAuthenticatedCheckoutContext } = vi.hoisted(() => ({
+  getAuthenticatedCheckoutContext: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/server-auth", () => ({
+  getAuthenticatedCheckoutContext,
+}));
+
 import { POST } from "@/app/api/payments/lemonsqueezy/route";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -21,6 +29,14 @@ vi.stubGlobal("fetch", fetchMock);
 describe("LemonSqueezy checkout route", () => {
   beforeEach(() => {
     fetchMock.mockReset();
+    getAuthenticatedCheckoutContext.mockReset();
+    getAuthenticatedCheckoutContext.mockResolvedValue({
+      profile: undefined,
+      user: {
+        email: "reader@example.com",
+        id: "user-123",
+      },
+    });
     process.env.LEMONSQUEEZY_API_KEY = "";
     process.env.LEMONSQUEEZY_API_KEY_TESTING = "";
     process.env.LEMONSQUEEZY_STORE_ID = "";
@@ -69,7 +85,10 @@ describe("LemonSqueezy checkout route", () => {
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
         body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -139,7 +158,10 @@ describe("LemonSqueezy checkout route", () => {
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
         body: JSON.stringify({ locale: "en", plan: "max", userId: "user-123" }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -190,7 +212,10 @@ describe("LemonSqueezy checkout route", () => {
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
         body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -237,7 +262,10 @@ describe("LemonSqueezy checkout route", () => {
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
         body: JSON.stringify({ locale: "en", plan: "focus" }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -257,7 +285,10 @@ describe("LemonSqueezy checkout route", () => {
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
         body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -294,7 +325,10 @@ describe("LemonSqueezy checkout route", () => {
     const response = await POST(
       new NextRequest("http://localhost/api/payments/lemonsqueezy", {
         body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
         method: "POST",
       }) as never,
     );
@@ -303,6 +337,121 @@ describe("LemonSqueezy checkout route", () => {
     await expect(response.json()).resolves.toEqual({
       error:
         "LemonSqueezy could not create the checkout because the configured store id and variant id do not belong to the same account. Check LEMONSQUEEZY_STORE_ID or LEMONSQUEEZY_STORE_ID_TESTING and the selected LEMONSQUEEZY_VARIANT_* value in Vercel.",
+    });
+  });
+
+  it("rejects rebuying Focus when the signed-in account already has Focus", async () => {
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING = "1497164";
+    getAuthenticatedCheckoutContext.mockResolvedValue({
+      profile: {
+        planTier: "focus",
+        subscriptionStatus: "active",
+      },
+      user: {
+        email: "reader@example.com",
+        id: "user-123",
+      },
+    });
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/payments/lemonsqueezy", {
+        body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Your account is already on Focus. Upgrade to Max if you need more access.",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects Focus checkout when the signed-in account already has Max", async () => {
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
+    process.env.LEMONSQUEEZY_VARIANT_FOCUS_TESTING = "1497164";
+    getAuthenticatedCheckoutContext.mockResolvedValue({
+      profile: {
+        planTier: "max",
+        subscriptionStatus: "active",
+      },
+      user: {
+        email: "reader@example.com",
+        id: "user-123",
+      },
+    });
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/payments/lemonsqueezy", {
+        body: JSON.stringify({ locale: "en", plan: "focus", userId: "user-123" }),
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Your Max plan already includes Focus, so this account cannot buy a lower-tier plan.",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("still allows a Focus account to upgrade to Max", async () => {
+    process.env.LEMONSQUEEZY_API_KEY_TESTING = "ls_test_preview_key";
+    process.env.LEMONSQUEEZY_STORE_ID_TESTING = "98765";
+    process.env.LEMONSQUEEZY_VARIANT_MAX_TESTING = "2497164";
+    getAuthenticatedCheckoutContext.mockResolvedValue({
+      profile: {
+        planTier: "focus",
+        subscriptionStatus: "active",
+      },
+      user: {
+        email: "reader@example.com",
+        id: "user-123",
+      },
+    });
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            attributes: {
+              url: "https://checkout.lemonsqueezy.com/buy/upgrade-max",
+            },
+          },
+        }),
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/payments/lemonsqueezy", {
+        body: JSON.stringify({ locale: "en", plan: "max", userId: "user-123" }),
+        headers: {
+          Authorization: "Bearer session-token",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      }) as never,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      checkoutUrl: "https://checkout.lemonsqueezy.com/buy/upgrade-max",
     });
   });
 });

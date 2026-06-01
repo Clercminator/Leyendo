@@ -129,6 +129,25 @@ export function getEffectivePlanTier(
     : "basic";
 }
 
+export function getPaidPlanCheckoutRestriction(
+  input: PlanAccessInput | undefined,
+  requestedPlanTier: PaidPlanTier,
+) {
+  const activePlanTier = getEffectivePlanTier(input);
+
+  if (activePlanTier === "focus" && requestedPlanTier === "focus") {
+    return "Your account is already on Focus. Upgrade to Max if you need more access.";
+  }
+
+  if (activePlanTier === "max") {
+    return requestedPlanTier === "max"
+      ? "Your account is already on Max."
+      : "Your Max plan already includes Focus, so this account cannot buy a lower-tier plan.";
+  }
+
+  return undefined;
+}
+
 export function getFileUploadLimit(planTier: PlanTier): number | null {
   if (planTier === "max") {
     return null;
