@@ -41,6 +41,11 @@ import {
   getSupabaseBrowserClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/client";
+import {
+  createHCaptchaController,
+  getHCaptchaSiteKey,
+  type HCaptchaController,
+} from "@/lib/hcaptcha";
 import { buildSupabaseAuthRedirectUrl } from "@/lib/supabase/auth-redirect";
 
 declare global {
@@ -147,8 +152,11 @@ const SupabaseAuthContext = createContext<SupabaseAuthContextValue>(
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
   const supabase = getSupabaseBrowserClient();
+  const hCaptchaSiteKey = getHCaptchaSiteKey();
   const cloudAccessErrorMessage =
     "Focus or Max is required to unlock cloud sync and saved vocabulary.";
+  const captchaContainerRef = useRef<HTMLDivElement | null>(null);
+  const hCaptchaControllerRef = useRef<HCaptchaController | null>(null);
   const currentUserIdRef = useRef<string | undefined>(undefined);
   const isOnlineRef = useRef(
     typeof navigator === "undefined" ? true : navigator.onLine,
@@ -171,9 +179,50 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     return buildSupabaseAuthRedirectUrl(redirectTo);
   }, []);
 
+  const normalizeAuthError = useCallback(
+    (error: unknown) => {
+      if (
+        error instanceof Error &&
+        /captcha/i.test(error.message) &&
+        !hCaptchaSiteKey
+      ) {
+        return new Error(
+          "Captcha protection is enabled for auth, but NEXT_PUBLIC_HCAPTCHA_SITE_KEY is not configured for this environment.",
+        );
+      }
+
+      return error instanceof Error
+        ? error
+        : new Error("Authentication failed.");
+    },
+    [hCaptchaSiteKey],
+  );
+
+  const getAuthCaptchaToken = useCallback(async () => {
+    if (!hCaptchaSiteKey) {
+      return undefined;
+    }
+
+    if (!hCaptchaControllerRef.current) {
+      hCaptchaControllerRef.current = createHCaptchaController({
+        container: () => captchaContainerRef.current,
+        siteKey: hCaptchaSiteKey,
+      });
+    }
+
+    return hCaptchaControllerRef.current.execute();
+  }, [hCaptchaSiteKey]);
+
   const refreshGuestLibrarySummary = useCallback(async () => {
     const summary = await getLocalOnlyLibrarySummary(currentUserIdRef.current);
     setGuestLibrarySummary(summary);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      hCaptchaControllerRef.current?.destroy();
+      hCaptchaControllerRef.current = null;
+    };
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -597,16 +646,25 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         throw new Error("Supabase is not configured.");
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      try {
+        const captchaToken = await getAuthCaptchaToken();
 
-      if (error) {
-        throw error;
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          options: {
+            captchaToken,
+          },
+          password,
+        });
+
+        if (error) {
+          throw error;
+        }
+      } catch (error) {
+        throw normalizeAuthError(error);
       }
     },
-    [supabase],
+    [getAuthCaptchaToken, normalizeAuthError, supabase],
   );
 
   const signUp = useCallback(
@@ -615,19 +673,26 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         throw new Error("Supabase is not configured.");
       }
 
-      const { error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          emailRedirectTo: resolveAuthRedirectTo(redirectTo),
-        },
-      });
+      try {
+        const captchaToken = await getAuthCaptchaToken();
 
-      if (error) {
-        throw error;
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            captchaToken,
+            emailRedirectTo: resolveAuthRedirectTo(redirectTo),
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+      } catch (error) {
+        throw normalizeAuthError(error);
       }
     },
-    [resolveAuthRedirectTo, supabase],
+    [getAuthCaptchaToken, normalizeAuthError, resolveAuthRedirectTo, supabase],
   );
 
   const signInWithOAuth = useCallback(
@@ -670,19 +735,26 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         throw new Error("Supabase is not configured.");
       }
 
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: {
-          emailRedirectTo: resolveAuthRedirectTo(redirectTo),
-          shouldCreateUser: false,
-        },
-      });
+      try {
+        const captchaToken = await getAuthCaptchaToken();
 
-      if (error) {
-        throw error;
+        const { error } = await supabase.auth.signInWithOtp({
+          email: email.trim(),
+          options: {
+            captchaToken,
+            emailRedirectTo: resolveAuthRedirectTo(redirectTo),
+            shouldCreateUser: false,
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+      } catch (error) {
+        throw normalizeAuthError(error);
       }
     },
-    [resolveAuthRedirectTo, supabase],
+    [getAuthCaptchaToken, normalizeAuthError, resolveAuthRedirectTo, supabase],
   );
 
   const signOut = useCallback(async () => {
@@ -766,6 +838,12 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   return (
     <SupabaseAuthContext.Provider value={value}>
       {children}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed bottom-0 left-0 h-px w-px overflow-hidden opacity-0"
+      >
+        <div ref={captchaContainerRef} />
+      </div>
     </SupabaseAuthContext.Provider>
   );
 }

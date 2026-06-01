@@ -71,7 +71,9 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
-      profile: undefined,
+      profile: {
+        planTier: "basic",
+      },
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -279,7 +281,9 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
-      profile: undefined,
+      profile: {
+        planTier: "basic",
+      },
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -337,7 +341,9 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
-      profile: undefined,
+      profile: {
+        planTier: "basic",
+      },
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -409,7 +415,9 @@ describe("PricingPageContent", () => {
     useSupabaseAuth.mockReturnValue({
       isConfigured: true,
       isLoading: false,
-      profile: undefined,
+      profile: {
+        planTier: "basic",
+      },
       signIn: vi.fn(),
       signInWithGitHub: vi.fn(),
       signInWithGoogle: vi.fn(),
@@ -538,6 +546,82 @@ describe("PricingPageContent", () => {
     expect(
       screen.getByRole("button", { name: /current plan/i }),
     ).toBeDisabled();
+  });
+
+  it("hides manual fallback for plans this account cannot buy", async () => {
+    const user = userEvent.setup();
+
+    useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      profile: {
+        planTier: "max",
+        subscriptionStatus: "active",
+      },
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<PricingPageContent />);
+
+    expect(
+      screen.queryByRole("button", { name: /pay with binance/i }),
+    ).not.toBeInTheDocument();
+
+    const focusCard = screen
+      .getByRole("heading", { name: /^focus$/i })
+      .closest("article");
+
+    expect(focusCard).not.toBeNull();
+
+    await user.click(
+      within(focusCard as HTMLElement).getByRole("button", {
+        name: /view full details/i,
+      }),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /pay with binance/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("holds plan actions until the signed-in profile loads", () => {
+    useSupabaseAuth.mockReturnValue({
+      isConfigured: true,
+      isLoading: false,
+      profile: undefined,
+      session: {
+        access_token: "session-token",
+      },
+      signIn: vi.fn(),
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInWithMagicLink: vi.fn(),
+      signUp: vi.fn(),
+      user: {
+        email: "reader@example.com",
+        id: "user-1",
+      },
+    });
+
+    render(<PricingPageContent />);
+
+    expect(screen.getAllByRole("button", { name: /checking plan/i })).toHaveLength(
+      3,
+    );
+    expect(
+      screen.queryByRole("button", { name: /get focus/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /pay with binance/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("switches payment region and opens the Binance dialog", async () => {

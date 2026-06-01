@@ -233,6 +233,7 @@ export function PricingPageContent({
     isPaidPlanId(initialPlanId) ? initialPlanId : "max",
   );
   const activePlanTier = getEffectivePlanTier(profile);
+  const isSignedInPlanPending = Boolean(user) && typeof profile === "undefined";
 
   useEffect(() => {
     setPaymentRegion(
@@ -797,6 +798,7 @@ export function PricingPageContent({
   const planActionCopy = useMemo(() => {
     if (locale === "es") {
       return {
+        checkingPlan: "Verificando plan...",
         currentPlan: "Plan actual",
         includedWithFocus: "Incluido con Focus",
         includedWithMax: "Incluido con Max",
@@ -805,6 +807,7 @@ export function PricingPageContent({
 
     if (locale === "pt") {
       return {
+        checkingPlan: "Verificando plano...",
         currentPlan: "Plano atual",
         includedWithFocus: "Incluido com Focus",
         includedWithMax: "Incluido com Max",
@@ -812,6 +815,7 @@ export function PricingPageContent({
     }
 
     return {
+      checkingPlan: "Checking plan...",
       currentPlan: "Current plan",
       includedWithFocus: "Included with Focus",
       includedWithMax: "Included with Max",
@@ -826,6 +830,8 @@ export function PricingPageContent({
       locale === "es"
         ? {
             bestFit: "Mejor para",
+            checkingPlanDetail:
+              "Leyendo esta verificando esta cuenta antes de mostrar opciones de pago.",
             compareHint:
               "Manten la vista general en las tarjetas y revisa abajo un plan completo a la vez.",
             detailsActive: "Detalle mostrado abajo",
@@ -834,6 +840,8 @@ export function PricingPageContent({
             manualFallback: "Respaldo manual",
             manualFallbackDetail:
               "Binance Pay sigue disponible si no quieres usar el checkout alojado.",
+            paymentUnavailableDetail:
+              "Esta cuenta ya tiene el nivel de acceso correcto, asi que aqui ocultamos nuevas opciones de pago.",
             paymentRoute: "Como se activa",
             viewDetails: "Ver detalle completo",
             whatChanges: "Lo que cambia",
@@ -841,6 +849,8 @@ export function PricingPageContent({
         : locale === "pt"
           ? {
               bestFit: "Melhor para",
+              checkingPlanDetail:
+                "O Leyendo esta verificando esta conta antes de mostrar opcoes de pagamento.",
               compareHint:
                 "Mantenha a visao geral nos cards e revise abaixo um plano completo de cada vez.",
               detailsActive: "Detalhe mostrado abaixo",
@@ -849,12 +859,16 @@ export function PricingPageContent({
               manualFallback: "Reserva manual",
               manualFallbackDetail:
                 "O Binance Pay continua disponivel se voce nao quiser usar o checkout hospedado.",
+              paymentUnavailableDetail:
+                "Esta conta ja tem o nivel de acesso correto, entao ocultamos novas opcoes de pagamento aqui.",
               paymentRoute: "Como se ativa",
               viewDetails: "Ver detalhe completo",
               whatChanges: "O que muda",
             }
           : {
               bestFit: "Best for",
+              checkingPlanDetail:
+                "Leyendo is checking this account before showing payment options.",
               compareHint:
                 "Keep the card overview visible, then inspect one full plan at a time below.",
               detailsActive: "Details shown below",
@@ -863,6 +877,8 @@ export function PricingPageContent({
               manualFallback: "Manual fallback",
               manualFallbackDetail:
                 "Binance Pay stays available if you do not want the hosted checkout.",
+              paymentUnavailableDetail:
+                "This account already has the right access level, so new payment options stay hidden here.",
               paymentRoute: "How it unlocks",
               viewDetails: "View full details",
               whatChanges: "What changes",
@@ -875,6 +891,13 @@ export function PricingPageContent({
         "flex min-h-13 w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.58)] px-5 py-4 text-sm font-bold text-[var(--text-muted)] opacity-80 dark:border-white/10 dark:bg-white/6 dark:text-[#c6d1e3]";
 
       function getPlanActionState(planId: PlanId): PlanActionState {
+        if (isSignedInPlanPending) {
+          return {
+            kind: "disabled",
+            label: planActionCopy.checkingPlan,
+          };
+        }
+
         if (!user || activePlanTier === "basic") {
           return planId === "basic"
             ? {
@@ -926,6 +949,7 @@ export function PricingPageContent({
           planId: "max",
         };
       }
+    const selectedPlanActionState = getPlanActionState(selectedPlan.id);
     const primaryProviderDetail =
       paymentRegion === "latam"
         ? locale === "es"
@@ -1395,33 +1419,41 @@ export function PricingPageContent({
                         {pricingPanelCopy.paymentRoute}
                       </p>
                       <p className="mt-2 text-sm leading-7 text-[rgba(22,32,51,0.88)] dark:text-white/92">
-                        {primaryProviderDetail}
+                        {selectedPlanActionState.kind === "checkout"
+                          ? primaryProviderDetail
+                          : isSignedInPlanPending
+                            ? pricingPanelCopy.checkingPlanDetail
+                            : pricingPanelCopy.paymentUnavailableDetail}
                       </p>
                     </div>
                     <span className="inline-flex rounded-full border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.74)] px-3 py-1 text-xs font-semibold text-[var(--text-strong)] dark:border-white/10 dark:bg-white/6 dark:text-white/82">
-                      {primaryProviderLabel}
+                      {selectedPlanActionState.kind === "checkout"
+                        ? primaryProviderLabel
+                        : selectedPlanActionState.label}
                     </span>
                   </div>
 
-                  <div className="mt-5 rounded-[1.2rem] border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.72)] px-4 py-4 dark:border-white/10 dark:bg-white/4">
-                    <p className={detailPanelSectionLabelClassName}>
-                      {pricingPanelCopy.manualFallback}
-                    </p>
-                    <p className="mt-2 text-sm leading-7 text-[rgba(22,32,51,0.76)] dark:text-[#c6d1e3]">
-                      {pricingPanelCopy.manualFallbackDetail}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStatusMessage(undefined);
-                        setBinancePlanId(selectedPlan.id);
-                      }}
-                      className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--accent-amber)] transition hover:text-[#b97443] dark:text-[#f4b722] dark:hover:text-[#ffd176]"
-                    >
-                      <Coins className="h-4 w-4" />
-                      {copy.binanceCta}
-                    </button>
-                  </div>
+                  {selectedPlanActionState.kind === "checkout" ? (
+                    <div className="mt-5 rounded-[1.2rem] border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.72)] px-4 py-4 dark:border-white/10 dark:bg-white/4">
+                      <p className={detailPanelSectionLabelClassName}>
+                        {pricingPanelCopy.manualFallback}
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-[rgba(22,32,51,0.76)] dark:text-[#c6d1e3]">
+                        {pricingPanelCopy.manualFallbackDetail}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusMessage(undefined);
+                          setBinancePlanId(selectedPlan.id);
+                        }}
+                        className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--accent-amber)] transition hover:text-[#b97443] dark:text-[#f4b722] dark:hover:text-[#ffd176]"
+                      >
+                        <Coins className="h-4 w-4" />
+                        {copy.binanceCta}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
