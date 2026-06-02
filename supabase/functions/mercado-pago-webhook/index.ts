@@ -4,6 +4,10 @@ import {
   buildMercadoPagoSignatureManifest,
   resolveMercadoPagoWebhookResourceId,
 } from "./shared.ts";
+import {
+  buildMercadoPagoPreapprovalSearchParams,
+  findLatestMatchingMercadoPagoSubscription,
+} from "./search.ts";
 
 const MERCADOPAGO_ACCESS_TOKEN =
   Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")?.trim() ?? "";
@@ -593,20 +597,12 @@ async function searchLatestSubscriptionPreapproval(params: {
     const searchPlanIds = exactPlanId ? [exactPlanId, null] : [null];
 
     for (const searchPlanId of searchPlanIds) {
-      const searchParams = new URLSearchParams({
-        criteria: "desc",
-        limit: params.userId ? "50" : "10",
-        offset: "0",
-        sort: "date_created",
+      const searchParams = buildMercadoPagoPreapprovalSearchParams({
+        limit: params.userId ? 50 : 10,
+        searchPlanId,
+        userEmail: params.userEmail,
+        userId: params.userId,
       });
-
-      if (!params.userId && params.userEmail) {
-        searchParams.set("payer_email", params.userEmail);
-      }
-
-      if (searchPlanId) {
-        searchParams.set("preapproval_plan_id", searchPlanId);
-      }
 
       const response = await fetch(
         `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
@@ -639,41 +635,13 @@ async function searchLatestSubscriptionPreapproval(params: {
         results?: Array<Record<string, unknown>>;
       };
       const results = Array.isArray(payload.results) ? payload.results : [];
-      const matchingSubscription = results.find((subscription) => {
-        const externalReference = pickString(subscription.external_reference);
-        if (params.userId && externalReference === params.userId) {
-          return true;
-        }
-
-        if (!params.userEmail) {
-          return false;
-        }
-
-        const subscriptionEmail = pickString(subscription.payer_email);
-        if (
-          subscriptionEmail &&
-          subscriptionEmail.toLowerCase() !== params.userEmail.toLowerCase()
-        ) {
-          return false;
-        }
-
-        if (searchPlanId) {
-          const subscriptionPlanId = pickString(
-            subscription.preapproval_plan_id,
-            subscription.preapproval_plan &&
-              typeof subscription.preapproval_plan === "object"
-              ? (subscription.preapproval_plan as Record<string, unknown>).id
-              : null,
-          );
-
-          return subscriptionPlanId === searchPlanId;
-        }
-
-        if (params.plan) {
-          return inferTierFromSubscriptionRecord(subscription) === params.plan;
-        }
-
-        return true;
+      const matchingSubscription = findLatestMatchingMercadoPagoSubscription({
+        inferTierFromSubscription: inferTierFromSubscriptionRecord,
+        plan: params.plan,
+        results,
+        searchPlanId,
+        userEmail: params.userEmail,
+        userId: params.userId,
       });
 
       if (matchingSubscription) {
@@ -997,7 +965,7 @@ async function handleSubscriptionAuthorizedPaymentNotification(
   const subscriptionResult = subscriptionId
     ? await fetchSubscriptionPreapproval(subscriptionId, [credentials])
     : null;
-  const subscription = subscriptionResult?.subscription ?? null;
+  let subscription = subscriptionResult?.subscription ?? null;
   const userEmail = pickString(
     authorizedPayment.payer_email,
     subscription?.payer_email,
@@ -1022,6 +990,35 @@ async function handleSubscriptionAuthorizedPaymentNotification(
   }
 
   let tier = await getExistingSubscriptionTier(subscriptionId);
+  if (!subscription) {
+    const latestSubscription = await searchLatestSubscriptionPreapproval({
+      credentialsCandidates: [credentials],
+      plan:
+        tier ??
+        inferTierFromText(
+          authorizedPayment.reason,
+          authorizedPayment.description,
+        ) ??
+        inferTierFromAmount(
+          asNumber(authorizedPayment.transaction_amount) ??
+            asNumber(authorizedPayment.amount),
+        ),
+      userEmail,
+      userId: targetUserId,
+    });
+
+    if (latestSubscription) {
+      subscription = latestSubscription.subscription;
+
+      logMercadoPagoEvent("info", "authorized_payment_subscription_recovered", {
+        authorizedPaymentId,
+        environment: latestSubscription.credentials.environment,
+        recoveredSubscriptionId: pickString(latestSubscription.subscription.id),
+        userId: targetUserId,
+      });
+    }
+  }
+
   if (subscription) {
     tier = await syncMercadoPagoSubscription({
       subscription,
@@ -1148,7 +1145,7 @@ async function handleReturnConfirmation(
     );
   }
 
-  if (subscriptionId) {
+  if (!paymentId && subscriptionId) {
     await handleSubscriptionPreapprovalNotification(
       subscriptionId,
       mercadoPagoCredentials,
