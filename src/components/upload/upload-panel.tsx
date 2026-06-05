@@ -79,9 +79,11 @@ import {
   getGuestFileUploadCount,
   incrementGuestFileUploadCount,
   incrementProfileFileUploadCount,
+} from "@/lib/supabase/profile";
+import {
   upsertCloudDocuments,
   upsertCloudSessions,
-} from "@/lib/supabase/library-sync";
+} from "@/lib/supabase/library-cloud-mutations";
 import { useReaderStore } from "@/state/reader-store";
 import type { DocumentBlockInput, DocumentSourceKind } from "@/types/document";
 
@@ -234,8 +236,6 @@ export function UploadPanel() {
       return undefined;
     }
 
-    const isPdfRecommendation =
-      inputMode === "file" && selectedSourceKind === "pdf";
     const recommendedMode = getRecommendedMode(savedReadingGoal);
     const recommendedPreferences = getRecommendedPreferences(savedReadingGoal);
     const goalLabel = getLocalizedCopy(locale, {
@@ -266,32 +266,26 @@ export function UploadPanel() {
     });
     const modeLabel = getLocalizedCopy(locale, {
       en:
-        isPdfRecommendation
-          ? "Browser PDF + Classic Reader"
-          : recommendedMode === "focus-word"
-            ? "Focus Word"
-            : recommendedMode === "phrase-chunk"
-              ? "Phrase Chunk"
+        recommendedMode === "focus-word"
+          ? "Focus Word"
+          : recommendedMode === "phrase-chunk"
+            ? "Phrase Chunk"
               : recommendedMode === "guided-line"
                 ? "Guided Line"
-                : "Classic Reader",
+            : "Classic Reader",
       es:
-        isPdfRecommendation
-          ? "PDF en navegador + Lector clásico"
-          : recommendedMode === "focus-word"
-            ? "Foco por palabra"
-            : recommendedMode === "phrase-chunk"
-              ? "Bloques de frases"
+        recommendedMode === "focus-word"
+          ? "Foco por palabra"
+          : recommendedMode === "phrase-chunk"
+            ? "Bloques de frases"
               : recommendedMode === "guided-line"
                 ? "Línea guiada"
-                : "Lector clásico",
+            : "Lector clásico",
       pt:
-        isPdfRecommendation
-          ? "PDF no navegador + Leitor classico"
-          : recommendedMode === "focus-word"
-            ? "Palavra foco"
-            : recommendedMode === "phrase-chunk"
-              ? "Blocos de frases"
+        recommendedMode === "focus-word"
+          ? "Palavra foco"
+          : recommendedMode === "phrase-chunk"
+            ? "Blocos de frases"
               : recommendedMode === "guided-line"
                 ? "Linha guiada"
                 : "Leitor classico",
@@ -300,15 +294,10 @@ export function UploadPanel() {
     return {
       goalLabel,
       modeLabel,
-      paceLabel: isPdfRecommendation
-        ? getLocalizedCopy(locale, {
-            en: `Classic Reader at ${recommendedPreferences.wordsPerMinute} WPM`,
-            es: `Lector clásico a ${recommendedPreferences.wordsPerMinute} ppm`,
-            pt: `Leitor classico a ${recommendedPreferences.wordsPerMinute} ppm`,
-          })
-        : `${recommendedPreferences.wordsPerMinute} WPM`,
+      paceLabel: `${recommendedPreferences.wordsPerMinute} WPM`,
+      wordsPerMinute: recommendedPreferences.wordsPerMinute,
     };
-  }, [inputMode, locale, savedReadingGoal, selectedSourceKind]);
+  }, [locale, savedReadingGoal]);
   const showRecommendedReaderStart = Boolean(
     recommendedReaderStart && (content.trim().length > 0 || selectedFile),
   );
@@ -388,6 +377,25 @@ export function UploadPanel() {
 
     setStatusMessage(undefined);
 
+    if (!user) {
+      const latestGuestFileUploadCount = await getGuestFileUploadCount();
+      setGuestFileUploadCount(latestGuestFileUploadCount);
+
+      if (
+        latestGuestFileUploadCount >= freeFileUploadLimit &&
+        fileUploadLimit !== null
+      ) {
+        clearImportedFile();
+        setStatusMessage(
+          createUploadQuotaStatus({
+            locale,
+            planTier: fileUploadPlanTier,
+          }),
+        );
+        return;
+      }
+    }
+
     if (!isFileUploadAvailable()) {
       clearImportedFile();
       setStatusMessage(
@@ -446,26 +454,13 @@ export function UploadPanel() {
     }
 
     setIsReadingFile(true);
-    const shouldUseBackgroundExtraction =
-      shouldOffloadPdfExtraction(file) && typeof Worker !== "undefined";
     setStatusMessage(
-      createReadingFileStatus(locale, file, shouldUseBackgroundExtraction),
+      createReadingFileStatus(locale, file, shouldOffloadPdfExtraction(file)),
     );
 
     try {
       const { payload: extracted, processingMode } =
-        await extractDocumentFromFileAsync(file, {
-          onPdfProgress: (progress) => {
-            setStatusMessage(
-              createReadingFileStatus(
-                locale,
-                file,
-                shouldUseBackgroundExtraction,
-                progress,
-              ),
-            );
-          },
-        });
+        await extractDocumentFromFileAsync(file);
       const nextSelectedFile = {
         name: file.name,
         size: file.size,
@@ -621,23 +616,23 @@ export function UploadPanel() {
 
       if (ownerId && supabase) {
         try {
+          const syncedRecord = {
+            ...record,
+            ownerId,
+            syncState: "synced" as const,
+          };
+          const syncedSession = {
+            ...session,
+            ownerId,
+            syncState: "synced" as const,
+          };
+
           await ensureProfile(supabase, ownerId);
           await Promise.all([
-            upsertCloudDocuments(supabase, ownerId, [record]),
-            upsertCloudSessions(supabase, ownerId, [session]),
+            upsertCloudDocuments(supabase, ownerId, [syncedRecord]),
+            upsertCloudSessions(supabase, ownerId, [syncedSession]),
           ]);
-          await Promise.all([
-            saveDocument({
-              ...record,
-              ownerId,
-              syncState: "synced",
-            }),
-            saveSession({
-              ...session,
-              ownerId,
-              syncState: "synced",
-            }),
-          ]);
+          await Promise.all([saveDocument(syncedRecord), saveSession(syncedSession)]);
         } catch (syncError) {
           console.warn("document sync after upload failed", syncError);
         }

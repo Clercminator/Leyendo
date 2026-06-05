@@ -37,6 +37,10 @@ interface AccountPanelOverviewSectionProps {
   recoveryHint?: string;
   showAvatarRemove: boolean;
   showAvatarUndo: boolean;
+  paymentConfirmingDescription: string;
+  paymentConfirmingEyebrow: string;
+  paymentConfirmingHeading: string;
+  showPaymentConfirmingNotice: boolean;
   showRecoveryAction?: boolean;
   showSubscriptionLinkedNotice: boolean;
   showSubscriptionPendingNotice: boolean;
@@ -98,6 +102,10 @@ export function AccountPanelOverviewSection({
   recoveryHint,
   showAvatarRemove,
   showAvatarUndo,
+  paymentConfirmingDescription,
+  paymentConfirmingEyebrow,
+  paymentConfirmingHeading,
+  showPaymentConfirmingNotice,
   showRecoveryAction,
   showSubscriptionLinkedNotice,
   showSubscriptionPendingNotice,
@@ -142,6 +150,21 @@ export function AccountPanelOverviewSection({
           </h3>
           <p className="mt-2 text-sm leading-7 text-emerald-800 dark:text-emerald-50/90">
             {subscriptionLinkedDescription}
+          </p>
+        </div>
+      ) : null}
+
+      {showPaymentConfirmingNotice ? (
+        <div className="mb-6 rounded-[1.75rem] border border-sky-500/25 bg-sky-500/10 px-5 py-4 dark:border-sky-400/30">
+          <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-sky-700 uppercase dark:text-sky-200">
+            <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+            {paymentConfirmingEyebrow}
+          </p>
+          <h3 className="mt-2 text-xl font-semibold text-(--text-strong) dark:text-white">
+            {paymentConfirmingHeading}
+          </h3>
+          <p className="mt-2 text-sm leading-7 text-sky-800 dark:text-sky-50/90">
+            {paymentConfirmingDescription}
           </p>
         </div>
       ) : null}

@@ -96,6 +96,7 @@ const SUBSCRIPTION_PAYMENT_EVENTS = new Set([
 
 interface WebhookBody {
   action?: string;
+  checkoutIntentId?: string | number;
   plan?: string;
   subscriptionId?: string | number;
 }
@@ -110,6 +111,12 @@ interface LemonSqueezyCredentials {
   environment: LemonSqueezyEnvironment;
   storeId: string;
 }
+
+type CheckoutIntentStatus =
+  | "returned"
+  | "pending_provider_sync"
+  | "linked"
+  | "needs_attention";
 
 const lemonSqueezyCredentials = [
   {
@@ -397,6 +404,91 @@ async function syncProfileSubscription(userId: string) {
   }
 }
 
+function createSupportReference(intentId: string | null) {
+  return intentId
+    ? `LY-${intentId.replaceAll("-", "").slice(0, 10).toUpperCase()}`
+    : null;
+}
+
+async function updateCheckoutIntent(params: {
+  checkoutIntentId?: string | null;
+  lastError?: string | null;
+  plan?: PaidTierId | null;
+  returnPayload?: unknown;
+  status: CheckoutIntentStatus;
+  subscriptionId?: string | null;
+  userId?: string | null;
+}) {
+  const checkoutIntentId = asString(params.checkoutIntentId);
+  let targetIntentId = checkoutIntentId;
+
+  if (!targetIntentId && params.userId) {
+    let query = supabase
+      .from("billing_checkout_intents")
+      .select("id")
+      .eq("provider", "lemonsqueezy")
+      .eq("user_id", params.userId)
+      .in("status", [
+        "created",
+        "checkout_opened",
+        "returned",
+        "pending_provider_sync",
+        "needs_attention",
+      ])
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    if (params.plan) {
+      query = query.eq("tier", params.plan);
+    }
+
+    const { data } = await query.maybeSingle();
+    targetIntentId = asString(data?.id);
+  }
+
+  if (!targetIntentId) {
+    return { checkoutIntentId: null, supportReference: null };
+  }
+
+  let updateQuery = supabase
+    .from("billing_checkout_intents")
+    .update({
+      last_error: params.lastError ?? null,
+      provider_subscription_id: params.subscriptionId ?? null,
+      return_payload: params.returnPayload ?? {},
+      status: params.status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", targetIntentId);
+
+  if (params.userId) {
+    updateQuery = updateQuery.eq("user_id", params.userId);
+  }
+
+  const { data, error } = await updateQuery
+    .select("id,support_reference")
+    .maybeSingle();
+
+  if (error) {
+    logLemonSqueezyEvent(
+      "warn",
+      "checkout_intent_update_failed",
+      {
+        checkoutIntentId: targetIntentId,
+        status: params.status,
+      },
+      error,
+    );
+  }
+
+  const resolvedIntentId = asString(data?.id) ?? targetIntentId;
+  return {
+    checkoutIntentId: resolvedIntentId,
+    supportReference:
+      asString(data?.support_reference) ?? createSupportReference(resolvedIntentId),
+  };
+}
+
 async function resolveAuthenticatedReturnUser(
   req: Request,
 ): Promise<AuthenticatedReturnUser | null> {
@@ -649,6 +741,7 @@ async function getExistingSubscriptionTier(
 
 async function upsertSubscriptionRecord(params: {
   attributes: Record<string, unknown>;
+  checkoutIntentId?: string | null;
   metadata: unknown;
   subscriptionId: string;
   userEmail: string | null;
@@ -722,6 +815,13 @@ async function upsertSubscriptionRecord(params: {
 
   if (params.userId) {
     await syncProfileSubscription(params.userId);
+    await updateCheckoutIntent({
+      checkoutIntentId: params.checkoutIntentId,
+      plan: tier,
+      status: "linked",
+      subscriptionId: params.subscriptionId,
+      userId: params.userId,
+    });
   }
 
   return tier;
@@ -772,10 +872,21 @@ async function handleReturnConfirmation(
   }
 
   const requestedPlan = normalizePaidTierId(body.plan);
+  const checkoutIntentId = asString(body.checkoutIntentId);
   const explicitSubscriptionId = asString(body.subscriptionId);
 
   logLemonSqueezyEvent("info", "confirm_return_received", {
+    checkoutIntentId,
     plan: requestedPlan,
+    subscriptionId: explicitSubscriptionId,
+    userId: authenticatedUser.id,
+  });
+
+  let checkoutIntentState = await updateCheckoutIntent({
+    checkoutIntentId,
+    plan: requestedPlan,
+    returnPayload: body,
+    status: "returned",
     subscriptionId: explicitSubscriptionId,
     userId: authenticatedUser.id,
   });
@@ -787,6 +898,14 @@ async function handleReturnConfirmation(
     userId: authenticatedUser.id,
   });
   if (linkedSubscription) {
+    checkoutIntentState = await updateCheckoutIntent({
+      checkoutIntentId: checkoutIntentState.checkoutIntentId ?? checkoutIntentId,
+      plan: requestedPlan,
+      returnPayload: body,
+      status: "linked",
+      subscriptionId: linkedSubscription.provider_subscription_id,
+      userId: authenticatedUser.id,
+    });
     logLemonSqueezyEvent("info", "confirm_return_already_linked", {
       plan: requestedPlan,
       subscriptionId: linkedSubscription.provider_subscription_id,
@@ -794,7 +913,11 @@ async function handleReturnConfirmation(
       userId: authenticatedUser.id,
     });
     return jsonResponse({
+      checkoutIntentId: checkoutIntentState.checkoutIntentId,
       confirmed: true,
+      providerSubscriptionId: linkedSubscription.provider_subscription_id,
+      status: "linked",
+      supportReference: checkoutIntentState.supportReference,
       tier: linkedSubscription.tier ?? requestedPlan ?? null,
     });
   }
@@ -818,6 +941,8 @@ async function handleReturnConfirmation(
 
     await upsertSubscriptionRecord({
       attributes: subscriptionResult.subscription,
+      checkoutIntentId:
+        checkoutIntentState.checkoutIntentId ?? checkoutIntentId,
       metadata: {
         action: "confirm_return",
         provider: "lemonsqueezy",
@@ -845,6 +970,7 @@ async function handleReturnConfirmation(
     linkedSubscription ? "info" : "warn",
     "confirm_return_completed",
     {
+      checkoutIntentId: checkoutIntentState.checkoutIntentId,
       confirmed: Boolean(linkedSubscription),
       plan: requestedPlan,
       subscriptionId:
@@ -854,8 +980,23 @@ async function handleReturnConfirmation(
     },
   );
 
+  checkoutIntentState = await updateCheckoutIntent({
+    checkoutIntentId: checkoutIntentState.checkoutIntentId ?? checkoutIntentId,
+    plan: requestedPlan,
+    returnPayload: body,
+    status: linkedSubscription ? "linked" : "pending_provider_sync",
+    subscriptionId:
+      linkedSubscription?.provider_subscription_id ?? explicitSubscriptionId,
+    userId: authenticatedUser.id,
+  });
+
   return jsonResponse({
+    checkoutIntentId: checkoutIntentState.checkoutIntentId,
     confirmed: Boolean(linkedSubscription),
+    providerSubscriptionId:
+      linkedSubscription?.provider_subscription_id ?? explicitSubscriptionId ?? null,
+    status: linkedSubscription ? "linked" : "pending_provider_sync",
+    supportReference: checkoutIntentState.supportReference,
     tier: linkedSubscription?.tier ?? requestedPlan ?? null,
   });
 }
@@ -890,6 +1031,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const attrs = (body?.data?.attributes ?? {}) as Record<string, unknown>;
     const customData = body?.meta?.custom_data ?? {};
+    const checkoutIntentId = asString(customData.checkout_intent_id);
 
     logLemonSqueezyEvent("info", "webhook_received", {
       eventName,
@@ -931,6 +1073,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       await upsertSubscriptionRecord({
         attributes: attrs,
+        checkoutIntentId,
         metadata: body,
         subscriptionId,
         userEmail,
@@ -1044,6 +1187,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       if (targetUserId) {
         await syncProfileSubscription(targetUserId);
+        await updateCheckoutIntent({
+          checkoutIntentId,
+          plan: tier,
+          status: "linked",
+          subscriptionId,
+          userId: targetUserId,
+        });
       }
 
       return okResponse();

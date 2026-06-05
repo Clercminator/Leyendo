@@ -810,18 +810,6 @@
     --reader-markdown-link-hover: #142033;
   }
 
-  html.light [data-reader-theme="midnight"] {
-    --reader-accent: #3b82f6;
-  }
-
-  html.light [data-reader-theme="ember"] {
-    --reader-accent: #ea580c;
-  }
-
-  html.light [data-reader-theme="indigo"] {
-    --reader-accent: #6366f1;
-  }
-
   html.light [data-reader-theme="high-contrast"] {
     --reader-accent: #0f172a;
     --reader-muted: #334155;
@@ -908,7 +896,7 @@
     max-height: none;
     border-radius: 0;
     border: none;
-    padding: 0.75rem;
+    padding: 1.25rem 1.5rem 1.5rem;
     background:
       radial-gradient(
         circle at top,

@@ -37,13 +37,15 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-const { saveDocument, saveSession } = vi.hoisted(() => ({
+const { saveDocument, saveDocumentAsset, saveSession } = vi.hoisted(() => ({
   saveDocument: vi.fn(),
+  saveDocumentAsset: vi.fn(),
   saveSession: vi.fn(),
 }));
 
 vi.mock("@/db/repositories", () => ({
   saveDocument,
+  saveDocumentAsset,
   saveSession,
 }));
 
@@ -116,22 +118,26 @@ const {
   getGuestFileUploadCount,
   incrementGuestFileUploadCount,
   incrementProfileFileUploadCount,
-  upsertCloudDocuments,
-  upsertCloudSessions,
 } = vi.hoisted(() => ({
   ensureProfile: vi.fn(),
   getGuestFileUploadCount: vi.fn(),
   incrementGuestFileUploadCount: vi.fn(),
   incrementProfileFileUploadCount: vi.fn(),
-  upsertCloudDocuments: vi.fn(),
-  upsertCloudSessions: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/library-sync", () => ({
+vi.mock("@/lib/supabase/profile", () => ({
   ensureProfile,
   getGuestFileUploadCount,
   incrementGuestFileUploadCount,
   incrementProfileFileUploadCount,
+}));
+
+const { upsertCloudDocuments, upsertCloudSessions } = vi.hoisted(() => ({
+  upsertCloudDocuments: vi.fn(),
+  upsertCloudSessions: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/library-cloud-mutations", () => ({
   upsertCloudDocuments,
   upsertCloudSessions,
 }));
@@ -265,7 +271,7 @@ describe("UploadPanel", () => {
         expect.objectContaining({
           id: "doc-cloud-sync",
           ownerId: "user-1",
-          syncState: "local-only",
+          syncState: "synced",
         }),
       ],
     );
@@ -273,23 +279,9 @@ describe("UploadPanel", () => {
       expect.objectContaining({
         documentId: "doc-cloud-sync",
         ownerId: "user-1",
-        syncState: "local-only",
+        syncState: "synced",
       }),
     ]);
-    expect(saveDocument).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        id: "doc-cloud-sync",
-        ownerId: "user-1",
-        syncState: "synced",
-      }),
-    );
-    expect(saveSession).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        documentId: "doc-cloud-sync",
-        ownerId: "user-1",
-        syncState: "synced",
-      }),
-    );
     expect(push).toHaveBeenCalledWith("/reader?document=doc-cloud-sync");
   });
 
@@ -554,12 +546,7 @@ describe("UploadPanel", () => {
     });
 
     await waitFor(() => {
-      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(
-        file,
-        expect.objectContaining({
-          onPdfProgress: expect.any(Function),
-        }),
-      );
+      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(file);
     });
 
     expect(screen.getByLabelText(/extracted content preview/i)).toHaveValue(
@@ -588,12 +575,7 @@ describe("UploadPanel", () => {
     });
 
     await waitFor(() => {
-      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(
-        file,
-        expect.objectContaining({
-          onPdfProgress: expect.any(Function),
-        }),
-      );
+      expect(extractDocumentFromFileAsync).toHaveBeenCalledWith(file);
     });
 
     expect(screen.getByLabelText(/extracted content preview/i)).toHaveValue(

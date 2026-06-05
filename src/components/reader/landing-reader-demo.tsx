@@ -472,7 +472,6 @@ export function LandingReaderDemo() {
             chunk={activeChunk}
             onJumpToToken={handleJumpToToken}
             reduceMotion={preferences.reduceMotion}
-            useMarkdownPreview={false}
           />
         );
     }

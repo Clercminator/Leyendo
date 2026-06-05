@@ -1,11 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getAuthenticatedCheckoutContext } = vi.hoisted(() => ({
+const {
+  createBillingCheckoutIntent,
+  getAuthenticatedCheckoutContext,
+  markBillingCheckoutIntentOpened,
+} = vi.hoisted(() => ({
+  createBillingCheckoutIntent: vi.fn(),
   getAuthenticatedCheckoutContext: vi.fn(),
+  markBillingCheckoutIntentOpened: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server-auth", () => ({
   getAuthenticatedCheckoutContext,
+}));
+
+vi.mock("@/lib/supabase/billing-checkout-intents", () => ({
+  createBillingCheckoutIntent,
+  markBillingCheckoutIntentOpened,
 }));
 
 import { POST } from "@/app/api/payments/mercadopago/route";
@@ -34,6 +45,11 @@ describe("MercadoPago checkout route", () => {
         id: "user-123",
       },
     });
+    createBillingCheckoutIntent.mockResolvedValue({
+      id: "intent-123",
+      supportReference: "LY-INTENT123",
+    });
+    markBillingCheckoutIntentOpened.mockResolvedValue(undefined);
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_FOCUS_ID = "";
     process.env.MERCADOPAGO_FOCUS_ID_TESTING = "";
     process.env.NEXT_PUBLIC_MERCADOPAGO_PLAN_MAX_ID = "";
@@ -88,7 +104,7 @@ describe("MercadoPago checkout route", () => {
       "5870237243d3400bacd2d236caae7a20",
     );
     expect(checkoutUrl.searchParams.get("back_url")).toBe(
-      "http://localhost/account?plan=focus&payment=success&provider=mercadopago",
+      "http://localhost/account?plan=focus&payment=success&provider=mercadopago&checkout_intent=intent-123",
     );
     expect(checkoutUrl.searchParams.get("external_reference")).toBe("user-123");
     expect(checkoutUrl.searchParams.get("payer_email")).toBe(
@@ -96,6 +112,22 @@ describe("MercadoPago checkout route", () => {
     );
     expect(checkoutUrl.searchParams.get("reason")).toBe("Leyendo Focus");
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(createBillingCheckoutIntent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessToken: "session-token",
+        provider: "mercadopago",
+        tier: "focus",
+        userId: "user-123",
+      }),
+    );
+    expect(markBillingCheckoutIntentOpened).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checkoutUrl: payload.checkoutUrl,
+        id: "intent-123",
+        returnUrl:
+          "http://localhost/account?plan=focus&payment=success&provider=mercadopago&checkout_intent=intent-123",
+      }),
+    );
   });
 
   it("rejects MercadoPago checkout when no Leyendo user id is provided", async () => {
@@ -150,7 +182,7 @@ describe("MercadoPago checkout route", () => {
       "5870237243d3400bacd2d236caae7a20",
     );
     expect(checkoutUrl.searchParams.get("back_url")).toBe(
-      "http://localhost/account?plan=focus&payment=success&provider=mercadopago",
+      "http://localhost/account?plan=focus&payment=success&provider=mercadopago&checkout_intent=intent-123",
     );
   });
 
@@ -201,7 +233,7 @@ describe("MercadoPago checkout route", () => {
       "5870237243d3400bacd2d236caae7a20",
     );
     expect(checkoutUrl.searchParams.get("back_url")).toBe(
-      "http://localhost/account?plan=focus&payment=success&provider=mercadopago",
+      "http://localhost/account?plan=focus&payment=success&provider=mercadopago&checkout_intent=intent-123",
     );
   });
 
@@ -237,7 +269,7 @@ describe("MercadoPago checkout route", () => {
       "reader@example.com",
     );
     expect(checkoutUrl.searchParams.get("back_url")).toBe(
-      "https://leyendo.vercel.app/account?plan=max&payment=success&provider=mercadopago",
+      "https://leyendo.vercel.app/account?plan=max&payment=success&provider=mercadopago&checkout_intent=intent-123",
     );
   });
 

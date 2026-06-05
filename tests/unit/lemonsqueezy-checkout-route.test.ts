@@ -1,12 +1,23 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { getAuthenticatedCheckoutContext } = vi.hoisted(() => ({
+const {
+  createBillingCheckoutIntent,
+  getAuthenticatedCheckoutContext,
+  markBillingCheckoutIntentOpened,
+} = vi.hoisted(() => ({
+  createBillingCheckoutIntent: vi.fn(),
   getAuthenticatedCheckoutContext: vi.fn(),
+  markBillingCheckoutIntentOpened: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server-auth", () => ({
   getAuthenticatedCheckoutContext,
+}));
+
+vi.mock("@/lib/supabase/billing-checkout-intents", () => ({
+  createBillingCheckoutIntent,
+  markBillingCheckoutIntentOpened,
 }));
 
 import { POST } from "@/app/api/payments/lemonsqueezy/route";
@@ -37,6 +48,11 @@ describe("LemonSqueezy checkout route", () => {
         id: "user-123",
       },
     });
+    createBillingCheckoutIntent.mockResolvedValue({
+      id: "intent-123",
+      supportReference: "LY-INTENT123",
+    });
+    markBillingCheckoutIntentOpened.mockResolvedValue(undefined);
     process.env.LEMONSQUEEZY_API_KEY = "";
     process.env.LEMONSQUEEZY_API_KEY_TESTING = "";
     process.env.LEMONSQUEEZY_STORE_ID = "";
@@ -95,7 +111,9 @@ describe("LemonSqueezy checkout route", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
+      checkoutIntentId: "intent-123",
       checkoutUrl: "https://checkout.lemonsqueezy.com/buy/test-focus",
+      supportReference: "LY-INTENT123",
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -117,7 +135,7 @@ describe("LemonSqueezy checkout route", () => {
       data?: {
         attributes?: {
           checkout_data?: {
-            custom?: { user_id?: string };
+            custom?: { checkout_intent_id?: string; user_id?: string };
           };
         };
         relationships?: {
@@ -131,6 +149,25 @@ describe("LemonSqueezy checkout route", () => {
     expect(payload.data?.relationships?.variant?.data?.id).toBe("1497164");
     expect(payload.data?.attributes?.checkout_data?.custom?.user_id).toBe(
       "user-123",
+    );
+    expect(
+      payload.data?.attributes?.checkout_data?.custom?.checkout_intent_id,
+    ).toBe("intent-123");
+    expect(createBillingCheckoutIntent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessToken: "session-token",
+        provider: "lemonsqueezy",
+        tier: "focus",
+        userId: "user-123",
+      }),
+    );
+    expect(markBillingCheckoutIntentOpened).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checkoutUrl: "https://checkout.lemonsqueezy.com/buy/test-focus",
+        id: "intent-123",
+        returnUrl:
+          "http://localhost/account?plan=focus&payment=success&provider=lemonsqueezy&checkout_intent=intent-123",
+      }),
     );
   });
 
@@ -168,7 +205,9 @@ describe("LemonSqueezy checkout route", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
+      checkoutIntentId: "intent-123",
       checkoutUrl: "https://checkout.lemonsqueezy.com/buy/test-max",
+      supportReference: "LY-INTENT123",
     });
 
     const payload = JSON.parse(
@@ -249,7 +288,7 @@ describe("LemonSqueezy checkout route", () => {
     expect(payload.data?.relationships?.store?.data?.id).toBe("98765");
     expect(payload.data?.relationships?.variant?.data?.id).toBe("1497164");
     expect(payload.data?.attributes?.product_options?.redirect_url).toBe(
-      "http://localhost/account?plan=focus&payment=success&provider=lemonsqueezy",
+      "http://localhost/account?plan=focus&payment=success&provider=lemonsqueezy&checkout_intent=intent-123",
     );
     expect(payload.data?.attributes?.test_mode).toBe(true);
   });
@@ -451,7 +490,9 @@ describe("LemonSqueezy checkout route", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
+      checkoutIntentId: "intent-123",
       checkoutUrl: "https://checkout.lemonsqueezy.com/buy/upgrade-max",
+      supportReference: "LY-INTENT123",
     });
   });
 });

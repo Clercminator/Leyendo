@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
 import { ArrowRight, FileStack } from "lucide-react";
@@ -20,24 +19,6 @@ const modesEyebrow = {
   en: "Reading modes",
   es: "Modos de lectura",
   pt: "Modos de leitura",
-};
-
-const mergedReaderSystemEyebrow = {
-  en: "How the reader adapts",
-  es: "Cómo se adapta el lector",
-  pt: "Como o leitor se adapta",
-};
-
-const mergedReaderSystemTitle = {
-  en: "Choose the goal, verify the promise, and compare the modes in one place.",
-  es: "Elige el objetivo, comprueba la promesa y compara los modos en un mismo lugar.",
-  pt: "Escolha o objetivo, verifique a promessa e compare os modos em um unico lugar.",
-};
-
-const mergedReaderSystemDescription = {
-  en: "The first decision should not be a wall of settings. It should be one surface that tells you what kind of session you want, what Leyendo should prove immediately, and which reading mode makes the right tradeoff.",
-  es: "La primera decisión no debería ser una pared de ajustes. Aquí tienes una sola superficie para definir qué tipo de sesión quieres, qué debería demostrar Leyendo al momento y qué modo hace el mejor intercambio.",
-  pt: "A primeira decisao nao deveria ser uma parede de ajustes. Aqui voce tem uma unica superficie para definir que tipo de sessao quer, o que o Leyendo deveria provar logo de cara e qual modo faz o melhor tradeoff.",
 };
 
 const modesTitle = {
@@ -77,7 +58,7 @@ const firstSessionProofCards = {
       eyebrow: "Mode switching",
       title: "You stay in one document while the view changes",
       description:
-        "Move from faster text modes into Classic Reader or back to the original Browser PDF without opening a second copy or rebuilding your place.",
+        "Move from faster text modes into Classic Reader or Standard PDF without opening a second copy or rebuilding your place.",
       note: "Context recovery should be part of the product, not an afterthought.",
     },
     {
@@ -166,41 +147,10 @@ const browseGuidesLabel = {
   pt: "Ver todas as guias",
 };
 
-type ReaderSystemPanel = "goals" | "proof" | "modes";
-
-const readerSystemToggleLabel = {
-  en: "Adaptive reader section toggles",
-  es: "Botones para alternar la sección del lector adaptable",
-  pt: "Botoes para alternar a secao do leitor adaptavel",
-};
-
-const readerSystemToggleButtons: Record<
-  "en" | "es" | "pt",
-  Array<{ value: ReaderSystemPanel; label: string }>
-> = {
-  en: [
-    { value: "goals", label: "Choose goal" },
-    { value: "proof", label: "Verify promise" },
-    { value: "modes", label: "Compare modes" },
-  ],
-  es: [
-    { value: "goals", label: "Elegir objetivo" },
-    { value: "proof", label: "Comprobar promesa" },
-    { value: "modes", label: "Comparar modos" },
-  ],
-  pt: [
-    { value: "goals", label: "Escolher objetivo" },
-    { value: "proof", label: "Ver promessa" },
-    { value: "modes", label: "Comparar modos" },
-  ],
-};
-
 export function HomePageContent() {
   const { locale } = useLocale();
   const featuredGuides = getFeaturedGuidesForLocale(locale);
   const localizedGuidesPath = getLocalizedPublicPath("/guides", locale);
-  const [activeReaderSystemPanel, setActiveReaderSystemPanel] =
-    useState<ReaderSystemPanel | null>("goals");
 
   const homeJsonLd = {
     "@context": "https://schema.org",
@@ -264,133 +214,61 @@ export function HomePageContent() {
       <div className="space-y-10">
         <UploadPanel />
 
+        <GoalSelector />
+
         <LandingReaderDemo />
 
-        <section className="fade-rise-delayed relative overflow-hidden rounded-[2.25rem] border border-(--border-soft) bg-(--surface-card) p-6 shadow-[0_24px_90px_rgba(20,26,56,0.12)] backdrop-blur-xl sm:p-8 xl:p-10">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(112,151,255,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(244,170,103,0.12),transparent_32%)]" />
-
-          <div className="relative">
-            <div className="max-w-3xl">
-              <p className="editorial-kicker text-(--accent-sky)">
-                {getLocalizedCopy(locale, mergedReaderSystemEyebrow)}
-              </p>
-              <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-balance text-(--text-strong) lg:text-[3rem]">
-                {getLocalizedCopy(locale, mergedReaderSystemTitle)}
-              </h2>
-              <p className="mt-4 text-base leading-8 text-(--text-muted) [text-align:justify]">
-                {getLocalizedCopy(locale, mergedReaderSystemDescription)}
-              </p>
-            </div>
-
-            <div
-              className="mt-6 flex flex-wrap gap-2"
-              aria-label={getLocalizedCopy(locale, readerSystemToggleLabel)}
-            >
-              {readerSystemToggleButtons[locale].map((panel, index) => {
-                const isActive = activeReaderSystemPanel === panel.value;
-
-                return (
-                  <button
-                    key={panel.value}
-                    type="button"
-                    aria-pressed={isActive}
-                    aria-controls={`reader-system-panel-${panel.value}`}
-                    onClick={() => {
-                      setActiveReaderSystemPanel((currentPanel) =>
-                        currentPanel === panel.value ? null : panel.value,
-                      );
-                    }}
-                    className={`inline-flex items-center gap-3 rounded-full border px-4 py-2.5 text-sm transition ${
-                      isActive
-                        ? "border-(--border-strong) bg-(--surface-soft) shadow-[0_10px_30px_rgba(20,26,56,0.08)]"
-                        : "border-(--border-soft) bg-(--surface-strong) hover:border-(--border-strong) hover:bg-(--surface-soft)"
-                    }`}
-                  >
-                    <span className="text-[10px] font-medium tracking-[0.18em] text-(--text-muted)">
-                      0{index + 1}
-                    </span>
-                    <span className="font-medium text-(--text-strong)">
-                      {panel.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {activeReaderSystemPanel === "proof" ? (
-              <div
-                id="reader-system-panel-proof"
-                className="mt-6 overflow-hidden rounded-[1.7rem] border border-(--border-soft) bg-(--surface-strong) shadow-[0_18px_60px_rgba(20,26,56,0.08)] backdrop-blur-xl"
-              >
-                <div className="grid gap-0 xl:grid-cols-[0.95fr_1fr_1fr_1fr]">
-                  <div className="p-5 sm:p-6 xl:pr-8">
-                    <p className="text-xs tracking-[0.22em] text-(--accent-amber) uppercase">
-                      {getLocalizedCopy(locale, firstSessionProofEyebrow)}
-                    </p>
-                    <h3 className="font-heading mt-3 text-xl leading-tight font-semibold text-balance text-(--text-strong) sm:text-2xl">
-                      {getLocalizedCopy(locale, firstSessionProofTitle)}
-                    </h3>
-                    <p className="mt-3 text-sm leading-7 text-(--text-muted) [text-align:justify]">
-                      {getLocalizedCopy(locale, firstSessionProofDescription)}
-                    </p>
-                  </div>
-
-                  {firstSessionProofCards[locale].map((card, index) => (
-                    <article
-                      key={card.title}
-                      className="border-t border-(--border-soft) p-5 sm:p-6 xl:border-t-0 xl:border-l"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[11px] tracking-[0.22em] text-(--accent-sky) uppercase">
-                          {card.eyebrow}
-                        </p>
-                        <span className="text-[11px] font-medium tracking-[0.18em] text-(--text-muted)">
-                          0{index + 1}
-                        </span>
-                      </div>
-                      <h4 className="font-heading mt-3 text-lg leading-tight font-semibold text-(--text-strong)">
-                        {card.title}
-                      </h4>
-                      <p className="mt-3 text-sm leading-6 text-(--text-muted) [text-align:justify]">
-                        {card.description}
-                      </p>
-                      <p className="mt-4 text-sm font-medium leading-6 text-(--text-strong) [text-align:justify]">
-                        {card.note}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {activeReaderSystemPanel === "goals" ? (
-              <div
-                id="reader-system-panel-goals"
-                className="mt-6 rounded-[1.85rem] border border-(--border-soft) bg-(--surface-strong) p-5 shadow-[0_18px_70px_rgba(20,26,56,0.1)] backdrop-blur-xl sm:p-6"
-              >
-                <GoalSelector compact />
-              </div>
-            ) : null}
-
-            {activeReaderSystemPanel === "modes" ? (
-              <div
-                id="reader-system-panel-modes"
-                className="mt-6 rounded-[1.85rem] border border-(--border-soft) bg-(--surface-strong) p-5 shadow-[0_18px_70px_rgba(20,26,56,0.1)] backdrop-blur-xl sm:p-6"
-              >
-                <div className="max-w-2xl">
-                  <p className="text-xs tracking-[0.22em] text-(--accent-sky) uppercase">
-                    {getLocalizedCopy(locale, modesEyebrow)}
-                  </p>
-                  <h3 className="font-heading mt-3 text-xl leading-tight font-semibold text-balance text-(--text-strong) sm:text-2xl">
-                    {getLocalizedCopy(locale, modesTitle)}
-                  </h3>
-                </div>
-                <div className="mt-6">
-                  <ModeGallery compact />
-                </div>
-              </div>
-            ) : null}
+        <section className="fade-rise-delayed space-y-5">
+          <div className="w-full">
+            <p className="editorial-kicker text-(--accent-amber)">
+              {getLocalizedCopy(locale, firstSessionProofEyebrow)}
+            </p>
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-balance text-(--text-strong) lg:text-[3rem]">
+              {getLocalizedCopy(locale, firstSessionProofTitle)}
+            </h2>
+            <p className="mt-4 text-base leading-8 text-(--text-muted)">
+              {getLocalizedCopy(locale, firstSessionProofDescription)}
+            </p>
           </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            {firstSessionProofCards[locale].map((card, index) => (
+              <article
+                key={card.title}
+                className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 shadow-[0_18px_70px_rgba(20,26,56,0.1)] backdrop-blur-xl"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs tracking-[0.18em] text-(--accent-sky) uppercase">
+                    {card.eyebrow}
+                  </p>
+                  <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1 text-xs font-medium text-(--text-strong)">
+                    0{index + 1}
+                  </span>
+                </div>
+                <h3 className="font-heading mt-4 text-2xl leading-tight font-semibold text-(--text-strong)">
+                  {card.title}
+                </h3>
+                <p className="mt-4 text-sm leading-7 text-(--text-muted)">
+                  {card.description}
+                </p>
+                <p className="mt-4 text-sm font-medium text-(--text-strong)">
+                  {card.note}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="fade-rise-delayed space-y-5">
+          <div className="w-full">
+            <p className="editorial-kicker text-(--accent-sky)">
+              {getLocalizedCopy(locale, modesEyebrow)}
+            </p>
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-balance text-(--text-strong) lg:text-[3rem]">
+              {getLocalizedCopy(locale, modesTitle)}
+            </h2>
+          </div>
+          <ModeGallery />
         </section>
 
         <section className="fade-rise-delayed space-y-5">
@@ -401,7 +279,7 @@ export function HomePageContent() {
             <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-balance text-(--text-strong) lg:text-[3rem]">
               {getLocalizedCopy(locale, guidesTitle)}
             </h2>
-            <p className="mt-4 text-base leading-8 text-(--text-muted) [text-align:justify]">
+            <p className="mt-4 text-base leading-8 text-(--text-muted)">
               {getLocalizedCopy(locale, guidesDescription)}
             </p>
           </div>
@@ -423,7 +301,7 @@ export function HomePageContent() {
                 <h3 className="font-heading mt-4 text-2xl leading-tight font-semibold text-(--text-strong)">
                   {guide.title}
                 </h3>
-                <p className="mt-4 text-base leading-8 text-(--text-muted) [text-align:justify]">
+                <p className="mt-4 text-base leading-8 text-(--text-muted)">
                   {guide.description}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">

@@ -46,11 +46,15 @@ import {
 interface AccountPanelProps {
   checkoutPlan?: PaidPlanTier;
   checkoutProvider?: "lemonsqueezy" | "mercadopago";
+  paidSignupCheckoutIntentId?: string;
   paidSignupPlan?: PaidPlanTier;
   paidSignupProvider?: "lemonsqueezy" | "mercadopago";
 }
 
+const latestCheckoutIntentStorageKey = "leyendo_latest_checkout_intent_id";
+
 export function AccountPanel({
+  paidSignupCheckoutIntentId,
   paidSignupPlan,
   paidSignupProvider,
   checkoutPlan,
@@ -101,6 +105,11 @@ export function AccountPanel({
   const [pendingAction, setPendingAction] = useState<string>();
   const [isPaymentRecoveryPending, setIsPaymentRecoveryPending] =
     useState(false);
+  type PaymentRecoveryPhase = "idle" | "confirming" | "linked" | "failed";
+  const [paymentRecoveryPhase, setPaymentRecoveryPhase] =
+    useState<PaymentRecoveryPhase>("idle");
+  const [paymentSupportReference, setPaymentSupportReference] =
+    useState<string>();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const paymentRecoveryStartedRef = useRef(false);
   const profileDetailsSectionId = useId();
@@ -288,7 +297,13 @@ export function AccountPanel({
         ? "Estado actual"
         : "Status atual";
   const showSubscriptionPendingNotice = Boolean(
-    paidSignupPlan && user && !hasPaidAccountAccess,
+    paidSignupPlan &&
+      user &&
+      !hasPaidAccountAccess &&
+      (paymentRecoveryPhase === "failed" || !paidSignupProvider),
+  );
+  const showPaymentConfirmingNotice = Boolean(
+    paidSignupPlan && user && !hasPaidAccountAccess && paymentRecoveryPhase === "confirming",
   );
   const draftPersonalInfo = buildPersonalInfoFromForm(formState);
   const currentAvatarUrl = removeStoredAvatar ? undefined : profile?.avatarUrl;
@@ -372,14 +387,21 @@ export function AccountPanel({
         : locale === "es"
           ? "el proveedor"
           : locale === "pt"
-            ? "o provedor"
-            : "the provider";
+          ? "o provedor"
+          : "the provider";
+  const paymentReferenceCopy = paymentSupportReference
+    ? locale === "en"
+      ? ` Reference: ${paymentSupportReference}.`
+      : locale === "es"
+        ? ` Referencia: ${paymentSupportReference}.`
+        : ` Referencia: ${paymentSupportReference}.`
+    : "";
   const paymentConfirmingMessage =
     locale === "en"
-      ? `${paymentProviderLabel} approved the payment. Leyendo is confirming the subscription on this account now.`
+      ? `${paymentProviderLabel} approved the payment. Leyendo is confirming the subscription on this account now. Do not pay again.${paymentReferenceCopy}`
       : locale === "es"
-        ? `${paymentProviderLabel} ya aprobo el pago. Leyendo esta confirmando ahora la suscripcion en esta cuenta.`
-        : `${paymentProviderLabel} ja aprovou o pagamento. O Leyendo esta confirmando agora a assinatura nesta conta.`;
+        ? `${paymentProviderLabel} ya aprobo el pago. Leyendo esta confirmando ahora la suscripcion en esta cuenta. No pagues otra vez.${paymentReferenceCopy}`
+        : `${paymentProviderLabel} ja aprovou o pagamento. O Leyendo esta confirmando agora a assinatura nesta conta. Nao pague de novo.${paymentReferenceCopy}`;
   const paymentLinkedMessage =
     locale === "en"
       ? `${paymentProviderLabel} payment confirmed. This account is refreshing the new plan now.`
@@ -388,10 +410,10 @@ export function AccountPanel({
         : `Pagamento de ${paymentProviderLabel} confirmado. Esta conta esta atualizando o novo plano.`;
   const paymentPendingMessage =
     locale === "en"
-      ? `${paymentProviderLabel} approved the payment, but the subscription is still syncing. Use Resync payment if the plan does not appear yet.`
+      ? `${paymentProviderLabel} approved the payment, but the subscription has not appeared after ~2 minutes. Do not pay again. Use the Resync payment button below to try again, or contact support if this persists.${paymentReferenceCopy}`
       : locale === "es"
-        ? `${paymentProviderLabel} aprobo el pago, pero la suscripcion todavia se esta sincronizando. Usa Reintentar pago si el plan aun no aparece.`
-        : `${paymentProviderLabel} aprovou o pagamento, mas a assinatura ainda esta sincronizando. Use Reenviar pagamento se o plano ainda nao aparecer.`;
+        ? `${paymentProviderLabel} aprobo el pago, pero la suscripcion no aparece tras ~2 minutos. No pagues otra vez. Usa el boton Reintentar pago de abajo para volver a intentarlo, o contacta soporte si el problema persiste.${paymentReferenceCopy}`
+        : `${paymentProviderLabel} aprovou o pagamento, mas a assinatura nao apareceu apos ~2 minutos. Nao pague de novo. Use o botao Reenviar pagamento abaixo para tentar novamente, ou contate o suporte se o problema persistir.${paymentReferenceCopy}`;
   const paymentRecoveryActionLabel =
     isPaymentRecoveryPending
       ? locale === "en"
@@ -406,10 +428,34 @@ export function AccountPanel({
           : "Reenviar pagamento";
   const paymentRecoveryHint =
     locale === "en"
-      ? "Run another provider check if the upgraded plan is still missing on this account."
+      ? `Run another provider check if the upgraded plan is still missing on this account.${paymentReferenceCopy}`
       : locale === "es"
-        ? "Lanza otra comprobacion del proveedor si el plan mejorado todavia no aparece en esta cuenta."
-        : "Execute outra verificacao do provedor se o plano atualizado ainda nao aparecer nesta conta.";
+        ? `Lanza otra comprobacion del proveedor si el plan mejorado todavia no aparece en esta cuenta.${paymentReferenceCopy}`
+        : `Execute outra verificacao do provedor se o plano atualizado ainda nao aparecer nesta conta.${paymentReferenceCopy}`;
+  const paymentConfirmingEyebrow =
+    locale === "en"
+      ? "Confirming payment"
+      : locale === "es"
+        ? "Confirmando pago"
+        : "Confirmando pagamento";
+  const paymentConfirmingHeading =
+    locale === "en"
+      ? `${paymentProviderLabel} approved the payment. Leyendo is linking your subscription now.`
+      : locale === "es"
+        ? `${paymentProviderLabel} aprobó el pago. Leyendo está vinculando tu suscripción ahora.`
+        : `${paymentProviderLabel} aprovou o pagamento. O Leyendo está vinculando sua assinatura agora.`;
+  const paymentConfirmingDescription =
+    locale === "en"
+      ? `This usually takes under a minute. The page updates automatically. Do not start a second payment.${paymentReferenceCopy}`
+      : locale === "es"
+        ? `Esto suele tardar menos de un minuto. La pagina se actualiza sola. No inicies un segundo pago.${paymentReferenceCopy}`
+        : `Isso costuma levar menos de um minuto. A pagina atualiza sozinha. Nao inicie um segundo pagamento.${paymentReferenceCopy}`;
+  const paymentSlowSyncMessage =
+    locale === "en"
+      ? `${paymentProviderLabel} approved the payment. The subscription is still syncing; checking every 10 seconds. Do not pay again.${paymentReferenceCopy}`
+      : locale === "es"
+        ? `${paymentProviderLabel} aprobo el pago. La suscripcion todavia se esta sincronizando; revisando cada 10 segundos. No pagues otra vez.${paymentReferenceCopy}`
+        : `${paymentProviderLabel} aprovou o pagamento. A assinatura ainda esta sincronizando; verificando a cada 10 segundos. Nao pague de novo.${paymentReferenceCopy}`;
   const activationSteps = isPreCheckoutFlow
     ? locale === "en"
       ? [
@@ -433,18 +479,18 @@ export function AccountPanel({
         ? [
             "Sign in with the Leyendo account that started this checkout.",
             "If you still need to create that account, finish registration for the account you want linked to this subscription.",
-            "Wait for the Subscription linked confirmation before using sync, cloud books, or saved words.",
+            "Wait for the plan linked confirmation before using sync, cloud books, or saved words.",
           ]
         : locale === "es"
           ? [
               "Entra con la cuenta de Leyendo que inicio este checkout.",
               "Si todavia necesitas crearla, termina el registro de la cuenta que quieres vincular a esta suscripcion.",
-              "Espera la confirmacion Subscription linked antes de usar sincronizacion, libros en la nube o palabras guardadas.",
+              "Espera la confirmacion de plan vinculado antes de usar sincronizacion, libros en la nube o palabras guardadas.",
             ]
           : [
               "Entre na conta do Leyendo que iniciou este checkout.",
               "Se ainda precisar cria-la, conclua o cadastro da conta que voce quer vincular a esta assinatura.",
-              "Espere a confirmacao Subscription linked antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
+              "Espere a confirmacao de plano vinculado antes de usar sincronizacao, livros na nuvem ou palavras salvas.",
             ]
       : [];
   const paymentEmailHint =
@@ -503,7 +549,7 @@ export function AccountPanel({
     : syncCopy;
 
   const runPaymentRecovery = useCallback(
-    async (attemptCount = 3) => {
+    async () => {
       if (
         isPaymentRecoveryPending ||
         !paidSignupPlan ||
@@ -529,12 +575,31 @@ export function AccountPanel({
         "preapproval_id",
         "subscription_id",
       ]);
+      const checkoutIntentId =
+        paidSignupCheckoutIntentId?.trim() ||
+        getReturnUrlParam(currentUrl, rawHref, ["checkout_intent"]) ||
+        (typeof window === "undefined"
+          ? null
+          : window.localStorage.getItem(latestCheckoutIntentStorageKey));
 
       setIsPaymentRecoveryPending(true);
+      setPaymentRecoveryPhase("confirming");
       setStatusMessage(paymentConfirmingMessage);
 
+      // Phase 1: quick burst — 5 retries × 2 s (~10 s total)
+      const PHASE1_ATTEMPTS = 5;
+      const PHASE1_DELAY_MS = 2000;
+      // Phase 2: slow polling — 9 retries × 10 s (~90 s more)
+      const PHASE2_ATTEMPTS = 9;
+      const PHASE2_DELAY_MS = 10000;
+      const totalAttempts = PHASE1_ATTEMPTS + PHASE2_ATTEMPTS;
+
       try {
-        for (let attempt = 0; attempt < attemptCount; attempt += 1) {
+        for (let attempt = 0; attempt < totalAttempts; attempt += 1) {
+          if (attempt === PHASE1_ATTEMPTS) {
+            setStatusMessage(paymentSlowSyncMessage);
+          }
+
           const { error: reconcileError } = await supabase.rpc(
             "reconcile_my_billing_subscriptions",
           );
@@ -554,12 +619,14 @@ export function AccountPanel({
             paidSignupProvider === "mercadopago"
               ? {
                   action: "confirm_return",
+                  checkoutIntentId,
                   paymentId,
                   plan: paidSignupPlan,
                   subscriptionId,
                 }
               : {
                   action: "confirm_return",
+                  checkoutIntentId,
                   plan: paidSignupPlan,
                   subscriptionId,
                 };
@@ -570,26 +637,54 @@ export function AccountPanel({
 
           await refreshProfile();
 
+          const recoveryPayload =
+            data && typeof data === "object"
+              ? (data as {
+                  checkoutIntentId?: unknown;
+                  confirmed?: unknown;
+                  status?: unknown;
+                  supportReference?: unknown;
+                })
+              : null;
+          const nextSupportReference =
+            typeof recoveryPayload?.supportReference === "string"
+              ? recoveryPayload.supportReference
+              : undefined;
+          if (nextSupportReference) {
+            setPaymentSupportReference(nextSupportReference);
+          }
+
           if (
             !error &&
-            data &&
-            typeof data === "object" &&
-            "confirmed" in data &&
-            data.confirmed === true
+            recoveryPayload?.confirmed === true
           ) {
+            setPaymentRecoveryPhase("linked");
             setStatusMessage(paymentLinkedMessage);
             return true;
           }
 
-          if (attempt < attemptCount - 1) {
-            await new Promise((resolve) => window.setTimeout(resolve, 1500));
+          if (
+            !error &&
+            recoveryPayload?.status === "needs_attention"
+          ) {
+            setPaymentRecoveryPhase("failed");
+            setStatusMessage(paymentPendingMessage);
+            return false;
+          }
+
+          if (attempt < totalAttempts - 1) {
+            const delayMs =
+              attempt < PHASE1_ATTEMPTS ? PHASE1_DELAY_MS : PHASE2_DELAY_MS;
+            await new Promise((resolve) => window.setTimeout(resolve, delayMs));
           }
         }
 
+        setPaymentRecoveryPhase("failed");
         setStatusMessage(paymentPendingMessage);
         return false;
       } catch (error) {
         console.error("Payment recovery failed:", error);
+        setPaymentRecoveryPhase("failed");
         setStatusMessage(paymentPendingMessage);
         return false;
       } finally {
@@ -598,11 +693,13 @@ export function AccountPanel({
     },
     [
       isPaymentRecoveryPending,
+      paidSignupCheckoutIntentId,
       paidSignupPlan,
       paidSignupProvider,
       paymentConfirmingMessage,
       paymentLinkedMessage,
       paymentPendingMessage,
+      paymentSlowSyncMessage,
       refreshProfile,
       user,
     ],
@@ -610,7 +707,9 @@ export function AccountPanel({
 
   useEffect(() => {
     paymentRecoveryStartedRef.current = false;
-  }, [paidSignupPlan, paidSignupProvider, user?.id]);
+    setPaymentRecoveryPhase("idle");
+    setPaymentSupportReference(undefined);
+  }, [paidSignupCheckoutIntentId, paidSignupPlan, paidSignupProvider, user?.id]);
 
   useEffect(() => {
     if (
@@ -928,6 +1027,10 @@ export function AccountPanel({
           recoveryHint={paymentRecoveryHint}
           showAvatarRemove={showAvatarRemove}
           showAvatarUndo={showAvatarUndo}
+          paymentConfirmingDescription={paymentConfirmingDescription}
+          paymentConfirmingEyebrow={paymentConfirmingEyebrow}
+          paymentConfirmingHeading={paymentConfirmingHeading}
+          showPaymentConfirmingNotice={showPaymentConfirmingNotice}
           showRecoveryAction={Boolean(showSubscriptionPendingNotice && paidSignupProvider)}
           showSubscriptionLinkedNotice={showSubscriptionLinkedNotice}
           showSubscriptionPendingNotice={showSubscriptionPendingNotice}
@@ -971,7 +1074,7 @@ export function AccountPanel({
             setProfileDetailsOpen((current) => !current);
           }}
           onRecoveryAction={() => {
-            void runPaymentRecovery(2);
+            void runPaymentRecovery();
           }}
           onProfileFieldChange={updateFormField}
           onProfileSave={() => {

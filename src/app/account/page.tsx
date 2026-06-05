@@ -15,6 +15,7 @@ export const metadata: Metadata = createPageMetadata({
 
 interface AccountPageProps {
   searchParams?: Promise<{
+    checkout_intent?: string;
     checkout?: string;
     payment?: string;
     plan?: string;
@@ -68,9 +69,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       }
     : paidSignupPlan
       ? {
-          en: "Payment is approved. Open the same Leyendo account that started checkout to confirm the upgraded plan.",
-          es: "El pago esta aprobado. Abre la misma cuenta de Leyendo que inicio el checkout para confirmar el plan mejorado.",
-          pt: "O pagamento foi aprovado. Abra a mesma conta do Leyendo que iniciou o checkout para confirmar o plano atualizado.",
+          en: "Payment is approved. Do not pay again. Open the same Leyendo account that started checkout to confirm the upgraded plan.",
+          es: "El pago esta aprobado. No pagues otra vez. Abre la misma cuenta de Leyendo que inicio el checkout para confirmar el plan mejorado.",
+          pt: "O pagamento foi aprovado. Nao pague de novo. Abra a mesma conta do Leyendo que iniciou o checkout para confirmar o plano atualizado.",
         }
       : {
           en: "Basic Reader is free. Sign in now and upgrade later if you want cloud sync and saved words.",
@@ -85,6 +86,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         paidSignupProvider={
           resolvedSearchParams.payment === "success"
             ? paymentProvider
+            : undefined
+        }
+        paidSignupCheckoutIntentId={
+          resolvedSearchParams.payment === "success"
+            ? resolvedSearchParams.checkout_intent
             : undefined
         }
         checkoutPlan={checkoutPlan}

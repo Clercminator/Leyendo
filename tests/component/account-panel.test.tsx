@@ -48,6 +48,7 @@ describe("AccountPanel", () => {
       locale: "en",
       setLocale: vi.fn(),
     });
+    window.localStorage.clear();
     window.history.replaceState({}, "", "/account");
   });
 
@@ -705,7 +706,7 @@ describe("AccountPanel", () => {
 
   it("confirms MercadoPago returns for the signed-in payment account", async () => {
     const invoke = vi.fn().mockResolvedValue({
-      data: { confirmed: true },
+      data: { confirmed: true, supportReference: "LY-MP123" },
       error: null,
     });
     const rpc = vi.fn().mockResolvedValue({ data: 0, error: null });
@@ -720,7 +721,7 @@ describe("AccountPanel", () => {
     window.history.replaceState(
       {},
       "",
-      "/account?payment=success&plan=focus&provider=mercadopago&collection_id=155099861306",
+      "/account?payment=success&plan=focus&provider=mercadopago&collection_id=155099861306&checkout_intent=intent-123",
     );
     useSupabaseAuth.mockReturnValue({
       errorMessage: undefined,
@@ -770,6 +771,7 @@ describe("AccountPanel", () => {
       expect(invoke).toHaveBeenCalledWith("mercado-pago-webhook", {
         body: {
           action: "confirm_return",
+          checkoutIntentId: "intent-123",
           paymentId: "155099861306",
           plan: "focus",
           subscriptionId: null,
@@ -784,7 +786,7 @@ describe("AccountPanel", () => {
     });
 
     expect(
-      screen.getByText(/mercadopago payment confirmed/i),
+      await screen.findByText(/mercadopago payment confirmed/i),
     ).toBeInTheDocument();
   });
 
@@ -855,6 +857,7 @@ describe("AccountPanel", () => {
       expect(invoke).toHaveBeenCalledWith("mercado-pago-webhook", {
         body: {
           action: "confirm_return",
+          checkoutIntentId: null,
           paymentId: null,
           plan: "max",
           subscriptionId: "47e33a6b354149b88fe29fea643e7dd8",
@@ -869,10 +872,20 @@ describe("AccountPanel", () => {
 
   it("lets a signed-in user manually resync a LemonSqueezy payment from the pending notice", async () => {
     const user = userEvent.setup();
-    const invoke = vi.fn().mockResolvedValue({
-      data: { confirmed: true },
-      error: null,
-    });
+    const invoke = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          confirmed: false,
+          status: "needs_attention",
+          supportReference: "LY-TEST123",
+        },
+        error: null,
+      })
+      .mockResolvedValue({
+        data: { confirmed: true, supportReference: "LY-TEST123" },
+        error: null,
+      });
     const rpc = vi.fn().mockResolvedValue({ data: 0, error: null });
     const refreshProfile = vi.fn().mockResolvedValue(undefined);
 
@@ -935,10 +948,15 @@ describe("AccountPanel", () => {
       expect(invoke).toHaveBeenCalledWith("lemonsqueezy-webhook", {
         body: {
           action: "confirm_return",
+          checkoutIntentId: null,
           plan: "focus",
           subscriptionId: null,
         },
       });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/reference: LY-TEST123/i)).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /resync payment/i }));
@@ -949,7 +967,7 @@ describe("AccountPanel", () => {
 
     expect(rpc).toHaveBeenCalledWith("reconcile_my_billing_subscriptions");
     expect(
-      screen.getByText(/lemonsqueezy payment confirmed/i),
+      await screen.findByText(/lemonsqueezy payment confirmed/i),
     ).toBeInTheDocument();
   });
 

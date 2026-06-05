@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ReaderCanvas } from "@/components/reader/reader-canvas";
 import { defaultReaderPreferences } from "@/types/reader";
@@ -35,37 +35,11 @@ function installMatchMedia() {
 }
 
 function renderReaderCanvas(args?: {
-  activeGoalLabel?: string;
   isPlaying?: boolean;
   modeView?: React.ReactNode;
-  onReturnToOriginalPage?: () => void;
-  pdfCompanion?: {
-    currentPageIndex: number;
-    currentPageLabel: string;
-    pageCount: number;
-    pageJumpError?: string;
-    pageJumpValue: string;
-    scrollMode: "continuous" | "single-page";
-    searchQuery: string;
-    searchStatusLabel: string;
-    zoomLabel: string;
-    onPageJump: () => void;
-    onPageJumpValueChange: (value: string) => void;
-    onPageStep: (delta: -1 | 1) => void;
-    onSearchNext: () => void;
-    onSearchPrevious: () => void;
-    onSearchQueryChange: (value: string) => void;
-    onSelectScrollMode: (scrollMode: "continuous" | "single-page") => void;
-    onSelectZoomValue: (zoomValue: string) => void;
-    onZoomStep: (steps: number) => void;
-  };
   preferences?: typeof defaultReaderPreferences;
   remainingWords?: number;
 }) {
-  const activeGoalLabel =
-    args && "activeGoalLabel" in args
-      ? args.activeGoalLabel
-      : "Practice focus";
   const handlers = {
     onChangeFontScale: vi.fn(),
     onChangeLineHeight: vi.fn(),
@@ -93,14 +67,12 @@ function renderReaderCanvas(args?: {
     ...handlers,
     ...render(
       <ReaderCanvas
-        activeGoalLabel={activeGoalLabel}
+        activeGoalLabel="Practice focus"
         chunkSize={2}
         currentParagraphNumber={3}
         isPlaying={args?.isPlaying ?? false}
         modeLabel="Classic Reader"
         modeView={args?.modeView ?? <div>Mode view</div>}
-        onReturnToOriginalPage={args?.onReturnToOriginalPage}
-        pdfCompanion={args?.pdfCompanion}
         remainingWords={args?.remainingWords}
         remainingTimeLabel="2m 2s left"
         preferences={args?.preferences ?? defaultReaderPreferences}
@@ -133,10 +105,6 @@ function renderReaderCanvas(args?: {
 }
 
 describe("ReaderCanvas", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   beforeEach(() => {
     mockViewportWidth = 1280;
     installMatchMedia();
@@ -181,7 +149,7 @@ describe("ReaderCanvas", () => {
     const enterButton = screen.getByRole("button", {
       name: /enter fullscreen/i,
     });
-    const infoButton = screen.getByRole("button", { name: /reader details/i });
+    const themeButton = screen.getByRole("button", { name: /change theme/i });
 
     await user.click(enterButton);
 
@@ -190,11 +158,22 @@ describe("ReaderCanvas", () => {
     const exitButton = await screen.findByRole("button", {
       name: /exit fullscreen/i,
     });
-    const detailsCluster = infoButton.parentElement?.parentElement as HTMLElement;
+    const topRow = exitButton.parentElement as HTMLElement;
+    const themeControl = themeButton.parentElement as HTMLElement;
+    const sentenceChip = within(topRow).getByText("8 sentences");
 
-    expect(detailsCluster).toContainElement(exitButton);
-    expect(detailsCluster).toContainElement(infoButton);
-    expect(within(exitButton).getByText("Collapse")).toHaveClass("sr-only");
+    await waitFor(() => {
+      expect(exitButton).toHaveTextContent("Collapse");
+    });
+
+    expect(
+      themeControl.compareDocumentPosition(sentenceChip) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      sentenceChip.compareDocumentPosition(exitButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    );
 
     await user.click(
       screen.getByRole("button", { name: /font scale settings/i }),
@@ -212,48 +191,6 @@ describe("ReaderCanvas", () => {
     expect(document.exitFullscreen).toHaveBeenCalledTimes(1);
   });
 
-  it("collapses fullscreen desktop chrome behind a reveal dock and restores it on edge hover", async () => {
-    const user = userEvent.setup();
-
-    renderReaderCanvas();
-
-    await user.click(
-      screen.getByRole("button", { name: /enter fullscreen/i }),
-    );
-
-    const topChrome = document.querySelector(
-      '[data-reader-fullscreen-chrome="top"]',
-    ) as HTMLElement;
-    const bottomChrome = document.querySelector(
-      '[data-reader-fullscreen-chrome="bottom"]',
-    ) as HTMLElement;
-
-    expect(screen.queryByRole("button", { name: /^controls$/i })).not.toBeInTheDocument();
-
-    await act(async () => {
-      await new Promise((resolve) => {
-        window.setTimeout(resolve, 1900);
-      });
-    });
-
-    expect(screen.getByRole("button", { name: /^controls$/i })).toBeInTheDocument();
-    expect(
-      screen.getAllByRole("button", { name: /exit fullscreen/i }).length,
-    ).toBeGreaterThan(0);
-    expect(topChrome).toHaveClass("pointer-events-none");
-    expect(bottomChrome).toHaveClass("pointer-events-none");
-
-    act(() => {
-      fireEvent.mouseMove(document, { clientY: 8 });
-    });
-
-    expect(screen.queryByRole("button", { name: /^controls$/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /change theme/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^save$/i })).toBeInTheDocument();
-    expect(topChrome).toHaveClass("pointer-events-auto");
-    expect(bottomChrome).toHaveClass("pointer-events-auto");
-  });
-
   it("opens the mobile tools sheet and keeps save actions available", async () => {
     const user = userEvent.setup();
     mockViewportWidth = 390;
@@ -262,17 +199,13 @@ describe("ReaderCanvas", () => {
       renderReaderCanvas();
 
     expect(
-      screen.queryByRole("button", { name: /change preset/i }),
-    ).not.toBeInTheDocument();
-
-    expect(
       screen.getByRole("button", { name: /controls/i }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /controls/i }));
 
     expect(screen.queryByText("42% complete")).not.toBeInTheDocument();
-    expect(screen.queryByText("8 sentences")).not.toBeInTheDocument();
+    expect(screen.getAllByText("8 sentences")).toHaveLength(1);
     expect(
       screen.queryByRole("button", { name: /change theme/i }),
     ).not.toBeInTheDocument();
@@ -285,7 +218,7 @@ describe("ReaderCanvas", () => {
     const dialog = screen.getByRole("dialog", { name: /reading tools/i });
 
     expect(
-      screen.getByRole("button", { name: /enter fullscreen/i }),
+      within(dialog).getByRole("button", { name: /enter fullscreen/i }),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", { name: /save bookmark/i }),
@@ -293,7 +226,6 @@ describe("ReaderCanvas", () => {
     expect(
       within(dialog).getByRole("button", { name: /save highlight/i }),
     ).toBeInTheDocument();
-    expect(within(dialog).getByText("Presets")).toBeInTheDocument();
 
     await user.click(
       within(dialog).getByRole("button", { name: /save bookmark/i }),
@@ -325,278 +257,21 @@ describe("ReaderCanvas", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps a compact PDF summary visible and exposes full PDF controls through the mobile tools sheet", async () => {
-    const user = userEvent.setup();
-    mockViewportWidth = 390;
-    installMatchMedia();
-
-    renderReaderCanvas({
-      onReturnToOriginalPage: vi.fn(),
-      pdfCompanion: {
-        currentPageIndex: 0,
-        currentPageLabel: "1",
-        pageCount: 3,
-        pageJumpValue: "1",
-        scrollMode: "continuous",
-        searchQuery: "Leyendo",
-        searchStatusLabel: "1 of 1",
-        zoomLabel: "Fit width",
-        onPageJump: vi.fn(),
-        onPageJumpValueChange: vi.fn(),
-        onPageStep: vi.fn(),
-        onSearchNext: vi.fn(),
-        onSearchPrevious: vi.fn(),
-        onSearchQueryChange: vi.fn(),
-        onSelectScrollMode: vi.fn(),
-        onSelectZoomValue: vi.fn(),
-        onZoomStep: vi.fn(),
-      },
-    });
-
-    expect(
-      screen.getByRole("button", { name: /original pdf/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("1 of 3")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("textbox", { name: /search this pdf/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /^view$/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /controls/i }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /controls/i }));
-
-    expect(
-      screen.queryByRole("textbox", { name: /search this pdf/i }),
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /reading tools/i }));
-
-    const dialog = screen.getByRole("dialog", { name: /reading tools/i });
-
-    expect(
-      within(dialog).getByRole("textbox", { name: /search this pdf/i }),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByRole("button", { name: /fit width/i }),
-    ).toBeInTheDocument();
-    expect(within(dialog).getByText("1 of 3")).toBeInTheDocument();
-  });
-
-  it("merges desktop pdf navigation and keeps zoom and presets inside menus", async () => {
-    const user = userEvent.setup();
-    const onPageStep = vi.fn();
-    const onZoomStep = vi.fn();
-    const onSelectZoomValue = vi.fn();
-    const { onSelectPreset } = renderReaderCanvas({
-      pdfCompanion: {
-        currentPageIndex: 0,
-        currentPageLabel: "1",
-        pageCount: 3,
-        pageJumpValue: "1",
-        scrollMode: "continuous",
-        searchQuery: "",
-        searchStatusLabel: "Search the document",
-        zoomLabel: "100%",
-        onPageJump: vi.fn(),
-        onPageJumpValueChange: vi.fn(),
-        onPageStep,
-        onSearchNext: vi.fn(),
-        onSearchPrevious: vi.fn(),
-        onSearchQueryChange: vi.fn(),
-        onSelectScrollMode: vi.fn(),
-        onSelectZoomValue,
-        onZoomStep,
-      },
-    });
-
-    expect(screen.getByText("1 of 3")).toBeInTheDocument();
-    expect(screen.queryByText(/^Page 1$/)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /next page/i }));
-
-    expect(onPageStep).toHaveBeenCalledWith(1);
-
-    const viewButton = screen.getByRole("button", { name: /view: 100%/i });
-
-    expect(viewButton).toHaveTextContent("View");
-    expect(viewButton).toHaveTextContent("100%");
-
-    await user.click(viewButton);
-
-    const viewPanel = screen
-      .getByText("PDF view tools")
-      .closest(".reader-dropdown-panel") as HTMLElement;
-
-    await user.click(
-      within(viewPanel).getByRole("button", { name: /zoom in/i }),
-    );
-
-    expect(onZoomStep).toHaveBeenCalledWith(1);
-
-    await user.click(
-      within(viewPanel).getByRole("button", { name: /fit page/i }),
-    );
-
-    expect(onSelectZoomValue).toHaveBeenCalledWith("page-fit");
-
-    await user.click(screen.getByRole("button", { name: /more actions/i }));
-
-    const morePanel = screen
-      .getByText("More actions")
-      .closest(".reader-dropdown-panel") as HTMLElement;
-
-    expect(within(morePanel).getByText("Presets")).toBeInTheDocument();
-
-    await user.click(
-      within(morePanel).getByRole("button", { name: /beginner/i }),
-    );
-
-    expect(onSelectPreset).toHaveBeenCalledWith("beginner");
-  });
-
-  it("shows the sentence and words-left summary inside reader details on desktop", async () => {
-    const user = userEvent.setup();
-
+  it("shows the sentence and words-left summary as a single chip on desktop", () => {
     renderReaderCanvas({ remainingWords: 120 });
-
-    expect(
-      screen.queryByText("8 sentences · 120 words left"),
-    ).not.toBeInTheDocument();
-
-    await user.hover(screen.getByRole("button", { name: /reader details/i }));
 
     expect(screen.getByText("8 sentences · 120 words left")).toBeInTheDocument();
     expect(screen.getAllByText("8 sentences · 120 words left")).toHaveLength(1);
   });
 
-  it("keeps the sentence and words-left summary behind compact controls on mobile", async () => {
-    const user = userEvent.setup();
+  it("shows the sentence and words-left summary once on compact mobile", () => {
     mockViewportWidth = 390;
     installMatchMedia();
 
     renderReaderCanvas({ remainingWords: 120 });
 
-    expect(
-      screen.queryByText("8 sentences · 120 words left"),
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /controls/i }));
-
-    expect(
-      screen.queryByText("8 sentences · 120 words left"),
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /reader details/i }));
-
     expect(screen.getByText("8 sentences · 120 words left")).toBeInTheDocument();
     expect(screen.getAllByText("8 sentences · 120 words left")).toHaveLength(1);
-  });
-
-  it("shows the shared reader info details only while hovered on desktop", async () => {
-    const user = userEvent.setup();
-
-    renderReaderCanvas({ activeGoalLabel: undefined });
-
-    const infoButton = screen.getByRole("button", { name: /reader details/i });
-
-    expect(
-      screen.queryByRole("button", { name: /time left: 2m 2s left/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("42% complete")).not.toBeInTheDocument();
-    expect(screen.queryByText("8 sentences")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
-      ),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "This session is currently customized beyond a saved onboarding goal.",
-      ),
-    ).not.toBeInTheDocument();
-
-    await user.hover(infoButton);
-
-    expect(screen.getByText("42% complete")).toBeInTheDocument();
-    expect(screen.getByText("8 sentences")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /time left: 2m 2s left/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "This session is currently customized beyond a saved onboarding goal.",
-      ),
-    ).toBeInTheDocument();
-
-    await user.unhover(infoButton);
-
-    await waitFor(() => {
-      expect(
-        screen.queryByText(
-          "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
-        ),
-      ).not.toBeInTheDocument();
-    });
-    expect(
-      screen.queryByText(
-        "This session is currently customized beyond a saved onboarding goal.",
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  it("toggles the shared reader info details from compact mobile controls", async () => {
-    const user = userEvent.setup();
-    mockViewportWidth = 390;
-    installMatchMedia();
-
-    renderReaderCanvas({ activeGoalLabel: undefined });
-
-    await user.click(screen.getByRole("button", { name: /controls/i }));
-
-    const infoButton = screen.getByRole("button", { name: /reader details/i });
-
-    expect(
-      screen.queryByText(
-        "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
-      ),
-    ).not.toBeInTheDocument();
-
-    await user.click(infoButton);
-
-    expect(
-      screen.getByText(
-        "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "This session is currently customized beyond a saved onboarding goal.",
-      ),
-    ).toBeInTheDocument();
-
-    await user.click(infoButton);
-
-    await waitFor(() => {
-      expect(
-        screen.queryByText(
-          "Time is an estimate. It can change with reading mode, pacing, and motion settings.",
-        ),
-      ).not.toBeInTheDocument();
-    });
-    expect(
-      screen.queryByText(
-        "This session is currently customized beyond a saved onboarding goal.",
-      ),
-    ).not.toBeInTheDocument();
   });
 
   it("toggles playback with Space from the reader surface", async () => {
@@ -635,35 +310,14 @@ describe("ReaderCanvas", () => {
     expect(onTogglePlayback).not.toHaveBeenCalled();
   });
 
-  it("does not toggle playback with Space while the mobile tools sheet is open", async () => {
+  it("does not toggle playback with Space in PDF mode", async () => {
     const user = userEvent.setup();
-    mockViewportWidth = 390;
-    installMatchMedia();
-
     const { onTogglePlayback } = renderReaderCanvas({
-      pdfCompanion: {
-        currentPageIndex: 0,
-        currentPageLabel: "1",
-        pageCount: 1,
-        pageJumpValue: "1",
-        scrollMode: "continuous",
-        searchQuery: "",
-        searchStatusLabel: "Search the document",
-        zoomLabel: "Fit width",
-        onPageJump: vi.fn(),
-        onPageJumpValueChange: vi.fn(),
-        onPageStep: vi.fn(),
-        onSearchNext: vi.fn(),
-        onSearchPrevious: vi.fn(),
-        onSearchQueryChange: vi.fn(),
-        onSelectScrollMode: vi.fn(),
-        onSelectZoomValue: vi.fn(),
-        onZoomStep: vi.fn(),
+      preferences: {
+        ...defaultReaderPreferences,
+        mode: "pdf-page",
       },
     });
-
-    await user.click(screen.getByRole("button", { name: /controls/i }));
-    await user.click(screen.getByRole("button", { name: /reading tools/i }));
 
     await user.keyboard("{Space}");
 

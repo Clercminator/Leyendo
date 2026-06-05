@@ -4,10 +4,6 @@ import {
   buildMercadoPagoSignatureManifest,
   resolveMercadoPagoWebhookResourceId,
 } from "./shared.ts";
-import {
-  buildMercadoPagoPreapprovalSearchParams,
-  findLatestMatchingMercadoPagoSubscription,
-} from "./search.ts";
 
 const MERCADOPAGO_ACCESS_TOKEN =
   Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")?.trim() ?? "";
@@ -82,6 +78,7 @@ const corsHeaders = {
 
 interface WebhookBody {
   action?: string;
+  checkoutIntentId?: string | number;
   data?: { id?: string | number };
   paymentId?: string | number;
   plan?: string;
@@ -102,6 +99,12 @@ interface MercadoPagoCredentials {
   maxPlanId: string;
   webhookSecret: string;
 }
+
+type CheckoutIntentStatus =
+  | "returned"
+  | "pending_provider_sync"
+  | "linked"
+  | "needs_attention";
 
 const mercadoPagoCredentials = [
   {
@@ -412,6 +415,93 @@ async function syncProfileSubscription(userId: string) {
   }
 }
 
+function createSupportReference(intentId: string | null) {
+  return intentId
+    ? `LY-${intentId.replaceAll("-", "").slice(0, 10).toUpperCase()}`
+    : null;
+}
+
+async function updateCheckoutIntent(params: {
+  checkoutIntentId?: string | null;
+  lastError?: string | null;
+  paymentId?: string | null;
+  plan?: PaidTierId | null;
+  returnPayload?: unknown;
+  status: CheckoutIntentStatus;
+  subscriptionId?: string | null;
+  userId?: string | null;
+}) {
+  const checkoutIntentId = asString(params.checkoutIntentId);
+  let targetIntentId = checkoutIntentId;
+
+  if (!targetIntentId && params.userId) {
+    let query = supabase
+      .from("billing_checkout_intents")
+      .select("id")
+      .eq("provider", "mercadopago")
+      .eq("user_id", params.userId)
+      .in("status", [
+        "created",
+        "checkout_opened",
+        "returned",
+        "pending_provider_sync",
+        "needs_attention",
+      ])
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    if (params.plan) {
+      query = query.eq("tier", params.plan);
+    }
+
+    const { data } = await query.maybeSingle();
+    targetIntentId = asString(data?.id);
+  }
+
+  if (!targetIntentId) {
+    return { checkoutIntentId: null, supportReference: null };
+  }
+
+  let updateQuery = supabase
+    .from("billing_checkout_intents")
+    .update({
+      last_error: params.lastError ?? null,
+      provider_payment_id: params.paymentId ?? null,
+      provider_subscription_id: params.subscriptionId ?? null,
+      return_payload: params.returnPayload ?? {},
+      status: params.status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", targetIntentId);
+
+  if (params.userId) {
+    updateQuery = updateQuery.eq("user_id", params.userId);
+  }
+
+  const { data, error } = await updateQuery
+    .select("id,support_reference")
+    .maybeSingle();
+
+  if (error) {
+    logMercadoPagoEvent(
+      "warn",
+      "checkout_intent_update_failed",
+      {
+        checkoutIntentId: targetIntentId,
+        status: params.status,
+      },
+      error,
+    );
+  }
+
+  const resolvedIntentId = asString(data?.id) ?? targetIntentId;
+  return {
+    checkoutIntentId: resolvedIntentId,
+    supportReference:
+      asString(data?.support_reference) ?? createSupportReference(resolvedIntentId),
+  };
+}
+
 async function getExistingSubscriptionTier(
   subscriptionId: string | null,
 ): Promise<PaidTierId | null> {
@@ -597,12 +687,20 @@ async function searchLatestSubscriptionPreapproval(params: {
     const searchPlanIds = exactPlanId ? [exactPlanId, null] : [null];
 
     for (const searchPlanId of searchPlanIds) {
-      const searchParams = buildMercadoPagoPreapprovalSearchParams({
-        limit: params.userId ? 50 : 10,
-        searchPlanId,
-        userEmail: params.userEmail,
-        userId: params.userId,
+      const searchParams = new URLSearchParams({
+        criteria: "desc",
+        limit: params.userId ? "50" : "10",
+        offset: "0",
+        sort: "date_created",
       });
+
+      if (!params.userId && params.userEmail) {
+        searchParams.set("payer_email", params.userEmail);
+      }
+
+      if (searchPlanId) {
+        searchParams.set("preapproval_plan_id", searchPlanId);
+      }
 
       const response = await fetch(
         `https://api.mercadopago.com/preapproval/search?${searchParams.toString()}`,
@@ -635,13 +733,41 @@ async function searchLatestSubscriptionPreapproval(params: {
         results?: Array<Record<string, unknown>>;
       };
       const results = Array.isArray(payload.results) ? payload.results : [];
-      const matchingSubscription = findLatestMatchingMercadoPagoSubscription({
-        inferTierFromSubscription: inferTierFromSubscriptionRecord,
-        plan: params.plan,
-        results,
-        searchPlanId,
-        userEmail: params.userEmail,
-        userId: params.userId,
+      const matchingSubscription = results.find((subscription) => {
+        const externalReference = pickString(subscription.external_reference);
+        if (params.userId && externalReference === params.userId) {
+          return true;
+        }
+
+        if (!params.userEmail) {
+          return false;
+        }
+
+        const subscriptionEmail = pickString(subscription.payer_email);
+        if (
+          subscriptionEmail &&
+          subscriptionEmail.toLowerCase() !== params.userEmail.toLowerCase()
+        ) {
+          return false;
+        }
+
+        if (searchPlanId) {
+          const subscriptionPlanId = pickString(
+            subscription.preapproval_plan_id,
+            subscription.preapproval_plan &&
+              typeof subscription.preapproval_plan === "object"
+              ? (subscription.preapproval_plan as Record<string, unknown>).id
+              : null,
+          );
+
+          return subscriptionPlanId === searchPlanId;
+        }
+
+        if (params.plan) {
+          return inferTierFromSubscriptionRecord(subscription) === params.plan;
+        }
+
+        return true;
       });
 
       if (matchingSubscription) {
@@ -875,6 +1001,12 @@ async function syncMercadoPagoSubscription(params: {
 
   if (params.userId) {
     await syncProfileSubscription(params.userId);
+    await updateCheckoutIntent({
+      plan: tier,
+      status: "linked",
+      subscriptionId,
+      userId: params.userId,
+    });
   }
 
   return tier;
@@ -965,7 +1097,7 @@ async function handleSubscriptionAuthorizedPaymentNotification(
   const subscriptionResult = subscriptionId
     ? await fetchSubscriptionPreapproval(subscriptionId, [credentials])
     : null;
-  let subscription = subscriptionResult?.subscription ?? null;
+  const subscription = subscriptionResult?.subscription ?? null;
   const userEmail = pickString(
     authorizedPayment.payer_email,
     subscription?.payer_email,
@@ -990,35 +1122,6 @@ async function handleSubscriptionAuthorizedPaymentNotification(
   }
 
   let tier = await getExistingSubscriptionTier(subscriptionId);
-  if (!subscription) {
-    const latestSubscription = await searchLatestSubscriptionPreapproval({
-      credentialsCandidates: [credentials],
-      plan:
-        tier ??
-        inferTierFromText(
-          authorizedPayment.reason,
-          authorizedPayment.description,
-        ) ??
-        inferTierFromAmount(
-          asNumber(authorizedPayment.transaction_amount) ??
-            asNumber(authorizedPayment.amount),
-        ),
-      userEmail,
-      userId: targetUserId,
-    });
-
-    if (latestSubscription) {
-      subscription = latestSubscription.subscription;
-
-      logMercadoPagoEvent("info", "authorized_payment_subscription_recovered", {
-        authorizedPaymentId,
-        environment: latestSubscription.credentials.environment,
-        recoveredSubscriptionId: pickString(latestSubscription.subscription.id),
-        userId: targetUserId,
-      });
-    }
-  }
-
   if (subscription) {
     tier = await syncMercadoPagoSubscription({
       subscription,
@@ -1086,6 +1189,13 @@ async function handleSubscriptionAuthorizedPaymentNotification(
 
   if (targetUserId) {
     await syncProfileSubscription(targetUserId);
+    await updateCheckoutIntent({
+      paymentId: authorizedPaymentId,
+      plan: tier,
+      status: subscriptionId ? "linked" : "pending_provider_sync",
+      subscriptionId,
+      userId: targetUserId,
+    });
   }
 
   return okResponse();
@@ -1106,12 +1216,24 @@ async function handleReturnConfirmation(
   }
 
   const requestedPlan = normalizePaidTierId(body.plan);
+  const checkoutIntentId = asString(body.checkoutIntentId);
   const paymentId = pickString(body.paymentId, body.data?.id);
   const subscriptionId = pickString(body.subscriptionId);
 
   logMercadoPagoEvent("info", "confirm_return_received", {
+    checkoutIntentId,
     paymentId,
     plan: requestedPlan,
+    subscriptionId,
+    userId: authenticatedUser.id,
+  });
+
+  let checkoutIntentState = await updateCheckoutIntent({
+    checkoutIntentId,
+    paymentId,
+    plan: requestedPlan,
+    returnPayload: body,
+    status: "returned",
     subscriptionId,
     userId: authenticatedUser.id,
   });
@@ -1124,6 +1246,15 @@ async function handleReturnConfirmation(
   });
 
   if (linkedSubscription) {
+    checkoutIntentState = await updateCheckoutIntent({
+      checkoutIntentId: checkoutIntentState.checkoutIntentId ?? checkoutIntentId,
+      paymentId,
+      plan: requestedPlan,
+      returnPayload: body,
+      status: "linked",
+      subscriptionId: linkedSubscription.provider_subscription_id,
+      userId: authenticatedUser.id,
+    });
     logMercadoPagoEvent("info", "confirm_return_already_linked", {
       plan: requestedPlan,
       subscriptionId: linkedSubscription.provider_subscription_id,
@@ -1131,7 +1262,11 @@ async function handleReturnConfirmation(
       userId: authenticatedUser.id,
     });
     return jsonResponse({
+      checkoutIntentId: checkoutIntentState.checkoutIntentId,
       confirmed: true,
+      providerSubscriptionId: linkedSubscription.provider_subscription_id,
+      status: "linked",
+      supportReference: checkoutIntentState.supportReference,
       tier: linkedSubscription.tier ?? requestedPlan ?? null,
     });
   }
@@ -1145,7 +1280,7 @@ async function handleReturnConfirmation(
     );
   }
 
-  if (!paymentId && subscriptionId) {
+  if (subscriptionId) {
     await handleSubscriptionPreapprovalNotification(
       subscriptionId,
       mercadoPagoCredentials,
@@ -1178,6 +1313,7 @@ async function handleReturnConfirmation(
     linkedSubscription ? "info" : "warn",
     "confirm_return_completed",
     {
+      checkoutIntentId: checkoutIntentState.checkoutIntentId,
       confirmed: Boolean(linkedSubscription),
       paymentId,
       plan: requestedPlan,
@@ -1187,8 +1323,23 @@ async function handleReturnConfirmation(
     },
   );
 
+  checkoutIntentState = await updateCheckoutIntent({
+    checkoutIntentId: checkoutIntentState.checkoutIntentId ?? checkoutIntentId,
+    paymentId,
+    plan: requestedPlan,
+    returnPayload: body,
+    status: linkedSubscription ? "linked" : "pending_provider_sync",
+    subscriptionId: linkedSubscription?.provider_subscription_id ?? subscriptionId,
+    userId: authenticatedUser.id,
+  });
+
   return jsonResponse({
+    checkoutIntentId: checkoutIntentState.checkoutIntentId,
     confirmed: Boolean(linkedSubscription),
+    providerSubscriptionId:
+      linkedSubscription?.provider_subscription_id ?? subscriptionId ?? null,
+    status: linkedSubscription ? "linked" : "pending_provider_sync",
+    supportReference: checkoutIntentState.supportReference,
     tier: linkedSubscription?.tier ?? requestedPlan ?? null,
   });
 }

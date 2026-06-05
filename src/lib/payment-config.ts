@@ -177,6 +177,7 @@ export function getPricingPathForLocale(locale: PaymentLocale) {
 }
 
 export function buildAccountReturnUrl(args: {
+  checkoutIntentId?: string;
   origin: string;
   planTier: PaidPlanTier;
   paymentStatus?: "success" | "failed" | "pending";
@@ -188,10 +189,14 @@ export function buildAccountReturnUrl(args: {
   if (args.provider) {
     returnUrl.searchParams.set("provider", args.provider);
   }
+  if (args.checkoutIntentId?.trim()) {
+    returnUrl.searchParams.set("checkout_intent", args.checkoutIntentId.trim());
+  }
   return returnUrl.toString();
 }
 
 export function buildPricingReturnUrl(args: {
+  checkoutIntentId?: string;
   locale: PaymentLocale;
   origin: string;
   planTier: PaidPlanTier;
@@ -203,6 +208,9 @@ export function buildPricingReturnUrl(args: {
   returnUrl.searchParams.set("payment", args.paymentStatus ?? "success");
   if (args.provider) {
     returnUrl.searchParams.set("provider", args.provider);
+  }
+  if (args.checkoutIntentId?.trim()) {
+    returnUrl.searchParams.set("checkout_intent", args.checkoutIntentId.trim());
   }
   return returnUrl.toString();
 }

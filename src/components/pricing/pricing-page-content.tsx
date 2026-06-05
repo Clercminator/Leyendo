@@ -45,6 +45,7 @@ const paymentRegionStorageKey = "leyendo_payment_region";
 const paidSignupPlanStorageKey = "leyendo_paid_signup_plan";
 const pendingCheckoutPlanStorageKey = "leyendo_pending_checkout_plan";
 const pendingCheckoutProviderStorageKey = "leyendo_pending_checkout_provider";
+const latestCheckoutIntentStorageKey = "leyendo_latest_checkout_intent_id";
 const latamCountryCodes = new Set([
   "AR",
   "BO",
@@ -290,6 +291,17 @@ export function PricingPageContent({
 
     window.localStorage.removeItem(pendingCheckoutPlanStorageKey);
     window.localStorage.removeItem(pendingCheckoutProviderStorageKey);
+  };
+
+  const rememberLatestCheckoutIntent = (checkoutIntentId: unknown) => {
+    if (typeof window === "undefined" || typeof checkoutIntentId !== "string") {
+      return;
+    }
+
+    const normalized = checkoutIntentId.trim();
+    if (normalized) {
+      window.localStorage.setItem(latestCheckoutIntentStorageKey, normalized);
+    }
   };
 
   const closeAuthModal = () => {
@@ -988,6 +1000,7 @@ export function PricingPageContent({
           }),
         });
         const payload = (await response.json().catch(() => null)) as {
+          checkoutIntentId?: string;
           checkoutUrl?: string;
           error?: string;
         } | null;
@@ -999,6 +1012,7 @@ export function PricingPageContent({
         }
 
         providerUrl = payload.checkoutUrl;
+        rememberLatestCheckoutIntent(payload.checkoutIntentId);
 
         if (checkoutWindow) {
           checkoutWindow.opener = null;
@@ -1029,6 +1043,7 @@ export function PricingPageContent({
           }),
         });
         const payload = (await response.json().catch(() => null)) as {
+          checkoutIntentId?: string;
           checkoutUrl?: string;
           error?: string;
         } | null;
@@ -1040,6 +1055,7 @@ export function PricingPageContent({
         }
 
         providerUrl = payload.checkoutUrl;
+        rememberLatestCheckoutIntent(payload.checkoutIntentId);
       } catch {
         checkoutWindow?.close();
         setStatusMessage(copy.invalidMercadoPagoProvider);

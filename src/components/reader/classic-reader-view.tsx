@@ -114,9 +114,13 @@ function getHeadingDepth(node: unknown) {
     return undefined;
   }
 
-  const normalizedDepth = Math.max(1, Math.min(6, Math.round(node.depth)));
-
-  return normalizedDepth as 1 | 2 | 3 | 4 | 5 | 6;
+  return Math.max(1, Math.min(6, Math.round(node.depth))) as
+    | 1
+    | 2
+    | 3
+    | 4
+    | 5
+    | 6;
 }
 
 function getNodeChildren(node: unknown) {
@@ -1032,7 +1036,9 @@ export function ClassicReaderView({
         data-reader-classic-active={isActive ? "true" : undefined}
         data-reader-heading-level={resolvedHeadingLevel}
         data-reader-indent-level={block.indentLevel}
-        data-reader-list-depth={block.kind === "list-item" ? block.listDepth : undefined}
+        data-reader-list-depth={
+          block.kind === "list-item" ? block.listDepth : undefined
+        }
         data-reader-paragraph-index={block.index}
         data-reader-page-break-before={block.pageBreakBefore ? "true" : undefined}
         style={blockStyle}
@@ -1051,7 +1057,9 @@ export function ClassicReaderView({
         {block.kind === "heading" ? (
           <HeadingTag
             aria-label={block.text}
-            className={`reader-classic-heading reader-classic-heading-level-${resolvedHeadingLevel ?? 3} reader-panel-strong-text font-heading font-semibold tracking-tight ${
+            className={`reader-classic-heading reader-classic-heading-level-${
+              resolvedHeadingLevel ?? 3
+            } reader-panel-strong-text font-heading font-semibold tracking-tight ${
               isCentered ? "text-center" : "text-left"
             }`}
           >
@@ -1236,13 +1244,7 @@ export function ClassicReaderView({
                           block: documentBlock,
                           headingTagName:
                             block.nodeType === "heading"
-                              ? (`h${block.headingDepth ?? 3}` as
-                                  | "h1"
-                                  | "h2"
-                                  | "h3"
-                                  | "h4"
-                                  | "h5"
-                                  | "h6")
+                              ? (`h${block.headingDepth ?? 3}` as HeadingTagName)
                               : undefined,
                           isActive: documentBlock.index === chunk.paragraphIndex,
                           keyValue: `${block.key}:${documentBlock.index}`,

@@ -7,6 +7,10 @@ import {
   pickPaymentEnvValue,
 } from "@/lib/payment-config";
 import { getPaidPlanCheckoutRestriction } from "@/lib/plans";
+import {
+  createBillingCheckoutIntent,
+  markBillingCheckoutIntentOpened,
+} from "@/lib/supabase/billing-checkout-intents";
 import { getAuthenticatedCheckoutContext } from "@/lib/supabase/server-auth";
 
 const LEMONSQUEEZY_API = "https://api.lemonsqueezy.com/v1";
@@ -136,12 +140,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const redirectUrl = buildAccountReturnUrl({
-    origin: request.nextUrl.origin,
-    planTier,
-    paymentStatus: "success",
-    provider: "lemonsqueezy",
-  });
   const userEmail =
     typeof body.userEmail === "string" ? body.userEmail.trim() : "";
   const userId = typeof body.userId === "string" ? body.userId.trim() : "";
@@ -214,6 +212,40 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let checkoutIntent;
+
+  try {
+    checkoutIntent = await createBillingCheckoutIntent({
+      accessToken,
+      metadata: {
+        source: "next_checkout_route",
+        variantId,
+      },
+      provider: "lemonsqueezy",
+      tier: planTier,
+      userEmail: checkoutContext.user.email ?? userEmail,
+      userId: checkoutContext.user.id,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Leyendo could not prepare payment recovery. Try again.",
+      },
+      { status: 500 },
+    );
+  }
+
+  const redirectUrl = buildAccountReturnUrl({
+    checkoutIntentId: checkoutIntent.id,
+    origin: request.nextUrl.origin,
+    planTier,
+    paymentStatus: "success",
+    provider: "lemonsqueezy",
+  });
+
   const payload = {
     data: {
       type: "checkouts",
@@ -226,7 +258,10 @@ export async function POST(request: NextRequest) {
           ...(checkoutContext.user.email || userEmail
             ? { email: checkoutContext.user.email ?? userEmail }
             : {}),
-          custom: { user_id: checkoutContext.user.id },
+          custom: {
+            checkout_intent_id: checkoutIntent.id,
+            user_id: checkoutContext.user.id,
+          },
         },
       },
       relationships: {
@@ -268,5 +303,32 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ checkoutUrl });
+  try {
+    await markBillingCheckoutIntentOpened({
+      accessToken,
+      checkoutUrl,
+      id: checkoutIntent.id,
+      metadata: {
+        source: "next_checkout_route",
+        variantId,
+      },
+      returnUrl: redirectUrl,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Leyendo could not save the checkout recovery link.",
+      },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({
+    checkoutIntentId: checkoutIntent.id,
+    checkoutUrl,
+    supportReference: checkoutIntent.supportReference,
+  });
 }
