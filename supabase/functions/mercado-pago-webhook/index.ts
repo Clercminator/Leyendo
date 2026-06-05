@@ -1344,6 +1344,254 @@ async function handleReturnConfirmation(
   });
 }
 
+async function handleSubscriptionUpgrade(
+  req: Request,
+  body: WebhookBody,
+): Promise<Response> {
+  const authenticatedUser = await resolveAuthenticatedReturnUser(req);
+  if (!authenticatedUser) {
+    return jsonResponse({ error: "Authentication required" }, 401);
+  }
+
+  const targetTier = normalizePaidTierId(body.plan);
+  if (targetTier !== "max") {
+    return jsonResponse(
+      {
+        error: "Only upgrades to the Max plan are supported.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const linked = await getLinkedMercadoPagoSubscriptionForUser({
+    plan: "focus",
+    userId: authenticatedUser.id,
+  });
+
+  if (!linked?.provider_subscription_id) {
+    logMercadoPagoEvent("warn", "upgrade_no_active_focus", {
+      userId: authenticatedUser.id,
+    });
+    return jsonResponse(
+      {
+        error: "No active Focus subscription was found to upgrade.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const preapprovalId = linked.provider_subscription_id;
+
+  // Load the current preapproval to learn which credentials own it and the
+  // currency it bills in.
+  const current = await fetchMercadoPagoJson(
+    `/preapproval/${preapprovalId}`,
+    mercadoPagoCredentials,
+  );
+
+  if (!current.ok) {
+    logMercadoPagoEvent("error", "upgrade_preapproval_fetch_failed", {
+      preapprovalId,
+      status: current.status,
+      userId: authenticatedUser.id,
+    });
+    return jsonResponse(
+      {
+        error: "MercadoPago could not load the current subscription.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const { credentials } = current;
+
+  if (!credentials.maxPlanId) {
+    return jsonResponse(
+      {
+        error: "MercadoPago Max plan is not configured.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const currentAutoRecurring =
+    typeof current.data.auto_recurring === "object" &&
+    current.data.auto_recurring !== null
+      ? (current.data.auto_recurring as Record<string, unknown>)
+      : null;
+  const currentCurrencyId = pickString(currentAutoRecurring?.currency_id);
+
+  // Read the Max plan's configured amount so the upgrade uses the right price
+  // in the subscriber's own currency.
+  const maxPlan = await fetchMercadoPagoJson(
+    `/preapproval_plan/${credentials.maxPlanId}`,
+    [credentials],
+  );
+
+  if (!maxPlan.ok) {
+    logMercadoPagoEvent("error", "upgrade_max_plan_fetch_failed", {
+      maxPlanId: credentials.maxPlanId,
+      status: maxPlan.status,
+      userId: authenticatedUser.id,
+    });
+    return jsonResponse(
+      {
+        error: "MercadoPago could not load the Max plan.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const maxAutoRecurring =
+    typeof maxPlan.data.auto_recurring === "object" &&
+    maxPlan.data.auto_recurring !== null
+      ? (maxPlan.data.auto_recurring as Record<string, unknown>)
+      : null;
+  const maxAmount = asNumber(maxAutoRecurring?.transaction_amount);
+  const maxCurrencyId =
+    pickString(maxAutoRecurring?.currency_id) ?? currentCurrencyId;
+
+  if (maxAmount === null) {
+    return jsonResponse(
+      {
+        error: "MercadoPago Max plan is missing a price.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  // Update the existing preapproval amount in place. This keeps the same
+  // subscription and card on file; the new Max amount applies from the next
+  // billing cycle, so the subscriber is never double-charged.
+  const updateResponse = await fetch(
+    `https://api.mercadopago.com/preapproval/${preapprovalId}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${credentials.accessToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        auto_recurring: {
+          transaction_amount: maxAmount,
+          currency_id: maxCurrencyId,
+        },
+        reason: "Leyendo Max",
+      }),
+    },
+  );
+
+  if (!updateResponse.ok) {
+    const failureBody = await updateResponse.text();
+    logMercadoPagoEvent(
+      "error",
+      "upgrade_preapproval_update_failed",
+      {
+        preapprovalId,
+        status: updateResponse.status,
+        userId: authenticatedUser.id,
+      },
+      failureBody,
+    );
+    return jsonResponse(
+      {
+        error:
+          "MercadoPago could not switch this subscription to Max automatically. Please contact support to finish the upgrade.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const updatedPreapproval = (await updateResponse.json()) as Record<
+    string,
+    unknown
+  >;
+  const updatedAutoRecurring =
+    typeof updatedPreapproval.auto_recurring === "object" &&
+    updatedPreapproval.auto_recurring !== null
+      ? (updatedPreapproval.auto_recurring as Record<string, unknown>)
+      : null;
+  const confirmedAmount = asNumber(updatedAutoRecurring?.transaction_amount);
+
+  if (confirmedAmount === null || Math.abs(confirmedAmount - maxAmount) > 0.01) {
+    logMercadoPagoEvent("error", "upgrade_amount_mismatch", {
+      confirmedAmount,
+      maxAmount,
+      preapprovalId,
+      userId: authenticatedUser.id,
+    });
+    return jsonResponse(
+      {
+        error:
+          "MercadoPago did not confirm the Max price. Please contact support to finish the upgrade.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  // Promote the linked subscription row to Max and re-sync the profile tier.
+  const { error: updateRowError } = await supabase
+    .from("billing_subscriptions")
+    .update({
+      tier: "max",
+      variant_id: credentials.maxPlanId,
+      product_name: "Leyendo Max",
+      metadata: updatedPreapproval,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("provider", "mercadopago")
+    .eq("provider_subscription_id", preapprovalId);
+
+  if (updateRowError) {
+    logMercadoPagoEvent(
+      "error",
+      "upgrade_row_update_failed",
+      {
+        preapprovalId,
+        userId: authenticatedUser.id,
+      },
+      updateRowError,
+    );
+    return jsonResponse(
+      {
+        error:
+          "Leyendo could not record the upgrade. Please contact support.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  await syncProfileSubscription(authenticatedUser.id);
+  await updateCheckoutIntent({
+    plan: "max",
+    status: "linked",
+    subscriptionId: preapprovalId,
+    userId: authenticatedUser.id,
+  });
+
+  logMercadoPagoEvent("info", "upgrade_completed", {
+    amount: confirmedAmount,
+    preapprovalId,
+    userId: authenticatedUser.id,
+  });
+
+  return jsonResponse({
+    providerSubscriptionId: preapprovalId,
+    tier: "max",
+    upgraded: true,
+  });
+}
+
 async function handleWebhook(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -1364,6 +1612,10 @@ async function handleWebhook(req: Request): Promise<Response> {
 
     if (body.action === "confirm_return") {
       return await handleReturnConfirmation(req, body);
+    }
+
+    if (body.action === "upgrade_subscription") {
+      return await handleSubscriptionUpgrade(req, body);
     }
 
     const credentialsCandidates = await resolveMercadoPagoCredentials(req);

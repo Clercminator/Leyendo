@@ -500,7 +500,9 @@ describe("PricingPageContent", () => {
         name: /current plan/i,
       }),
     ).toBeDisabled();
-    expect(screen.getByRole("button", { name: /get max/i })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: /upgrade to max/i }),
+    ).toBeEnabled();
   });
 
   it("blocks Max users from purchasing lower tiers", () => {

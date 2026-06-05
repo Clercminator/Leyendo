@@ -172,7 +172,7 @@ const syncStatusLabels = {
   },
 } satisfies Record<string, LocalizedCopy>;
 
-const fullHeaderMediaQuery = "(min-width: 1800px)";
+const fullHeaderMediaQuery = "(min-width: 1536px)";
 
 function controlButtonClass(isActive: boolean) {
   return [

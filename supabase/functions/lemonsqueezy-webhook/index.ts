@@ -64,6 +64,14 @@ const MAX_VARIANT_IDS = getConfiguredVariantIds(
   Deno.env.get("LEMONSQUEEZY_MAX_VARIANT_TESTING"),
   Deno.env.get("LEMONSQUEEZY_MAX_VARIANT_TESTING_ACCOUNT"),
 );
+const LEMONSQUEEZY_MAX_VARIANT_LIVE =
+  Deno.env.get("LEMONSQUEEZY_VARIANT_MAX")?.trim() ?? "";
+const LEMONSQUEEZY_MAX_VARIANT_TEST = pickEnv(
+  "LEMONSQUEEZY_VARIANT_MAX_TESTING",
+  "LEMONSQUEEZY_VARIANT_MAX_PRUEBA",
+  "LEMONSQUEEZY_MAX_VARIANT_TESTING",
+  "LEMONSQUEEZY_MAX_VARIANT_TESTING_ACCOUNT",
+);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -551,6 +559,14 @@ function getVariantIdsForTier(plan: PaidTierId | null) {
   return Array.from(new Set([...FOCUS_VARIANT_IDS, ...MAX_VARIANT_IDS]));
 }
 
+function maxVariantForEnvironment(environment: LemonSqueezyEnvironment) {
+  if (environment === "test") {
+    return LEMONSQUEEZY_MAX_VARIANT_TEST || LEMONSQUEEZY_MAX_VARIANT_LIVE;
+  }
+
+  return LEMONSQUEEZY_MAX_VARIANT_LIVE || LEMONSQUEEZY_MAX_VARIANT_TEST;
+}
+
 async function fetchSubscriptionById(
   subscriptionId: string,
   credentialsCandidates: LemonSqueezyCredentials[],
@@ -1001,6 +1017,162 @@ async function handleReturnConfirmation(
   });
 }
 
+async function handleSubscriptionUpgrade(
+  req: Request,
+  body: WebhookBody,
+): Promise<Response> {
+  const authenticatedUser = await resolveAuthenticatedReturnUser(req);
+  if (!authenticatedUser) {
+    return jsonResponse({ error: "Authentication required" }, 401);
+  }
+
+  const targetTier = normalizePaidTierId(body.plan);
+  if (targetTier !== "max") {
+    return jsonResponse(
+      {
+        error: "Only upgrades to the Max plan are supported.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const linked = await getLinkedSubscriptionForUser({
+    plan: "focus",
+    userId: authenticatedUser.id,
+  });
+
+  if (!linked?.provider_subscription_id) {
+    logLemonSqueezyEvent("warn", "upgrade_no_active_focus", {
+      userId: authenticatedUser.id,
+    });
+    return jsonResponse(
+      {
+        error: "No active Focus subscription was found to upgrade.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const subscriptionId = linked.provider_subscription_id;
+
+  // Load the subscription so we know which environment (live/test) owns it and
+  // can target the matching Max variant.
+  const fetched = await fetchSubscriptionById(
+    subscriptionId,
+    lemonSqueezyCredentials,
+  );
+
+  if (!fetched) {
+    return jsonResponse(
+      {
+        error: "LemonSqueezy could not load the current subscription.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const maxVariantId = maxVariantForEnvironment(fetched.credentials.environment);
+  if (!maxVariantId) {
+    return jsonResponse(
+      {
+        error: "LemonSqueezy Max variant is not configured.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  // Swap the subscription to the Max variant in place. LemonSqueezy keeps the
+  // same subscription and prorates the difference; `invoice_immediately` bills
+  // the prorated amount now so Max access starts right away.
+  const updateResponse = await fetch(
+    `${LEMONSQUEEZY_API}/subscriptions/${subscriptionId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/vnd.api+json",
+        "Content-Type": "application/vnd.api+json",
+        Authorization: `Bearer ${fetched.credentials.apiKey}`,
+      },
+      body: JSON.stringify({
+        data: {
+          type: "subscriptions",
+          id: subscriptionId,
+          attributes: {
+            variant_id: Number(maxVariantId),
+            invoice_immediately: true,
+          },
+        },
+      }),
+    },
+  );
+
+  if (!updateResponse.ok) {
+    const failureBody = await updateResponse.text();
+    logLemonSqueezyEvent(
+      "error",
+      "upgrade_update_failed",
+      {
+        status: updateResponse.status,
+        subscriptionId,
+        userId: authenticatedUser.id,
+      },
+      failureBody,
+    );
+    return jsonResponse(
+      {
+        error:
+          "LemonSqueezy could not switch this subscription to Max. Please contact support to finish the upgrade.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const payload = (await updateResponse.json()) as {
+    data?: { id?: string | number; attributes?: Record<string, unknown> };
+  };
+  const updatedAttributes = payload.data?.attributes;
+  const resolvedId = asString(payload.data?.id) ?? subscriptionId;
+
+  if (!updatedAttributes) {
+    return jsonResponse(
+      {
+        error: "LemonSqueezy returned no subscription details after upgrade.",
+        upgraded: false,
+      },
+      200,
+    );
+  }
+
+  const tier = await upsertSubscriptionRecord({
+    attributes: updatedAttributes,
+    metadata: {
+      action: "upgrade_subscription",
+      provider: "lemonsqueezy",
+      subscription: updatedAttributes,
+    },
+    subscriptionId: resolvedId,
+    userEmail: asString(updatedAttributes.user_email) ?? authenticatedUser.email,
+    userId: authenticatedUser.id,
+  });
+
+  logLemonSqueezyEvent("info", "upgrade_completed", {
+    subscriptionId: resolvedId,
+    tier,
+    userId: authenticatedUser.id,
+  });
+
+  return jsonResponse({
+    providerSubscriptionId: resolvedId,
+    tier,
+    upgraded: tier === "max",
+  });
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -1017,6 +1189,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (body.action === "confirm_return") {
       return await handleReturnConfirmation(req, body);
+    }
+
+    if (body.action === "upgrade_subscription") {
+      return await handleSubscriptionUpgrade(req, body);
     }
 
     const signature = req.headers.get("X-Signature");

@@ -19,6 +19,7 @@ import {
   getEffectivePlanTier,
 } from "@/lib/plans";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type PaymentRegion = "global" | "latam";
 type PaymentProvider = "binance" | "lemonsqueezy" | "mercadopago";
@@ -33,6 +34,11 @@ type PlanActionState =
     }
   | {
       kind: "checkout";
+      label: string;
+      planId: PaidPlanId;
+    }
+  | {
+      kind: "upgrade";
       label: string;
       planId: PaidPlanId;
     }
@@ -96,6 +102,13 @@ interface Copy {
   paymentSuccess: string;
   paymentNote: string;
   priceSuffix: string;
+  upgradeCta: string;
+  upgradeFailed: string;
+  upgradeNoSubscription: string;
+  upgradeRouteDetail: string;
+  upgradeStarting: string;
+  upgradeSuccess: string;
+  yourPlan: string;
 }
 
 function detectInitialRegion(locale: "en" | "es" | "pt"): PaymentRegion {
@@ -198,6 +211,7 @@ export function PricingPageContent({
     isConfigured: isAuthConfigured,
     isLoading: isAuthLoading,
     profile,
+    refreshProfile,
     session,
     signIn,
     signInWithGitHub,
@@ -217,6 +231,7 @@ export function PricingPageContent({
     null,
   );
   const [binancePlanId, setBinancePlanId] = useState<PaidPlanId | null>(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
   const [authIntent, setAuthIntent] = useState<{
     planId: PaidPlanId;
     provider: HostedPaymentProvider;
@@ -249,6 +264,26 @@ export function PricingPageContent({
 
     window.localStorage.setItem(paymentRegionStorageKey, paymentRegion);
   }, [paymentRegion]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+    supabase.rpc("reconcile_my_billing_subscriptions").then(({ error }) => {
+      if (error) {
+        console.error("[pricing] reconcile_my_billing_subscriptions failed:", error);
+        return;
+      }
+      void refreshProfile();
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (activePlanTier !== "basic") {
+      setSelectedPlanId(activePlanTier);
+    }
+  }, [activePlanTier]);
 
   useEffect(() => {
     if (!binancePlanId) {
@@ -354,6 +389,17 @@ export function PricingPageContent({
         paymentNote:
           "Las tarjetas se enrutan segun tu region. El pago manual queda como respaldo cuando no quieras usar el checkout alojado.",
         priceSuffix: "/mes",
+        upgradeCta: "Mejorar a Max",
+        upgradeFailed:
+          "No pudimos completar la mejora automaticamente. Intentalo de nuevo o contacta soporte.",
+        upgradeNoSubscription:
+          "No encontramos una suscripcion Focus activa en esta cuenta para mejorar.",
+        upgradeRouteDetail:
+          "La mejora cambia tu suscripcion actual sin crear una segunda. Tu proveedor de pago prorratea la diferencia.",
+        upgradeStarting: "Mejorando tu suscripcion a Max...",
+        upgradeSuccess:
+          "Tu suscripcion ahora esta en el plan Max. Tu proveedor de pago prorratea la diferencia de precio.",
+        yourPlan: "Tu plan",
       };
     }
 
@@ -396,6 +442,17 @@ export function PricingPageContent({
         paymentNote:
           "Os cartoes sao roteados pela sua regiao. O pagamento manual fica como reserva quando voce nao quiser usar o checkout hospedado.",
         priceSuffix: "/mes",
+        upgradeCta: "Atualizar para Max",
+        upgradeFailed:
+          "Nao foi possivel concluir o upgrade automaticamente. Tente novamente ou contate o suporte.",
+        upgradeNoSubscription:
+          "Nao encontramos uma assinatura Focus ativa nesta conta para fazer upgrade.",
+        upgradeRouteDetail:
+          "O upgrade altera sua assinatura atual sem criar uma segunda. Seu provedor de pagamento ajusta a diferenca proporcionalmente.",
+        upgradeStarting: "Atualizando sua assinatura para Max...",
+        upgradeSuccess:
+          "Sua assinatura agora esta no plano Max. Seu provedor de pagamento ajusta a diferenca de preco proporcionalmente.",
+        yourPlan: "Seu plano",
       };
     }
 
@@ -437,6 +494,17 @@ export function PricingPageContent({
       paymentNote:
         "Card payments are routed by region. Manual payment stays available only as a fallback when you do not want the hosted checkout.",
       priceSuffix: "/month",
+      upgradeCta: "Upgrade to Max",
+      upgradeFailed:
+        "We couldn't complete the upgrade automatically. Please try again or contact support.",
+      upgradeNoSubscription:
+        "We couldn't find an active Focus subscription on this account to upgrade.",
+      upgradeRouteDetail:
+        "Upgrading changes your current subscription in place — no second subscription. Your payment provider prorates the difference.",
+      upgradeStarting: "Upgrading your subscription to Max...",
+      upgradeSuccess:
+        "Your subscription is now on the Max plan. Your payment provider prorates the price difference.",
+      yourPlan: "Your plan",
     };
   }, [locale]);
 
@@ -955,9 +1023,12 @@ export function PricingPageContent({
           };
         }
 
+        // Focus user viewing the Max card: this is an in-place upgrade, not a
+        // fresh checkout, so the existing subscription is changed instead of
+        // creating a second one.
         return {
-          kind: "checkout",
-          label: copy.maxCta,
+          kind: "upgrade",
+          label: copy.upgradeCta,
           planId: "max",
         };
       }
@@ -1115,6 +1186,92 @@ export function PricingPageContent({
     void startProviderCheckout(planId, provider);
   }
 
+  async function startSubscriptionUpgrade() {
+    if (isUpgrading || !user) {
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setStatusMessage(copy.missingProvider);
+      return;
+    }
+
+    setIsUpgrading(true);
+    setSuccessMessage(undefined);
+    setStatusMessage(copy.upgradeStarting);
+
+    try {
+      // The active subscription provider is whatever the user paid with, which
+      // can differ from the current region. Read the linked row (RLS-scoped to
+      // the user) to route the upgrade to the right edge function.
+      const { data: rows, error: lookupError } = await supabase
+        .from("billing_subscriptions")
+        .select("provider, tier, status, updated_at")
+        .order("updated_at", { ascending: false });
+
+      if (lookupError) {
+        setStatusMessage(copy.upgradeFailed);
+        return;
+      }
+
+      const activeStatuses = [
+        "pending",
+        "trialing",
+        "active",
+        "grace_period",
+        "past_due",
+      ];
+      const focusRows = (rows ?? []).filter((row) => row.tier === "focus");
+      const activeRow =
+        focusRows.find((row) =>
+          activeStatuses.includes(String(row.status)),
+        ) ?? focusRows[0];
+
+      const provider = activeRow?.provider;
+      if (provider !== "mercadopago" && provider !== "lemonsqueezy") {
+        setStatusMessage(copy.upgradeNoSubscription);
+        return;
+      }
+
+      const functionName =
+        provider === "mercadopago"
+          ? "mercado-pago-webhook"
+          : "lemonsqueezy-webhook";
+
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: { action: "upgrade_subscription", plan: "max" },
+      });
+
+      const upgraded =
+        !error &&
+        data &&
+        typeof data === "object" &&
+        "upgraded" in data &&
+        (data as { upgraded?: unknown }).upgraded === true;
+
+      if (!upgraded) {
+        const providerMessage =
+          data &&
+          typeof data === "object" &&
+          "error" in data &&
+          typeof (data as { error?: unknown }).error === "string"
+            ? (data as { error: string }).error
+            : copy.upgradeFailed;
+        setStatusMessage(providerMessage);
+        return;
+      }
+
+      await refreshProfile();
+      setStatusMessage(undefined);
+      setSuccessMessage(copy.upgradeSuccess);
+    } catch {
+      setStatusMessage(copy.upgradeFailed);
+    } finally {
+      setIsUpgrading(false);
+    }
+  }
+
   async function handleAuthSubmit() {
     if (!authIntent) {
       return;
@@ -1259,6 +1416,11 @@ export function PricingPageContent({
           {plans.map((plan) => {
             const isSelected = selectedPlan.id === plan.id;
             const actionState = getPlanActionState(plan.id);
+            const isCurrentPlan =
+              Boolean(user) &&
+              !isSignedInPlanPending &&
+              activePlanTier !== "basic" &&
+              plan.id === activePlanTier;
 
             return (
             <article
@@ -1269,7 +1431,11 @@ export function PricingPageContent({
                   : "hover:-translate-y-1"
               }`}
             >
-              {plan.id === "basic" || plan.id === "max" ? (
+              {isCurrentPlan ? (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-4 py-1 text-[10px] font-bold tracking-widest text-white uppercase dark:bg-emerald-500">
+                  {copy.yourPlan}
+                </div>
+              ) : plan.id === "basic" || plan.id === "max" ? (
                 <div
                   className={`absolute -top-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-[10px] font-bold tracking-widest uppercase ${topBadgeClass(plan.id)}`}
                 >
@@ -1335,6 +1501,18 @@ export function PricingPageContent({
                   >
                     <CreditCard className="h-4 w-4" />
                     {actionState.label}
+                  </button>
+                ) : actionState.kind === "upgrade" ? (
+                  <button
+                    type="button"
+                    disabled={isUpgrading}
+                    onClick={() => {
+                      void startSubscriptionUpgrade();
+                    }}
+                    className={primaryButtonClass(plan.id)}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {isUpgrading ? copy.upgradeStarting : actionState.label}
                   </button>
                 ) : (
                   <button
@@ -1437,9 +1615,11 @@ export function PricingPageContent({
                       <p className="mt-2 text-sm leading-7 text-[rgba(22,32,51,0.88)] dark:text-white/92">
                         {selectedPlanActionState.kind === "checkout"
                           ? primaryProviderDetail
-                          : isSignedInPlanPending
-                            ? pricingPanelCopy.checkingPlanDetail
-                            : pricingPanelCopy.paymentUnavailableDetail}
+                          : selectedPlanActionState.kind === "upgrade"
+                            ? copy.upgradeRouteDetail
+                            : isSignedInPlanPending
+                              ? pricingPanelCopy.checkingPlanDetail
+                              : pricingPanelCopy.paymentUnavailableDetail}
                       </p>
                     </div>
                     <span className="inline-flex rounded-full border border-[rgba(22,32,51,0.1)] bg-[rgba(255,255,255,0.74)] px-3 py-1 text-xs font-semibold text-[var(--text-strong)] dark:border-white/10 dark:bg-white/6 dark:text-white/82">
