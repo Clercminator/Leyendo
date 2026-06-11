@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Children,
   Fragment,
   isValidElement,
   useCallback,
@@ -930,12 +929,6 @@ export function ClassicReaderView({
     });
   }, [chunk.paragraphIndex, effectiveActiveMarkdownBlockIndex, reduceMotion]);
 
-  const classicReaderLabel = getLocalizedCopy(locale, {
-    en: "Classic Reader",
-    es: "Lector clásico",
-    pt: "Leitor classico",
-  });
-
   const viewportLabel = getLocalizedCopy(locale, {
     en: "Classic reader document",
     es: "Documento del Lector clásico",
@@ -1053,10 +1046,7 @@ export function ClassicReaderView({
       block.kind === "heading"
         ? block.headingLevel ?? Number(HeadingTag.slice(1))
         : undefined;
-    const blockPaddingClass =
-      block.kind === "heading"
-        ? "px-1 py-1.5 md:px-2 md:py-2"
-        : "px-1 py-2 md:px-2 md:py-3";
+    const blockPaddingClass = "px-1 py-0.5 md:px-2 md:py-1";
     const listMarker = block.marker ? (
       <span className="reader-accent pt-[0.1em] font-medium tabular-nums">
         {block.marker}
@@ -1195,17 +1185,12 @@ export function ClassicReaderView({
 
   return (
     <div className="reader-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] px-4 py-5 text-left md:rounded-[1.65rem] md:px-6 md:py-6 lg:rounded-[1.75rem] lg:px-8 lg:py-7">
-      <div className="shrink-0">
-        <p className="reader-accent text-xs tracking-[0.24em] uppercase md:text-sm md:tracking-[0.28em]">
-          {classicReaderLabel}
-        </p>
-      </div>
       <div
         aria-label={viewportLabel}
-        className="reader-scroll-area mt-4 flex-1 overflow-y-auto overscroll-contain pr-1.5 md:mt-5 md:pr-3 lg:pr-4"
+        className="reader-scroll-area flex-1 overflow-y-auto overscroll-contain pr-1.5 md:pr-3 lg:pr-4"
       >
         {usesMarkdownPreview ? (
-          <div className="space-y-4 pb-4 md:space-y-5 md:pb-5">
+          <div className="reader-markdown-document pb-4 md:pb-5">
             {isSimplifiedMarkdownPreview &&
             renderedMarkdownWindow.hiddenBeforeCount > 0 ? (
               <button
@@ -1255,7 +1240,8 @@ export function ClassicReaderView({
                   }
                   data-reader-classic-active={isActive ? "true" : undefined}
                   data-reader-markdown-block-index={index}
-                  className="reader-markdown-block scroll-mt-4 rounded-[1.15rem] px-4 py-3 transition md:scroll-mt-6 md:rounded-[1.35rem] md:px-5 md:py-4"
+                  data-reader-markdown-node-type={block.nodeType}
+                  className="reader-markdown-block scroll-mt-4 rounded-[1.15rem] px-2 py-1 transition md:scroll-mt-6 md:rounded-[1.35rem] md:px-3 md:py-1.5"
                   onClick={
                     !renderMappedMarkdownBlocks &&
                     !isActive &&
@@ -1270,7 +1256,7 @@ export function ClassicReaderView({
                 >
                   {renderMappedMarkdownBlocks ? (
                     <div
-                      className={`space-y-3 md:space-y-4${
+                      className={`reader-markdown-mapped-blocks${
                         block.nodeType === "blockquote"
                           ? " reader-classic-blockquote"
                           : ""
@@ -1337,7 +1323,7 @@ export function ClassicReaderView({
             ) : null}
           </div>
         ) : (
-          <div className="space-y-3 pb-3 md:space-y-4 md:pb-4">
+          <div className="space-y-2 pb-3 md:space-y-2.5 md:pb-4">
             {shouldWindowClassicBlocks &&
             renderedBlockWindow.hiddenBeforeCount > 0 ? (
               <button

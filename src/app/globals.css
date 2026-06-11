@@ -1188,6 +1188,33 @@
     line-height: var(--reader-line-height, 1.6);
   }
 
+  .reader-markdown-document {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .reader-markdown-block + .reader-markdown-block {
+    margin-top: 0.45rem;
+  }
+
+  .reader-markdown-block[data-reader-markdown-node-type="heading"] {
+    margin-top: 1.15rem;
+  }
+
+  .reader-markdown-block[data-reader-markdown-node-type="heading"]:first-child {
+    margin-top: 0;
+  }
+
+  .reader-markdown-block[data-reader-markdown-node-type="list"] {
+    margin-top: 0.25rem;
+  }
+
+  .reader-markdown-mapped-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+  }
+
   .reader-markdown-preview > :first-child {
     margin-top: 0;
   }

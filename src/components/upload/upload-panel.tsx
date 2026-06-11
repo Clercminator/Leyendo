@@ -65,6 +65,10 @@ import {
   isPdfTooLargeForBrowser,
   shouldOffloadPdfExtraction,
 } from "@/features/ingest/extract/file-text-client";
+import {
+  convertClipboardHtmlToMarkdown,
+  insertClipboardText,
+} from "@/features/ingest/normalize/clipboard-html";
 import { createDocumentComplexityNotice } from "@/lib/document-complexity";
 import { getLocalizedCopy } from "@/lib/locale";
 import {
@@ -100,6 +104,8 @@ export function UploadPanel() {
   const [pasteSourceKind, setPasteSourceKind] =
     useState<PasteSourceKind>("plain-text");
   const [hasManualPasteSourceKind, setHasManualPasteSourceKind] =
+    useState(false);
+  const [hasAutomaticRichPasteSourceKind, setHasAutomaticRichPasteSourceKind] =
     useState(false);
   const [selectedFile, setSelectedFile] = useState<SelectedFileSummary>();
   const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(
@@ -140,6 +146,7 @@ export function UploadPanel() {
       clearImportedFile();
       setPasteSourceKind("plain-text");
       setHasManualPasteSourceKind(false);
+      setHasAutomaticRichPasteSourceKind(false);
       setStatusMessage(undefined);
     }
   };
@@ -222,14 +229,93 @@ export function UploadPanel() {
     void handleExternalFileSelection(file);
   };
 
+  const handleContentPaste = (
+    event: ClipboardEvent<HTMLTextAreaElement>,
+  ) => {
+    if (
+      isBusy ||
+      inputMode !== "paste" ||
+      typeof event.clipboardData.getData !== "function" ||
+      (hasManualPasteSourceKind && pasteSourceKind === "plain-text")
+    ) {
+      return;
+    }
+
+    const html = event.clipboardData.getData("text/html");
+
+    if (!html.trim()) {
+      return;
+    }
+
+    const plainText = event.clipboardData.getData("text/plain");
+    const textarea = event.currentTarget;
+    const currentValue = textarea.value;
+    const selectionStart = textarea.selectionStart ?? currentValue.length;
+    const selectionEnd = textarea.selectionEnd ?? selectionStart;
+
+    event.preventDefault();
+
+    void convertClipboardHtmlToMarkdown(html)
+      .then((markdown) => {
+        const insertedValue = markdown || plainText;
+
+        if (!insertedValue) {
+          return;
+        }
+
+        const nextContent = insertClipboardText({
+          currentValue,
+          end: selectionEnd,
+          insertedValue,
+          start: selectionStart,
+        });
+        const nextCaretPosition = selectionStart + insertedValue.length;
+
+        setContent(nextContent);
+        setPasteSourceKind(markdown ? "markdown" : "plain-text");
+        setHasAutomaticRichPasteSourceKind(Boolean(markdown));
+
+        window.setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(nextCaretPosition, nextCaretPosition);
+        }, 0);
+      })
+      .catch(() => {
+        if (!plainText) {
+          return;
+        }
+
+        const nextContent = insertClipboardText({
+          currentValue,
+          end: selectionEnd,
+          insertedValue: plainText,
+          start: selectionStart,
+        });
+        const nextCaretPosition = selectionStart + plainText.length;
+
+        setContent(nextContent);
+        setPasteSourceKind("plain-text");
+        setHasAutomaticRichPasteSourceKind(false);
+
+        window.setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(nextCaretPosition, nextCaretPosition);
+        }, 0);
+      });
+  };
+
   const isBusy = isReadingFile || isSubmitting;
   const detectedPasteSourceKind = useMemo(
     () => detectPastedTextSourceKind(content),
     [content],
   );
   const effectivePasteSourceKind =
-    inputMode === "paste" && !hasManualPasteSourceKind
-      ? detectedPasteSourceKind
+    inputMode === "paste"
+      ? hasManualPasteSourceKind
+        ? pasteSourceKind
+        : hasAutomaticRichPasteSourceKind
+          ? "markdown"
+          : detectedPasteSourceKind
       : pasteSourceKind;
   const recommendedReaderStart = useMemo(() => {
     if (!savedReadingGoal) {
@@ -358,6 +444,7 @@ export function UploadPanel() {
 
     setPasteSourceKind("plain-text");
     setHasManualPasteSourceKind(false);
+    setHasAutomaticRichPasteSourceKind(false);
   }, [content, inputMode]);
 
   const isFileUploadAvailable = () => {
@@ -496,6 +583,7 @@ export function UploadPanel() {
     setIsFileDragActive(false);
     setPasteSourceKind("plain-text");
     setHasManualPasteSourceKind(false);
+    setHasAutomaticRichPasteSourceKind(false);
 
     try {
       await handleFileSelection(file);
@@ -744,7 +832,6 @@ export function UploadPanel() {
       isReadingFile={isReadingFile}
       isSubmitting={isSubmitting}
       locale={locale}
-      pasteSourceKind={pasteSourceKind}
       previewComplexityNotice={previewComplexityNotice}
       recommendedReaderStart={recommendedReaderStart}
       remainingFileUploads={remainingFileUploads}
@@ -765,12 +852,14 @@ export function UploadPanel() {
       onContainerDragOver={handleContainerDragOver}
       onContainerDrop={handleContainerDrop}
       onContainerPasteCapture={handleContainerPasteCapture}
+      onContentPaste={handleContentPaste}
       onContentChange={handleContentChange}
       onFileInputChange={handleFileInputChange}
       onInputModeChange={handleInputModeChange}
       onPasteSourceKindChange={(value) => {
         setPasteSourceKind(value);
         setHasManualPasteSourceKind(true);
+        setHasAutomaticRichPasteSourceKind(false);
       }}
       onSubmit={() => {
         void handleSubmit();

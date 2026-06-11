@@ -115,6 +115,116 @@ async function getActiveClassicText(page: Page) {
   return activeTokens.join(" ").replace(/\s+/g, " ").trim();
 }
 
+const richAiClipboardHtml = `
+  <div data-message-author-role="assistant">
+    <h1>Rich response</h1>
+    <p>The key idea is <strong>preserved structure</strong>.</p>
+    <p>A second paragraph should stay visually close.</p>
+    <h2>Next section</h2>
+    <ol>
+      <li>First item</li>
+      <li>Second item</li>
+    </ol>
+    <button aria-label="Copy response">Copy</button>
+  </div>
+`;
+
+async function pasteRichAiResponse(page: Page) {
+  const textarea = page.getByRole("textbox", { name: /^paste text$/i });
+
+  await textarea.evaluate((element, html) => {
+    const pasteEvent = new Event("paste", {
+      bubbles: true,
+      cancelable: true,
+    });
+
+    Object.defineProperty(pasteEvent, "clipboardData", {
+      value: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html"
+            ? html
+            : "Rich response\n\nThe key idea is preserved structure.\n\nA second paragraph should stay visually close.\n\nNext section\n\n1. First item\n2. Second item",
+      },
+    });
+
+    element.dispatchEvent(pasteEvent);
+  }, richAiClipboardHtml);
+
+  await expect(textarea).toHaveValue(/# Rich response/);
+  await expect(textarea).toHaveValue(/\*\*preserved structure\*\*/);
+  await expect(
+    page.getByRole("radio", { name: /clean markdown/i }),
+  ).toBeChecked();
+}
+
+async function expectCompactRichReaderLayout(page: Page) {
+  const classicDocument = page.getByLabel(/classic reader document/i);
+
+  await expect(classicDocument).toBeVisible();
+  await expect(
+    classicDocument.getByRole("heading", {
+      level: 1,
+      name: "Rich response",
+    }),
+  ).toBeVisible();
+  await expect(
+    classicDocument.getByRole("heading", {
+      level: 2,
+      name: "Next section",
+    }),
+  ).toBeVisible();
+  await expect(classicDocument.getByText("First item")).toBeVisible();
+  await expect(classicDocument.getByText("Second item")).toBeVisible();
+  await expect(
+    classicDocument.getByText(/^Classic Reader$/),
+  ).toHaveCount(0);
+  await expect(classicDocument.getByText("Copy response")).toHaveCount(0);
+
+  const paragraphBlocks = classicDocument.locator(
+    '[data-reader-markdown-node-type="paragraph"]',
+  );
+  const sectionHeading = classicDocument.locator(
+    '[data-reader-markdown-node-type="heading"]',
+  ).nth(1);
+
+  await expect(paragraphBlocks).toHaveCount(2);
+
+  const [firstParagraph, secondParagraph, nextHeading] = await Promise.all([
+    paragraphBlocks.nth(0).boundingBox(),
+    paragraphBlocks.nth(1).boundingBox(),
+    sectionHeading.boundingBox(),
+  ]);
+
+  expect(firstParagraph).not.toBeNull();
+  expect(secondParagraph).not.toBeNull();
+  expect(nextHeading).not.toBeNull();
+
+  const paragraphGap =
+    (secondParagraph?.y ?? 0) -
+    ((firstParagraph?.y ?? 0) + (firstParagraph?.height ?? 0));
+  const sectionGap =
+    (nextHeading?.y ?? 0) -
+    ((secondParagraph?.y ?? 0) + (secondParagraph?.height ?? 0));
+
+  expect(paragraphGap).toBeGreaterThanOrEqual(0);
+  expect(paragraphGap).toBeLessThan(24);
+  expect(sectionGap).toBeGreaterThan(paragraphGap);
+  expect(sectionGap).toBeLessThan(48);
+
+  if (process.env.PLAYWRIGHT_CAPTURE_RICH_CLIPBOARD === "1") {
+    const viewportWidth = page.viewportSize()?.width ?? 0;
+
+    await classicDocument.screenshot({
+      path:
+        viewportWidth < 700
+          ? "test-results/rich-clipboard-reader-mobile.png"
+          : "test-results/rich-clipboard-reader-desktop.png",
+    });
+  }
+}
+
 function createLargeMarkdownWithHtmlInterop() {
   return Array.from({ length: 220 }, (_, index) => {
     const sectionNumber = index + 1;
@@ -789,6 +899,29 @@ test("user can paste markdown and open a clean reader view", async ({
   await expect(classicDocument).toContainText("Paragraph with bold text.");
   await expect(classicDocument).not.toContainText("## Table of Contents");
   await expect(classicDocument).not.toContainText("**bold**");
+});
+
+test("rich AI clipboard HTML opens with preserved structure and compact spacing", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await page.goto("/");
+  await waitForHomeInteractivity(page);
+  await choosePasteInput(page);
+  await pasteRichAiResponse(page);
+  await openReaderDocument(page);
+  await expectCompactRichReaderLayout(page);
+});
+
+test("rich AI clipboard HTML stays compact on mobile @mobile", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await waitForHomeInteractivity(page);
+  await choosePasteInput(page);
+  await pasteRichAiResponse(page);
+  await openReaderDocument(page);
+  await expectCompactRichReaderLayout(page);
 });
 
 test("classic reader playback keeps simple markdown text locked while the active chunk advances", async ({

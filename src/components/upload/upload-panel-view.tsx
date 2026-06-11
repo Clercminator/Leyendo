@@ -70,7 +70,6 @@ interface UploadPanelViewProps {
   isReadingFile: boolean;
   isSubmitting: boolean;
   locale: AppLocale;
-  pasteSourceKind: PasteSourceKind;
   previewComplexityNotice?: ComplexityNotice;
   recommendedReaderStart?: RecommendedReaderStart;
   remainingFileUploads: number | null;
@@ -92,6 +91,7 @@ interface UploadPanelViewProps {
   onContainerDrop: DragEventHandler<HTMLDivElement>;
   onContainerPasteCapture: ClipboardEventHandler<HTMLDivElement>;
   onContentChange: (value: string) => void;
+  onContentPaste: ClipboardEventHandler<HTMLTextAreaElement>;
   onFileInputChange: ChangeEventHandler<HTMLInputElement>;
   onInputModeChange: (value: InputMode) => void;
   onPasteSourceKindChange: (value: PasteSourceKind) => void;
@@ -144,7 +144,6 @@ export function UploadPanelView({
   isReadingFile,
   isSubmitting,
   locale,
-  pasteSourceKind,
   previewComplexityNotice,
   recommendedReaderStart,
   remainingFileUploads,
@@ -166,6 +165,7 @@ export function UploadPanelView({
   onContainerDrop,
   onContainerPasteCapture,
   onContentChange,
+  onContentPaste,
   onFileInputChange,
   onInputModeChange,
   onPasteSourceKindChange,
@@ -519,7 +519,7 @@ export function UploadPanelView({
                   <label
                     key={value}
                     className={`relative cursor-pointer rounded-[1.35rem] border p-4 text-left transition ${
-                      pasteSourceKind === value
+                      effectivePasteSourceKind === value
                         ? "border-(--accent-sky) bg-[linear-gradient(180deg,rgba(95,119,215,0.14),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(95,119,215,0.12)]"
                         : "border-(--border-soft) bg-(--surface-soft) hover:border-(--border-strong) hover:bg-(--surface-chip)"
                     }`}
@@ -601,6 +601,7 @@ export function UploadPanelView({
                   value={content}
                   disabled={isBusy}
                   onChange={(event) => onContentChange(event.target.value)}
+                  onPaste={onContentPaste}
                   placeholder={documentContentPlaceholder}
                   rows={8}
                   className="min-h-40 rounded-[1.5rem] border border-(--border-soft) bg-(--surface-input) px-4 py-4 text-sm leading-7 text-(--text-strong) outline-none placeholder:text-(--text-muted) focus:border-(--border-strong)"

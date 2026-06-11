@@ -65,6 +65,22 @@ vi.mock("@/features/ingest/detect/file-kind", () => ({
   isLegacyWordDocument,
 }));
 
+const { convertClipboardHtmlToMarkdown } = vi.hoisted(() => ({
+  convertClipboardHtmlToMarkdown: vi.fn(),
+}));
+
+vi.mock("@/features/ingest/normalize/clipboard-html", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/features/ingest/normalize/clipboard-html")
+    >();
+
+  return {
+    ...actual,
+    convertClipboardHtmlToMarkdown,
+  };
+});
+
 const { buildDocumentModelAsync, shouldOffloadDocumentBuild } = vi.hoisted(
   () => ({
     buildDocumentModelAsync: vi.fn(),
@@ -172,6 +188,9 @@ describe("UploadPanel", () => {
     );
     detectPastedTextSourceKind.mockReturnValue(
       "plain-text" satisfies DocumentSourceKind,
+    );
+    convertClipboardHtmlToMarkdown.mockResolvedValue(
+      "## Rich heading\n\nParagraph with **bold** text.",
     );
     isLegacyWordDocument.mockReturnValue(false);
     isPdfTooLargeForBrowser.mockReturnValue(false);
@@ -322,6 +341,115 @@ describe("UploadPanel", () => {
         }),
       );
     });
+  });
+
+  it("converts rich clipboard HTML, replaces the selection, and submits Markdown", async () => {
+    const user = userEvent.setup();
+
+    buildDocumentModelAsync.mockResolvedValue({
+      document: {
+        blocks: [{ text: "Before Rich heading after" }],
+        chunks: [{ index: 0 }],
+        createdAt: "2026-03-27T00:00:00.000Z",
+        excerpt: "Before Rich heading after",
+        id: "doc-rich-clipboard",
+        sections: [{ index: 0 }],
+        sourceKind: "markdown" satisfies DocumentSourceKind,
+        title: "Rich clipboard",
+        updatedAt: "2026-03-27T00:00:00.000Z",
+      },
+    });
+
+    render(<UploadPanel />);
+
+    const textarea = screen.getByRole("textbox", {
+      name: /^paste text$/i,
+    }) as HTMLTextAreaElement;
+
+    await user.type(textarea, "Before selected after");
+    textarea.setSelectionRange(7, 15);
+
+    fireEvent.paste(textarea, {
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html"
+            ? "<div><h2>Rich heading</h2><p>Paragraph with <strong>bold</strong> text.</p></div>"
+            : "Rich heading\n\nParagraph with bold text.",
+      },
+    });
+
+    await waitFor(() => {
+      expect(textarea).toHaveValue(
+        "Before ## Rich heading\n\nParagraph with **bold** text. after",
+      );
+    });
+    expect(
+      screen.getByRole("radio", { name: /clean markdown/i }),
+    ).toBeChecked();
+
+    await user.click(screen.getByRole("button", { name: /open in reader/i }));
+
+    await waitFor(() => {
+      expect(buildDocumentModelAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rawText:
+            "Before ## Rich heading\n\nParagraph with **bold** text. after",
+          sourceKind: "markdown",
+        }),
+      );
+    });
+  });
+
+  it("falls back to clipboard plain text when rich conversion fails", async () => {
+    convertClipboardHtmlToMarkdown.mockRejectedValueOnce(
+      new Error("converter unavailable"),
+    );
+
+    render(<UploadPanel />);
+
+    const textarea = screen.getByRole("textbox", {
+      name: /^paste text$/i,
+    }) as HTMLTextAreaElement;
+
+    fireEvent.paste(textarea, {
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html" ? "<p>Fallback text</p>" : "Fallback text",
+      },
+    });
+
+    await waitFor(() => {
+      expect(textarea).toHaveValue("Fallback text");
+    });
+    expect(screen.getByRole("radio", { name: /literal text/i })).toBeChecked();
+  });
+
+  it("does not convert rich HTML after the user selects Literal text", async () => {
+    const user = userEvent.setup();
+
+    render(<UploadPanel />);
+
+    const textarea = screen.getByRole("textbox", {
+      name: /^paste text$/i,
+    });
+
+    await user.click(screen.getByRole("radio", { name: /clean markdown/i }));
+    await user.click(screen.getByRole("radio", { name: /literal text/i }));
+    const wasNotCancelled = fireEvent.paste(textarea, {
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html" ? "<h2>Keep literal</h2>" : "Keep literal",
+      },
+    });
+
+    expect(wasNotCancelled).toBe(true);
+    expect(convertClipboardHtmlToMarkdown).not.toHaveBeenCalled();
   });
 
   it("keeps a manual literal-text override even when pasted content still looks like markdown", async () => {

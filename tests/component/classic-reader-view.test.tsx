@@ -48,6 +48,7 @@ describe("ClassicReaderView", () => {
 
     const activeRuns = container.querySelectorAll(".reader-classic-active-run");
 
+    expect(screen.queryByText(/^Classic Reader$/)).not.toBeInTheDocument();
     expect(activeRuns).toHaveLength(1);
     expect(
       Array.from(activeRuns).map((run) => run.textContent?.trim()),
@@ -264,6 +265,12 @@ describe("ClassicReaderView", () => {
         (block) =>
           block.textContent?.replace(/\s+/g, " ").trim() ===
           "Paragraph with bold text.",
+      ),
+    ).toBeTruthy();
+    expect(container.querySelector(".reader-markdown-document")).toBeTruthy();
+    expect(
+      container.querySelector(
+        '[data-reader-markdown-node-type="heading"]',
       ),
     ).toBeTruthy();
   });
