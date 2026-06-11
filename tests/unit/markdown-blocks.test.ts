@@ -57,4 +57,41 @@ describe("extractMarkdownBlocks", () => {
       { kind: "paragraph", text: MARKDOWN_FOOTNOTE_PLACEHOLDER },
     ]);
   });
+
+  it("drops link reference definitions and resolves reference-style links", () => {
+    const blocks = extractMarkdownBlocks(
+      'See [Zendesk Support][1] for details.\n\n[1]: https://example.com "Zendesk"',
+    );
+
+    expect(blocks).toEqual([
+      { kind: "paragraph", text: "See Zendesk Support for details." },
+    ]);
+  });
+
+  it("records strong and emphasis runs as inline spans", () => {
+    const blocks = extractMarkdownBlocks("Offer **both plans** and *one* extra.");
+
+    expect(blocks).toEqual([
+      {
+        kind: "paragraph",
+        text: "Offer both plans and one extra.",
+        inlineSpans: [
+          { kind: "strong", text: "both plans" },
+          { kind: "emphasis", text: "one" },
+        ],
+      },
+    ]);
+  });
+
+  it("flattens blockquotes to paragraphs and keeps their emphasis spans", () => {
+    const blocks = extractMarkdownBlocks("> **Fixed fee** model.");
+
+    expect(blocks).toEqual([
+      {
+        kind: "paragraph",
+        text: "Fixed fee model.",
+        inlineSpans: [{ kind: "strong", text: "Fixed fee" }],
+      },
+    ]);
+  });
 });

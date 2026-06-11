@@ -589,4 +589,57 @@ describe("ClassicReaderView", () => {
 
     expect(onJumpToToken).toHaveBeenCalledWith(targetHeading?.tokenStart);
   });
+
+  it("covers blockquotes and citation links with the active reading layer", () => {
+    const documentModel = buildDocumentModel({
+      title: "LLM answer sample",
+      rawText:
+        '> **Fixed monthly fee** with overage.\n\nAs a market reference, Atlassian charges ([Zendesk Support][1]) per conversation.\n\n[1]: https://example.com "Zendesk"',
+      sourceKind: "markdown",
+      chunkSize: 1,
+    });
+    const citationBlock = documentModel.blocks.find(
+      (block) =>
+        block.kind === "paragraph" &&
+        block.text.startsWith("As a market reference"),
+    );
+
+    expect(citationBlock).toBeDefined();
+
+    const chunk = deriveRuntimeChunks(documentModel, 3).find(
+      (candidate) => candidate.paragraphIndex === citationBlock!.index,
+    );
+
+    expect(chunk).toBeDefined();
+
+    const { container } = render(
+      <ClassicReaderView document={documentModel} chunk={chunk!} reduceMotion />,
+    );
+
+    // The blockquote renders on the tokenized reading layer (selectable tokens),
+    // wrapped in the blockquote container — not the raw markdown preview.
+    const blockquote = container.querySelector(".reader-classic-blockquote");
+
+    expect(blockquote).toBeTruthy();
+    expect(blockquote?.querySelector("[data-reader-token-index]")).toBeTruthy();
+    expect(blockquote).toHaveTextContent("Fixed monthly fee with overage.");
+
+    // The link reference definition never leaks into the reading flow.
+    expect(container.textContent).not.toContain("https://example.com");
+
+    // The citation paragraph is tokenized and receives the moving active-cell highlight.
+    const citationParagraph = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-reader-paragraph-index]"),
+    ).find((block) => block.textContent?.includes("As a market reference"));
+
+    expect(citationParagraph).toBeTruthy();
+    expect(
+      citationParagraph?.querySelector("[data-reader-token-index]"),
+    ).toBeTruthy();
+
+    const activeRun = container.querySelector(".reader-classic-active-run");
+
+    expect(activeRun).toBeTruthy();
+    expect(activeRun?.textContent).toContain("As a market");
+  });
 });

@@ -28,7 +28,7 @@ export type BlockAlignment = "left" | "center";
 
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
-export type InlineSpanKind = "strong";
+export type InlineSpanKind = "strong" | "emphasis";
 
 export interface DocumentInlineSpanInput {
   kind: InlineSpanKind;

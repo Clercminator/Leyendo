@@ -80,8 +80,10 @@ interface ReaderCanvasProps {
   chunkSize: number;
   currentParagraphNumber: number;
   isPlaying: boolean;
+  isSidebarOpen?: boolean;
   modeLabel: string;
   modeView: React.ReactNode;
+  onToggleSidebar?: () => void;
   pdfCompanion?: ReaderCanvasPdfCompanionProps;
   remainingWords?: number;
   remainingTimeLabel: string;
@@ -204,8 +206,10 @@ export function ReaderCanvas({
   chunkSize,
   currentParagraphNumber,
   isPlaying,
+  isSidebarOpen,
   modeLabel,
   modeView,
+  onToggleSidebar,
   pdfCompanion,
   remainingWords,
   remainingTimeLabel,
@@ -903,7 +907,7 @@ export function ReaderCanvas({
       aria-labelledby="reader-canvas-title"
       tabIndex={-1}
       className={cn(
-        "reader-canvas relative isolate flex h-[calc(100svh-5.75rem)] min-h-0 w-full flex-col gap-1.5 overflow-visible rounded-[1.1rem] border border-(--border-soft) bg-(--surface-strong) px-2 py-2 text-left sm:h-[calc(100svh-6.25rem)] sm:gap-2 sm:rounded-[1.35rem] sm:px-2.5 sm:py-2.5 md:h-[calc(100svh-8rem)] md:min-h-136 md:gap-5 md:rounded-[1.65rem] md:px-5 md:py-4 lg:h-[86vh] lg:min-h-176 lg:gap-6 lg:rounded-[1.75rem] lg:px-8 lg:py-6",
+        "reader-canvas relative isolate flex h-[calc(100svh-5.75rem)] min-h-0 w-full flex-col gap-1.5 overflow-visible rounded-[1.1rem] border border-(--border-soft) bg-(--surface-strong) px-2 py-2 text-left sm:h-[calc(100svh-6.25rem)] sm:gap-2 sm:rounded-[1.35rem] sm:px-2.5 sm:py-2.5 md:h-[calc(100svh-8rem)] md:min-h-136 md:gap-5 md:rounded-[1.65rem] md:px-5 md:py-4 lg:h-[90vh] lg:min-h-176 lg:gap-6 lg:rounded-[1.75rem] lg:px-8 lg:py-6",
         className,
       )}
     >
@@ -1139,10 +1143,28 @@ export function ReaderCanvas({
               </div>
             ) : null}
             {!isCompactReaderChrome ? (
-              renderReaderDetailsButton({
-                className: "justify-self-end lg:ml-auto",
-                showFullscreenToggle: true,
-              })
+              <div className="inline-flex items-center gap-2 justify-self-end lg:ml-auto">
+                {onToggleSidebar ? (
+                  <button
+                    type="button"
+                    aria-pressed={isSidebarOpen}
+                    aria-label={getLocalizedCopy(locale, {
+                      en: "Highlights and bookmarks",
+                      es: "Destacados y marcadores",
+                      pt: "Destaques e marcadores",
+                    })}
+                    onClick={onToggleSidebar}
+                    className={`${statusIconButtonClass} ${
+                      isSidebarOpen
+                        ? "border-(--border-strong) bg-(--surface-chip) text-(--text-strong)"
+                        : ""
+                    }`}
+                  >
+                    <BookmarkPlus className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {renderReaderDetailsButton({ showFullscreenToggle: true })}
+              </div>
             ) : null}
           </div>
           {activePresetSummary ? (

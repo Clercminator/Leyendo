@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info, X } from "lucide-react";
 
 import {
   deleteBookmark,
@@ -199,6 +199,9 @@ export function ReaderWorkspace({
   >(undefined);
   const [highlightNote, setHighlightNote] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isHighlightsRailOpen, setIsHighlightsRailOpen] = useState(false);
+  const [dismissedComplexityNoticeDocId, setDismissedComplexityNoticeDocId] =
+    useState<string | undefined>(undefined);
   const [pdfAssetState, setPdfAssetState] = useState<
     "unknown" | "present" | "missing"
   >("unknown");
@@ -1870,7 +1873,9 @@ export function ReaderWorkspace({
       <ReaderSidebar {...sidebarProps} />
     </ReaderWorkspaceMobileSidebar>
   );
-  const showClassicDesktopSidebarRail = requestedMode === "classic-reader";
+  const isClassicReaderMode = requestedMode === "classic-reader";
+  const showClassicDesktopSidebarRail =
+    isClassicReaderMode && isHighlightsRailOpen;
 
   const handleModeSelection = useCallback(
     (mode: ReaderPreferences["mode"]) => {
@@ -2442,36 +2447,51 @@ export function ReaderWorkspace({
       data-reader-font-scale={preferences.fontScale.toFixed(1)}
       data-reader-line-height={preferences.lineHeight.toFixed(1)}
     >
-      {documentComplexityNotice ? (
-        <div className="rounded-[1.5rem] border border-amber-300/30 bg-amber-500/10 px-4 py-4 shadow-[0_14px_40px_rgba(20,26,56,0.08)]">
-          <button
-            type="button"
-            aria-controls={documentComplexityNoticeContentId}
-            aria-expanded={isDocumentComplexityNoticeExpanded}
-            aria-label={`${isDocumentComplexityNoticeExpanded ? collapseComplexityNoticeLabel : expandComplexityNoticeLabel} ${documentComplexityNotice.title}`}
-            onClick={() => {
-              setIsDocumentComplexityNoticeExpanded((current) => !current);
-            }}
-            className="flex w-full items-start justify-between gap-3 text-left"
-          >
-            <p className="text-xs font-semibold tracking-[0.18em] text-(--accent-amber) uppercase">
-              {documentComplexityNotice.title}
-            </p>
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-[0.68rem] font-medium tracking-[0.18em] text-(--text-muted) uppercase transition hover:border-amber-300/70 hover:bg-amber-500/15 hover:text-(--text-strong)">
-              {isDocumentComplexityNoticeExpanded
-                ? collapseComplexityNoticeLabel
-                : expandComplexityNoticeLabel}
+      {documentComplexityNotice &&
+      dismissedComplexityNoticeDocId !== document?.id ? (
+        <div className="flex flex-col items-start gap-2">
+          <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-500/10 py-1 pr-1 pl-3 shadow-[0_8px_24px_rgba(20,26,56,0.06)]">
+            <Info className="h-3.5 w-3.5 shrink-0 text-(--accent-amber)" />
+            <button
+              type="button"
+              aria-controls={documentComplexityNoticeContentId}
+              aria-expanded={isDocumentComplexityNoticeExpanded}
+              aria-label={`${isDocumentComplexityNoticeExpanded ? collapseComplexityNoticeLabel : expandComplexityNoticeLabel} ${documentComplexityNotice.title}`}
+              onClick={() => {
+                setIsDocumentComplexityNoticeExpanded((current) => !current);
+              }}
+              className="inline-flex min-w-0 items-center gap-1 text-[0.7rem] font-semibold tracking-[0.16em] text-(--accent-amber) uppercase"
+            >
+              <span className="truncate">{documentComplexityNotice.title}</span>
               <ChevronDown
-                className={`h-4 w-4 transition ${isDocumentComplexityNoticeExpanded ? "rotate-180" : ""}`}
+                className={`h-3.5 w-3.5 shrink-0 transition ${isDocumentComplexityNoticeExpanded ? "rotate-180" : ""}`}
               />
-            </span>
-          </button>
+            </button>
+            <button
+              type="button"
+              aria-label={getLocalizedCopy(locale, {
+                en: "Dismiss",
+                es: "Descartar",
+                pt: "Dispensar",
+              })}
+              onClick={() => {
+                setDismissedComplexityNoticeDocId(document?.id);
+                setIsDocumentComplexityNoticeExpanded(false);
+              }}
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-(--text-muted) transition hover:bg-amber-500/15 hover:text-(--text-strong)"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
           {isDocumentComplexityNoticeExpanded ? (
-            <div id={documentComplexityNoticeContentId}>
-              <p className="mt-2 text-sm leading-6 text-(--text-muted)">
+            <div
+              id={documentComplexityNoticeContentId}
+              className="rounded-[1.25rem] border border-amber-300/30 bg-amber-500/10 px-4 py-3"
+            >
+              <p className="text-sm leading-6 text-(--text-muted)">
                 {documentComplexityNotice.description}
               </p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-(--text-muted)">
+              <ul className="mt-2 space-y-1.5 text-sm leading-6 text-(--text-muted)">
                 {documentComplexityNotice.items.map((item) => (
                   <li key={item} className="flex gap-2">
                     <span className="text-(--accent-amber)">*</span>
@@ -2550,8 +2570,16 @@ export function ReaderWorkspace({
               chunkSize={preferences.chunkSize}
               currentParagraphNumber={(currentParagraph?.index ?? 0) + 1}
               isPlaying={isPlaying}
+              isSidebarOpen={isHighlightsRailOpen}
               modeLabel={modeLabel}
               modeView={modeView}
+              onToggleSidebar={
+                isClassicReaderMode
+                  ? () => {
+                      setIsHighlightsRailOpen((current) => !current);
+                    }
+                  : undefined
+              }
               pdfCompanion={pdfCompanionControls}
               remainingWords={remainingWords}
               remainingTimeLabel={remainingTimeLabel}
@@ -2676,7 +2704,7 @@ export function ReaderWorkspace({
         />
       ) : null}
 
-      {!isPdfWorkspaceActive && !showClassicDesktopSidebarRail ? (
+      {!isPdfWorkspaceActive && !isClassicReaderMode ? (
         <div className="hidden lg:block">
           <ReaderSidebar {...sidebarProps} />
         </div>

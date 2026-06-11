@@ -329,6 +329,7 @@ function getExpectedBlockKinds(
         "list-item",
       ]);
     case "paragraph":
+    case "blockquote":
     case "code":
     case "html":
     case "table":
@@ -340,11 +341,17 @@ function getExpectedBlockKinds(
   }
 }
 
+// Syntax that the tokenized reading layer cannot represent and that therefore must
+// stay on the rich ReactMarkdown preview path. Inline code is intentionally NOT
+// listed: it reads fine as plain text on the tokenized path, so code-bearing prose
+// still gets the active-cell highlight. Inline `[text](url)` links stay on the
+// preview path so in-document TOC anchors and external links remain clickable;
+// reference-style citations (`[text][id]`) are not matched here and so flow onto the
+// tokenized path once their text maps to a block.
 function hasMarkdownPreviewOnlySyntax(markdown: string) {
   return (
     /!\[[^\]]*\]\([^\)]*\)/.test(markdown) ||
     /\[[^\]]+\]\([^\)]*\)/.test(markdown) ||
-    /`/.test(markdown) ||
     /<[^>]+>/.test(markdown) ||
     /^\s*(?:[-*+]|\d+\.)\s+\[[ xX]\]/m.test(markdown)
   );
@@ -357,7 +364,11 @@ function shouldRenderMappedMarkdownBlockAsClassicDocument(
     return true;
   }
 
-  if (block.nodeType !== "list" && block.nodeType !== "paragraph") {
+  if (
+    block.nodeType !== "list" &&
+    block.nodeType !== "paragraph" &&
+    block.nodeType !== "blockquote"
+  ) {
     return false;
   }
 
@@ -527,18 +538,32 @@ function renderToken(args: {
   );
 }
 
-function buildInlineStyleRuns(tokens: Token[], strongTokenIndexes: Set<number>) {
+interface InlineStyleTokenIndexes {
+  strong: Set<number>;
+  emphasis: Set<number>;
+}
+
+function buildInlineStyleRuns(
+  tokens: Token[],
+  styleIndexes: InlineStyleTokenIndexes,
+) {
   const runs: Array<{
     key: string;
     strong: boolean;
+    emphasis: boolean;
     tokens: Token[];
   }> = [];
 
   tokens.forEach((token) => {
-    const strong = strongTokenIndexes.has(token.index);
+    const strong = styleIndexes.strong.has(token.index);
+    const emphasis = styleIndexes.emphasis.has(token.index);
     const previousRun = runs.at(-1);
 
-    if (previousRun && previousRun.strong === strong) {
+    if (
+      previousRun &&
+      previousRun.strong === strong &&
+      previousRun.emphasis === emphasis
+    ) {
       previousRun.key = `${previousRun.key}:${token.index}`;
       previousRun.tokens.push(token);
       return;
@@ -547,6 +572,7 @@ function buildInlineStyleRuns(tokens: Token[], strongTokenIndexes: Set<number>) 
     runs.push({
       key: `${token.index}`,
       strong,
+      emphasis,
       tokens: [token],
     });
   });
@@ -554,13 +580,21 @@ function buildInlineStyleRuns(tokens: Token[], strongTokenIndexes: Set<number>) 
   return runs;
 }
 
-function buildStrongTokenIndexes(
+function buildInlineStyleTokenIndexes(
   inlineSpans: DocumentModel["blocks"][number]["inlineSpans"],
-) {
-  const strongTokenIndexes = new Set<number>();
+): InlineStyleTokenIndexes {
+  const strong = new Set<number>();
+  const emphasis = new Set<number>();
 
   inlineSpans?.forEach((inlineSpan) => {
-    if (inlineSpan.kind !== "strong") {
+    const target =
+      inlineSpan.kind === "strong"
+        ? strong
+        : inlineSpan.kind === "emphasis"
+          ? emphasis
+          : undefined;
+
+    if (!target) {
       return;
     }
 
@@ -569,42 +603,48 @@ function buildStrongTokenIndexes(
       tokenIndex <= inlineSpan.tokenEnd;
       tokenIndex += 1
     ) {
-      strongTokenIndexes.add(tokenIndex);
+      target.add(tokenIndex);
     }
   });
 
-  return strongTokenIndexes;
+  return { strong, emphasis };
 }
 
 function renderInlineStyleRuns(args: {
   isActive: boolean;
   onJumpToToken?: (tokenIndex: number) => void;
-  strongTokenIndexes: Set<number>;
+  styleIndexes: InlineStyleTokenIndexes;
   tokens: Token[];
 }) {
-  const { isActive, onJumpToToken, strongTokenIndexes, tokens } = args;
+  const { isActive, onJumpToToken, styleIndexes, tokens } = args;
 
-  return buildInlineStyleRuns(tokens, strongTokenIndexes).map((run, runIndex, runs) => {
+  return buildInlineStyleRuns(tokens, styleIndexes).map((run, runIndex, runs) => {
     const content = run.tokens.map((token, tokenIndex) => (
       <span key={token.index}>
         {renderToken({ isActive, onJumpToToken, token })}
         {tokenIndex < run.tokens.length - 1 ? " " : null}
       </span>
     ));
+    const separator = runIndex < runs.length - 1 ? " " : null;
 
-    if (!run.strong) {
-      return (
-        <span key={run.key}>
-          {content}
-          {runIndex < runs.length - 1 ? " " : null}
-        </span>
+    let styledContent: ReactNode = content;
+
+    if (run.emphasis) {
+      styledContent = (
+        <em className="reader-inline-emphasis">{styledContent}</em>
+      );
+    }
+
+    if (run.strong) {
+      styledContent = (
+        <strong className="reader-inline-strong">{styledContent}</strong>
       );
     }
 
     return (
       <span key={run.key}>
-        <strong className="reader-inline-strong">{content}</strong>
-        {runIndex < runs.length - 1 ? " " : null}
+        {styledContent}
+        {separator}
       </span>
     );
   });
@@ -614,14 +654,14 @@ function renderTokens(args: {
   activeIndexes: Set<number>;
   renderPlainText?: boolean;
   onJumpToToken?: (tokenIndex: number) => void;
-  strongTokenIndexes: Set<number>;
+  styleIndexes: InlineStyleTokenIndexes;
   tokens: Token[];
 }) {
   const {
     activeIndexes,
     onJumpToToken,
     renderPlainText = false,
-    strongTokenIndexes,
+    styleIndexes,
     tokens,
   } = args;
 
@@ -633,7 +673,7 @@ function renderTokens(args: {
     const content = renderInlineStyleRuns({
       isActive: run.active,
       onJumpToToken,
-      strongTokenIndexes,
+      styleIndexes,
       tokens: run.tokens,
     });
 
@@ -783,7 +823,7 @@ export function ClassicReaderView({
                 : inactiveTokenIndexes,
             block,
             isActive: block.index === chunk.paragraphIndex,
-            strongTokenIndexes: buildStrongTokenIndexes(block.inlineSpans),
+            styleIndexes: buildInlineStyleTokenIndexes(block.inlineSpans),
             tokens: blockTokens,
           };
         }),
@@ -982,7 +1022,7 @@ export function ClassicReaderView({
     isActive: boolean;
     keyValue: string | number;
     renderPlainTextWhenInactive?: boolean;
-    strongTokenIndexes: Set<number>;
+    styleIndexes: InlineStyleTokenIndexes;
     tokens: Token[];
     useArticleTag?: boolean;
   }) => {
@@ -993,7 +1033,7 @@ export function ClassicReaderView({
       isActive,
       keyValue,
       renderPlainTextWhenInactive = false,
-      strongTokenIndexes,
+      styleIndexes,
       tokens,
       useArticleTag = true,
     } = args;
@@ -1004,7 +1044,7 @@ export function ClassicReaderView({
       onJumpToToken:
         renderPlainTextWhenInactive && !isActive ? undefined : handleJumpToToken,
       renderPlainText: renderPlainTextWhenInactive && !isActive,
-      strongTokenIndexes,
+      styleIndexes,
       tokens,
     });
     const isCentered = block.alignment === "center";
@@ -1154,7 +1194,7 @@ export function ClassicReaderView({
   );
 
   return (
-    <div className="reader-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] px-4 py-5 text-left md:rounded-[1.65rem] md:px-7 md:py-7 lg:rounded-[1.75rem] lg:px-10 lg:py-10">
+    <div className="reader-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] px-4 py-5 text-left md:rounded-[1.65rem] md:px-6 md:py-6 lg:rounded-[1.75rem] lg:px-8 lg:py-7">
       <div className="shrink-0">
         <p className="reader-accent text-xs tracking-[0.24em] uppercase md:text-sm md:tracking-[0.28em]">
           {classicReaderLabel}
@@ -1229,7 +1269,13 @@ export function ClassicReaderView({
                   }
                 >
                   {renderMappedMarkdownBlocks ? (
-                    <div className="space-y-3 md:space-y-4">
+                    <div
+                      className={`space-y-3 md:space-y-4${
+                        block.nodeType === "blockquote"
+                          ? " reader-classic-blockquote"
+                          : ""
+                      }`}
+                    >
                       {mappedMarkdownBlocks.map((documentBlock) => {
                         const tokens = documentModel.tokens.slice(
                           documentBlock.tokenStart,
@@ -1248,7 +1294,7 @@ export function ClassicReaderView({
                               : undefined,
                           isActive: documentBlock.index === chunk.paragraphIndex,
                           keyValue: `${block.key}:${documentBlock.index}`,
-                          strongTokenIndexes: buildStrongTokenIndexes(
+                          styleIndexes: buildInlineStyleTokenIndexes(
                             documentBlock.inlineSpans,
                           ),
                           tokens,
@@ -1313,7 +1359,7 @@ export function ClassicReaderView({
             ) : null}
             {renderedBlocks.map(
               (
-                { activeTokenIndexes, block, isActive, strongTokenIndexes, tokens },
+                { activeTokenIndexes, block, isActive, styleIndexes, tokens },
                 renderIndex,
               ) => {
                 const shouldRenderPageDivider =
@@ -1352,7 +1398,7 @@ export function ClassicReaderView({
                       isActive,
                       keyValue: block.index,
                       renderPlainTextWhenInactive: isSimplifiedMarkdownPreview,
-                      strongTokenIndexes,
+                      styleIndexes,
                       tokens,
                     })}
                   </Fragment>

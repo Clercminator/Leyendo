@@ -1477,6 +1477,15 @@
     font-weight: 700;
   }
 
+  .reader-inline-emphasis {
+    font-style: italic;
+  }
+
+  .reader-classic-blockquote {
+    border-left: 3px solid var(--reader-markdown-blockquote-border);
+    padding-left: 1rem;
+  }
+
   .reader-classic-active-run-compact {
     display: inline;
     background: transparent;
