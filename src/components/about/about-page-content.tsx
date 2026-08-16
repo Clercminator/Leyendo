@@ -8,6 +8,7 @@ import { ArrowUpRight, UserRound } from "lucide-react";
 
 import { useLocale } from "@/components/layout/locale-provider";
 import { AppShell } from "@/components/layout/app-shell";
+import { ModeGallery } from "@/components/reader/mode-gallery";
 import { getFeaturedGuidesForLocale } from "@/lib/guides";
 import { getLocalizedCopy } from "@/lib/locale";
 import { getLocalizedPublicPath } from "@/lib/public-paths";
@@ -38,6 +39,108 @@ const aboutDescription = {
   en: "Leyendo is a reading workspace for people who need more control over dense material: faster pace when the text allows it, calmer recovery when the document pushes back.",
   es: "Leyendo es un espacio de lectura para quienes necesitan mas control sobre material denso: mas ritmo cuando el texto lo permite y recuperacion mas calmada cuando el documento se pone dificil.",
   pt: "O Leyendo e um espaco de leitura para quem precisa de mais controle sobre material denso: mais ritmo quando o texto permite e retomada mais calma quando o documento aperta.",
+};
+
+const firstSessionProofEyebrow = {
+  en: "What to verify first",
+  es: "Lo que debes verificar primero",
+  pt: "O que verificar primeiro",
+};
+
+const firstSessionProofTitle = {
+  en: "The promise should prove itself on your first real document.",
+  es: "La promesa debe notarse en tu primer documento real.",
+  pt: "A promessa deveria se provar no seu primeiro documento real.",
+};
+
+const firstSessionProofDescription = {
+  en: "These are the behaviors Leyendo should make obvious within minutes, not after a long setup or a paid upgrade.",
+  es: "Esto debería quedar claro en minutos, no después de una configuración larga ni de subir de plan.",
+  pt: "Estes sao os comportamentos que o Leyendo deveria tornar obvios em minutos, nao depois de uma configuracao longa ou de um upgrade pago.",
+};
+
+const firstSessionProofCards = {
+  en: [
+    {
+      eyebrow: "Recommendation",
+      title: "A reading goal changes the starting setup",
+      description:
+        "Pick a goal and the starting mode and pace should shift with it before you ever touch a dense settings panel.",
+      note: "The system should help first, not wait for manual tuning.",
+    },
+    {
+      eyebrow: "Mode switching",
+      title: "You stay in one document while the view changes",
+      description:
+        "Move from faster text modes into Classic Reader or Standard PDF without opening a second copy or rebuilding your place.",
+      note: "Context recovery should be part of the product, not an afterthought.",
+    },
+    {
+      eyebrow: "Continuity",
+      title: "Progress stays attached to the document",
+      description:
+        "Leave, reopen from the library, and keep your pace, highlights, bookmarks, and recovery path tied to the same file.",
+      note: "Local-first continuity is part of the promise.",
+    },
+  ],
+  es: [
+    {
+      eyebrow: "Recomendación",
+      title: "Un objetivo de lectura cambia el punto de partida",
+      description:
+        "Al elegir un objetivo, el modo inicial y el ritmo deberían ajustarse antes de abrir una pantalla llena de ajustes.",
+      note: "El sistema debe ayudar primero, no esperar ajustes manuales.",
+    },
+    {
+      eyebrow: "Cambio de modo",
+      title: "Sigues en el mismo documento aunque cambie la vista",
+      description:
+        "Pasa de los modos rápidos al Lector clásico o al PDF estándar sin abrir otra copia ni perder tu lugar.",
+      note: "Recuperar contexto debe ser parte del producto, no algo secundario.",
+    },
+    {
+      eyebrow: "Continuidad",
+      title: "El progreso sigue unido al documento",
+      description:
+        "Sal, vuelve desde la biblioteca y conserva el ritmo, los destacados, los marcadores y tu punto de regreso en el mismo archivo.",
+      note: "La continuidad local forma parte de la promesa.",
+    },
+  ],
+  pt: [
+    {
+      eyebrow: "Recomendacao",
+      title: "Um objetivo de leitura muda o ponto de partida",
+      description:
+        "Escolha um objetivo e o modo inicial com seu ritmo deveriam mudar antes de tocar em uma tela densa de ajustes.",
+      note: "O sistema deveria ajudar primeiro, nao esperar ajuste manual.",
+    },
+    {
+      eyebrow: "Troca de modo",
+      title: "Voce fica no mesmo documento enquanto a vista muda",
+      description:
+        "Passe dos modos rapidos de texto para Leitor classico ou PDF standard sem abrir uma segunda copia nem reconstruir seu lugar.",
+      note: "Recuperar contexto precisa fazer parte do produto, nao ser um detalhe tardio.",
+    },
+    {
+      eyebrow: "Continuidade",
+      title: "O progresso continua ligado ao documento",
+      description:
+        "Saia, volte pela biblioteca e mantenha ritmo, destaques, marcadores e caminho de retomada presos ao mesmo arquivo.",
+      note: "A continuidade local-first faz parte da promessa.",
+    },
+  ],
+};
+
+const modesEyebrow = {
+  en: "Reading modes",
+  es: "Modos de lectura",
+  pt: "Modos de leitura",
+};
+
+const modesTitle = {
+  en: "Choose the reading mode that fits the document, the task, and your current attention.",
+  es: "Elige el modo que mejor se adapte al documento, la tarea y tu atención.",
+  pt: "Escolha o modo de leitura que combina com o documento, a tarefa e sua atencao atual.",
 };
 
 const sectionCopy = {
@@ -186,6 +289,59 @@ export function AboutPageContent() {
           </article>
         </section>
 
+        <section className="fade-rise-delayed space-y-5">
+          <div className="w-full">
+            <p className="editorial-kicker text-(--accent-amber)">
+              {getLocalizedCopy(locale, firstSessionProofEyebrow)}
+            </p>
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-balance text-(--text-strong) lg:text-[3rem]">
+              {getLocalizedCopy(locale, firstSessionProofTitle)}
+            </h2>
+            <p className="mt-4 text-base leading-8 text-(--text-muted)">
+              {getLocalizedCopy(locale, firstSessionProofDescription)}
+            </p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            {firstSessionProofCards[locale].map((card, index) => (
+              <article
+                key={card.title}
+                className="rounded-[1.75rem] border border-(--border-soft) bg-(--surface-card) p-6 shadow-[0_18px_70px_rgba(20,26,56,0.1)] backdrop-blur-xl"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs tracking-[0.18em] text-(--accent-sky) uppercase">
+                    {card.eyebrow}
+                  </p>
+                  <span className="rounded-full border border-(--border-soft) bg-(--surface-soft) px-3 py-1 text-xs font-medium text-(--text-strong)">
+                    0{index + 1}
+                  </span>
+                </div>
+                <h3 className="font-heading mt-4 text-2xl leading-tight font-semibold text-(--text-strong)">
+                  {card.title}
+                </h3>
+                <p className="mt-4 text-sm leading-7 text-(--text-muted)">
+                  {card.description}
+                </p>
+                <p className="mt-4 text-sm font-medium text-(--text-strong)">
+                  {card.note}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="fade-rise-delayed space-y-5">
+          <div className="w-full">
+            <p className="editorial-kicker text-(--accent-sky)">
+              {getLocalizedCopy(locale, modesEyebrow)}
+            </p>
+            <h2 className="font-heading mt-3 text-4xl leading-tight font-semibold text-balance text-(--text-strong) lg:text-[3rem]">
+              {getLocalizedCopy(locale, modesTitle)}
+            </h2>
+          </div>
+          <ModeGallery />
+        </section>
+
         <section className="grid gap-6 lg:grid-cols-2">
           {bilingualSearchSummary.map((entry) => (
             <article
@@ -245,49 +401,17 @@ export function AboutPageContent() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-(--border-soft) bg-(--surface-strong) p-8 shadow-[0_18px_70px_rgba(20,26,56,0.1)]">
-          <p className="editorial-kicker text-(--accent-sky)">
-            {getLocalizedCopy(locale, sectionCopy.founderTitle)}
-          </p>
-          <p className="mt-5 max-w-4xl text-sm leading-7 text-(--text-muted)">
-            {getLocalizedCopy(locale, sectionCopy.founderBody)}
-          </p>
-          <div className="editorial-rule mt-8" />
-          <div className="about-founder-layout mt-8">
-            <div className="about-founder-copy max-w-2xl min-w-0">
-              <h2 className="font-heading text-2xl font-semibold text-(--text-strong) sm:text-3xl">
-                {founderName}
-              </h2>
-              <p className="mt-2 text-sm tracking-[0.18em] text-(--text-muted) uppercase">
-                {founderRole}
-              </p>
-              <p className="mt-5 text-sm leading-8 text-(--text-muted)">
-                {founderBio}
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <a
-                  href={founderLinkedInUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                >
-                  LinkedIn
-                  <ArrowUpRight className="h-4 w-4 text-(--accent-sky)" />
-                </a>
-                <a
-                  href={founderGitHubUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-4 py-2 text-sm text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
-                >
-                  GitHub
-                  <ArrowUpRight className="h-4 w-4 text-(--accent-amber)" />
-                </a>
-              </div>
-            </div>
-            <div
+        <section className="overflow-hidden rounded-[2rem] border border-(--border-soft) bg-(--surface-strong) shadow-[0_18px_70px_rgba(20,26,56,0.1)]">
+          <div className="px-6 pt-7 sm:px-8 sm:pt-8 lg:px-10 lg:pt-10">
+            <p className="editorial-kicker text-(--accent-sky)">
+              {getLocalizedCopy(locale, sectionCopy.founderTitle)}
+            </p>
+          </div>
+
+          <div className="grid gap-8 px-6 pt-6 pb-6 sm:px-8 sm:pb-8 lg:grid-cols-[minmax(17rem,0.82fr)_minmax(0,1.18fr)] lg:items-center lg:gap-12 lg:px-10 lg:pt-8 lg:pb-10 xl:gap-16">
+            <figure
               data-testid="about-founder-photo"
-              className="about-founder-photo mx-auto overflow-hidden rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) shadow-[0_18px_48px_rgba(20,26,56,0.16)]"
+              className="mx-auto w-full max-w-md overflow-hidden rounded-[1.5rem] border border-(--border-soft) bg-(--surface-soft) shadow-[0_18px_48px_rgba(20,26,56,0.16)] lg:mx-0"
             >
               {!founderImgError ? (
                 <img
@@ -297,16 +421,54 @@ export function AboutPageContent() {
                   height={640}
                   loading="lazy"
                   decoding="async"
-                  className="about-founder-photo-image h-72 w-56 object-cover object-top sm:h-80 sm:w-64"
+                  className="aspect-4/5 w-full object-cover object-top"
                   onError={() => {
                     setFounderImgError(true);
                   }}
                 />
               ) : (
-                <div className="about-founder-photo-image flex h-72 w-56 items-center justify-center bg-[linear-gradient(180deg,rgba(255,255,255,0.18),rgba(20,26,56,0.18))] text-(--text-muted) sm:h-80 sm:w-64">
+                <div className="flex aspect-4/5 w-full items-center justify-center bg-[linear-gradient(180deg,rgba(255,255,255,0.18),rgba(20,26,56,0.18))] text-(--text-muted)">
                   <UserRound className="h-10 w-10" aria-hidden />
                 </div>
               )}
+            </figure>
+
+            <div className="min-w-0">
+              <p className="text-xs font-medium tracking-[0.2em] text-(--accent-amber) uppercase">
+                {founderRole}
+              </p>
+              <h2 className="font-heading mt-3 text-4xl leading-none font-semibold text-(--text-strong) sm:text-5xl">
+                {founderName}
+              </h2>
+              <p className="mt-6 max-w-3xl text-base leading-8 text-(--text-strong) sm:text-lg sm:leading-9">
+                {getLocalizedCopy(locale, sectionCopy.founderBody)}
+              </p>
+
+              <div className="mt-7 border-t border-(--border-soft) pt-7">
+                <p className="max-w-3xl text-sm leading-7 text-(--text-muted) sm:text-base sm:leading-8">
+                  {founderBio}
+                </p>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <a
+                    href={founderLinkedInUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full bg-(--text-strong) px-5 py-3 text-sm font-semibold text-(--text-on-accent) transition hover:opacity-90"
+                  >
+                    LinkedIn
+                    <ArrowUpRight className="h-4 w-4" />
+                  </a>
+                  <a
+                    href={founderGitHubUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-(--border-soft) bg-(--surface-soft) px-5 py-3 text-sm font-semibold text-(--text-strong) transition hover:border-(--border-strong) hover:bg-(--surface-chip)"
+                  >
+                    GitHub
+                    <ArrowUpRight className="h-4 w-4 text-(--accent-amber)" />
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </section>

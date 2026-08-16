@@ -402,8 +402,30 @@ test("guides hub exposes public SEO articles", async ({ page }) => {
 });
 
 test("about page cross-links into the public guides", async ({ page }) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", {
+      name: /the promise should prove itself on your first real document/i,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: /choose the reading mode that fits the document/i,
+    }),
+  ).toHaveCount(0);
+
   await page.goto("/about");
 
+  await expect(
+    page.getByRole("heading", {
+      name: /the promise should prove itself on your first real document/i,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /choose the reading mode that fits the document/i,
+    }),
+  ).toBeVisible();
   await expect(page.getByTestId("about-founder-photo")).toBeVisible();
   await expect(page.getByAltText(/david clerc portrait/i)).toHaveAttribute(
     "src",
